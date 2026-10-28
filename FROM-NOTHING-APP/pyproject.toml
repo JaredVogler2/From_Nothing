@@ -42,3 +42,8 @@ markers = [
   "benchmark: complete-scope scale benchmarks (slow)",
   "live: requires live SQL Server access (skipped without credentials)",
 ]
+
+# Vercel's Flask builder runs this AFTER dependencies are installed, BEFORE bundling.
+# Its output is a read-only, fully synthetic source/plan snapshot for GET views.
+[tool.vercel.scripts]
+build = "python build_demo.py"
