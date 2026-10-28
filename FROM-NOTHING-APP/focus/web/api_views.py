@@ -316,3 +316,127 @@ def list_disruption_claims(ctx: RequestContext, args: dict[str, Any]) -> ApiResu
 )
 def list_ie_reviews(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     return _read(lambda services: S.ie_reviews_view(services, ctx))
+
+
+# ---------------------------------------------------------------------- P20 operational views
+
+@REGISTRY.operation(
+    "get_team_lead", "GET", "/api/v1/team-lead",
+    summary="A team-shift's server-ranked actions with current dispatch reasons, exact crews and amendment proposals",
+    description="Each accepted assignment of the team-shift is assessed against current facts with the dispatch rule (predecessors, parts, "
+                "QA, certificates, attendance, calendar, CS); dispatchable work ranks first. Open team work is assessed as feasible "
+                "emergency-addition proposals with reasons. Read-only: nothing is assigned, completed or recorded.",
+    grants=ALL_READERS, read_only=True, query=_query(team=TEAM, date=DAY, shift=SHIFT_NUMBER), tags=("operate",),
+)
+def get_team_lead(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    team = S.default_team(ctx, args.get("team"))                                # scope before fetch
+    day = S.parse_day(args.get("date"))
+    return _read(lambda services: S.team_lead(_canon(services), ctx, team=team, day=day, shift=int(args.get("shift", 1))))
+
+
+@REGISTRY.operation(
+    "get_standards", "GET", "/api/v1/standards",
+    summary="Duration standards, certificate requirements and team authority with provenance and a review queue",
+    description="Sourced duration statistics and methods, requirement status and bundles, team-inference evidence and data gaps; weak or "
+                "unknown facts form the IE review queue. Proposals never rewrite issued standards.",
+    grants=ALL_READERS, read_only=True, tags=("improve",),
+)
+def get_standards(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return _snapshot_read("standards", ctx, {}, lambda canon: S.standards(canon, ctx))
+
+
+@REGISTRY.operation(
+    "get_budget", "GET", "/api/v1/budget",
+    summary="Schedule budget: standard person effort, planned duty, NVA and OT by team-shift and job flow budgets",
+    description="Per team-shift: prorated standard person-minutes of planned work, duty minutes by kind, non-value-added minutes, OT and "
+                "regular capacity. Per job: flow budget versus planned span.",
+    grants=ALL_READERS, read_only=True, query=_query(date=DAY, purpose={"type": "string", "enum": ["EXECUTABLE", "FORECAST"]}), tags=("plan",),
+)
+def get_budget(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    day = S.parse_day(args.get("date"))
+    purpose = args.get("purpose", "EXECUTABLE")
+    return _snapshot_read("budget", ctx, {"date": day, "purpose": purpose}, lambda canon: S.budget(canon, ctx, day=day, purpose=purpose))
+
+
+@REGISTRY.operation(
+    "get_gantt", "GET", "/api/v1/gantt",
+    summary="Worker Gantt: every person's work, travel, wait, tool, setup and OT duty with shift boundaries",
+    description="People of the pools in your scope for a day (optionally one team) with every planned duty and carry-in, plus the policy "
+                "windows of shifts 1-3.",
+    grants=ALL_READERS, read_only=True,
+    query=_query(date=DAY, team=TEAM, purpose={"type": "string", "enum": ["EXECUTABLE", "FORECAST"]}), tags=("operate",),
+)
+def get_gantt(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    if "team" in args:
+        S.require_team(ctx, args["team"])                                       # scope before fetch
+    day = S.parse_day(args.get("date"))
+    purpose = args.get("purpose", "EXECUTABLE")
+    team = args.get("team")
+    return _snapshot_read("gantt", ctx, {"date": day, "team": team, "purpose": purpose},
+                          lambda canon: S.gantt(canon, ctx, day=day, team=team, purpose=purpose))
+
+
+@REGISTRY.operation(
+    "get_development", "GET", "/api/v1/development",
+    summary="Development: IE proposals, skill gaps with training candidates and team progression (never certification)",
+    description="Auditable improvement proposals, certificate bundles short of qualified admitted people with partially qualified "
+                "candidates, and XP/levels/badges with no qualification effect.",
+    grants=ALL_READERS, read_only=True, tags=("improve",),
+)
+def get_development(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return _read(lambda services: S.development(_canon(services), ctx))
+
+
+@REGISTRY.operation(
+    "get_arena", "GET", "/api/v1/arena",
+    summary="Arena: team standings from stored evaluations (pooled exactly), XP, badges and recent recognition",
+    description="Each team's goal evaluations pooled by summing exact components (never averaging scores), with XP, level and badges.",
+    grants=PERFORMANCE_READERS, read_only=True, tags=("performance",),
+)
+def get_arena(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return _read(lambda services: S.arena(services, ctx))
+
+
+@REGISTRY.operation(
+    "get_turnover", "GET", "/api/v1/turnover",
+    summary="Shift turnover: open frozen units, pending claims and holds, and what the next shift inherits",
+    description="Open units from the canonical evaluation evidence, unreviewed claims, open quality holds, the next shift's actions with "
+                "their dispatch reasons and carry-in duties.",
+    grants=ALL_READERS, read_only=True, query=_query(team=TEAM, date=DAY, shift=SHIFT_NUMBER), tags=("operate",),
+)
+def get_turnover(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    team = S.default_team(ctx, args.get("team"))                                # scope before fetch
+    day = S.parse_day(args.get("date"))
+    return _read(lambda services: S.turnover(_canon(services), ctx, team=team, day=day, shift=int(args.get("shift", 1))))
+
+
+@REGISTRY.operation(
+    "get_history", "GET", "/api/v1/history",
+    summary="History: accepted plans over time, evaluation revisions, corrections and delivery changes",
+    description="Verified accepted plans of both purposes with their head versions, every evaluation revision in your scope, recognition "
+                "corrections and acknowledged delivery change events. Accepted history is immutable.",
+    grants=ALL_READERS, read_only=True, tags=("plan",),
+)
+def get_history(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return _read(lambda services: S.history_view(services, ctx))
+
+
+@REGISTRY.operation(
+    "list_scenarios", "GET", "/api/v1/scenarios",
+    summary="Stored what-if scenarios (SCENARIO_ONLY) and the inputs a new scenario may change",
+    description="Newest first: changes, status, baseline and scenario candidates and the line-by-line comparison.",
+    grants=ALL_READERS, read_only=True, tags=("plan",),
+)
+def list_scenarios(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return _read(lambda services: S.scenarios_view(services, ctx))
+
+
+@REGISTRY.operation(
+    "get_scenario", "GET", "/api/v1/scenarios/{scenario_id}",
+    summary="One stored scenario result with its baseline comparison",
+    description="Immutable scenario result; it is never publishable or executable.",
+    grants=ALL_READERS, read_only=True, path_params={"scenario_id": {"type": "string", "pattern": ID_PATTERN}}, tags=("plan",),
+    mcp_resource="focus://scenarios/{scenario_id}",
+)
+def get_scenario(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return _read(lambda services: S.scenarios_view(services, ctx, args["scenario_id"]))

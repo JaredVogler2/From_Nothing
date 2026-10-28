@@ -105,6 +105,16 @@ def read_paths(world) -> dict[str, str]:  # type: ignore[no-untyped-def]
         "list_disruption_claims": "/api/v1/disruption-claims",
         "list_ie_reviews": "/api/v1/ie-reviews",
         "get_run": "/api/v1/runs/RUN-abcdef12",
+        "get_team_lead": "/api/v1/team-lead?team=PROD-A",
+        "get_standards": "/api/v1/standards",
+        "get_budget": "/api/v1/budget",
+        "get_gantt": "/api/v1/gantt?team=PROD-A",
+        "get_development": "/api/v1/development",
+        "get_arena": "/api/v1/arena",
+        "get_turnover": "/api/v1/turnover?team=PROD-A",
+        "get_history": "/api/v1/history",
+        "list_scenarios": "/api/v1/scenarios",
+        "get_scenario": "/api/v1/scenarios/SCN-abcdef12",
     }
 
 
@@ -237,7 +247,7 @@ def test_a01_every_read_is_typed_without_data_and_never_writes(world, app_root, 
     root = tmp_path / "empty"
     client, _, _ = client_on(root, app_root, "manager")
     for name, path in read_paths(world).items():
-        if name in ("get_aircraft", "get_job", "get_plan", "get_run", "get_myday"):
+        if name in ("get_aircraft", "get_job", "get_plan", "get_run", "get_myday", "get_scenario"):
             assert client.get(path).status_code in (200, 404), name
             continue
         r = client.get(path)

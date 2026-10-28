@@ -80,12 +80,20 @@ class IncumbentLookup:
 
 
 def record_accepted_incumbent(services: Any, plan: IncumbentPlan) -> IncumbentPlan:
-    """Store the immutable ACCEPTED artifact, then move the incumbent head last (compare-and-set); idempotent."""
+    """Store the immutable ACCEPTED artifact, then move the incumbent head last (compare-and-set); idempotent.
+
+    The head only moves forward in acceptance time: recording an older acceptance (for example re-running the
+    fixture bootstrap after a newer plan was published) stores the artifact but never regresses the head.
+    """
     repos = services.repositories
     if repos.get_raw(ACCEPTED, plan.id) is None:
         repos.put_record(ACCEPTED, "IncumbentPlan", plan.id, plan, purpose=plan.purpose)
     name = incumbent_head(plan.scope, plan.purpose)
     head = repos.head(name)
+    if head is not None and head.record_id != plan.id:
+        current = repos.get_typed(ACCEPTED, head.record_id, "IncumbentPlan", IncumbentPlan)
+        if current is not None and current.accepted_at > plan.accepted_at:
+            return plan
     if head is None or head.record_id != plan.id:
         repos.move_head(name, plan.id, head.version if head else 0)
     return plan

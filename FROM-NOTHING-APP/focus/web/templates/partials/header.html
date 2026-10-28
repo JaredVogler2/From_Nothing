@@ -1,0 +1,17 @@
+{# Shared app header (S15: 56px, FOCUS brand, selected source/plan/as-of and user/scope). Used by both layouts. #}
+<header class="app-header" role="banner">
+  <button class="btn btn-icon nav-toggle" type="button" aria-controls="side-nav" aria-expanded="false" data-action="toggle-nav">
+    <span class="visually-hidden">Toggle navigation</span><span aria-hidden="true">☰</span>
+  </button>
+  <a class="brand" href="{{ url_for('focus.landing') }}"><span class="brand-mark" aria-hidden="true">F</span><span class="brand-name">FOCUS</span></a>
+  <div class="header-meta" id="header-meta" aria-live="polite">Loading source and plan…</div>
+  <div class="header-user" id="header-user">
+    {% if focus_ctx and focus_ctx.authenticated %}
+      <span class="user-chip" title="{{ focus_ctx.scope.label }}">{{ focus_ctx.display_name }}</span>
+      <form method="post" action="{{ url_for('focus.logout') }}" class="inline-form"><button class="btn btn-quiet" type="submit">Sign out</button></form>
+    {% else %}
+      <a class="btn btn-quiet" href="{{ url_for('focus.landing') }}">Sign in</a>
+    {% endif %}
+    <a class="btn btn-quiet layout-switch" href="{{ url_for('focus.dashboard_classic') if layout != 'classic' else url_for('focus.dashboard_ios') }}">{{ 'Classic View' if layout != 'classic' else 'New iOS Design' }}</a>
+  </div>
+</header>

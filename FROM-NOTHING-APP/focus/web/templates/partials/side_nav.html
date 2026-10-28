@@ -1,0 +1,13 @@
+{# Grouped navigation over the 17 views and supplementary panels (persistent in Classic, collapsible in iOS, a drawer on mobile). #}
+<nav class="side-nav" id="side-nav" aria-label="Views">
+  {% for group in ['Operate', 'Plan', 'Perform', 'Improve', 'Supplementary'] %}
+    <div class="nav-group">
+      <h2 class="nav-group-title">{{ group }}</h2>
+      <ul>
+      {% for v in views if v.group == group %}
+        <li><a class="nav-link" href="#{{ v.id }}" data-view="{{ v.id }}" title="{{ v.summary }}"><span class="nav-icon" aria-hidden="true">{{ v.icon }}</span>{{ v.title }}</a></li>
+      {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+</nav>

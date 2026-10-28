@@ -57,3 +57,83 @@ def cli_demo_bootstrap(services: Any, args: Any) -> dict[str, Any]:
     incumbents = {purpose: import_fixture_incumbent(services, scenario, purpose).id for purpose in ("EXECUTABLE", "FORECAST")}
     return {"status": "ok", "scenario": scenario, "inputs": {"verified": len(expected) - len(written), "written": written},
             "runtime_dir": str(runtime), "incumbents": incumbents, "policy": services.policy.id}
+
+
+def demo_run(services: Any, *, scenario: str = DEMO_SCENARIO, budget_seconds: float | None = None, max_moves: int | None = None,
+             observe: bool = True) -> dict[str, Any]:
+    """The complete fixture pipeline end to end, carrying each returned id into the next stage (S17 ``demo-run``).
+
+    bootstrap -> acquire -> schedule + publish EXECUTABLE and FORECAST -> collect observations at every manifest point ->
+    evaluate every closed goal (plus the stored factory aggregate of each shift) -> recognition projection.
+
+    It is idempotent: the acquisition key is fixed, a purpose whose accepted head already comes from this source run is
+    not rescheduled, collections replay write-once, evaluations append only changed evidence and the projection
+    appends nothing twice.
+    """
+    from types import SimpleNamespace
+
+    from .analytics.progression import project
+    from .clock import FIXTURE_CUTOFF
+    from .data.acquisition import acquire, make_reader
+    from .domain import Purpose
+    from .engine.max.optimizer.orchestrator import schedule
+    from .performance.actuals import RUNS as OBSERVATION_RUNS
+    from .performance.actuals import ObservationStore, collect_observations, manifest_points, observation_head, run_summary
+    from .performance.lifecycle import GoalRegistry
+    from .performance.score import aggregate, evaluate_all, summary
+    from .publication.service import current_plan, publish
+
+    boot = cli_demo_bootstrap(services, SimpleNamespace(scenario=scenario, reset=False))
+    if boot["status"] != "ok":
+        return boot
+    scope = services.settings.scope_key
+    outcome = acquire(services, make_reader(services, scenario), cutoff=FIXTURE_CUTOFF, idempotency_key=f"demo-run:{scenario}")
+    if outcome.status != "COMPLETE":
+        return {"status": "error", "error": {"code": "ACQUISITION_REJECTED", "message": str(outcome.rejection)}, "source_run_id": outcome.run_id}
+    budget = 10.0 if budget_seconds is None else float(budget_seconds)
+    plans: dict[str, dict[str, Any]] = {}
+    for purpose in ("EXECUTABLE", "FORECAST"):
+        current, _ = current_plan(services, scope, purpose)
+        if current is not None and current.published.source_run_id == outcome.run_id:
+            plans[purpose] = {"status": "ALREADY_ACCEPTED", "plan_id": current.published.id, "candidate_id": current.published.candidate_id}
+            continue
+        candidate, run = schedule(services, source_run=outcome.run_id, purpose=Purpose(purpose), budget_seconds=budget, max_moves=max_moves)
+        if not run.validation.valid:
+            plans[purpose] = {"status": "INVALID", "candidate_id": candidate.id, "violations": len(run.validation.violations)}
+            continue
+        result = publish(services, candidate.id)
+        plans[purpose] = {"status": result.status, "plan_id": result.plan_id, "candidate_id": candidate.id, "reasons": list(result.reasons)}
+    if plans["EXECUTABLE"].get("plan_id") is None:
+        return {"status": "error", "error": {"code": "NO_EXECUTABLE_PLAN", "message": "the executable plan was not accepted"},
+                "source_run_id": outcome.run_id, "plans": plans}
+    collections = []
+    points = manifest_points(services, scenario) if observe else []
+    head = services.repositories.head(observation_head(scope))
+    latest = None if head is None else ObservationStore(services.repositories, scope).get(OBSERVATION_RUNS, head.record_id)
+    for at in points:
+        if latest is not None and at <= latest.as_of:
+            collections.append({"as_of": at, "skipped": "ALREADY_COLLECTED"})     # replaying older points would regress history
+            continue
+        observed = collect_observations(services, as_of=at)
+        evaluations = evaluate_all(services, as_of=at)
+        shift_of = {r.goal_id: r.shift_id for r in GoalRegistry.load(services).records.values()}
+        by_shift: dict[str, list[Any]] = {}
+        for e in evaluations:
+            for goal_id in e.goal_ids:
+                if goal_id in shift_of:
+                    by_shift.setdefault(shift_of[goal_id], []).append(e)
+        factories = [summary(aggregate(services, members, label=f"FACTORY {shift}", as_of=at))
+                     for shift, members in sorted(by_shift.items()) if len(members) > 1]
+        collections.append({"as_of": at, "observation": run_summary(observed), "evaluations": [summary(e) for e in evaluations],
+                            "factory": factories})
+    projection = project(services, as_of=points[-1]) if points else None
+    return {"status": "ok", "scenario": scenario, "source_run_id": outcome.run_id, "snapshot_id": outcome.snapshot_id, "plans": plans,
+            "collections": collections,
+            "recognition": None if projection is None else {"appended": len(projection.appended), "badges": len(projection.badges)},
+            "note": "fixture demonstration: invented data, TEST signing key, demonstration score policy"}
+
+
+def cli_demo_run(services: Any, args: Any) -> dict[str, Any]:
+    if services.settings.mode != "fixture":
+        return {"status": "invalid", "error": {"code": "FIXTURE_ONLY", "message": "demo-run runs in fixture mode only"}}
+    return demo_run(services, scenario=getattr(args, "scenario", None) or DEMO_SCENARIO, budget_seconds=getattr(args, "budget_seconds", None))
