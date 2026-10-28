@@ -55,6 +55,15 @@ attendance. A conditional ETA is never physical receipt.
   - Planned OOS work keeps its frozen XP: the OOS charge lives once, in O ("no second charge in bonus/XP").
   - Offplan output never earns XP.
 - **D-15 Python 3.12 (user directive).** The development, lock and test interpreter is CPython 3.12. `requires-python = ">=3.12"` per S02.
+- **D-17 Scoped canonical API (P19).**
+  - Reads go through `focus/web/serializers.py`. They load the admitted snapshot read-only (never `snapshot_for_run`, which may rebuild and store) and the end-to-end verified accepted plans.
+  - Explicit team or person parameters are checked against the server-owned scope before any repository read.
+  - People outside the scope are redacted. A job or goal outside the scope is "not found".
+  - Cost and contract terms need an economics grant (`manager`, `scenario_planner`); otherwise they are withheld (null with `ECONOMICS_RESTRICTED`), never zero.
+  - Caches hold only content-addressed objects (snapshot by id, verified plan by head and version, goal registry by accepted set and policy). Scoped projections are keyed by scope, filters and canonical revision.
+  - Commands store server-derived authority (for example the excusal reviewer role and the requester's teams) under `_server`. Client bodies cannot carry it because every command schema rejects unknown fields.
+  - Amendments use the goal's amendment count as the optimistic version, and excusal decisions use its decision count.
+  - "Knowledge time" is the clock, never before the latest collected observations, so reads, version checks and workers agree. Live it equals the clock; in a fixture replay it moves to the last observation point.
 
 ## Semantic gaps (live), each a precise readiness effect
 

@@ -92,9 +92,15 @@ def test_a68_commands_require_csrf_json_schema_and_same_origin(make_client) -> N
 
 
 def test_a68_idempotent_command_returns_honest_queued_status(make_client) -> None:
+    from tests.conftest import acquire_demo
+
     app, client, services = make_client(inprocess_worker=False)
     token = login(client, "operator")
-    body = {"source_run_id": "SR-1", "policy_id": "rebuild-v1", "budget_seconds": 5, "idempotency_key": "k-00000001"}
+    missing = {"source_run_id": "SR-1", "policy_id": "rebuild-v1", "budget_seconds": 5, "idempotency_key": "k-00000000"}
+    r = client.post("/api/v1/schedule-runs", json=missing, headers={"X-CSRF-Token": token})
+    assert r.status_code == 404 and r.get_json()["error"]["code"] == "SOURCE_RUN_NOT_FOUND"    # refused before a doomed run is queued
+    run = acquire_demo(services)
+    body = {"source_run_id": run.run_id, "policy_id": "rebuild-v1", "budget_seconds": 5, "idempotency_key": "k-00000001"}
     first = client.post("/api/v1/schedule-runs", json=body, headers={"X-CSRF-Token": token})
     assert first.status_code == 202
     env = first.get_json()

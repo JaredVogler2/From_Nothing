@@ -121,13 +121,25 @@ def _grants_for(settings: Settings, subject: str, groups: Iterable[str]) -> froz
     return frozenset(g for g in out if g in GRANTS)
 
 
-def _scope_for_live(settings: Settings, subject: str, grants: frozenset[str]) -> Scope:
-    broad = {"manager", "IE", "supply_chain", "QA", "excusal_decider", "source_worker", "signer", "installer", "scenario_planner"}
-    if grants & broad:
+BROAD_GRANTS = frozenset({"manager", "IE", "supply_chain", "QA", "excusal_decider", "source_worker", "signer", "installer", "scenario_planner"})
+
+
+def _scope_for_live(settings: Settings, subject: str, grants: frozenset[str], user: str | None = None) -> Scope:
+    if grants & BROAD_GRANTS:
         return Scope(True, frozenset(), None, "all teams")
-    # Team leads / mechanics need explicit server-owned team or person scope; without
-    # it they see fleet-level aggregates only (no personal or team detail).
-    return Scope(False, frozenset(), None, "aggregates only (no team/person scope configured)")
+    # Team leads and mechanics need an explicit server-owned team or person scope
+    # (FOCUS_GRANTS_JSON.scopes, keyed by subject or bare user name). Without one they
+    # see fleet-level aggregates only, never another person's or team's detail.
+    configured = settings.grants.get("scopes", {})
+    entry = configured.get(subject) or (configured.get(user) if user else None)
+    if entry is None:
+        return Scope(False, frozenset(), None, "aggregates only (no team/person scope configured)")
+    person = entry.get("person") if "mechanic" in grants or "team_lead" in grants else None
+    if entry["teams"] == "*":
+        return Scope(True, frozenset(), person, "all teams")
+    teams = frozenset(entry["teams"])
+    label = ", ".join(sorted(teams)) or "own person only"
+    return Scope(False, teams, person, label if person is None else f"{label} (person {person})")
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +184,7 @@ def resolve_identity(settings: Settings) -> RequestContext:
         group_list = tuple(str(x) for x in groups) if isinstance(groups, list) else ()
         subject = f"posit:{user}"
         grants = _grants_for(settings, subject, group_list) | _grants_for(settings, user, ())
-        return RequestContext(rid, subject, user, grants, _scope_for_live(settings, subject, grants), provider, False, None, group_list)
+        return RequestContext(rid, subject, user, grants, _scope_for_live(settings, subject, grants, user), provider, False, None, group_list)
     if provider == "trusted_header":
         assert settings.trusted_user_header
         user = request.headers.get(settings.trusted_user_header, "").strip()
@@ -183,7 +195,7 @@ def resolve_identity(settings: Settings) -> RequestContext:
             group_list = tuple(x.strip() for x in request.headers.get(settings.trusted_groups_header, "").split(",") if x.strip())
         subject = f"sso:{user}"
         grants = _grants_for(settings, subject, group_list) | _grants_for(settings, user, ())
-        return RequestContext(rid, subject, user, grants, _scope_for_live(settings, subject, grants), provider, False, None, group_list)
+        return RequestContext(rid, subject, user, grants, _scope_for_live(settings, subject, grants, user), provider, False, None, group_list)
     return RequestContext(rid, None, None, frozenset(), NO_SCOPE, provider, False)
 
 

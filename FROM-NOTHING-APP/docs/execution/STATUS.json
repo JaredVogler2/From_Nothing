@@ -1166,9 +1166,59 @@
       "title": "Canonical effort scoring, gate points and progression"
     },
     "19": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A01",
+          "result": "pass (every read typed unknown/blocked/empty without data; runtime never created; honest UI states)"
+        },
+        {
+          "case": "A57",
+          "result": "pass (surfaces return the persisted evaluation verbatim; no browser formula, bands or constant ready)"
+        },
+        {
+          "case": "A59",
+          "result": "pass (factory view is the stored aggregate = formula over summed components, not the average; team/shift book/history agree)"
+        },
+        {
+          "case": "A68",
+          "result": "pass (scope before fetch with fetches patched to fail; redaction; bound cursors; GET byte-identical; CSRF, idempotency, versions, honest worker status)"
+        },
+        {
+          "case": "A69",
+          "result": "partial in P19 (375/390/820/1280 no overflow, reduced motion, keyboard; all 17 views complete in P20)"
+        }
+      ],
+      "changed_paths": [
+        "focus/web/serializers.py",
+        "focus/web/api_views.py",
+        "focus/web/api.py",
+        "focus/web/security.py",
+        "focus/config.py",
+        "focus/performance/amendments.py",
+        "focus/performance/actuals.py",
+        "focus/performance/disruption.py",
+        "focus/performance/history.py",
+        "focus/performance/score.py",
+        "focus/engine/max/optimizer/orchestrator.py",
+        "focus/workers.py",
+        "focus/web/static/js/core.js",
+        "focus/web/static/js/workspace.js",
+        "focus/web/static/js/views/performance.js",
+        "focus/web/static/css/focus.css",
+        "focus/web/templates/workspace.html",
+        "docs/execution/DECISIONS.md",
+        "docs/execution/DEPLOYMENT.md",
+        "tests/integration/test_api_scope.py",
+        "tests/ui/test_layout_parity.py",
+        "tests/integration/test_web_runtime.py",
+        "tests/integration/test_lifecycle_excusals.py"
+      ],
+      "commands": [
+        "python -m pytest tests/integration/test_api_scope.py -q (13 passed)",
+        "python -m pytest tests/ui -q (8 passed; Chromium 153, live local server)",
+        "python -m pytest tests/integration/test_web_runtime.py -q (11 passed)",
+        "python -m pytest tests -q (344 passed in 7:35)"
+      ],
       "depends_on": [
         "02",
         "16",
@@ -1177,11 +1227,21 @@
       "evidence": [
         "evidence/19/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "serializers.Canon.load (read-only snapshot + verified plans) / cached(op, ctx, canon, filters) / registry(services)",
+        "19 GET operations: fleet, aircraft, jobs (signed cursors), job, plans, shiftbook, myday, workforce, capacity, commitments, economics, shortages, quality, performance, performance/history, recognition, progression, disruption-claims, ie-reviews",
+        "POST amendments, disruption-claims, excusal-decisions, ie-reviews, reported-observations (+ schedule-runs pre-checks); server authority under _server",
+        "amendments.amend_goal / worker_amendment; orchestrator.worker_schedule; actuals.knowledge_time",
+        "FOCUS_GRANTS_JSON.scopes (server-owned live team/person scope)"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "16 further operational views render in P20 (this build shows an explicit unknown state for them)",
+        "scenario/explanation commands and /twin arrive with their handlers in P21 (not registered as stubs)",
+        "SQL store adapter for API/worker reads (P23); live identity provider and grants not exercised"
+      ],
+      "status": "fixture_verified",
       "title": "Complete iOS/Classic shell and scoped API"
     },
     "20": {

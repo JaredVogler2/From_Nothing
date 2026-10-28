@@ -149,6 +149,15 @@ textarea { min-height: 72px; width: 100%; }
 [data-layout="classic"] .card { box-shadow: none; }
 [data-layout="classic"] .metric-value { font-size: 18px; }
 
+/* ---------- performance partial (shared by iOS, Classic, Arena and history) ---------- */
+.bindings { font-size: 12px; margin: -4px 0 12px; word-break: break-word; }
+.inline-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
+.metric-score .metric-value { color: var(--primary); }
+.pooled-card { border-left: 4px solid var(--primary); }
+.goal-card h3 { margin-top: 12px; }
+.explain summary { cursor: pointer; font-weight: 700; }
+.explain p { margin-top: 8px; }
+
 /* ---------- timeline / gantt ---------- */
 .gantt { position: relative; border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; background: var(--surface); }
 .gantt-inner { position: relative; min-width: 720px; }
@@ -188,6 +197,10 @@ textarea { min-height: 72px; width: 100%; }
   .layout-switch { display: none; }
 }
 @media (max-width: 760px) {
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-score { grid-column: 1 / -1; }
+  .components-table th:nth-child(2), .components-table td:nth-child(2) { display: none; }
+  .table-wrap { max-height: none; }
   [data-layout="ios"] .bottom-nav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--surface);
     border-top: 1px solid var(--border); justify-content: space-around; padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
   [data-layout="ios"] .content { padding-bottom: 84px; }

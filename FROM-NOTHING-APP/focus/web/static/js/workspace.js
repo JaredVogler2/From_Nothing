@@ -1,6 +1,7 @@
 // Workspace controller shared by the iOS and Classic layouts: navigation, routing, header and view dispatch.
 import { api, h, mount, loadingCard, errorCard, fmtDateTime, setCsrf, stateCard } from "./core.js";
 import { renderView, knownViews } from "./views/registry.js";
+import "./views/performance.js";
 
 const host = document.querySelector(".view-host");
 const nav = document.getElementById("side-nav");
@@ -23,7 +24,7 @@ function renderMore() {
 }
 
 async function route() {
-  const requested = (location.hash || "#team-lead").slice(1);
+  const requested = (location.hash || "#team-lead").slice(1).split("?")[0] || "team-lead";
   const viewId = requested === "more" || knownViews().includes(requested) ? requested : "team-lead";
   currentView = viewId;
   setCurrent(viewId);

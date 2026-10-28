@@ -25,7 +25,7 @@ from .data.store import StoreError, VersionConflict
 HANDLERS: dict[str, str] = {
     "schedule": "focus.engine.max.optimizer.orchestrator:worker_schedule",
     "scenario": "focus.analytics.scenarios:worker_scenario",
-    "amendment": "focus.publication.service:worker_amendment",
+    "amendment": "focus.performance.amendments:worker_amendment",
     "ie_review": "focus.performance.history:worker_ie_review",
     "disruption_claim": "focus.performance.disruption:worker_claim",
     "excusal_decision": "focus.performance.disruption:worker_decision",

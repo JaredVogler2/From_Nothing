@@ -551,18 +551,23 @@ def decide(services: Any, *, request_id: str, authority: str, authority_role: st
 
 
 def worker_claim(services: Any, run: Any) -> dict[str, Any]:
+    from .actuals import knowledge_time
+
     req = run.request
     claim = submit_claim(services, request_id=run.id, requested_by=run.requested_by, goal_id=req.get("goal_id", ""), unit_ids=list(req.get("unit_ids", [])),
                          cause=req.get("cause", ""), evidence=[str(x) for x in req.get("evidence_ids", [])], notes=str(req.get("notes", "")),
                          origin_team=req.get("origin_team"), executing_team=req.get("executing_team"), supersedes=req.get("supersedes"),
-                         at=run.created_at)
+                         at=knowledge_time(services, run.created_at))
     return {"status": "recorded", "claim_id": claim.id, "claim_status": claim.status, "relief": "none until a reviewed decision approves units"}
 
 
 def worker_decision(services: Any, run: Any) -> dict[str, Any]:
+    from .actuals import knowledge_time
+
     req = run.request
-    made = decide(services, request_id=run.id, authority=run.requested_by, authority_role=str(req.get("authority_role", "")),
+    server = req.get("_server") or {}                     # injected by the API from server-owned grants, never client-supplied
+    made = decide(services, request_id=run.id, authority=run.requested_by, authority_role=str(server.get("authority_role", "")),
                   claim_ids=list(req.get("claim_ids", [])), decision=str(req.get("decision", "")), unit_ids=list(req.get("unit_ids", [])),
                   reason=str(req.get("notes", "")), review_track=req.get("review_track"), supersedes=req.get("supersedes"),
-                  expected_version=req.get("expected_version"), at=run.created_at)
+                  expected_version=req.get("expected_version"), at=knowledge_time(services, run.created_at))
     return {"status": "recorded", "decision_id": made.id, "decision": made.decision, "exception": made.exception, "review_track": made.review_track}

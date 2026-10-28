@@ -58,6 +58,17 @@ def observation_head(scope: str) -> str:
     return f"observation/{scope}"
 
 
+def knowledge_time(services: Any, at: datetime | None = None) -> datetime:
+    """When FOCUS acts on a command or answers "as known now": the clock (or a command's request time), never before the
+    latest collected observations. A live collection never runs ahead of the clock, so live this is the clock itself; a
+    fixture replay of later observation points moves it forward so reads, version checks and workers agree."""
+    at = aware_utc(at or services.clock.now(), "at")
+    scope = services.settings.scope_key
+    head = services.repositories.head(observation_head(scope))
+    run = None if head is None else ObservationStore(services.repositories, scope).get(RUNS, head.record_id)
+    return run.as_of if run is not None and run.as_of > at else at
+
+
 @dataclass(frozen=True, slots=True)
 class FeedSpec:
     name: str
@@ -731,7 +742,7 @@ def worker_reported_observation(services: Any, run: Any) -> dict[str, Any]:
         raise DomainError("BAD_REQUEST", f"effective_at: {exc}") from None
     event = record_reported_observation(services, request_id=run.id, requested_by=run.requested_by, job_id=req.get("job_id"),
                                         phase_id=req.get("phase_id"), kind=str(req.get("kind", "COMPLETED")), effective_at=effective,
-                                        notes=str(req.get("notes", ""))[:400], at=run.created_at)
+                                        notes=str(req.get("notes", ""))[:400], at=knowledge_time(services, run.created_at))
     return {"status": "recorded", "event_id": event.id, "kind": event.kind, "verified": False,
             "note": "a reported observation is a claim; only source-verified completion earns credit"}
 
