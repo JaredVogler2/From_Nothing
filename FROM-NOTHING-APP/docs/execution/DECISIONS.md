@@ -64,6 +64,14 @@ attendance. A conditional ETA is never physical receipt.
   - Commands store server-derived authority (for example the excusal reviewer role and the requester's teams) under `_server`. Client bodies cannot carry it because every command schema rejects unknown fields.
   - Amendments use the goal's amendment count as the optimistic version, and excusal decisions use its decision count.
   - "Knowledge time" is the clock, never before the latest collected observations, so reads, version checks and workers agree. Live it equals the clock; in a fixture replay it moves to the last observation point.
+- **D-18 Operational views and scenarios (P20).**
+  - **One dispatch rule.** `publication.dispatch.assess_action` is the pure current-facts rule that `dispatch_check` applies, so the Team Lead ranking and the dispatch check can never disagree. Only `dispatch_check` records repair requests.
+  - **One amendment rule.** `performance.amendments.assess_addition` is the pure readiness and crew-feasibility rule behind both amendment proposals and `amend_goal`.
+  - **Scenarios** (`analytics/scenarios.py`) copy the admitted snapshot into their own namespace and apply typed, allowlisted changes. A same-settings baseline and the changed copy run through the same optimizer and validator with purpose SCENARIO.
+  - **Scenario isolation.** Publication refuses SCENARIO candidates outright (`PURPOSE_NOT_PUBLISHABLE`), so no head, frozen goal, commitment, actual or evaluation can change. Queued runs can be cancelled; running ones are bounded by their budget.
+  - **`demo-run`** (`pipeline.demo_run`) runs the whole fixture pipeline idempotently: a rerun leaves the runtime byte-identical.
+  - **Incumbent heads only move forward in acceptance time.** Re-bootstrapping a runtime that already published a newer plan no longer regresses the head to the fixture's previous plan.
+  - **Views render into detached containers.** Only the latest navigation is swapped into the host, so overlapping hash changes never interleave content.
 
 ## Semantic gaps (live), each a precise readiness effect
 

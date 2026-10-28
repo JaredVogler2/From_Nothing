@@ -2,6 +2,9 @@
 import { api, h, mount, loadingCard, errorCard, fmtDateTime, setCsrf, stateCard } from "./core.js";
 import { renderView, knownViews } from "./views/registry.js";
 import "./views/performance.js";
+import "./views/operate.js";
+import "./views/plan.js";
+import "./views/panels.js";
 
 const host = document.querySelector(".view-host");
 const nav = document.getElementById("side-nav");
@@ -23,9 +26,14 @@ function renderMore() {
   mount(host, h("section", { class: "card" }, h("h1", {}, "All views"), h("ul", { class: "nav-list" }, links)));
 }
 
+let renderToken = 0;
+
+// Each render builds into its own detached container; only the latest render is swapped in, so overlapping
+// navigations (a hash change while a view is still loading) never interleave content.
 async function route() {
   const requested = (location.hash || "#team-lead").slice(1).split("?")[0] || "team-lead";
   const viewId = requested === "more" || knownViews().includes(requested) ? requested : "team-lead";
+  const token = ++renderToken;
   currentView = viewId;
   setCurrent(viewId);
   if (nav) nav.classList.remove("open");
@@ -36,17 +44,18 @@ async function route() {
     return;
   }
   mount(host, loadingCard());
+  const container = document.createElement("div");
+  container.className = "view-body";
   try {
-    await renderView(viewId, host, context);
+    await renderView(viewId, container, context);
   } catch (err) {
-    if (currentView === viewId) mount(host, errorCard(err));
-  } finally {
-    if (currentView === viewId) {
-      host.setAttribute("aria-busy", "false");
-      const heading = host.querySelector("h1");
-      if (heading) heading.setAttribute("tabindex", "-1");
-    }
+    mount(container, errorCard(err));
   }
+  if (token !== renderToken) return;                         // a newer navigation owns the host
+  mount(host, container);
+  host.setAttribute("aria-busy", "false");
+  const heading = host.querySelector("h1");
+  if (heading) heading.setAttribute("tabindex", "-1");
 }
 
 function headerMeta(data) {
@@ -67,7 +76,6 @@ async function main() {
     else nav.classList.toggle("collapsed");
     btn.setAttribute("aria-expanded", open ? "true" : "false");
   }));
-  window.addEventListener("hashchange", route);
   try {
     const env = await api("/api/v1/context");
     context = env.data;
@@ -83,6 +91,7 @@ async function main() {
     host.setAttribute("aria-busy", "false");
     return;
   }
+  window.addEventListener("hashchange", route);              // only after the trusted context is loaded
   route();
 }
 

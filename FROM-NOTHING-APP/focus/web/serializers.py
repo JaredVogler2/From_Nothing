@@ -77,7 +77,7 @@ class ImmutableCache:
         return len(self._items)
 
 
-CACHE = ImmutableCache(capacity=16)
+CACHE = ImmutableCache(capacity=48)
 PROJECTIONS = ImmutableCache(capacity=128)
 
 
@@ -384,10 +384,26 @@ def fleet(canon: Canon, ctx: RequestContext) -> Projection:
                        "completion_conditional": sum(1 for r in rows if (r["forecast_completion"] or {}).get("status") == "conditional"),
                        "completion_unknown": sum(1 for r in rows if (r["forecast_completion"] or {}).get("status") in (None, "unknown"))},
             "cutoff": snap.cutoff, "forecast_plan_id": canon.plan_id("FORECAST"), "executable_plan_id": canon.plan_id("EXECUTABLE"),
-            "economics_visible": show_cost,
+            "economics_visible": show_cost, "burndown": burndown(fp or ep),
             "gaps": [{"code": g.code, "scope": g.scope, "detail": g.detail, "effect": g.capability_effect} for g in snap.gaps]}
     return Projection(status, data, reasons, coverage_of(snap.census), canon.source_run_id, canon.plan_id("FORECAST") or canon.plan_id("EXECUTABLE"),
                       purpose="FORECAST" if fp else ("EXECUTABLE" if ep else None))
+
+
+def burndown(plan: Any) -> dict[str, Any] | None:
+    """Remaining open jobs by planned finish day; jobs with no planned finish stay remaining (unknown, never complete)."""
+    if plan is None:
+        return None
+    open_jobs = [o for o in plan.job_dispositions if o.disposition.value not in ("verified_complete", "excluded")]
+    finishing: dict[date, int] = defaultdict(int)
+    for o in open_jobs:
+        if o.end is not None and o.disposition.value in ("scheduled", "conditional"):
+            finishing[o.end.date()] += 1
+    remaining, series = len(open_jobs), []
+    for day in sorted(finishing):
+        remaining -= finishing[day]
+        series.append({"date": day, "finishing": finishing[day], "remaining": remaining})
+    return {"purpose": plan.purpose.value, "open_jobs": len(open_jobs), "series": series, "never_finishing": remaining}
 
 
 def job_row(job: Any, disposition: Any) -> dict[str, Any]:
@@ -401,6 +417,32 @@ def economics_term(e: Any) -> dict[str, Any]:
     return {"line": e.line, "status": e.status, "authority": e.authority, "term_id": e.term_id, "selector": e.selector_type, "currency": e.currency,
             "daily_rate_cents": frac(e.daily_rate_cents), "cap_cents": frac(e.cap_cents), "original_sale_cents": frac(e.original_sale_cents),
             "accrued_floor_cents": frac(e.accrued_floor_cents), "due_at": e.due_at, "due_basis": e.due_basis, "curve": e.curve, "reasons": list(e.reasons)}
+
+
+def aircraft_timeline(canon: Canon, jobs: list[Any]) -> list[dict[str, Any]]:
+    """Planned start/end of each visible job from the accepted FORECAST plan (else EXECUTABLE), with its disposition."""
+    plan = canon.plan("FORECAST") or canon.plan("EXECUTABLE")
+    outcomes = {o.job: o for o in plan.job_dispositions} if plan else {}
+    out = []
+    for j in jobs:
+        o = outcomes.get(j.key.id)
+        out.append({"job_id": j.key.id, "soi": j.key.native_id, "team": j.team, "station": j.station,
+                    "disposition": None if o is None else o.disposition.value, "start": None if o is None else o.start,
+                    "end": None if o is None else o.end, "conditional": None if o is None else o.conditional,
+                    "reasons": [] if o is None else list(o.reasons)[:3]})
+    return sorted(out, key=lambda r: (r["start"] is None, str(r["start"]), r["soi"]))
+
+
+def completion_history(services: Any, line: int) -> list[dict[str, Any]]:
+    """The aircraft's modeled completion in every accepted plan, oldest first (accepted history is immutable)."""
+    out = []
+    for purpose in ("FORECAST", "EXECUTABLE"):
+        for cur in accepted(services, purpose):
+            c = next((x for x in cur.artifact.candidate.aircraft_completion if x.line == line), None)
+            if c is not None:
+                out.append({"plan_id": cur.published.id, "purpose": purpose, "accepted_at": cur.published.accepted_at, "status": c.status,
+                            "completion_at": c.completion_at, "unresolved_jobs": len(c.unresolved_jobs)})
+    return sorted(out, key=lambda r: (r["accepted_at"], r["purpose"]))
 
 
 def aircraft(canon: Canon, ctx: RequestContext, line: int) -> Projection:
@@ -429,7 +471,8 @@ def aircraft(canon: Canon, ctx: RequestContext, line: int) -> Projection:
             "executable_completion": _completion(next((c for c in ep.aircraft_completion if c.line == line), None)) if ep else None,
             "cost": _cost(next((lc for lc in (fp or ep).costs.lines if lc.line == line), None)) if (fp or ep) and show_cost else None,
             "economics": next((economics_term(e) for e in snap.economics if e.line == line), None) if show_cost else None,
-            "shortages": [shortage_row(canon, s) for s in snap.shortages if s.line == line]}
+            "shortages": [shortage_row(canon, s) for s in snap.shortages if s.line == line],
+            "timeline": aircraft_timeline(canon, visible), "completion_history": completion_history(canon.services, line)}
     return Projection(canon.base_status(), data, reasons, coverage_of([census]), canon.source_run_id, canon.plan_id("FORECAST"),
                       purpose="FORECAST" if fp else None)
 
@@ -707,6 +750,7 @@ def myday(canon: Canon, ctx: RequestContext, *, person_native: str | None, day: 
     if plan is None:
         return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason("EXECUTABLE")], source_run_id=canon.source_run_id)
     day = day or default_day(canon)
+    now = canon.services.clock.now()
     phases, jobs = canon.phases(), canon.jobs()
     assignments = {a.id: a for a in plan.assignments}
     duties = []
@@ -725,6 +769,7 @@ def myday(canon: Canon, ctx: RequestContext, *, person_native: str | None, day: 
         totals["regular"] += d.regular_minutes
         totals["ot"] += d.ot_minutes
         duties.append({"duty_id": d.id, "kind": d.kind.value, "start": d.start, "end": d.end, "minutes": minutes, "shift_id": d.shift_id,
+                       "current": d.start <= now < d.end, "cert_check": duty_cert_check(canon, person_id, p, d.start, d.end) if a else None,
                        "aircraft_from": d.aircraft_from, "aircraft_to": d.aircraft_to, "regular_minutes": d.regular_minutes, "ot_minutes": d.ot_minutes,
                        "job": None if j is None else {"job_id": j.key.id, "line": j.key.line, "soi": j.key.native_id, "description": j.description},
                        "phase": None if p is None else {"phase_id": p.key.id, "kind": p.kind.value, "ordinal": p.ordinal, "label": p.label},
@@ -735,8 +780,10 @@ def myday(canon: Canon, ctx: RequestContext, *, person_native: str | None, day: 
                        "crewmates": [person_view(canon, ctx, r.person, team, people, r.role) for r in (a.crew if a else ()) if r.person != person_id]})
     carry = [{"id": c.id, "kind": c.kind.value if hasattr(c.kind, "value") else str(c.kind), "start": c.start, "end": c.end, "line": c.line,
               "job": c.job} for c in canon.snapshot.carry_in if c.person == person_id]
+    planned_dates = sorted({parse_shift_id(d.shift_id)[1] for d in plan.duties if d.person == person_id and d.shift_id})
     data = {"person": person_view(canon, ctx, person_id, teams[0] if teams else None, people), "teams": teams, "date": day, "duties": duties,
-            "carry_in": carry, "totals_minutes": totals,
+            "carry_in": carry, "totals_minutes": totals, "planned_dates": planned_dates, "certifications": person_certificates(canon, person_id),
+            "current_duty_id": next((x["duty_id"] for x in duties if x["current"]), None), "assessed_at": now,
             "first_arrival": duties[0]["start"] if duties else None, "last_release": duties[-1]["end"] if duties else None,
             "note": "a duty is a planned assignment; only source-verified completion is a check-off"}
     return Projection(canon.base_status() if duties or carry else "empty", data, list(canon.reasons), None, canon.source_run_id,
@@ -816,7 +863,9 @@ def capacity(canon: Canon, ctx: RequestContext, *, day: date | None, purpose: st
         ot = sum(x.get("OT", 0) for x in loads)
         active = sum(1 for x in loads if x.get("WORK", 0) > 0)
         cap = p.cap_executable if purpose == "EXECUTABLE" else p.cap_forecast
+        skills, unknown_attendance = skill_demand(canon, plan, p, shift_id)
         rows.append({"pool_id": p.id, "team": p.key.team, "date": p.key.start_date, "shift": p.key.shift_number, "shift_id": shift_id,
+                     "skills": skills, "unknown_attendance": unknown_attendance,
                      "synthetic": p.synthetic, "denominator": len(members), "activation_cap": cap, "activated": active,
                      "activation_pct": None if cap == 0 else ratio_text(Fraction(active * 100, cap)),
                      "regular_capacity_minutes": cap_minutes, "work_minutes": work, "travel_minutes": travel, "other_duty_minutes": other,
@@ -907,9 +956,16 @@ def shortage_row(canon: Canon, s: Any) -> dict[str, Any]:
         j = jobs.get(jid) if jid else None
         return None if j is None else {"job_id": j.key.id, "label": f"{j.key.line}/{j.key.native_id}", "team": j.team}
 
+    if rel is None:
+        readiness = "UNLINKED"
+    elif rel.status.value == "CONFIRMED" and rel.ready_at is not None:
+        readiness = "RECEIVED_LATE" if s.ecd is not None and rel.ready_at.date() > s.ecd else "RECEIVED"
+    else:
+        readiness = "ETA_CONDITIONAL" if (rel.forecast_at is not None or s.ecd is not None) else "UNKNOWN_ETA"
     return {"record_id": s.record_id, "line": s.line, "used_on": s.used_on, "ecd": s.ecd, "team": s.team, "reason_code": s.reason_code,
             "status": s.status, "created": s.created, "root_job": lab(s.root_job), "resolved_job": lab(s.resolved_job),
-            "affected_jobs": [lab(j) for j in s.affected_jobs],
+            "affected_jobs": [lab(j) for j in s.affected_jobs], "descendants": max(0, len(s.affected_jobs) - (1 if s.root_job in s.affected_jobs else 0)),
+            "readiness": readiness,
             "release": None if rel is None else {"release_id": rel.id, "status": rel.status.value, "ready_at": rel.ready_at, "forecast_at": rel.forecast_at,
                                                   "precision": rel.precision, "label": rel.label},
             "reasons": list(s.reasons)}
@@ -954,7 +1010,17 @@ def quality(canon: Canon, ctx: RequestContext) -> Projection:
             demand[hd["assignment"]["shift_id"]] += hd["work_minutes"]
     qa_pools = [{"pool_id": p.id, "date": p.key.start_date, "shift": p.key.shift_number, "inspectors": p.n_executable, "cap": p.cap_executable}
                 for p in sorted(canon.snapshot.pools, key=lambda x: (x.key.start_date, x.key.shift_number)) if p.key.team == "QA"]
-    data = {"holds": holds, "demand_minutes_by_shift": dict(sorted(demand.items())), "qa_pools": qa_pools,
+    avail = {(a.person, a.pool): a for a in canon.snapshot.availability}
+    site = canon.services.settings.site
+    competition = []
+    for p in sorted((p for p in canon.snapshot.pools if p.key.team == "QA"), key=lambda x: (x.key.start_date, x.key.shift_number)):
+        sid = f"{site}:{p.key.start_date.isoformat()}:S{p.key.shift_number}"
+        cap = sum((avail[(m, p.id)].regular_cap if (m, p.id) in avail else 0) for m in p.executable_members)
+        need = demand.get(sid, 0)
+        if need or cap:
+            competition.append({"shift_id": sid, "demand_minutes": need, "inspector_capacity_minutes": cap, "inspectors": p.n_executable,
+                                "load_pct": None if cap == 0 else ratio_text(Fraction(need * 100, cap))})
+    data = {"holds": holds, "demand_minutes_by_shift": dict(sorted(demand.items())), "qa_pools": qa_pools, "competition": competition,
             "counts": {"total": len(holds), "scheduled": sum(1 for hd in holds if hd["assignment"]),
                        "blocked": sum(1 for hd in holds if hd["blocked_reasons"])}}
     return Projection(canon.base_status() if holds else "empty", data, list(canon.reasons), None, canon.source_run_id, canon.plan_id("EXECUTABLE"),
@@ -1018,6 +1084,7 @@ def performance(services: Any, ctx: RequestContext, *, shift_id: str | None, tea
                       "offplan": [] if proof is None else [{"job": o.job, "phase": o.phase, "label": labels.get(o.phase, o.phase), "effort": o.effort,
                                                             "completed_at": o.completed_at, "reasons": list(o.reasons)} for o in proof.offplan],
                       "oos": [] if proof is None else [{"violation_id": o.violation_id, "phase": o.phase, "label": labels.get(o.phase, o.phase),
+                                                        "unit_ids": list(o.unit_ids),
                                                         "affected_effort": o.affected_effort, "discretionary": o.discretionary, "planned": o.planned,
                                                         "charged": o.charged, "reason": o.reason} for o in proof.oos],
                       "relief": None if proof is None else proof.relief})
@@ -1181,3 +1248,519 @@ def ie_reviews_view(services: Any, ctx: RequestContext) -> Projection:
 
 def now_utc(services: Any) -> datetime:
     return services.clock.now()
+
+
+# ---------------------------------------------------------------------- shared immutable indexes (P20)
+
+def validation_input(canon: Canon) -> Any:
+    """The independent validator's index over the current admitted facts (cached per snapshot and policy)."""
+    from ..domain import Purpose
+    from ..validation.input import ValidationInput
+
+    policy = canon.services.policy
+    return CACHE.get_or_load(("vinput", canon.snapshot.id, policy.hash), lambda: ValidationInput.build(canon.snapshot, policy, Purpose.EXECUTABLE))
+
+
+def holding_index(canon: Canon) -> Any:
+    from ..eligibility import HoldingIndex
+
+    return CACHE.get_or_load(("holdings", canon.snapshot.id), lambda: HoldingIndex(canon.snapshot.holdings))
+
+
+def accepted(services: Any, purpose: str) -> list[Any]:
+    """Every accepted plan of one purpose, verified end to end, in acceptance order (cached by the accepted set)."""
+    from ..publication.repository import repository_for
+    from ..publication.service import accepted_plans
+
+    ids = tuple(repository_for(services).accepted_ids())
+    return CACHE.get_or_load(("accepted", ids, purpose, services.policy.hash),
+                             lambda: accepted_plans(services, services.settings.scope_key, purpose)[0])
+
+
+def shift_instance(canon: Canon, day: date, number: int) -> Any:
+    from ..calendar import ShiftPolicy, build_shift
+
+    return build_shift(day, number, ShiftPolicy.from_policy(canon.services.policy), canon.services.settings.site)
+
+
+def minute_dt(minute: int) -> datetime:
+    from ..domain import from_minute
+
+    return from_minute(minute)
+
+
+def bundle_text(bundle: Any) -> str:
+    if bundle is None or not bundle.groups:
+        return "no certificate required"
+    return " AND ".join("(" + " OR ".join(g) + ")" if len(g) > 1 else g[0] for g in bundle.groups)
+
+
+def job_label(jobs: dict[str, Any], job_id: str | None) -> str | None:
+    j = jobs.get(job_id) if job_id else None
+    return None if j is None else f"{j.key.line}/{j.key.native_id}"
+
+
+# ---------------------------------------------------------------------- Team Lead (S15 view 1)
+
+def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None, shift: int) -> Projection:
+    """Server-ranked actions of one team-shift with their current dispatch reasons, exact crews and amendment proposals."""
+    from ..domain import DomainError
+    from ..performance.actuals import AMENDMENTS, ObservationStore, knowledge_time
+    from ..performance.amendments import assess_addition
+    from ..publication.dispatch import assess_action
+
+    require_team(ctx, team)
+    missing = _need_snapshot(canon)
+    if missing:
+        return missing
+    plan = canon.plan("EXECUTABLE")
+    if plan is None:
+        return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason("EXECUTABLE")], source_run_id=canon.source_run_id)
+    services = canon.services
+    day = day or default_day(canon)
+    shift_id = f"{services.settings.site}:{day.isoformat()}:S{shift}"
+    now = services.clock.now()
+    inp = validation_input(canon)
+    phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
+    actions = []
+    for a in plan.assignments:
+        p = phases.get(a.phase)
+        if a.shift_id != shift_id or phase_team(p) != team:
+            continue
+        why = assess_action(services, a, canon.snapshot, inp, now)
+        actions.append(_assignment_view(canon, ctx, a, phases, people, "EXECUTABLE") | {
+            "line": a.line, "soi": jobs[a.job].key.native_id if a.job in jobs else None, "phase_label": p.label if p else a.phase,
+            "requirement": bundle_text(p.role_demands[0].bundle) if p is not None and p.role_demands else None,
+            "dispatchable": not why, "reasons": [{"code": c, "detail": d} for c, d in dict.fromkeys(why)]})
+    actions.sort(key=lambda r: (not r["dispatchable"], not r["committed"], r["start"], r["assignment_id"]))
+    for i, r in enumerate(actions, 1):
+        r["rank"] = i
+    record = registry(services).record(team, shift_id)
+    goal, proposals, proposal_reasons = None, [], []
+    at = knowledge_time(services)
+    if record is not None:
+        goal = {"goal_id": record.goal_id, "plan_id": record.plan_id, "B0": record.B0, "versions": goal_versions(services, record.goal_id),
+                "window": {"start": record.window.start, "end": record.window.end}}
+        if at >= record.window.end:
+            proposal_reasons.append(reason("SHIFT_ENDED", f"The shift ended before the knowledge time {at.isoformat()}; work after it is offplan output, not an addition."))
+        else:
+            store = ObservationStore(services.repositories, services.settings.scope_key)
+            taken = {u.phase for u in record.original_units} | {u.phase for x in store.known(AMENDMENTS, at) if x.goal_id == record.goal_id for u in x.units}
+            for p in sorted(canon.snapshot.phases, key=lambda x: (x.line, x.label)):
+                if phase_team(p) != team or p.kind is PhaseKind.RELEASE or p.status != "OPEN" or p.key.id in taken:
+                    continue
+                row = {"phase_id": p.key.id, "job_id": p.job, "label": p.label, "standard_person_minutes": p.standard_person_minutes,
+                       "requirement": bundle_text(p.role_demands[0].bundle) if p.role_demands else None}
+                try:
+                    _, evidence = assess_addition(inp, canon.snapshot, plan, canon.plan_id("EXECUTABLE"), team=team, shift_id=shift_id,
+                                                  phase_id=p.key.id, at=at)
+                    proposals.append(row | {"feasible": True, "basis": evidence["basis"], "reasons": []})
+                except DomainError as exc:
+                    proposals.append(row | {"feasible": False, "basis": None, "reasons": [{"code": exc.code, "detail": exc.message}]})
+            proposals.sort(key=lambda r: (not r["feasible"], r["label"]))
+    outcomes: dict[str, int] = defaultdict(int)
+    for r in plan.commitment_results:
+        if phase_team(phases.get(r.phase)) == team:
+            outcomes[r.outcome] += 1
+    data = {"team": team, "date": day, "shift": shift, "shift_id": shift_id, "assessed_at": now, "proposals_at": at,
+            "actions": actions, "counts": {"actions": len(actions), "dispatchable": sum(1 for r in actions if r["dispatchable"]),
+                                           "blocked": sum(1 for r in actions if not r["dispatchable"])},
+            "goal": goal, "proposals": proposals, "proposal_reasons": proposal_reasons, "commitment_outcomes": dict(sorted(outcomes.items())),
+            "note": "ranked by the server: dispatchable first, then committed, then planned start; the browser never assigns or completes work"}
+    return Projection(canon.base_status() if actions else "empty", data, list(canon.reasons), None, canon.source_run_id,
+                      canon.plan_id("EXECUTABLE"), purpose="EXECUTABLE")
+
+
+# ---------------------------------------------------------------------- Mechanic (S15 view 3): certificates and readiness
+
+def person_certificates(canon: Canon, person_id: str) -> list[dict[str, Any]]:
+    return [{"cert": h.cert, "status": h.status, "validity": h.validity, "valid_from": h.valid_from, "valid_to": h.valid_to,
+             "revoked_at": h.revoked_at} for h in sorted(canon.snapshot.holdings, key=lambda x: (x.cert, str(x.valid_from)))
+            if h.person == person_id]
+
+
+def duty_cert_check(canon: Canon, person_id: str, phase: Any, start: datetime, end: datetime) -> dict[str, Any] | None:
+    from ..domain import to_minute
+
+    if phase is None or not phase.role_demands:
+        return None
+    bundle = phase.role_demands[0].bundle
+    decision = holding_index(canon).check_bundle(person_id, bundle, to_minute(start), to_minute(end))
+    return {"requirement": bundle_text(bundle), "status": decision.status.value, "code": decision.code, "detail": decision.reason}
+
+
+# ---------------------------------------------------------------------- Industrial Engineering (S15 view 4)
+
+def standards(canon: Canon, ctx: RequestContext) -> Projection:
+    """Standards, requirements and team-authority provenance with a review queue of weak or unknown facts."""
+    missing = _need_snapshot(canon)
+    if missing:
+        return missing
+    snap = canon.snapshot
+    jobs, people = canon.jobs(), canon.people()
+    durations = []
+    for d in sorted(snap.durations, key=lambda x: (job_label(jobs, x.job) or x.job)):
+        j = jobs.get(d.job)
+        if j is not None and not team_allowed(ctx, j.team):
+            continue
+        durations.append({"job_id": d.job, "job": job_label(jobs, d.job), "team": j.team if j else None, "elapsed_minutes": d.elapsed_minutes,
+                          "standard_person_minutes": d.standard_person_minutes, "basis": d.measurement_basis, "statistic": d.statistic,
+                          "method": d.method, "crew_profile": d.crew_profile, "crew_size": d.crew_size, "uncertainty": d.uncertainty,
+                          "stats_id": d.stats_id, "source_hash": d.source_hash, "policy_id": d.policy_id})
+    requirements = []
+    for r in sorted(snap.requirements, key=lambda x: (job_label(jobs, x.job) or x.job)):
+        j = jobs.get(r.job)
+        if j is not None and not team_allowed(ctx, j.team):
+            continue
+        status = r.status.value if hasattr(r.status, "value") else str(r.status)
+        requirements.append({"job_id": r.job, "job": job_label(jobs, r.job), "status": status, "requirement": bundle_text(r.bundle), "basis": r.basis})
+    inference = []
+    for t in sorted(snap.inference, key=lambda x: x.person):
+        team = t.effective_team or t.inferred_team
+        inference.append(person_view(canon, ctx, t.person, team, people) | {
+            "inferred_team": t.inferred_team, "effective_team": t.effective_team, "evidence_count": t.evidence_count,
+            "top_share": None if t.top_share is None else str(t.top_share), "runner_up_team": t.runner_up_team, "is_tie": t.is_tie,
+            "basis": t.basis, "effective_basis": t.effective_basis, "stale": t.stale, "algorithm_version": t.algorithm_version})
+    queue = [{"kind": "DURATION", "subject": d["job"], "reason": f"{d['method']} with {d['uncertainty']} uncertainty"}
+             for d in durations if str(d["uncertainty"]).upper() not in ("LOW", "NONE")]
+    queue += [{"kind": "REQUIREMENT", "subject": r["job"], "reason": f"requirement status {r['status']}"} for r in requirements
+              if r["status"] not in ("KNOWN", "AFFIRMATIVELY_NONE")]
+    queue += [{"kind": "TEAM_AUTHORITY", "subject": i["name"] if not i.get("redacted") else "person outside your scope",
+               "reason": "tie between teams" if i["is_tie"] else ("stale inference" if i["stale"] else i["effective_basis"])}
+              for i in inference if i["is_tie"] or i["stale"] or i["effective_team"] is None]
+    queue += [{"kind": "DATA_GAP", "subject": g.scope, "reason": f"{g.code}: {g.detail} ({g.capability_effect})"} for g in snap.gaps]
+    data = {"durations": durations, "requirements": requirements, "inference": inference, "review_queue": queue,
+            "note": "proposals never rewrite issued standards, frozen goals or evaluations"}
+    return Projection(canon.base_status() if (durations or requirements) else "empty", data, list(canon.reasons), coverage_of(snap.census),
+                      canon.source_run_id)
+
+
+# ---------------------------------------------------------------------- Staffing skill demand (S15 view 5/17)
+
+def skill_demand(canon: Canon, plan: Any, pool: Any, shift_id: str) -> tuple[list[dict[str, Any]], int]:
+    """Per requirement bundle of one team-shift: seats and minutes demanded versus qualified admitted members."""
+    from ..domain import to_minute
+
+    phases = canon.phases()
+    team = pool.key.team
+    inst = shift_instance(canon, pool.key.start_date, pool.key.shift_number)
+    index = holding_index(canon)
+    demand: dict[str, dict[str, Any]] = {}
+    for a in (plan.assignments if plan else ()):
+        p = phases.get(a.phase)
+        if a.shift_id != shift_id or phase_team(p) != team or p is None or not p.role_demands:
+            continue
+        bundle = p.role_demands[0].bundle
+        key = bundle_text(bundle)
+        row = demand.setdefault(key, {"requirement": key, "role": bundle.role, "crew_size": 0, "seat_assignments": 0, "demand_minutes": 0,
+                                      "bundle": bundle})
+        row["crew_size"] = max(row["crew_size"], bundle.count)             # people needed at once for one assignment
+        row["seat_assignments"] += bundle.count                            # seats summed over the shift's assignments (sequential)
+        row["demand_minutes"] += a.work_minutes * max(1, len(a.crew))
+    avail = {(x.person, x.pool): x for x in canon.snapshot.availability}
+    unknown = sum(1 for m in pool.members if (m, pool.id) not in avail)
+    rows = []
+    for row in demand.values():
+        bundle = row.pop("bundle")
+        qualified = [m for m in pool.executable_members if index.check_bundle(m, bundle, inst.start, inst.end).allowed]
+        rows.append(row | {"qualified_admitted": len(qualified), "shortfall": max(0, row["crew_size"] - len(qualified))})
+    return sorted(rows, key=lambda r: (-r["shortfall"], -r["demand_minutes"], r["requirement"])), unknown
+
+
+# ---------------------------------------------------------------------- Schedule Budget (S15 view 10)
+
+def budget(canon: Canon, ctx: RequestContext, *, day: date | None, purpose: str) -> Projection:
+    missing = _need_snapshot(canon)
+    if missing:
+        return missing
+    plan = canon.plan(purpose)
+    if plan is None:
+        return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason(purpose)], source_run_id=canon.source_run_id)
+    day = day or default_day(canon) or canon.snapshot.cutoff.date()
+    phases, jobs = canon.phases(), canon.jobs()
+    avail = {(a.person, a.pool): a for a in canon.snapshot.availability}
+    site = canon.services.settings.site
+    rows = []
+    for pool in _pool_rows(canon, ctx, day, None):
+        shift_id = f"{site}:{pool.key.start_date.isoformat()}:S{pool.key.shift_number}"
+        members = set(pool.executable_members if purpose == "EXECUTABLE" else pool.forecast_members)
+        standard = Fraction(0)
+        for a in plan.assignments:
+            p = phases.get(a.phase)
+            if a.shift_id == shift_id and phase_team(p) == pool.key.team and p is not None and p.work_minutes > 0:
+                standard += Fraction(p.standard_person_minutes * a.work_minutes, p.work_minutes)
+        kinds: dict[str, int] = defaultdict(int)
+        ot = 0
+        for d in plan.duties:
+            if d.shift_id == shift_id and d.person in members:
+                kinds[d.kind.value] += int((d.end - d.start).total_seconds() // 60)
+                ot += d.ot_minutes
+        capacity_minutes = sum((avail[(m, pool.id)].regular_cap if (m, pool.id) in avail else 0) for m in members)
+        nva = kinds["TRAVEL"] + kinds["WAIT"] + kinds["TOOL"] + kinds["OTHER"]
+        rows.append({"team": pool.key.team, "date": pool.key.start_date, "shift": pool.key.shift_number, "shift_id": shift_id,
+                     "planned_standard_person_minutes": ratio_text(standard, 0), "duty_minutes": dict(sorted(kinds.items())),
+                     "work_minutes": kinds["WORK"], "nva_minutes": nva, "ot_minutes": ot, "regular_capacity_minutes": capacity_minutes,
+                     "nva_pct": None if kinds["WORK"] + nva == 0 else ratio_text(Fraction(nva * 100, kinds["WORK"] + nva))})
+    by_job = []
+    for o in sorted(plan.job_dispositions, key=lambda o: (job_label(jobs, o.job) or o.job)):
+        j = jobs.get(o.job)
+        if j is None or not team_allowed(ctx, j.team):
+            continue
+        flow = j.raw_budget
+        span = None if o.start is None or o.end is None else int((o.end - o.start).total_seconds() // 60)
+        by_job.append({"job_id": o.job, "job": job_label(jobs, o.job), "team": j.team, "disposition": o.disposition.value,
+                       "flow_minutes": None if flow is None else flow.critical_flow_minutes,
+                       "flow_labor_minutes": None if flow is None else flow.total_labor_minutes,
+                       "planned_span_minutes": span, "conditional": o.conditional})
+    data = {"date": day, "purpose": purpose, "team_shifts": rows, "jobs": by_job,
+            "note": "standard person effort is prorated by planned work segments; NVA is travel, wait, tool and other duty"}
+    return Projection(canon.base_status() if rows or by_job else "empty", data, list(canon.reasons), None, canon.source_run_id, canon.plan_id(purpose),
+                      purpose=purpose)
+
+
+# ---------------------------------------------------------------------- Worker Gantt (S15 view 11)
+
+def gantt(canon: Canon, ctx: RequestContext, *, day: date | None, team: str | None, purpose: str) -> Projection:
+    if team is not None:
+        require_team(ctx, team)
+    missing = _need_snapshot(canon)
+    if missing:
+        return missing
+    plan = canon.plan(purpose)
+    if plan is None:
+        return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason(purpose)], source_run_id=canon.source_run_id)
+    day = day or default_day(canon) or canon.snapshot.cutoff.date()
+    phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
+    assignments = {a.id: a for a in plan.assignments}
+    shifts = []
+    for n in (1, 2, 3):
+        inst = shift_instance(canon, day, n)
+        shifts.append({"shift": n, "shift_id": inst.id, "start": minute_dt(inst.start), "end": minute_dt(inst.end),
+                       "ot": None if inst.ot_window is None else {"start": minute_dt(inst.ot_window[0]), "end": minute_dt(inst.ot_window[1])}})
+    members: dict[str, str] = {}
+    for p in _pool_rows(canon, ctx, day, None):
+        if team is None or p.key.team == team:
+            for m in (p.executable_members if purpose == "EXECUTABLE" else p.forecast_members):
+                members.setdefault(m, p.key.team)
+    rows = []
+    for person_id, pteam in sorted(members.items(), key=lambda kv: (kv[1], people[kv[0]].display_name if kv[0] in people else kv[0])):
+        bars = []
+        for d in plan.duties:
+            if d.person != person_id or d.shift_id is None or parse_shift_id(d.shift_id)[1] != day:
+                continue
+            a = assignments.get(d.assignment_id) if d.assignment_id else None
+            p = phases.get(a.phase) if a else None
+            bars.append({"duty_id": d.id, "kind": d.kind.value, "start": d.start, "end": d.end, "shift_id": d.shift_id, "ot_minutes": d.ot_minutes,
+                         "aircraft_from": d.aircraft_from, "aircraft_to": d.aircraft_to,
+                         "phase_kind": None if p is None else p.kind.value, "label": None if p is None else p.label,
+                         "job": None if a is None else job_label(jobs, a.job)})
+        carry = [{"id": c.id, "kind": c.kind.value if hasattr(c.kind, "value") else str(c.kind), "start": c.start, "end": c.end, "line": c.line}
+                 for c in canon.snapshot.carry_in if c.person == person_id and c.start.date() <= day <= c.end.date()]
+        rows.append({"person": person_view(canon, ctx, person_id, pteam, people), "team": pteam, "bars": sorted(bars, key=lambda b: b["start"]),
+                     "carry_in": carry})
+    data = {"date": day, "team": team, "purpose": purpose, "shifts": shifts, "people": rows,
+            "note": "every duty is shown: work, travel, wait, tool, setup and OT; shift boundaries are the policy windows"}
+    return Projection(canon.base_status() if rows else "empty", data, list(canon.reasons), None, canon.source_run_id, canon.plan_id(purpose),
+                      purpose=purpose)
+
+
+# ---------------------------------------------------------------------- Development (S15 view 12)
+
+def development(canon: Canon, ctx: RequestContext) -> Projection:
+    """Auditable improvement proposals: IE reviews, skill gaps with training candidates, team progression (never certification)."""
+    services = canon.services
+    reviews = ie_reviews_view(services, ctx).data or {"reviews": []}
+    progress = progression_view(services, ctx, team=None).data or {"teams": []}
+    gaps = []
+    if canon.snapshot is not None:
+        plan = canon.plan("EXECUTABLE")
+        day = default_day(canon) or canon.snapshot.cutoff.date()
+        index = holding_index(canon)
+        people = canon.people()
+        site = services.settings.site
+        for pool in _pool_rows(canon, ctx, day, None):
+            shift_id = f"{site}:{pool.key.start_date.isoformat()}:S{pool.key.shift_number}"
+            rows, _ = skill_demand(canon, plan, pool, shift_id)
+            inst = shift_instance(canon, pool.key.start_date, pool.key.shift_number)
+            for row in rows:
+                if row["shortfall"] <= 0:
+                    continue
+                codes = {c for part in row["requirement"].replace("(", "").replace(")", "").split(" AND ") for c in part.split(" OR ")}
+                near = [person_view(canon, ctx, m, pool.key.team, people) | {"holds": sorted(index.usable_certs(m, inst.start, inst.end, codes))}
+                        for m in pool.executable_members if index.usable_certs(m, inst.start, inst.end, codes)]
+                gaps.append({"team": pool.key.team, "shift_id": shift_id, "requirement": row["requirement"], "crew_size": row["crew_size"],
+                             "qualified_admitted": row["qualified_admitted"], "shortfall": row["shortfall"], "training_candidates": near})
+    data = {"proposals": reviews.get("reviews", []), "skill_gaps": gaps, "progression": progress.get("teams", []),
+            "note": "proposals and training candidates are suggestions; XP and badges never certify, qualify or assign anyone"}
+    has = data["proposals"] or gaps or data["progression"]
+    return Projection("ready" if has else "empty", data, list(canon.reasons) if canon.snapshot is None else [], source_run_id=canon.source_run_id)
+
+
+# ---------------------------------------------------------------------- Arena (supplementary)
+
+def arena(services: Any, ctx: RequestContext) -> Projection:
+    """Team standings from persisted goal evaluations (pooled exactly), with XP and badges; recognition never certifies."""
+    from ..performance import history
+    from ..performance.score import aggregate, summary
+
+    if not services.repositories.available:
+        return Projection("blocked", None, [reason("REPOSITORY_UNAVAILABLE", "No repository is configured.")])
+    scope = services.settings.scope_key
+    by_team: dict[str, list[Any]] = defaultdict(list)
+    for r in _visible_records(services, ctx, None, None):
+        e = history.current(services, scope, history.series_for_goal(services, r.goal_id))
+        if e is not None:
+            by_team[r.team].append(e)
+    progress = {row["team"]: row for row in (progression_view(services, ctx, team=None).data or {"teams": []})["teams"]}
+    rows = []
+    for team in sorted(set(by_team) | set(progress)):
+        members = by_team.get(team, [])
+        pooled = None
+        if len(members) == 1:
+            pooled = summary(members[0]) | {"persisted": True}
+        elif members:
+            pooled = summary(aggregate(services, members, label=f"TEAM {team}", as_of=max(m.cutoff for m in members), persist=False)) | {"persisted": False}
+        rows.append({"team": team, "goals_evaluated": len(members), "pooled": pooled, "xp": progress.get(team, {}).get("xp"),
+                     "level": progress.get(team, {}).get("level"), "badges": progress.get(team, {}).get("badges", [])})
+    ranked = sorted(rows, key=lambda r: (r["pooled"] is None or r["pooled"]["score"] is None,
+                                         -(Fraction(r["pooled"]["final"]) if r["pooled"] and r["pooled"]["final"] else Fraction(0)), r["team"]))
+    for i, r in enumerate(ranked, 1):
+        r["position"] = i if r["pooled"] and r["pooled"]["score"] is not None else None
+    events = (recognition(services, ctx, team=None).data or {"events": []})["events"][-20:]
+    return Projection("ready" if ranked else "empty", {"standings": ranked, "recent_events": events,
+                                                      "note": "standings pool exact components of stored evaluations; ties keep team id order"},
+                      [] if ranked else [reason("NO_STANDINGS", "No evaluated goals in your scope yet.")])
+
+
+# ---------------------------------------------------------------------- Turnover (supplementary)
+
+def turnover(canon: Canon, ctx: RequestContext, *, team: str, day: date | None, shift: int) -> Projection:
+    """Shift handoff: open frozen units, pending holds and claims of this shift, and what the next shift inherits."""
+    from ..performance import history
+    from ..performance.actuals import CLAIMS, DECISIONS, ObservationStore, knowledge_time
+    from ..publication.dispatch import assess_action
+
+    require_team(ctx, team)
+    missing = _need_snapshot(canon)
+    if missing:
+        return missing
+    plan = canon.plan("EXECUTABLE")
+    if plan is None:
+        return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason("EXECUTABLE")], source_run_id=canon.source_run_id)
+    services = canon.services
+    day = day or default_day(canon)
+    site = services.settings.site
+    shift_id = f"{site}:{day.isoformat()}:S{shift}"
+    nxt_day, nxt = (day, shift + 1) if shift < 3 else (day + timedelta(days=1), 1)
+    next_id = f"{site}:{nxt_day.isoformat()}:S{nxt}"
+    phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
+    labels = {p.key.id: p.label for p in canon.snapshot.phases}
+    record = registry(services).record(team, shift_id)
+    open_units, evaluation, pending_claims = [], None, []
+    if record is not None:
+        e = history.current(services, services.settings.scope_key, history.series_for_goal(services, record.goal_id))
+        proof = history.evidence(services, e.evidence_hash) if e is not None else None
+        if proof is not None:
+            open_units = [unit_view(f, labels) for f in proof.unit_facts if f.status != "EARNED"]
+            evaluation = {"evaluation_id": e.id, "status": e.status.value, "score": None if e.score is None else str(e.score), "revision": e.revision}
+        store = ObservationStore(services.repositories, services.settings.scope_key)
+        at = knowledge_time(services)
+        decided = {cid for d in store.known(DECISIONS, at) if d.goal_id == record.goal_id for cid in d.claim_ids}
+        pending_claims = [{"claim_id": c.id, "cause": c.cause, "units": len(c.units), "reported_at": c.reported_at}
+                          for c in store.known(CLAIMS, at) if c.goal_id == record.goal_id and c.status == "SUBMITTED" and c.id not in decided]
+    inp = validation_input(canon)
+    now = services.clock.now()
+    upcoming = []
+    for a in sorted(plan.assignments, key=lambda x: (x.start, x.id)):
+        p = phases.get(a.phase)
+        if a.shift_id != next_id or phase_team(p) != team:
+            continue
+        why = assess_action(services, a, canon.snapshot, inp, now)
+        upcoming.append({"assignment_id": a.id, "label": p.label if p else a.phase, "start": a.start, "end": a.end,
+                         "crew": [person_view(canon, ctx, r.person, team, people, r.role) for r in a.crew],
+                         "blocked": [{"code": c, "detail": d} for c, d in dict.fromkeys(why) if c not in ("SOURCE_STALE",)]})
+    holds = [{"phase_id": p.key.id, "label": p.label, "kind": p.kind.value, "job": job_label(jobs, p.job)} for p in canon.snapshot.phases
+             if p.kind in (PhaseKind.IP_QA, PhaseKind.FINAL_QA, PhaseKind.OTHER_BUYOFF) and p.status == "OPEN"
+             and jobs.get(p.job) is not None and jobs[p.job].team == team]
+    nxt_inst = shift_instance(canon, nxt_day, nxt)
+    carry = [{"id": c.id, "person": person_view(canon, ctx, c.person, team, people), "kind": c.kind.value if hasattr(c.kind, "value") else str(c.kind),
+              "start": c.start, "end": c.end, "line": c.line} for c in canon.snapshot.carry_in
+             if minute_dt(nxt_inst.start) <= c.end and c.start <= minute_dt(nxt_inst.end)]
+    data = {"team": team, "shift_id": shift_id, "next_shift_id": next_id, "goal_id": None if record is None else record.goal_id,
+            "evaluation": evaluation, "open_units": open_units, "pending_claims": pending_claims, "next_shift_actions": upcoming,
+            "open_quality_holds": holds, "carry_in_next_shift": carry,
+            "note": "open units come from the canonical evaluation evidence; a reported completion is never treated as done"}
+    has = open_units or upcoming or holds or carry or pending_claims
+    return Projection(canon.base_status() if has else "empty", data, list(canon.reasons), None, canon.source_run_id, canon.plan_id("EXECUTABLE"),
+                      evaluation_id=None if evaluation is None else evaluation["evaluation_id"], purpose="EXECUTABLE")
+
+
+# ---------------------------------------------------------------------- History (supplementary)
+
+def history_view(services: Any, ctx: RequestContext) -> Projection:
+    """Accepted plans over time (verified), evaluation revisions, recognition corrections and delivery changes."""
+    from ..analytics.progression import _chains
+    from ..engine.commitments import DeliveryCommitments
+    from ..publication.repository import repository_for
+
+    if not services.repositories.available:
+        return Projection("blocked", None, [reason("REPOSITORY_UNAVAILABLE", "No repository is configured.")])
+    repo = repository_for(services)
+    scope = services.settings.scope_key
+    plans = []
+    for purpose in ("EXECUTABLE", "FORECAST"):
+        head = repo.head(scope, purpose)
+        for cur in accepted(services, purpose):
+            art, pub = cur.artifact, cur.published
+            plans.append({"plan_id": pub.id, "purpose": purpose, "capability": art.capability, "accepted_at": pub.accepted_at,
+                          "head_version": cur.head_version, "current": head is not None and head.record_id == pub.id, "source_run_id": pub.source_run_id,
+                          "obligation_dates": list(art.obligation_dates), "frozen_goals": len(pub.frozen_goal_ids),
+                          "assignments": len(art.candidate.assignments), "fixture_readback": pub.acceptance_receipt.fixture_readback})
+    plans.sort(key=lambda r: (r["accepted_at"], r["purpose"], r["plan_id"]))
+    evaluations = (performance_history(services, ctx, team=None).data or {"series": []})["series"]
+    corrections = [{"event_id": ev.id, "team": ev.team, "goal_id": ev.goal_id, "value": frac(ev.value), "supersedes": ev.supersedes,
+                    "created_at": ev.created_at} for chain in _chains(services).values() for ev in chain
+                   if ev.event_type == "correction_applied" and team_allowed(ctx, ev.team)]
+    store = DeliveryCommitments(services.repositories, scope, services.policy)
+    changes = [{"event_id": ev.id, "line": ev.line, "kind": ev.kind, "plan_id": ev.plan_id, "from_date": ev.from_date, "to_date": ev.to_date,
+                "detail": ev.detail} for ev in store.events()]
+    data = {"plans": plans, "evaluation_series": evaluations, "corrections": corrections, "delivery_changes": changes,
+            "note": "accepted history is immutable; corrections and revisions append"}
+    return Projection("ready" if plans else "empty", data, [] if plans else [reason("NO_ACCEPTED_PLAN", "No plan has been accepted yet.")])
+
+
+# ---------------------------------------------------------------------- Scenario (S15 view 7)
+
+def scenarios_view(services: Any, ctx: RequestContext, scenario_id: str | None = None) -> Projection:
+    """Stored scenario results (SCENARIO_ONLY), newest first, with the inputs a new what-if may change."""
+    from ..analytics.scenarios import SCENARIO_RESULTS, ScenarioResult, summary
+
+    if not services.repositories.available:
+        return Projection("blocked", None, [reason("REPOSITORY_UNAVAILABLE", "No repository is configured.")])
+    repos = services.repositories
+    if scenario_id is not None:
+        r = repos.get_typed(SCENARIO_RESULTS, scenario_id, "ScenarioResult", ScenarioResult)
+        if r is None or r.scope != services.settings.scope_key:
+            raise ApiError(404, "SCENARIO_NOT_FOUND", "no scenario with that id in your scope")
+        return Projection("ready", summary(r), [reason("SCENARIO_ONLY", "A scenario is never publishable or executable.")],
+                          source_run_id=r.source_run_id, purpose="SCENARIO")
+    rows = [summary(r) for r in (repos.get_typed(SCENARIO_RESULTS, i, "ScenarioResult", ScenarioResult) for i in repos.list_ids(SCENARIO_RESULTS))
+            if r is not None and r.scope == services.settings.scope_key]
+    rows.sort(key=lambda r: (str(r["created_at"]), r["scenario_id"]), reverse=True)
+    canon = Canon.load(services)
+    inputs = None
+    if canon.snapshot is not None:
+        snap = canon.snapshot
+        inputs = {"source_run_id": canon.source_run_id,
+                  "pools": [{"team": p.key.team, "date": p.key.start_date, "shift": p.key.shift_number, "n_forecast": p.n_forecast}
+                            for p in _pool_rows(canon, ctx, None, None)],
+                  "releases": [{"release_id": r.id, "label": r.label, "status": r.status.value, "forecast_at": r.forecast_at}
+                               for r in snap.releases if r.status.value != "confirmed"],
+                  "lines": sorted(c.line for c in snap.census), "statistics": ["P50", "P75", "P90"],
+                  "current_statistic": services.policy.str("duration.default_statistic")}
+    return Projection("ready" if rows else "empty", {"scenarios": rows, "inputs": inputs,
+                                                    "note": "scenarios copy the admitted snapshot; results are SCENARIO_ONLY and never publishable"},
+                      list(canon.reasons) + ([] if rows else [reason("NO_SCENARIOS", "No scenario has been run yet.",
+                                                                     "Queue one with POST /api/v1/scenarios.")]),
+                      source_run_id=canon.source_run_id, purpose="SCENARIO")
+

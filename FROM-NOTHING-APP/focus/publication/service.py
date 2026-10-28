@@ -39,7 +39,7 @@ from typing import Any, Callable
 
 from ..contracts.planning import (AcceptanceReceipt, CandidatePlan, IncumbentAssignment, IncumbentPlan, PlanArtifact, PlanningSnapshot,
                                   PublishedPlan)
-from ..domain import digest_id
+from ..domain import Purpose, digest_id
 from ..validation.plan import CANDIDATES, load_incumbent, persist_receipt, validate
 from ..validation.publication import publication_capability, validate_artifact
 from .repository import FixturePublicationRepository, PlanStage, PublicationError, PublishedPayload, repository_for
@@ -114,6 +114,9 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
     plan = repos.get_typed(CANDIDATES, candidate_id, "CandidatePlan", CandidatePlan)
     if plan is None:
         result.reasons = ("CANDIDATE_NOT_FOUND",)
+        return result
+    if plan.purpose not in (Purpose.EXECUTABLE, Purpose.FORECAST):
+        result.reasons = (f"PURPOSE_NOT_PUBLISHABLE: {plan.purpose.value} candidates are never staged, signed or accepted",)
         return result
     snapshot = load_snapshot(repos, plan.snapshot_id)
     if snapshot is None:

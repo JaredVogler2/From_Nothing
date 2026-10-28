@@ -400,10 +400,17 @@ CANDIDATES = "candidates"
 def schedule(services: Any, *, source_run: str, purpose: Purpose, budget_seconds: float | None = None,
              max_moves: int | None = None) -> tuple[CandidatePlan, MaxRun]:
     from ....data.acquisition import snapshot_for_run
+
+    snapshot = snapshot_for_run(services, source_run, services.policy)
+    return schedule_snapshot(services, snapshot, purpose=purpose, budget_seconds=budget_seconds, max_moves=max_moves)
+
+
+def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy: Any = None, budget_seconds: float | None = None,
+                      max_moves: int | None = None) -> tuple[CandidatePlan, MaxRun]:
+    """Rich MAX over one sealed snapshot (admitted or an isolated scenario copy), then FINAL validation; persists the candidate."""
     from ...commitments import defended_tasks
 
-    policy = services.policy
-    snapshot = snapshot_for_run(services, source_run, policy)
+    policy = policy or services.policy
     ctx = EngineContext(snapshot, policy, purpose)
     defense = defended_tasks(services, ctx)
     optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves, incumbent_id=defense.incumbent_id)

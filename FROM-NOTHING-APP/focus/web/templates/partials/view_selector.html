@@ -1,0 +1,6 @@
+{# iOS compact, horizontally scrollable view selector (S15). #}
+<div class="view-selector" role="tablist" aria-label="View selector">
+  {% for v in views %}
+    <a class="chip" role="tab" href="#{{ v.id }}" data-view="{{ v.id }}" aria-selected="false">{{ v.title }}</a>
+  {% endfor %}
+</div>

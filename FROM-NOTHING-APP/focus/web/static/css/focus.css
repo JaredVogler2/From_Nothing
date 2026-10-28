@@ -81,8 +81,8 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 .metric-grid, .readiness-grid { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 12px 0; }
 .metric { padding: 12px; box-shadow: none; }
 .metric-label { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-.metric-value { font-size: 22px; font-weight: 750; margin-top: 2px; word-break: break-word; }
-.metric-note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.metric-value { font-size: 22px; font-weight: 750; margin-top: 2px; overflow-wrap: anywhere; }
+.metric-note { color: var(--muted); font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 13px; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; word-break: break-word; }
@@ -150,13 +150,34 @@ textarea { min-height: 72px; width: 100%; }
 [data-layout="classic"] .metric-value { font-size: 18px; }
 
 /* ---------- performance partial (shared by iOS, Classic, Arena and history) ---------- */
-.bindings { font-size: 12px; margin: -4px 0 12px; word-break: break-word; }
+.bindings { font-size: 12px; margin: -4px 0 12px; overflow-wrap: anywhere; }
 .inline-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
 .metric-score .metric-value { color: var(--primary); }
 .pooled-card { border-left: 4px solid var(--primary); }
 .goal-card h3 { margin-top: 12px; }
 .explain summary { cursor: pointer; font-weight: 700; }
 .explain p { margin-top: 8px; }
+
+/* ---------- operational views (P20) ---------- */
+.crew-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.reason-list.compact { margin: 0; padding-left: 16px; font-size: 12.5px; }
+.card-actions { display: flex; justify-content: flex-end; gap: var(--gap); margin-bottom: 8px; }
+.command-status:empty { display: none; }
+.command-status { margin-top: 8px; }
+.run-card { margin-top: 8px; }
+.claim-form { margin: 8px 0; }
+.claim-form summary { cursor: pointer; font-weight: 600; color: var(--primary); }
+.toolbar label input, .toolbar label select { min-width: 120px; }
+label textarea { display: block; margin-top: 2px; }
+[aria-invalid="true"] { border-color: var(--error); outline: 2px solid var(--error-bg); }
+.hbars { display: grid; gap: 6px; }
+.hbar-row { display: grid; grid-template-columns: minmax(80px, 160px) 1fr minmax(40px, auto); gap: 8px; align-items: center; font-size: 12.5px; }
+.hbar-label { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { height: 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); overflow: hidden; }
+.hbar-fill { display: block; height: 100%; background: var(--primary); }
+.hbar-value { font-variant-numeric: tabular-nums; text-align: right; }
+.gantt-track { min-height: 34px; }
+.gantt-tick { font-size: 10.5px; }
 
 /* ---------- timeline / gantt ---------- */
 .gantt { position: relative; border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; background: var(--surface); }

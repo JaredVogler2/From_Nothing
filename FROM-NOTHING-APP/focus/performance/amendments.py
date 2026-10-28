@@ -54,11 +54,83 @@ def _ready(inp: Any, node: str, now: int, trail: frozenset[str] = frozenset()) -
     return False, f"PREDECESSOR_INCOMPLETE: {phase.label} is not verified complete"
 
 
+def assess_addition(inp: Any, facts: Any, plan: Any, plan_id: str | None, *, team: str, shift_id: str, phase_id: str,
+                    at: datetime) -> tuple[Any, dict[str, Any]]:
+    """Readiness and crew feasibility of adding one open phase to a team-shift goal at ``at`` (pure; raises DomainError).
+
+    ``inp`` and ``facts`` are the current admitted facts and ``plan`` the current accepted EXECUTABLE candidate. Read
+    projections call this to propose additions; ``amend_goal`` calls it before recording one.
+    """
+    from ..validation.input import overlap_minutes
+
+    _, day, number = parse_shift_id(shift_id)
+    now = to_minute(at)
+    phase = inp.phases.get(phase_id)
+    if phase is None:
+        raise DomainError("PHASE_NOT_FOUND", "the phase is not in the current admitted facts")
+    if phase.kind is PhaseKind.RELEASE or phase.status != "OPEN" or phase.work_minutes <= 0:
+        raise DomainError("NOT_WORK", f"{phase.label} is not open work")
+    if inp.satisfied(phase) is not None:
+        raise DomainError("ALREADY_COMPLETE", "current facts show this work verified complete")
+    demand = phase.role_demands[0] if phase.role_demands else None
+    owner = demand.team if demand else phase.team
+    if owner != team:
+        raise DomainError("TEAM_MISMATCH", f"{phase.label} is {owner} work, not {team}'s")
+    if phase.standard_person_minutes <= 0 or demand is None or demand.bundle.count <= 0:
+        raise DomainError("EFFORT_UNKNOWN", "the phase has no sourced standard effort or crew demand")
+    ok, _, why = inp.placeable(phase.job)
+    if not ok:
+        raise DomainError("NOT_EXECUTABLE", why[:300])
+    for e in inp.hard_in.get(phase_id, ()):
+        ready, why = _ready(inp, e.pred_phase, now)
+        if not ready:
+            code, _, detail = why.partition(": ")
+            raise DomainError(code, detail)
+    for node in sorted(inp.ancestors(phase_id, {})):
+        rel = inp.releases.get(node)
+        if rel is not None and rel.kind is ReleaseKind.PART and rel.status is not ReleaseStatus.CONFIRMED:
+            raise DomainError("PART_NOT_RECEIVED", f"ancestor {rel.label} is {rel.status.value}")
+    for s in facts.shortages:
+        if s.status in ("UNKNOWN_ECD", "REOPENED") and phase.job in s.affected_jobs:
+            raise DomainError("SHORTAGE_BLOCKED", f"shortage {s.record_id} is {s.status}")
+    shift = inp.shift(shift_id)
+    if shift is None:
+        raise DomainError("SHIFT_UNKNOWN", f"{shift_id} is not a shift of this site")
+    workday, code, detail = inp.workday(phase.line, day, number)
+    if not workday:
+        raise DomainError("CALENDAR_CLOSED", f"{code}: {detail}")
+    planned = next((a for a in (plan.assignments if plan else ()) if a.phase == phase_id and a.shift_id == shift_id), None)
+    if planned is not None:
+        return phase, {"basis": "ASSIGNED_IN_ACCEPTED_PLAN", "plan_id": plan_id, "assignment_id": planned.id,
+                       "crew": [r.person for r in planned.crew]}
+    pool = inp.pool_by_key.get((team, shift.start_date, shift.number))
+    if pool is None:
+        raise DomainError("NO_POOL", f"no admitted {team} pool for {shift_id}")
+    start, end = max(now, shift.start), shift.end
+    remaining = overlap_minutes(start, end, shift.regular_windows)
+    booked: dict[str, int] = {}
+    for d in (plan.duties if plan else ()):
+        if d.shift_id == shift_id:
+            booked[d.person] = booked.get(d.person, 0) + d.regular_minutes
+    fit = []
+    for person in sorted(inp.admitted_members(pool)):
+        avail = inp.availability.get((person, pool.id))
+        held, _ = inp.bundle_held(person, demand.bundle, start, end)
+        headroom = (getattr(avail, "regular_cap", 0) if avail is not None else 0) - booked.get(person, 0)
+        if held and headroom >= phase.work_minutes and remaining >= phase.work_minutes:
+            fit.append(person)
+    if len(fit) < demand.bundle.count:
+        raise DomainError("INFEASIBLE", f"{len(fit)} qualified pool members have headroom for {phase.work_minutes} min; "
+                                        f"{demand.bundle.count} are required")
+    return phase, {"basis": "QUALIFIED_POOL_HEADROOM", "pool_id": pool.id, "qualified_with_headroom": fit, "required": demand.bundle.count,
+                   "work_minutes": phase.work_minutes, "remaining_regular_minutes": remaining}
+
+
 def amend_goal(services: Any, *, request_id: str, requested_by: str, plan_id: str, expected_version: int, change: dict[str, Any],
                reason: str, allowed_teams: Any, at: datetime) -> tuple[GoalAmendment, dict[str, Any]]:
     from ..data.acquisition import snapshot_for_run, source_head_name
     from ..publication.service import current_plan
-    from ..validation.input import ValidationInput, overlap_minutes
+    from ..validation.input import ValidationInput
     from .actuals import AMENDMENTS, ObservationStore
     from .lifecycle import GoalRegistry
 
@@ -72,7 +144,7 @@ def amend_goal(services: Any, *, request_id: str, requested_by: str, plan_id: st
     if not all(isinstance(x, str) and x for x in (team, shift_id, phase_id)):
         raise DomainError("BAD_CHANGE", "an emergency addition names team, shift_id and phase_id")
     try:
-        _, day, number = parse_shift_id(shift_id)
+        parse_shift_id(shift_id)
     except ValueError:
         raise DomainError("BAD_CHANGE", "shift_id must look like SITE:YYYY-MM-DD:S1") from None
     if len(reason.strip()) < policy.int("disruption.notes_min_chars"):
@@ -97,71 +169,11 @@ def amend_goal(services: Any, *, request_id: str, requested_by: str, plan_id: st
         raise DomainError("SOURCE_UNAVAILABLE", "no admitted current source run")
     facts = snapshot_for_run(services, head.record_id)
     inp = ValidationInput.build(facts, policy, Purpose.EXECUTABLE)
-    now = to_minute(at)
-    phase = inp.phases.get(phase_id)
-    if phase is None:
-        raise DomainError("PHASE_NOT_FOUND", "the phase is not in the current admitted facts")
-    if phase.kind is PhaseKind.RELEASE or phase.status != "OPEN" or phase.work_minutes <= 0:
-        raise DomainError("NOT_WORK", f"{phase.label} is not open work")
-    if inp.satisfied(phase) is not None:
-        raise DomainError("ALREADY_COMPLETE", "current facts show this work verified complete")
-    demand = phase.role_demands[0] if phase.role_demands else None
-    owner = demand.team if demand else phase.team
-    if owner != team:
-        raise DomainError("TEAM_MISMATCH", f"{phase.label} is {owner} work, not {team}'s")
-    effort = phase.standard_person_minutes
-    if effort <= 0 or demand is None or demand.bundle.count <= 0:
-        raise DomainError("EFFORT_UNKNOWN", "the phase has no sourced standard effort or crew demand")
-    ok, _, why = inp.placeable(phase.job)
-    if not ok:
-        raise DomainError("NOT_EXECUTABLE", why[:300])
-    for e in inp.hard_in.get(phase_id, ()):
-        ready, why = _ready(inp, e.pred_phase, now)
-        if not ready:
-            code, _, detail = why.partition(": ")
-            raise DomainError(code, detail)
-    for node in sorted(inp.ancestors(phase_id, {})):
-        rel = inp.releases.get(node)
-        if rel is not None and rel.kind is ReleaseKind.PART and rel.status is not ReleaseStatus.CONFIRMED:
-            raise DomainError("PART_NOT_RECEIVED", f"ancestor {rel.label} is {rel.status.value}")
-    for s in facts.shortages:
-        if s.status in ("UNKNOWN_ECD", "REOPENED") and phase.job in s.affected_jobs:
-            raise DomainError("SHORTAGE_BLOCKED", f"shortage {s.record_id} is {s.status}")
-    shift = inp.shift(shift_id)
-    if shift is None:
-        raise DomainError("SHIFT_UNKNOWN", f"{shift_id} is not a shift of this site")
-    workday, code, detail = inp.workday(phase.line, day, number)
-    if not workday:
-        raise DomainError("CALENDAR_CLOSED", f"{code}: {detail}")
-
     current, _ = current_plan(services, scope, "EXECUTABLE")
     plan = None if current is None else current.artifact.candidate
-    planned = next((a for a in (plan.assignments if plan else ()) if a.phase == phase_id and a.shift_id == shift_id), None)
-    if planned is not None:
-        evidence = {"basis": "ASSIGNED_IN_ACCEPTED_PLAN", "plan_id": current.published.id, "assignment_id": planned.id,
-                    "crew": [r.person for r in planned.crew]}
-    else:
-        pool = inp.pool_by_key.get((team, shift.start_date, shift.number))
-        if pool is None:
-            raise DomainError("NO_POOL", f"no admitted {team} pool for {shift_id}")
-        start, end = max(now, shift.start), shift.end
-        remaining = overlap_minutes(start, end, shift.regular_windows)
-        booked: dict[str, int] = {}
-        for d in (plan.duties if plan else ()):
-            if d.shift_id == shift_id:
-                booked[d.person] = booked.get(d.person, 0) + d.regular_minutes
-        fit = []
-        for person in sorted(inp.admitted_members(pool)):
-            avail = inp.availability.get((person, pool.id))
-            held, _ = inp.bundle_held(person, demand.bundle, start, end)
-            headroom = (getattr(avail, "regular_cap", 0) if avail is not None else 0) - booked.get(person, 0)
-            if held and headroom >= phase.work_minutes and remaining >= phase.work_minutes:
-                fit.append(person)
-        if len(fit) < demand.bundle.count:
-            raise DomainError("INFEASIBLE", f"{len(fit)} qualified pool members have headroom for {phase.work_minutes} min; "
-                                            f"{demand.bundle.count} are required")
-        evidence = {"basis": "QUALIFIED_POOL_HEADROOM", "pool_id": pool.id, "qualified_with_headroom": fit, "required": demand.bundle.count,
-                    "work_minutes": phase.work_minutes, "remaining_regular_minutes": remaining}
+    phase, evidence = assess_addition(inp, facts, plan, None if current is None else current.published.id, team=team, shift_id=shift_id,
+                                      phase_id=phase_id, at=at)
+    effort = phase.standard_person_minutes
     feasibility_ref = digest_id("FEAS", facts.source_run_id, phase_id, shift_id, evidence)
 
     store = ObservationStore(services.repositories, scope)

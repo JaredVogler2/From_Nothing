@@ -1,0 +1,5 @@
+{# The single view host both layouts render into; states are announced politely and the host is busy while loading. #}
+<main id="main" class="view-host" tabindex="-1" aria-live="polite" aria-busy="true">
+  <section class="card state-loading"><p>Loading…</p></section>
+  <noscript><section class="card state-blocked"><div class="state-title">Blocked</div><p>The scheduling workspace needs JavaScript; the JSON API at /api/v1 stays available.</p></section></noscript>
+</main>

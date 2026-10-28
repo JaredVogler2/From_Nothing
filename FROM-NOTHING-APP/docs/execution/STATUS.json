@@ -1245,9 +1245,65 @@
       "title": "Complete iOS/Classic shell and scoped API"
     },
     "20": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A59",
+          "result": "pass (Arena standings pool stored goal evaluations exactly; factory = S14 formula over summed components; history names the same evaluation ids; iOS/Classic parity)"
+        },
+        {
+          "case": "A60",
+          "result": "pass (planned OOS charged once in O = rate x affected effort over the union of charged unit ids; Cp stays earned effort; XP = sum of recognition events)"
+        },
+        {
+          "case": "A63",
+          "result": "pass (projection replay appends no event or badge; awards show earning lineage; progression has no qualification effect; demo-run replay byte-identical)"
+        },
+        {
+          "case": "A68",
+          "result": "pass (team-lead scope refused before fetch; new reads never write; scenario changes allowlisted (422) and grant-checked (403); SCENARIO candidates refused by publication; queued-run cancel; four command workflows complete through worker runs)"
+        },
+        {
+          "case": "A69",
+          "result": "pass (all 17 views + panels in both layouts at 375/390/820/1280: heading, loading done, no console/page error, no error card, no overflow; honest empty/unknown/blocked states; visible reasons; reduced motion; keyboard)"
+        }
+      ],
+      "changed_paths": [
+        "focus/web/serializers.py",
+        "focus/web/api_views.py",
+        "focus/web/api.py",
+        "focus/publication/dispatch.py",
+        "focus/publication/service.py",
+        "focus/performance/amendments.py",
+        "focus/analytics/scenarios.py",
+        "focus/engine/max/optimizer/orchestrator.py",
+        "focus/engine/commitments.py",
+        "focus/pipeline.py",
+        "focus/web/templates/workspace.html",
+        "focus/web/templates/partials/",
+        "focus/web/static/js/core.js",
+        "focus/web/static/js/workspace.js",
+        "focus/web/static/js/views/common.js",
+        "focus/web/static/js/views/operate.js",
+        "focus/web/static/js/views/plan.js",
+        "focus/web/static/js/views/panels.js",
+        "focus/web/static/js/views/performance.js",
+        "focus/web/static/css/focus.css",
+        "docs/execution/DECISIONS.md",
+        "docs/execution/UI_COVERAGE.md",
+        "tests/integration/test_views_api.py",
+        "tests/integration/test_api_scope.py",
+        "tests/ui/check_workflows.py",
+        "tests/ui/test_workflows.py",
+        "evidence/20/"
+      ],
+      "commands": [
+        "python tests/ui/check_workflows.py --out evidence/20/screenshots (210 view checks, 0 failures; 4/4 workflows completed)",
+        "python -m pytest tests/ui -q (13 passed; Chromium 153)",
+        "python -m pytest tests/integration/test_views_api.py -q (11 passed)",
+        "python -m pytest tests/integration/test_api_scope.py -q (13 passed, after adding the P20 reads to the A68 coverage list)",
+        "python -m focus.cli demo-run --budget-seconds 5 (both plans ACCEPTED; rerun ALREADY_ACCEPTED/ALREADY_COLLECTED, runtime byte-identical)",
+        "python -m pytest tests -q (359 passed, 1 failed in 8:06: the A68 coverage list lacked the new P20 reads; fixed and rerun above)"
+      ],
       "depends_on": [
         "19",
         "13",
@@ -1258,11 +1314,23 @@
       "evidence": [
         "evidence/20/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "10 new GET operations: team-lead, standards, budget, gantt, development, arena, turnover, history, scenarios, scenarios/{id} (39 registry operations)",
+        "POST /scenarios (analytics.scenarios.worker_scenario) and POST /runs/{run_id}/cancel (queued runs only)",
+        "publication.dispatch.assess_action (pure dispatch rule shared by dispatch_check and Team Lead)",
+        "performance.amendments.assess_addition (pure amendment readiness/feasibility rule)",
+        "analytics.scenarios: normalize_changes / apply_changes / run_scenario / compare (purpose SCENARIO; publication refuses it first)",
+        "orchestrator.schedule_snapshot; pipeline.demo_run / cli demo-run (idempotent)",
+        "templates/partials (shared iOS/Classic shell) and static/js/views/{common,operate,plan,panels,performance}.js"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "Digital twin, explanations and POST /explanations arrive in P21 (the twin panel shows its explicit unknown state)",
+        "only queued runs can be cancelled; a running scenario is bounded by its budget",
+        "SQL store adapter for API/worker reads (P23); live identity, grants and a separate worker process not exercised"
+      ],
+      "status": "fixture_verified",
       "title": "Complete operational dashboards and audited workflows"
     },
     "21": {

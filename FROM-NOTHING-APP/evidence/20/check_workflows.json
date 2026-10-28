@@ -1,0 +1,30 @@
+{
+  "views_checked": 210,
+  "workflows": [
+    {
+      "workflow": "claim_and_decision",
+      "claim_run": "completed",
+      "decision_run": "completed",
+      "ok": true
+    },
+    {
+      "workflow": "what_if",
+      "result_shown": true,
+      "ok": true
+    },
+    {
+      "workflow": "report_and_proposal",
+      "report_run": "completed",
+      "proposal_run": "completed",
+      "receipt_mentions_verified": true,
+      "listed_in_development": true,
+      "ok": true
+    },
+    {
+      "workflow": "amendment",
+      "run_status": "completed",
+      "ok": true
+    }
+  ],
+  "failures": []
+}

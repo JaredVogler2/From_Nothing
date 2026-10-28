@@ -64,6 +64,7 @@ export function h(tag, attrs = {}, ...children) {
   for (const [key, value] of Object.entries(attrs || {})) {
     if (value === null || value === undefined || value === false) continue;
     if (key === "class") el.className = value;
+    else if (key === "style") el.style.cssText = value;           // CSSOM, allowed under the strict CSP (no inline style attributes)
     else if (key === "dataset") Object.assign(el.dataset, value);
     else if (key.startsWith("on") && typeof value === "function") el.addEventListener(key.slice(2), value);
     else if (value === true) el.setAttribute(key, "");

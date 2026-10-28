@@ -87,7 +87,21 @@ def get_context(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
             evidence = {"observation_run_id": run.id, "as_of": run.as_of, "mode": run.mode,
                         "freshness": freshness(run, now, services.policy.int("observations.max_feed_age_hours")),
                         "feeds": {f.feed: {"status": f.status, "usable": f.usable, "covered_through": f.covered_through} for f in run.feeds}}
+    choices: dict[str, Any] = {"teams": [], "lines": [], "obligation_dates": [], "default_date": None}
+    if source is not None and policy["status"] == "ready" and ctx.authenticated:
+        from .serializers import Canon, default_day
+
+        canon = Canon.load(services)                         # read-only and cached per immutable snapshot
+        if canon.snapshot is not None:
+            real = {p.key.team for p in canon.snapshot.pools if p.executable_members}
+            teams = {p.key.team for p in canon.snapshot.pools if ctx.scope.allows_team(p.key.team)}
+            choices["teams"] = sorted(teams, key=lambda t: (t not in real, t))          # real teams first, virtual support last
+            choices["lines"] = sorted(c.line for c in canon.snapshot.census)
+            choices["default_date"] = default_day(canon) or canon.snapshot.cutoff.date()
+            if canon.executable is not None:
+                choices["obligation_dates"] = list(canon.executable.artifact.obligation_dates)
     data = {
+        "choices": choices,
         "identity": {
             "authenticated": ctx.authenticated,
             "subject": ctx.subject,
@@ -430,7 +444,7 @@ def create_excusal_decision(ctx: RequestContext, args: dict[str, Any]) -> ApiRes
         "required": ["job_id", "standard_revision", "proposed_correction", "reason", "idempotency_key"],
         "properties": {
             "job_id": {"type": "string", "pattern": ID_PATTERN},
-            "standard_revision": {"type": "string", "minLength": 1, "maxLength": 64},
+            "standard_revision": {"type": "string", "minLength": 1, "maxLength": 160},
             "proposed_correction": {"type": "string", "minLength": 1, "maxLength": 2000},
             "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
             "idempotency_key": IDEMPOTENCY,
@@ -473,3 +487,96 @@ def create_ie_review(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
 )
 def create_reported_observation(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     return enqueue(ctx, "reported_observation", args)
+
+
+SCENARIO_CHANGE = {
+    "type": "object",
+    "required": ["type"],
+    "properties": {
+        "type": {"type": "string", "enum": ["virtual_staffing", "eta_forecast", "duration_statistic", "daily_cost", "calendar_day"]},
+        "team": {"type": "string", "pattern": r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$"},
+        "date": {"type": "string", "format": "date"},
+        "shift": {"type": "integer", "minimum": 1, "maximum": 3},
+        "add": {"type": "integer", "minimum": 1, "maximum": 10},
+        "release_id": {"type": "string", "pattern": ID_PATTERN},
+        "forecast_at": {"type": "string", "format": "date-time"},
+        "statistic": {"type": "string", "enum": ["P50", "P75", "P90"]},
+        "line": {"type": "integer", "minimum": 1, "maximum": 999999},
+        "daily_rate_cents": {"type": "integer", "minimum": 0, "maximum": 1000000000000},
+        "status": {"type": "string", "enum": ["WORKING", "NONWORKING"]},
+    },
+    "additionalProperties": False,
+}
+
+
+@REGISTRY.operation(
+    "create_scenario", "POST", "/api/v1/scenarios",
+    summary="Queue an isolated what-if scenario on a copy of an admitted snapshot",
+    description="Typed, allowlisted changes (virtual staffing, ETA forecast, duration statistic, assumed daily cost, calendar day) run with "
+                "the same optimizer and validator against a same-settings baseline under one bounded budget. Results are SCENARIO_ONLY: never "
+                "publishable, and no source/plan head, frozen goal, commitment, actual or evaluation changes.",
+    grants=("scenario_planner", "manager"),
+    read_only=False,
+    body={
+        "type": "object",
+        "required": ["source_run_id", "changes", "budget_seconds", "idempotency_key"],
+        "properties": {
+            "source_run_id": {"type": "string", "pattern": ID_PATTERN},
+            "changes": {"type": "array", "minItems": 1, "maxItems": 20, "items": SCENARIO_CHANGE},
+            "budget_seconds": {"type": "number", "minimum": 1, "maximum": 600},
+            "idempotency_key": IDEMPOTENCY,
+        },
+        "additionalProperties": False,
+    },
+    data_schema=RUN_SCHEMA,
+    tags=("commands",),
+    mcp_tool=False,
+    success_status=202,
+)
+def create_scenario(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from ..analytics.scenarios import normalize_changes
+    from ..data.acquisition import get_run
+    from ..domain import DomainError
+
+    services = svc()
+    try:
+        normalize_changes(args["changes"])
+    except DomainError as exc:
+        raise ApiError(422, exc.code, exc.message) from None
+    found = get_run(services.repositories, args["source_run_id"])
+    if found is None or found[0].scope != services.settings.scope_key or found[0].status != "COMPLETE":
+        raise ApiError(404, "SOURCE_RUN_NOT_FOUND", "no complete admitted source run with that id in your scope")
+    return enqueue(ctx, "scenario", args, args["budget_seconds"])
+
+
+@REGISTRY.operation(
+    "cancel_run", "POST", "/api/v1/runs/{run_id}/cancel",
+    summary="Cancel a queued worker run (requester or manager)",
+    description="A queued run becomes cancelled and is never executed; a running or finished run is not changed (409). Cancelling is "
+                "idempotent and never touches accepted plans, goals, commitments or evaluations.",
+    grants=ALL_READERS,
+    read_only=False,
+    path_params={"run_id": {"type": "string", "pattern": ID_PATTERN}},
+    body={"type": "object", "properties": {"reason": {"type": "string", "maxLength": 200}}, "additionalProperties": False},
+    data_schema=RUN_SCHEMA,
+    tags=("commands",),
+    mcp_tool=False,
+)
+def cancel_run(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from ..data.store import VersionConflict
+
+    services = svc()
+    repos = services.repositories
+    run = repos.get_worker_run(args["run_id"])
+    if run is None or run.scope != services.settings.scope_key or (run.requested_by != ctx.subject and not ctx.has_any(("manager",))):
+        raise ApiError(404, "RUN_NOT_FOUND", "no worker run with that id in your scope")
+    if run.status == "cancelled":
+        return ApiResult(status="ready", data=_run_view(run) | {"replayed": True})
+    if run.status != "queued":
+        raise ApiError(409, "RUN_NOT_CANCELLABLE", f"the run is {run.status}; only queued runs are cancelled")
+    try:
+        done = repos.update_worker_run(run, repos.worker_run_version(run.id), status="cancelled",
+                                       error={"code": "CANCELLED", "message": (args.get("reason") or "cancelled by request")[:200]})
+    except VersionConflict:
+        raise ApiError(409, "RUN_NOT_CANCELLABLE", "the run changed while cancelling; reload it") from None
+    return ApiResult(status="ready", data=_run_view(done) | {"replayed": False})

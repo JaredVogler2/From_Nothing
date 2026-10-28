@@ -97,18 +97,28 @@ def dispatch_check(services: Any, plan_id: str, action_id: str, *, now: datetime
     if facts is None:
         reasons.append(("SOURCE_UNAVAILABLE", "no admitted current source run"))
         return _decide(services, plan_id, action_id, reasons, None, now)
-    if now - facts.cutoff > timedelta(hours=services.policy.int("dispatch.max_source_age_hours")):
-        reasons.append(("SOURCE_STALE", f"current facts cut off at {facts.cutoff.isoformat()}"))
     if facts.cutoff < _plan_cutoff(services, artifact):
         reasons.append(("SOURCE_OLDER_THAN_PLAN", "current facts precede the plan's source"))
-    inp = ValidationInput.build(facts, services.policy, Purpose.EXECUTABLE)
+    reasons += assess_action(services, action, facts, ValidationInput.build(facts, services.policy, Purpose.EXECUTABLE), now)
+    return _decide(services, plan_id, action_id, reasons, facts.source_run_id, now)
+
+
+def assess_action(services: Any, action: Any, facts: Any, inp: ValidationInput, now: datetime) -> list[tuple[str, str]]:
+    """Why one accepted assignment cannot be released now, from current facts only (empty: dispatchable).
+
+    Pure: it writes nothing, so read projections (the Team Lead ranking) share this exact rule with
+    ``dispatch_check``, which adds the plan-head checks and records repair requests.
+    """
+    reasons: list[tuple[str, str]] = []
+    if now - facts.cutoff > timedelta(hours=services.policy.int("dispatch.max_source_age_hours")):
+        reasons.append(("SOURCE_STALE", f"current facts cut off at {facts.cutoff.isoformat()}"))
     start, end = to_minute(action.start), to_minute(action.end)
     if to_minute(now) >= end:
         reasons.append(("ACTION_WINDOW_PASSED", f"the action ended at {action.end.isoformat()}"))
     phase = inp.phases.get(action.phase)
     if phase is None:
         reasons.append(("PHASE_GONE", "the phase is no longer in the current source"))
-        return _decide(services, plan_id, action_id, reasons, facts.source_run_id, now)
+        return reasons
     if inp.satisfied(phase) is not None:
         reasons.append(("ALREADY_COMPLETE", "current facts show this work verified complete"))
     ok, _, why = inp.placeable(action.job)
@@ -157,7 +167,7 @@ def dispatch_check(services: Any, plan_id: str, action_id: str, *, now: datetime
     cs = inp.cs.get((job.line, job.station)) if job is not None else None
     if cs is None or cs.status != "ADMITTED" or cs.source_run_id != facts.source_run_id:
         reasons.append(("CS_NOT_ADMITTED", "the station fact is not admitted in the current source run"))
-    return _decide(services, plan_id, action_id, reasons, facts.source_run_id, now)
+    return reasons
 
 
 def _plan_cutoff(services: Any, artifact: Any) -> datetime:
