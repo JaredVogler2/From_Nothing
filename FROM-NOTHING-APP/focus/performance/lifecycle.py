@@ -612,6 +612,7 @@ class ObservationView:
     credits: dict[str, Credit] = field(default_factory=dict)
     offplan: list[OffplanFact] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    _records: list[GoalRecord] | None = field(default=None, repr=False)
 
     @classmethod
     def build(cls, services: Any, as_of: datetime, *, store: Any = None, registry: GoalRegistry | None = None,
@@ -655,8 +656,10 @@ class ObservationView:
         view._credit()
         return view
 
-    # -- goal records with their known amendments
+    # -- goal records with their known amendments (fixed once the view is built)
     def records(self) -> list[GoalRecord]:
+        if self._records is not None:
+            return list(self._records)
         out = []
         known = set()
         for record in self.registry.records.values():
@@ -669,7 +672,8 @@ class ObservationView:
             base = self.registry.record(unit.team, unit.shift_id)
             if base is not None and base.goal_id == goal_id:
                 out.append(replace(base, amendments=items))
-        return sorted(out, key=lambda r: (r.window.start, r.team, r.goal_id))
+        self._records = sorted(out, key=lambda r: (r.window.start, r.team, r.goal_id))
+        return list(self._records)
 
     def record(self, team: str, shift_id: str) -> GoalRecord | None:
         base = self.registry.record(team, shift_id)

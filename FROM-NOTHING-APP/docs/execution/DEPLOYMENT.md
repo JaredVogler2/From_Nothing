@@ -63,7 +63,7 @@ Connect content settings ("Vars"):
 | --- | --- |
 | `FOCUS_MODE` | `live` (or `fixture` for a labeled demo) |
 | `FOCUS_IDENTITY_PROVIDER` | `posit_connect` (the default when Connect is detected) |
-| `FOCUS_GRANTS_JSON` | server-owned grants, e.g. `{"subjects": {"posit:alice": ["reader","manager"]}, "groups": {"focus-leads": ["team_lead"]}}` |
+| `FOCUS_GRANTS_JSON` | server-owned grants and data scopes, e.g. `{"subjects": {"posit:alice": ["reader","manager"], "posit:bob": ["reader","team_lead"]}, "groups": {"focus-leads": ["team_lead"]}, "scopes": {"posit:bob": {"teams": ["PROD-A"]}, "carol": {"teams": ["PROD-A"], "person": "<badge id>"}}}` |
 | `FOCUS_SQL_HOST`, `FOCUS_SQL_DATABASE`, `FOCUS_SQL_USER`, `FOCUS_SQL_PASSWORD` | read principal (mark the password as secret) |
 | `FOCUS_SESSION_SECRET` | random 32+ bytes (secret) |
 | `FOCUS_SOURCE_TIMEZONE_MAP_JSON` | source datetime2 timezone policy |
@@ -79,6 +79,12 @@ How the app behaves under Connect:
   API key) and sends `RStudio-Connect-Credentials: {"user","groups"}`. FOCUS
   trusts that header only with `FOCUS_IDENTITY_PROVIDER=posit_connect` and
   maps users and groups to grants from `FOCUS_GRANTS_JSON`.
+- Data scope is server-owned too. Broad roles (manager, IE, supply chain, QA,
+  excusal decider, workers) see all teams. A team lead or mechanic sees team or
+  person detail only through a `scopes` entry keyed by subject (`posit:<user>`,
+  `sso:<user>`) or bare user name: `teams` is a list of team ids or `"*"`, and
+  `person` is the native badge id that My Day opens. Without an entry they see
+  fleet aggregates only. A role name in a header never grants scope.
 - The Connect dashboard embeds content in a frame. In Connect mode FOCUS
   therefore sends `frame-ancestors 'self'` instead of `X-Frame-Options: DENY`.
 - For a fixture demo on Connect, run `demo-bootstrap` and `demo-run` locally
@@ -120,3 +126,10 @@ How the app behaves under Tanzu:
   Streamable-HTTP JSON-RPC at `/mcp`. It uses the same identity (Connect API
   key or Tanzu SSO) and the same grants and scope as REST. Commands are not
   MCP tools.
+- Commands (`POST /api/v1/schedule-runs`, `/amendments`,
+  `/disruption-claims`, `/excusal-decisions`, `/ie-reviews`,
+  `/reported-observations`) need the `X-CSRF-Token` from `GET /api/v1/context`,
+  a same-origin request, an `idempotency_key` and, where state can race, an
+  `expected_version`. They return `202` with a worker run id; poll
+  `/api/v1/runs/<id>`. Run the worker as described above, or set
+  `FOCUS_INPROCESS_WORKER=true` for a single-process demo.

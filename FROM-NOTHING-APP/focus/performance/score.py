@@ -274,12 +274,12 @@ def personal_grade_refusal(policy: Any) -> str | None:
     return None
 
 
-def canonical(services: Any, team: str, shift_id: str, *, as_of: datetime | None = None) -> Evaluation | None:
+def canonical(services: Any, team: str, shift_id: str, *, as_of: datetime | None = None, registry: Any = None) -> Evaluation | None:
     """What every surface (iOS, Classic, Arena, team/factory/history panels, API, MCP) reads: the persisted revision, never a recomputation."""
     from . import history
     from .lifecycle import GoalRegistry
 
-    goal_id = GoalRegistry.load(services).goal_id_for(team, shift_id)
+    goal_id = (registry or GoalRegistry.load(services)).goal_id_for(team, shift_id)
     if goal_id is None:
         return None
     key = history.series_for_goal(services, goal_id)
@@ -321,4 +321,8 @@ def cli_evaluate(services: Any, args: argparse.Namespace) -> dict[str, Any]:
                 "reasons": ["NO_OBLIGATION_PLAN: no accepted executable plan froze goals for this shift; name --team to record a neutral evaluation"]}
     evaluations = [evaluate_shift(services, team, args.shift, as_of=as_of) for team in teams]
     status = "ok" if all(e.status is not EvaluationStatus.UNKNOWN for e in evaluations) else "unknown"
-    return {"status": status, "shift": args.shift, "as_of": as_of.isoformat(), "evaluations": [summary(e) for e in evaluations]}
+    out = {"status": status, "shift": args.shift, "as_of": as_of.isoformat(), "evaluations": [summary(e) for e in evaluations]}
+    if not args.team and len(evaluations) > 1:
+        # the factory view of the shift is a stored canonical aggregate, so every surface reads the same record
+        out["aggregate"] = summary(aggregate(services, evaluations, label=f"FACTORY {args.shift}", as_of=as_of))
+    return out

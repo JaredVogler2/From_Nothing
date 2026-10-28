@@ -15,6 +15,7 @@ from ..data.store import StoreError, StoreUnavailable
 from ..runtime import Services
 from .operations import REGISTRY, ApiResult, reason
 from .security import DEMO_PERSONAS, ApiError, RequestContext, csrf_token
+from .serializers import can_see_economics
 
 ALL_READERS = ("reader", "team_lead", "mechanic", "IE", "supply_chain", "QA", "excusal_decider", "manager", "scenario_planner", "source_worker", "signer")
 
@@ -72,6 +73,20 @@ def get_context(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     policy = services.policy_status()
     if policy["status"] != "ready":
         reasons.append(reason("POLICY_UNAVAILABLE", policy.get("reason", "policy unavailable")))
+    now = services.clock.now()
+    shift: dict[str, Any] = {"now": now, "current_shift_id": None}
+    evidence: dict[str, Any] | None = None
+    if policy["status"] == "ready":
+        from ..performance.actuals import RUNS, ObservationStore, freshness, observation_head
+        from ..performance.lifecycle import containing_shift_id
+
+        shift["current_shift_id"] = containing_shift_id(services.policy, now, settings.site)
+        ohead = repos.head(observation_head(settings.scope_key)) if repos.available else None
+        run = None if ohead is None else ObservationStore(repos, settings.scope_key).get(RUNS, ohead.record_id)
+        if run is not None:
+            evidence = {"observation_run_id": run.id, "as_of": run.as_of, "mode": run.mode,
+                        "freshness": freshness(run, now, services.policy.int("observations.max_feed_age_hours")),
+                        "feeds": {f.feed: {"status": f.status, "usable": f.usable, "covered_through": f.covered_through} for f in run.feeds}}
     data = {
         "identity": {
             "authenticated": ctx.authenticated,
@@ -90,6 +105,8 @@ def get_context(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
         "source": source,
         "plans": plans,
         "policy": policy,
+        "shift": shift,
+        "evidence": evidence,
         "capabilities": {
             "forecast": source is not None,
             "executable_plan": bool(plans.get("EXECUTABLE")),
@@ -97,6 +114,8 @@ def get_context(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
             "explanations": {"deterministic": True, "provider": settings.llm_provider},
             "solver": settings.solver_enabled,
             "mcp": settings.mcp_enabled,
+            "observations": evidence is not None and evidence["freshness"] == "FRESH",
+            "economics": can_see_economics(ctx),
         },
         "demo_personas": [
             {"id": key, "display": value["display"], "grants": list(value["grants"])}
@@ -167,7 +186,14 @@ def get_run(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
 # commands (POST -> 202 worker run)
 # ---------------------------------------------------------------------------
 
-def enqueue(ctx: RequestContext, kind: str, request_body: dict[str, Any], budget_seconds: float | None = None) -> ApiResult:
+def enqueue(ctx: RequestContext, kind: str, request_body: dict[str, Any], budget_seconds: float | None = None,
+            server: dict[str, Any] | None = None) -> ApiResult:
+    """Record a durable worker run (idempotent) and return an honest 202 queued status.
+
+    ``server`` holds facts the server derives from trusted grants and scope (for example the
+    excusal authority role). They are stored under ``_server``, which no client body may carry
+    (every command schema forbids unknown fields), so a worker never trusts a client claim.
+    """
     services = svc()
     if not services.repositories.available:
         raise ApiError(503, "REPOSITORY_UNAVAILABLE", "commands need a configured repository")
@@ -180,7 +206,7 @@ def enqueue(ctx: RequestContext, kind: str, request_body: dict[str, Any], budget
             scope=services.settings.scope_key,
             idempotency_key=idem,
             requested_by=ctx.subject or "anonymous",
-            request=request_body,
+            request=request_body if server is None else dict(request_body, _server=server),
             budget_seconds=budget,
         )
     except RepositoryError as exc:
@@ -227,4 +253,223 @@ def enqueue(ctx: RequestContext, kind: str, request_body: dict[str, Any], budget
     success_status=202,
 )
 def create_schedule_run(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from ..data.acquisition import get_run
+
+    services = svc()
+    if not services.repositories.available:
+        raise ApiError(503, "REPOSITORY_UNAVAILABLE", "commands need a configured repository")
+    if args["policy_id"] != services.policy.id:
+        raise ApiError(409, "POLICY_MISMATCH", f"the active policy is {services.policy.id}")
+    found = get_run(services.repositories, args["source_run_id"])
+    if found is None or found[0].scope != services.settings.scope_key:
+        raise ApiError(404, "SOURCE_RUN_NOT_FOUND", "no admitted source run with that id in your scope")
+    if found[0].status != "COMPLETE":
+        raise ApiError(409, "SOURCE_RUN_NOT_COMPLETE", f"source run is {found[0].status}; only complete admitted runs are scheduled")
     return enqueue(ctx, "schedule", args, args["budget_seconds"])
+
+
+def _scope_teams(ctx: RequestContext) -> Any:
+    return "*" if ctx.scope.all_teams else sorted(ctx.scope.teams)
+
+
+def _goal_record(ctx: RequestContext, goal_id: str) -> Any:
+    """The goal of record behind a command, refused with the same 404 whether it is missing or outside the caller's scope."""
+    from .serializers import registry
+
+    record = registry(svc()).by_goal_id().get(goal_id)
+    if record is None or not ctx.scope.allows_team(record.team):
+        raise ApiError(404, "GOAL_NOT_FOUND", "no goal of record with that id in your scope")
+    return record
+
+
+NOTES = {"type": "string", "maxLength": 2000}
+UNIT_IDS = {"type": "array", "minItems": 1, "maxItems": 200, "uniqueItems": True, "items": {"type": "string", "pattern": ID_PATTERN}}
+EVIDENCE_IDS = {"type": "array", "maxItems": 50, "uniqueItems": True, "items": {"type": "string", "minLength": 1, "maxLength": 160}}
+
+
+@REGISTRY.operation(
+    "create_amendment", "POST", "/api/v1/amendments",
+    summary="Queue an approved feasible emergency addition to a frozen goal (B = B0 + additions)",
+    description="Adds one whole open phase to a team-shift goal of record. expected_version is the goal's amendment count (from GET "
+                "/shiftbook goal.versions.amendments). The worker re-checks the version, scope, readiness and crew feasibility; the original "
+                "B0 and units never change.",
+    grants=("team_lead", "manager"),
+    read_only=False,
+    body={
+        "type": "object",
+        "required": ["plan_id", "expected_version", "change", "reason", "idempotency_key"],
+        "properties": {
+            "plan_id": {"type": "string", "pattern": ID_PATTERN},
+            "expected_version": {"type": "integer", "minimum": 0, "maximum": 100000},
+            "change": {
+                "type": "object",
+                "required": ["kind", "team", "shift_id", "phase_id"],
+                "properties": {
+                    "kind": {"type": "string", "enum": ["ADD_EMERGENCY_WORK"]},
+                    "team": {"type": "string", "pattern": r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$"},
+                    "shift_id": {"type": "string", "pattern": r"^[A-Za-z0-9._-]{1,32}:[0-9]{4}-[0-9]{2}-[0-9]{2}:S[1-3]$"},
+                    "phase_id": {"type": "string", "pattern": ID_PATTERN},
+                },
+                "additionalProperties": False,
+            },
+            "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+            "idempotency_key": IDEMPOTENCY,
+        },
+        "additionalProperties": False,
+    },
+    data_schema=RUN_SCHEMA,
+    tags=("commands",),
+    mcp_tool=False,
+    success_status=202,
+)
+def create_amendment(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from .serializers import goal_versions, registry
+
+    change = args["change"]
+    if not ctx.scope.allows_team(change["team"]):
+        raise ApiError(403, "OUT_OF_SCOPE", f"team {change['team']} is outside your data scope")      # scope before fetch
+    goal_id = registry(svc()).goal_id_for(change["team"], change["shift_id"])
+    if goal_id is None:
+        raise ApiError(404, "GOAL_NOT_FOUND", "no accepted obligation plan covers that team-shift")
+    current = goal_versions(svc(), goal_id)["amendments"]
+    if args["expected_version"] != current:
+        raise ApiError(409, "STALE_VERSION", f"the goal has {current} amendments, not {args['expected_version']}; reload and retry")
+    return enqueue(ctx, "amendment", args, server={"teams": _scope_teams(ctx)})
+
+
+@REGISTRY.operation(
+    "create_disruption_claim", "POST", "/api/v1/disruption-claims",
+    summary="Queue a disruption claim against missed frozen units of a goal (evidence, never relief)",
+    description="A claim names one of the eight causes and the missed units it concerns. Relief exists only after a reviewed excusal decision; "
+                "SAME_TEAM_PREDECESSOR and DURATION_OVERRUN need notes.",
+    grants=("team_lead", "manager"),
+    read_only=False,
+    body={
+        "type": "object",
+        "required": ["goal_id", "unit_ids", "cause", "evidence_ids", "notes", "idempotency_key"],
+        "properties": {
+            "goal_id": {"type": "string", "pattern": ID_PATTERN},
+            "unit_ids": UNIT_IDS,
+            "cause": {"type": "string", "enum": ["LATE_PART", "CROSS_TEAM_PREDECESSOR", "CAPACITY_SHORTAGE", "SKILL_SHORTAGE", "REWORK_INJECTION",
+                                                 "SAME_TEAM_PREDECESSOR", "DURATION_OVERRUN", "PLAN_CHURN"]},
+            "evidence_ids": EVIDENCE_IDS,
+            "notes": NOTES,
+            "origin_team": {"type": "string", "pattern": r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$"},
+            "executing_team": {"type": "string", "pattern": r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$"},
+            "supersedes": {"type": "string", "pattern": ID_PATTERN},
+            "idempotency_key": IDEMPOTENCY,
+        },
+        "additionalProperties": False,
+    },
+    data_schema=RUN_SCHEMA,
+    tags=("commands",),
+    mcp_tool=False,
+    success_status=202,
+)
+def create_disruption_claim(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    _goal_record(ctx, args["goal_id"])
+    return enqueue(ctx, "disruption_claim", args, server={"teams": _scope_teams(ctx)})
+
+
+@REGISTRY.operation(
+    "create_excusal_decision", "POST", "/api/v1/excusal-decisions",
+    summary="Queue a reviewed excusal decision on submitted claims of one goal",
+    description="Only the policy's reviewer role decides, never on one's own claim. expected_version is the goal's decision count (from GET "
+                "/disruption-claims). PLAN_CHURN is reviewed on its own track; approving a non-nominal cause is a recorded exception.",
+    grants=("excusal_decider",),
+    read_only=False,
+    body={
+        "type": "object",
+        "required": ["claim_ids", "decision", "unit_ids", "notes", "expected_version", "idempotency_key"],
+        "properties": {
+            "claim_ids": {"type": "array", "minItems": 1, "maxItems": 50, "uniqueItems": True, "items": {"type": "string", "pattern": ID_PATTERN}},
+            "decision": {"type": "string", "enum": ["APPROVED", "REJECTED", "PENDING"]},
+            "unit_ids": {"type": "array", "maxItems": 200, "uniqueItems": True, "items": {"type": "string", "pattern": ID_PATTERN}},
+            "notes": NOTES,
+            "expected_version": {"type": "integer", "minimum": 0, "maximum": 100000},
+            "review_track": {"type": "string", "enum": ["STANDARD", "PLAN_CHURN"]},
+            "supersedes": {"type": "string", "pattern": ID_PATTERN},
+            "idempotency_key": IDEMPOTENCY,
+        },
+        "additionalProperties": False,
+    },
+    data_schema=RUN_SCHEMA,
+    tags=("commands",),
+    mcp_tool=False,
+    success_status=202,
+)
+def create_excusal_decision(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from ..performance.actuals import CLAIMS, DECISIONS, ObservationStore, knowledge_time
+
+    services = svc()
+    store = ObservationStore(services.repositories, services.settings.scope_key)
+    claims = [store.get(CLAIMS, cid) for cid in args["claim_ids"]]
+    goals = {c.goal_id for c in claims if c is not None}
+    if None in claims or len(goals) != 1:
+        raise ApiError(404, "CLAIM_NOT_FOUND", "every reviewed claim must exist and belong to one goal in your scope")
+    goal_id = next(iter(goals))
+    _goal_record(ctx, goal_id)
+    if any(c.reported_by == ctx.subject for c in claims) and not services.policy.bool("disruption.self_review_allowed"):
+        raise ApiError(403, "SELF_REVIEW", "a claimant cannot decide their own claim")
+    current = sum(1 for d in store.known(DECISIONS, knowledge_time(services)) if d.goal_id == goal_id)
+    if args["expected_version"] != current:
+        raise ApiError(409, "STALE_VERSION", f"the goal's decision state is at version {current}, not {args['expected_version']}; reload and retry")
+    roles = [g for g in services.policy.seq("disruption.reviewer_roles") if g in ctx.grants]
+    return enqueue(ctx, "excusal_decision", args, server={"authority_role": roles[0] if roles else "", "teams": _scope_teams(ctx)})
+
+
+@REGISTRY.operation(
+    "create_ie_review", "POST", "/api/v1/ie-reviews",
+    summary="Queue an IE standard/role/data review proposal",
+    description="Records a proposal with provenance. Issued goals, frozen units and evaluations never change; a correction reaches only "
+                "future plans through a new policy or snapshot.",
+    grants=("IE",),
+    read_only=False,
+    body={
+        "type": "object",
+        "required": ["job_id", "standard_revision", "proposed_correction", "reason", "idempotency_key"],
+        "properties": {
+            "job_id": {"type": "string", "pattern": ID_PATTERN},
+            "standard_revision": {"type": "string", "minLength": 1, "maxLength": 64},
+            "proposed_correction": {"type": "string", "minLength": 1, "maxLength": 2000},
+            "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+            "idempotency_key": IDEMPOTENCY,
+        },
+        "additionalProperties": False,
+    },
+    data_schema=RUN_SCHEMA,
+    tags=("commands",),
+    mcp_tool=False,
+    success_status=202,
+)
+def create_ie_review(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return enqueue(ctx, "ie_review", args)
+
+
+@REGISTRY.operation(
+    "create_reported_observation", "POST", "/api/v1/reported-observations",
+    summary="Queue a reported observation: a claim, never source-verified completion",
+    description="Records what a person reports (for example a completion) as REPORTED evidence. It never earns credit; only a source-verified "
+                "completion does.",
+    grants=("mechanic", "team_lead"),
+    read_only=False,
+    body={
+        "type": "object",
+        "required": ["job_id", "kind", "effective_at", "notes", "idempotency_key"],
+        "properties": {
+            "job_id": {"type": "string", "pattern": ID_PATTERN},
+            "phase_id": {"type": "string", "pattern": ID_PATTERN},
+            "kind": {"type": "string", "enum": ["COMPLETED"]},
+            "effective_at": {"type": "string", "format": "date-time"},
+            "notes": {"type": "string", "maxLength": 400},
+            "idempotency_key": IDEMPOTENCY,
+        },
+        "additionalProperties": False,
+    },
+    data_schema=RUN_SCHEMA,
+    tags=("commands",),
+    mcp_tool=False,
+    success_status=202,
+)
+def create_reported_observation(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return enqueue(ctx, "reported_observation", args)

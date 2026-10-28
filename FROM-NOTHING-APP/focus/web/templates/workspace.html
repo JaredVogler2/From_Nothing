@@ -46,7 +46,7 @@
 <nav class="bottom-nav" aria-label="Primary">
   {% for tab in focus_mobile_tabs %}
     {% for v in views if v.id == tab %}
-      <a class="bottom-tab" href="#{{ v.id }}" data-view="{{ v.id }}"><span class="nav-icon" aria-hidden="true">{{ v.icon }}</span><span>{{ 'Fleet' if v.id == 'management' else v.title }}</span></a>
+      <a class="bottom-tab" href="#{{ v.id }}" data-view="{{ v.id }}"><span class="nav-icon" aria-hidden="true">{{ v.icon }}</span><span>{{ {'management': 'Fleet', 'performance': 'Performance'}.get(v.id, v.title) }}</span></a>
     {% endfor %}
   {% endfor %}
   <a class="bottom-tab" href="#more" data-view="more"><span class="nav-icon" aria-hidden="true">⋯</span><span>More</span></a>

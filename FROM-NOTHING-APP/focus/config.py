@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets as _secrets
 from dataclasses import dataclass, field, fields
 from pathlib import Path
@@ -202,8 +203,27 @@ def _vcap_credentials(env: Mapping[str, str], service_name: str) -> dict[str, An
     return None
 
 
+_SCOPE_TEAM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
+_SCOPE_PERSON = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+def _normalize_scope(name: str, entry: Any) -> dict[str, Any]:
+    """One server-owned data scope: ``{"teams": [...] | "*", "person": "<native id>" | null}``."""
+    if not isinstance(entry, dict) or set(entry) - {"teams", "person"}:
+        raise SettingsError("BAD_GRANTS", f"FOCUS_GRANTS_JSON.scopes.{name} must be an object with only teams and person")
+    teams = entry.get("teams", [])
+    if teams != "*":
+        if not isinstance(teams, list) or any(not isinstance(t, str) or not _SCOPE_TEAM.match(t) for t in teams):
+            raise SettingsError("BAD_GRANTS", f"FOCUS_GRANTS_JSON.scopes.{name}.teams must be \"*\" or a list of team ids")
+        teams = tuple(sorted(set(teams)))
+    person = entry.get("person")
+    if person is not None and (not isinstance(person, str) or not _SCOPE_PERSON.match(person)):
+        raise SettingsError("BAD_GRANTS", f"FOCUS_GRANTS_JSON.scopes.{name}.person must be a native person id")
+    return {"teams": teams, "person": person}
+
+
 def _normalize_grants(raw: Mapping[str, Any]) -> dict[str, Any]:
-    out: dict[str, Any] = {"subjects": {}, "groups": {}, "default": []}
+    out: dict[str, Any] = {"subjects": {}, "groups": {}, "default": [], "scopes": {}}
     unknown_sections = set(raw) - set(out)
     if unknown_sections:
         raise SettingsError("BAD_GRANTS", f"FOCUS_GRANTS_JSON has unknown sections {sorted(unknown_sections)}")
@@ -219,6 +239,10 @@ def _normalize_grants(raw: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(default, list) or any(g not in GRANTS for g in default):
         raise SettingsError("BAD_GRANTS", "FOCUS_GRANTS_JSON.default must list known grants")
     out["default"] = tuple(sorted(set(default)))
+    scopes = raw.get("scopes", {})
+    if not isinstance(scopes, dict):
+        raise SettingsError("BAD_GRANTS", "FOCUS_GRANTS_JSON.scopes must be an object")
+    out["scopes"] = {str(name): _normalize_scope(str(name), entry) for name, entry in scopes.items()}
     return out
 
 
@@ -253,7 +277,7 @@ class Settings:
     identity_provider: str = "fixture"
     trusted_user_header: str | None = None
     trusted_groups_header: str | None = None
-    grants: Mapping[str, Any] = field(default_factory=lambda: {"subjects": {}, "groups": {}, "default": ()})
+    grants: Mapping[str, Any] = field(default_factory=lambda: {"subjects": {}, "groups": {}, "default": (), "scopes": {}})
     mcp_enabled: bool = False
     proxy_fix: int = 0
     inprocess_worker: bool = False

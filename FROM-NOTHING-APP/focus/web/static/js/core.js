@@ -132,6 +132,15 @@ export function fmtCents(value) {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
 }
 
+// Exact rational text from the API ("1234" or "617/5") -> decimal text for display only. Null stays "unknown".
+export function fmtRational(text, digits = 1) {
+  if (text === null || text === undefined) return "unknown";
+  const [num, den] = String(text).split("/");
+  const value = Number(num) / (den === undefined ? 1 : Number(den));
+  if (!Number.isFinite(value)) return String(text);
+  return value.toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: 0 });
+}
+
 export function fmtNumber(value, digits = 0) {
   if (value === null || value === undefined) return "unknown";
   return Number(value).toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -215,12 +224,41 @@ export function metric(label, value, note = null, extraClass = "") {
     note ? h("div", { class: "metric-note" }, note) : null);
 }
 
-export function table(columns, rows, { caption = "", empty = "No rows." } = {}) {
+export function table(columns, rows, { caption = "", empty = "No rows.", className = "" } = {}) {
   if (!rows || rows.length === 0) return stateCard("empty", empty);
   const thead = h("thead", {}, h("tr", {}, columns.map((c) => h("th", { scope: "col", class: c.num ? "num" : null }, c.label))));
   const tbody = h("tbody", {}, rows.map((row) => h("tr", {}, columns.map((c) => {
     const value = c.render ? c.render(row) : row[c.key];
     return h("td", { class: c.num ? "num" : null }, value === null || value === undefined ? "—" : value);
   }))));
-  return h("div", { class: "table-wrap" }, h("table", { class: "data-table" }, caption ? h("caption", { class: "visually-hidden" }, caption) : null, thead, tbody));
+  return h("div", { class: "table-wrap" }, h("table", { class: `data-table ${className}`.trim() }, caption ? h("caption", { class: "visually-hidden" }, caption) : null, thead, tbody));
 }
+
+// A labelled key/value list (definition list) for facts such as envelope bindings.
+export function facts(pairs) {
+  return h("dl", { class: "kv" }, pairs.filter(([, v]) => v !== undefined).map(([k, v]) => [h("dt", {}, k), h("dd", {}, v === null ? "—" : v)]));
+}
+
+// The envelope's bindings: which source run, plan, policy and evaluation the view shows.
+export function bindings(env) {
+  const parts = [];
+  if (env.source_run_id) parts.push(`source ${env.source_run_id}`);
+  if (env.plan_id) parts.push(`plan ${env.plan_id}`);
+  if (env.purpose) parts.push(env.purpose.toLowerCase());
+  if (env.policy_id) parts.push(`policy ${env.policy_id}`);
+  if (env.evaluation_id) parts.push(`evaluation ${env.evaluation_id}`);
+  parts.push(`as of ${fmtDateTime(env.as_of_utc)}`);
+  return h("p", { class: "muted bindings", "data-testid": "bindings" }, parts.join(" · "));
+}
+
+// Non-blocking banner for reasons that accompany usable data (stale source, withheld economics, ...).
+export function reasonBanner(env) {
+  if (!env.reasons || env.reasons.length === 0) return null;
+  const kind = env.status === "stale" ? "stale" : "unknown";
+  return stateCard(kind, env.status === "stale" ? describeStatus("stale") : "Some facts are qualified:", env.reasons);
+}
+
+export function viewTitle(title, subtitle) {
+  return h("div", { class: "view-title" }, h("h1", {}, title), subtitle ? h("p", { class: "muted" }, subtitle) : null);
+}
+

@@ -128,9 +128,11 @@ def record_ie_review(services: Any, *, request_id: str, requested_by: str, job_i
 
 
 def worker_ie_review(services: Any, run: Any) -> dict[str, Any]:
+    from .actuals import knowledge_time
+
     req = run.request
     review = record_ie_review(services, request_id=run.id, requested_by=run.requested_by, job_id=str(req.get("job_id", "")),
                               standard_revision=str(req.get("standard_revision", "")), proposed_correction=str(req.get("proposed_correction", "")),
-                              reason=str(req.get("reason", "")), at=run.created_at)
+                              reason=str(req.get("reason", "")), at=knowledge_time(services, run.created_at))
     return {"status": "recorded", "ie_review_id": review.id, "affects_issued_goals": False,
             "note": "issued goals, frozen units and evaluations are immutable; a correction reaches only future plans via a new policy/snapshot"}

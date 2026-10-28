@@ -424,6 +424,22 @@ def schedule(services: Any, *, source_run: str, purpose: Purpose, budget_seconds
     return plan, run
 
 
+def worker_schedule(services: Any, run: Any) -> dict[str, Any]:
+    """POST /schedule-runs handler: a named rich-MAX run plus FINAL validation; never signs, accepts or promotes."""
+    from ....domain import DomainError
+    from ....validation.plan import receipt_summary
+
+    req = run.request
+    if req.get("policy_id") != services.policy.id:
+        raise DomainError("POLICY_MISMATCH", f"active policy is {services.policy.id}, not {req.get('policy_id')}")
+    budget = min(float(req.get("budget_seconds", run.budget_seconds)), float(run.budget_seconds))
+    plan, mrun = schedule(services, source_run=str(req.get("source_run_id", "")), purpose=Purpose(req.get("purpose", "EXECUTABLE")),
+                          budget_seconds=budget)
+    return {"status": "scheduled", **receipt(plan), "validation": receipt_summary(mrun.validation, limit=20),
+            "publishable": mrun.validation.valid, "published": False,
+            "note": "a candidate is never executable; signing and promotion stay in the trusted publication worker or CLI"}
+
+
 def cli_schedule(services: Any, args: Any) -> dict[str, Any]:
     if args.policy != services.policy.id:
         return {"status": "invalid", "error": {"code": "POLICY_MISMATCH", "message": f"active policy is {services.policy.id}, not {args.policy}"}}

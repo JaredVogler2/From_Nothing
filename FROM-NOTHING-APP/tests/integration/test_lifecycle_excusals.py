@@ -537,6 +537,7 @@ def test_commands_run_as_workers_with_receipts(world, published, tmp_path, app_r
     assert ie.status == "completed" and ie.result_receipt["affects_issued_goals"] is False
     bad, _ = repos.create_worker_run(kind="excusal_decision", scope=services.settings.scope_key, idempotency_key="k4", requested_by="demo:lead-prod-b",
                                      request={"claim_ids": [seen.result_receipt["claim_id"]], "decision": "APPROVED", "unit_ids": missed,
-                                              "notes": "self approval", "authority_role": "excusal_decider"}, budget_seconds=30)
+                                              "notes": "self approval", "_server": {"authority_role": "excusal_decider"}},
+                                     budget_seconds=30)
     failed = WorkerService(services).run_once()
     assert failed.status == "failed" and failed.error["code"] == "SELF_REVIEW"
