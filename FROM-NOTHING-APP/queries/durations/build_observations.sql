@@ -2,7 +2,7 @@
 -- NOT executed by this build (needs the FOCUS_FN migrations and write authority). Runs inside the
 -- source-run capture while the run is CAPTURING, so observations seal with the run.
 --
--- Bound parameters (pymssql %s, in order): RunId, PolicyId.
+-- Bound parameters (pymssql positional placeholders, in order): RunId, PolicyId.
 -- The worker first loads #EpisodeCompletion(EpisodeKey nvarchar(256), ReworkClass varchar(8), Team nvarchar(80),
 -- CompletedAtUtc datetime2(6), Verified bit, Reopened bit) from the run's admitted source rows (verified completion,
 -- authoritative NC/PU/CI classification and parent/root links). Unverified or reopened episodes are censored:

@@ -1,7 +1,7 @@
 # Stage P10: Quality holds, final buyoffs and phase conservation
 
-Status: **fixture_verified**. Inspector non-overlap and crew WAIT duty complete with the duty
-ledger in P11.
+Status: **fixture_verified**. Inspector non-overlap and crew WAIT duty were completed with the
+P11 duty ledger (`tests/integration/test_named_crew.py::test_a33_one_inspector_never_overlaps_and_wait_duty_is_booked`).
 
 ## Changed paths
 
@@ -40,4 +40,3 @@ producer, so live executable QA stays blocked for IP-requiring jobs.
 
 - No live IP hold-location producer.
 - Voided/reopened buyoff lifecycle events arrive with P17.
-- Inspector non-overlap and crew WAIT duty land with the ledger in P11.

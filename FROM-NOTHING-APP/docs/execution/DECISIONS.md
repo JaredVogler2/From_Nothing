@@ -13,7 +13,7 @@ carries an authority label:
 | `manual_specified` | A value the manual fixes explicitly. |
 | `fixture_default` | An explicit demonstration choice, valid in fixture mode only. |
 | `demo_default` | A proposed S14 grading/recognition demo default, never an approved labor grade. |
-| `open_decision` | A live semantic with no owner decision yet. The fixture choice is recorded and the live effect is a precise readiness gap (OD-01..OD-12 in the policy file). |
+| `open_decision` | A live semantic with no owner decision yet. The fixture choice is recorded and the live effect is a precise readiness gap (OD-01..OD-14 in the policy file). |
 
 ## Capabilities (P01 step 3)
 
@@ -67,6 +67,8 @@ capability until the owner admits the semantic:
 - OD-10 assignment/attendance feeds (currently empty)
 - OD-11 shift-start travel origin
 - OD-12 economics terms/caps/checkpoints
+- OD-13 master shop-order status meanings
+- OD-14 which accepted plan purpose drives delivery commitments (fixture: FORECAST)
 
 ## Confirmation (P01 detailed requirement)
 
