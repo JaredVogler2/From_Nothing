@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block body_class %}landing{% endblock %}
+{% block body %}
+<header class="app-header" role="banner">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">F</span><span class="brand-name">FOCUS</span></div>
+  <div class="header-meta" id="header-meta" aria-live="polite">Loading context…</div>
+  <div class="header-user">
+    {% if focus_ctx and focus_ctx.authenticated %}
+      <span class="user-chip">{{ focus_ctx.display_name }}</span>
+      <form method="post" action="{{ url_for('focus.logout') }}" class="inline-form"><button class="btn btn-quiet" type="submit">Sign out</button></form>
+    {% endif %}
+  </div>
+</header>
+<main id="main" class="landing-main">
+  <section class="hero card">
+    <h1>FOCUS Manufacturing Scheduling</h1>
+    <p class="muted">Whole-WIP scheduling with named crews, certified eligibility, line calendars, typed precedence, rework, parts, quality holds and aircraft economics.</p>
+    <div id="readiness" class="readiness-grid" aria-busy="true" aria-live="polite">
+      <div class="metric card state-loading"><div class="metric-label">Source run</div><div class="metric-value">…</div></div>
+      <div class="metric card state-loading"><div class="metric-label">Accepted executable plan</div><div class="metric-value">…</div></div>
+      <div class="metric card state-loading"><div class="metric-label">Policy</div><div class="metric-value">…</div></div>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-primary" id="open-workspace" href="{{ url_for('focus.dashboard_ios') }}">Open scheduling workspace</a>
+      <a class="btn btn-quiet" href="{{ url_for('focus.api_docs') }}">API reference</a>
+    </div>
+  </section>
+  {% if demo_personas and not (focus_ctx and focus_ctx.authenticated) %}
+  <section class="card persona-card" aria-labelledby="persona-title">
+    <h2 id="persona-title">Demo sign-in</h2>
+    <p class="muted">Fixture mode only. Choose an invented persona; grants and scope are server-owned.</p>
+    <form method="post" action="{{ url_for('focus.demo_login') }}" class="persona-form">
+      <input type="hidden" name="next" value="/dashboard">
+      <label for="persona">Persona</label>
+      <select id="persona" name="persona">
+        {% for key, persona in demo_personas.items() %}
+          <option value="{{ key }}">{{ persona.display }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary" type="submit">Sign in as demo persona</button>
+    </form>
+  </section>
+  {% endif %}
+</main>
+<nav class="layout-chooser" aria-label="Choose layout">
+  <a class="btn btn-primary" href="{{ url_for('focus.dashboard_ios') }}">New iOS Design</a>
+  <a class="btn btn-secondary" href="{{ url_for('focus.dashboard_classic') }}">Classic View</a>
+</nav>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/landing.js') }}"></script>
+{% endblock %}

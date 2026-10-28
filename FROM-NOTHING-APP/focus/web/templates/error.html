@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}FOCUS — {{ status }}{% endblock %}
+{% block body %}
+<main id="main" class="landing-main">
+  <section class="card state-error" role="alert">
+    <h1>{{ status }} — {{ code }}</h1>
+    <p>{{ message }}</p>
+    <p><a class="btn btn-primary" href="{{ url_for('focus.landing') }}">Back to FOCUS</a></p>
+  </section>
+</main>
+{% endblock %}

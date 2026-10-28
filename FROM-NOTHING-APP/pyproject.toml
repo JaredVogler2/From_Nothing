@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "focus"
+version = "1.0.0"
+description = "FOCUS manufacturing scheduling — whole-WIP named-crew scheduling rebuilt from the From-Nothing manual"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+dependencies = [
+  "Flask>=3.1,<4",
+  "waitress>=3,<4",
+  "pymssql>=2.3,<3",
+  "tzdata>=2025.2",
+]
+
+[project.optional-dependencies]
+verify = [
+  "pytest>=8,<10",
+  "playwright>=1.50,<2",
+]
+solver = [
+  "ortools>=9.12,<10",
+]
+
+[project.scripts]
+focus = "focus.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["focus*"]
+
+[tool.setuptools.package-data]
+focus = ["web/templates/*.html", "web/templates/**/*.html", "web/static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "ui: browser checks driven by Playwright/Chromium",
+  "benchmark: complete-scope scale benchmarks (slow)",
+  "live: requires live SQL Server access (skipped without credentials)",
+]

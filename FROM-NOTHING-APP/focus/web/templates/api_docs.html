@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}FOCUS API reference{% endblock %}
+{% block body %}
+<header class="app-header" role="banner">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">F</span><span class="brand-name">FOCUS API</span></div>
+  <div class="header-meta">OpenAPI 3.1: <a href="{{ url_for('focus.openapi') }}">/api/v1/openapi.json</a></div>
+</header>
+<main id="main" class="page-main">
+  <section class="card">
+    <h1>API reference</h1>
+    <p class="muted">Every operation is defined once in the operation registry; the OpenAPI document and the MCP catalog are generated from it.
+      GET never acquires sources, optimizes, writes or regrades. Commands require a CSRF token from <code>/api/v1/context</code>,
+      an idempotency key and return <code>202</code> with a durable worker run.</p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <caption class="visually-hidden">Registered API operations</caption>
+        <thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">Operation</th><th scope="col">Grants (any)</th><th scope="col">MCP</th></tr></thead>
+        <tbody>
+        {% for op in operations %}
+          <tr>
+            <td><span class="pill {{ 'pill-ok' if op.read_only else 'pill-warn' }}">{{ op.method }}</span></td>
+            <td><code>{{ op.path }}</code></td>
+            <td><strong>{{ op.name }}</strong><br><span class="muted">{{ op.summary }}</span></td>
+            <td>{{ op.grants|join(', ') if op.grants else 'public' }}</td>
+            <td>{{ 'tool' if (op.mcp_tool and op.read_only) else '—' }}{% if op.mcp_resource %}<br><code>{{ op.mcp_resource }}</code>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

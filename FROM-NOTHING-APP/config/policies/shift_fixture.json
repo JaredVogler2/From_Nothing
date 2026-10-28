@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "type": "PolicyFile",
+  "policy_id": "rebuild-v1",
+  "part": "shift_fixture",
+  "values": {
+    "shift.timezone": {"value": "America/New_York", "authority": "user_requirement", "ref": "S09"},
+    "shift.date_label": {"value": "start_date", "authority": "user_requirement", "ref": "S09"},
+    "shift.numbers": {"value": [1, 2, 3], "authority": "user_requirement", "ref": "S01 three shifts"},
+    "shift.start_local": {"value": {"1": "06:00", "2": "14:30", "3": "23:00"}, "authority": "user_requirement", "ref": "S09"},
+    "shift.wall_minutes": {"value": {"1": 510, "2": 510, "3": 420}, "authority": "manual_specified", "ref": "S09 S1 wall510,S2 wall510,S3 wall420"},
+    "shift.regular_minutes": {"value": {"1": 430, "2": 430, "3": 340}, "authority": "user_requirement", "ref": "S09"},
+    "shift.maximum_ot_minutes": {"value": 60, "authority": "user_requirement", "ref": "S01,S09"},
+    "shift.no_start_buffer_minutes": {"value": 30, "authority": "user_requirement", "ref": "S01,S09"},
+    "shift.s3_nonworking_requires_next_working": {"value": true, "authority": "user_requirement", "ref": "S01,S09"},
+    "shift.protected_windows": {"value": {
+      "1": [{"kind": "PRE", "offset": 0, "minutes": 15}, {"kind": "BREAK", "offset": 180, "minutes": 20}, {"kind": "LUNCH", "offset": 300, "minutes": 30}, {"kind": "POST", "offset": 495, "minutes": 15}],
+      "2": [{"kind": "PRE", "offset": 0, "minutes": 15}, {"kind": "BREAK", "offset": 180, "minutes": 20}, {"kind": "LUNCH", "offset": 300, "minutes": 30}, {"kind": "POST", "offset": 495, "minutes": 15}],
+      "3": [{"kind": "PRE", "offset": 0, "minutes": 15}, {"kind": "BREAK", "offset": 180, "minutes": 20}, {"kind": "LUNCH", "offset": 240, "minutes": 30}, {"kind": "POST", "offset": 405, "minutes": 15}]
+    }, "authority": "fixture_default", "ref": "S09 fixture protected intervals (offsets are local wall-clock minutes from shift start)"},
+    "shift.ot_window": {"value": {"anchor": "WALL_END", "minutes": 60}, "authority": "fixture_default", "ref": "S09 fixture OT intervals after regular end"},
+    "shift.dst_regular_cap": {"value": "MIN_NOMINAL_AND_OPEN_PHYSICAL", "authority": "fixture_default", "ref": "S09 fixture DST policy"},
+    "shift.nonexistent_local_time": {"value": "SHIFT_FORWARD", "authority": "fixture_default", "ref": "S09 DST: independently built local endpoints"},
+    "shift.ambiguous_local_time": {"value": "FIRST_OCCURRENCE", "authority": "fixture_default", "ref": "S09 DST"},
+    "shift.continuation_across_shifts": {"value": "SEGMENTED_PHASES", "authority": "fixture_default", "ref": "S08 phase split, S09 carry-in"}
+  }
+}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}FOCUS — {{ 'Classic' if layout == 'classic' else 'iOS' }} workspace{% endblock %}
+{% block body_class %}workspace layout-{{ layout }}{% endblock %}
+{% block body %}
+{% set views = focus_views %}
+<header class="app-header" role="banner">
+  <button class="btn btn-icon nav-toggle" type="button" aria-controls="side-nav" aria-expanded="false" data-action="toggle-nav">
+    <span class="visually-hidden">Toggle navigation</span><span aria-hidden="true">☰</span>
+  </button>
+  <a class="brand" href="{{ url_for('focus.landing') }}"><span class="brand-mark" aria-hidden="true">F</span><span class="brand-name">FOCUS</span></a>
+  <div class="header-meta" id="header-meta" aria-live="polite">Loading source and plan…</div>
+  <div class="header-user" id="header-user">
+    {% if focus_ctx and focus_ctx.authenticated %}
+      <span class="user-chip" title="{{ focus_ctx.scope.label }}">{{ focus_ctx.display_name }}</span>
+      <form method="post" action="{{ url_for('focus.logout') }}" class="inline-form"><button class="btn btn-quiet" type="submit">Sign out</button></form>
+    {% else %}
+      <a class="btn btn-quiet" href="{{ url_for('focus.landing') }}">Sign in</a>
+    {% endif %}
+    <a class="btn btn-quiet layout-switch" href="{{ url_for('focus.dashboard_classic') if layout != 'classic' else url_for('focus.dashboard_ios') }}">{{ 'Classic View' if layout != 'classic' else 'New iOS Design' }}</a>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side-nav" id="side-nav" aria-label="Views">
+    {% for group in ['Operate', 'Plan', 'Perform', 'Improve', 'Supplementary'] %}
+      <div class="nav-group">
+        <h2 class="nav-group-title">{{ group }}</h2>
+        <ul>
+        {% for v in views if v.group == group %}
+          <li><a class="nav-link" href="#{{ v.id }}" data-view="{{ v.id }}"><span class="nav-icon" aria-hidden="true">{{ v.icon }}</span>{{ v.title }}</a></li>
+        {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </nav>
+  <div class="content">
+    <div class="view-selector" role="tablist" aria-label="View selector">
+      {% for v in views %}
+        <a class="chip" role="tab" href="#{{ v.id }}" data-view="{{ v.id }}" aria-selected="false">{{ v.title }}</a>
+      {% endfor %}
+    </div>
+    <main id="main" class="view-host" tabindex="-1" aria-live="polite" aria-busy="true">
+      <section class="card state-loading"><p>Loading…</p></section>
+    </main>
+  </div>
+</div>
+<nav class="bottom-nav" aria-label="Primary">
+  {% for tab in focus_mobile_tabs %}
+    {% for v in views if v.id == tab %}
+      <a class="bottom-tab" href="#{{ v.id }}" data-view="{{ v.id }}"><span class="nav-icon" aria-hidden="true">{{ v.icon }}</span><span>{{ 'Fleet' if v.id == 'management' else v.title }}</span></a>
+    {% endfor %}
+  {% endfor %}
+  <a class="bottom-tab" href="#more" data-view="more"><span class="nav-icon" aria-hidden="true">⋯</span><span>More</span></a>
+</nav>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/workspace.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,581 @@
+{
+  "app_root": "/home/user/From_Nothing/FROM-NOTHING-APP",
+  "app_root_note": "Resolved app root inside the From_Nothing repository; see docs/execution/ROOTS.md for the substitution.",
+  "manual_sha256": "f81939211ef01f900ef5a3fe965e27f97f8c71a82832f5d541b3865ce205e5d5",
+  "python": "3.12",
+  "schema_version": 1,
+  "stages": {
+    "01": {
+      "case_results": [
+        {
+          "case": "A03",
+          "result": "traced_forward",
+          "stage": "P03"
+        },
+        {
+          "case": "A15",
+          "result": "traced_forward",
+          "stage": "P07"
+        },
+        {
+          "case": "A64",
+          "result": "traced_forward",
+          "stage": "P06/P21"
+        },
+        {
+          "case": "A72",
+          "result": "traced_forward",
+          "stage": "P24"
+        }
+      ],
+      "changed_paths": [
+        "docs/execution/ROOTS.md",
+        "docs/execution/DECISIONS.md",
+        "docs/execution/BUILD_PLAN.md",
+        "docs/execution/STATUS.json",
+        "config/policies/rebuild-v1.json",
+        "config/policies/shift_fixture.json",
+        "config/policies/grading-demo-v1.json"
+      ],
+      "commands": [
+        "python tools/status.py init",
+        "python -m pytest tests/unit/test_policy_config.py -q"
+      ],
+      "depends_on": [],
+      "evidence": [
+        "evidence/01/REPORT.md"
+      ],
+      "fixture_verified": true,
+      "interfaces": [
+        "policy bundle rebuild-v1 (authority-labeled values, OD-01..OD-12)"
+      ],
+      "live_verified": false,
+      "remaining_gaps": [
+        "Live semantics OD-01..OD-12 recorded in policy; they do not block local work"
+      ],
+      "status": "fixture_verified",
+      "title": "Scope, contracts and execution register"
+    },
+    "02": {
+      "case_results": [
+        {
+          "case": "A01",
+          "result": "pass"
+        },
+        {
+          "case": "A02",
+          "result": "pass"
+        },
+        {
+          "case": "A04",
+          "result": "pass (identity part; graph/UI part in P03+)"
+        },
+        {
+          "case": "A68",
+          "result": "pass (P02 part; full scope in P19)"
+        }
+      ],
+      "changed_paths": [
+        "app.py",
+        "pyproject.toml",
+        "requirements.lock",
+        "requirements.txt",
+        "README.md",
+        "focus/codec.py",
+        "focus/domain.py",
+        "focus/contracts/",
+        "focus/config.py",
+        "focus/policy.py",
+        "focus/runtime.py",
+        "focus/data/store.py",
+        "focus/data/repositories.py",
+        "focus/data/sql.py",
+        "focus/web/",
+        "focus/mcp/",
+        "focus/cli.py",
+        "focus/workers.py",
+        "tools/check_imports.py",
+        "tests/"
+      ],
+      "commands": [
+        "python -m pytest tests -q (38 passed)",
+        "python tools/check_imports.py (ok)",
+        "python -m focus.cli status",
+        "python -m focus.cli mcp-catalog"
+      ],
+      "depends_on": [
+        "01"
+      ],
+      "evidence": [
+        "evidence/02/REPORT.md"
+      ],
+      "fixture_verified": true,
+      "interfaces": [
+        "create_app(settings, repositories, clock)",
+        "Store/Repositories",
+        "OperationRegistry -> Flask/OpenAPI/MCP",
+        "CLI main(argv)"
+      ],
+      "live_verified": false,
+      "remaining_gaps": [
+        "SqlStore live adapter in P04/P23",
+        "projection endpoints/views in P19/P20"
+      ],
+      "status": "fixture_verified",
+      "title": "Single Flask runtime and canonical domain"
+    },
+    "03": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "01",
+        "02"
+      ],
+      "evidence": [
+        "evidence/03/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "SQL discovery and complete WIP census"
+    },
+    "04": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "02",
+        "03"
+      ],
+      "evidence": [
+        "evidence/04/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Atomic source runs and immutable planning snapshots"
+    },
+    "05": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "03",
+        "04"
+      ],
+      "evidence": [
+        "evidence/05/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "SQL-owned mechanic team inference and assignment"
+    },
+    "06": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "04",
+        "05"
+      ],
+      "evidence": [
+        "evidence/06/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Certification applicability and pure named workforce"
+    },
+    "07": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "03",
+        "04",
+        "06"
+      ],
+      "evidence": [
+        "evidence/07/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Duration gauge, standards and SQL descriptive statistics"
+    },
+    "08": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "04",
+        "07"
+      ],
+      "evidence": [
+        "evidence/08/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Per-line calendars, three shifts and CS windows"
+    },
+    "09": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "04",
+        "06",
+        "07",
+        "08"
+      ],
+      "evidence": [
+        "evidence/09/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Precedence, rework and material-release graph"
+    },
+    "10": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "06",
+        "07",
+        "08",
+        "09"
+      ],
+      "evidence": [
+        "evidence/10/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Quality holds, final buyoffs and phase conservation"
+    },
+    "11": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "06",
+        "07",
+        "08",
+        "09",
+        "10"
+      ],
+      "evidence": [
+        "evidence/11/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Named duty ledger, activation, travel and crew selection"
+    },
+    "12": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "04",
+        "08",
+        "09",
+        "11"
+      ],
+      "evidence": [
+        "evidence/12/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "SQL economics Registry and complete-fleet cost evaluation"
+    },
+    "13": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "09",
+        "10",
+        "11",
+        "12"
+      ],
+      "evidence": [
+        "evidence/13/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Rich MAX whole-WIP scheduling and economic search"
+    },
+    "14": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "11",
+        "12",
+        "13"
+      ],
+      "evidence": [
+        "evidence/14/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Incumbent defense and persistent delivery commitments"
+    },
+    "15": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "04",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14"
+      ],
+      "evidence": [
+        "evidence/15/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Independent nine-check and extended final validation"
+    },
+    "16": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "14",
+        "15"
+      ],
+      "evidence": [
+        "evidence/16/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Immutable publication, pre-sign readback and dispatch"
+    },
+    "17": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "09",
+        "14",
+        "16"
+      ],
+      "evidence": [
+        "evidence/17/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Lifecycle actuals and disruption/excusal evidence"
+    },
+    "18": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "16",
+        "17"
+      ],
+      "evidence": [
+        "evidence/18/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Canonical effort scoring, gate points and progression"
+    },
+    "19": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "02",
+        "16",
+        "18"
+      ],
+      "evidence": [
+        "evidence/19/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Complete iOS/Classic shell and scoped API"
+    },
+    "20": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "19",
+        "13",
+        "14",
+        "17",
+        "18"
+      ],
+      "evidence": [
+        "evidence/20/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Complete operational dashboards and audited workflows"
+    },
+    "21": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "16",
+        "18",
+        "20"
+      ],
+      "evidence": [
+        "evidence/21/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Digital twin, isolated scenarios and grounded explanations"
+    },
+    "22": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "21"
+      ],
+      "evidence": [
+        "evidence/22/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "Complete-scope scaling and optional named solver"
+    },
+    "23": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "04",
+        "05",
+        "07",
+        "14",
+        "16",
+        "17",
+        "18",
+        "22"
+      ],
+      "evidence": [
+        "evidence/23/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "SQL migrations, worker orchestration and CI"
+    },
+    "24": {
+      "case_results": [],
+      "changed_paths": [],
+      "commands": [],
+      "depends_on": [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23"
+      ],
+      "evidence": [
+        "evidence/24/REPORT.md"
+      ],
+      "fixture_verified": false,
+      "interfaces": [],
+      "live_verified": false,
+      "remaining_gaps": [],
+      "status": "not_started",
+      "title": "End-to-end acceptance, versioned review and release"
+    }
+  }
+}

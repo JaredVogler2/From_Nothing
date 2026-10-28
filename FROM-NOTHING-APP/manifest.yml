@@ -1,0 +1,30 @@
+---
+# VMware Tanzu (Cloud Foundry) manifest for FOCUS. Secrets come from bound
+# user-provided services (focus-sql, focus-secrets), never from this file.
+applications:
+- name: focus-scheduling
+  memory: 1G
+  disk_quota: 1G
+  instances: 1
+  buildpacks:
+    - python_buildpack
+  health-check-type: http
+  health-check-http-endpoint: /health/live
+  processes:
+    - type: web
+      command: python app.py
+    - type: worker
+      command: python -m focus.cli worker --loop
+      instances: 1
+      health-check-type: process
+  env:
+    FOCUS_MODE: live
+    FOCUS_IDENTITY_PROVIDER: trusted_header
+    FOCUS_TRUSTED_USER_HEADER: X-Forwarded-User
+    FOCUS_INPROCESS_WORKER: "false"
+    FOCUS_MCP_ENABLED: "false"
+    FOCUS_SQL_SERVICE_NAME: focus-sql
+    FOCUS_SECRETS_SERVICE_NAME: focus-secrets
+  services:
+    - focus-sql
+    - focus-secrets

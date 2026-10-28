@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" data-layout="{{ layout|default('ios') }}" data-page="{{ page|default('') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="focus-base" content="{{ base_path }}">
+  {% if csrf_token %}<meta name="focus-csrf" content="{{ csrf_token }}">{% endif %}
+  <title>{% block title %}FOCUS Manufacturing Scheduling{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/focus.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% if focus_ctx and focus_ctx.demo %}
+  <div class="demo-banner" role="note">DEMONSTRATION: invented fixture data and demo personas, not real people or live feeds.</div>
+  {% endif %}
+  {% block body %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

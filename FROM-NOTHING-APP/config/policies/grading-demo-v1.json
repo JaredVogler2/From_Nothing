@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "type": "PolicyFile",
+  "policy_id": "rebuild-v1",
+  "part": "grading_demo",
+  "note": "S14 demonstration grading/recognition policy. These are proposed demo defaults, separate from the user's hard scheduling constants, and never an approved labor grade.",
+  "values": {
+    "score.policy_status": {"value": "DEMONSTRATION", "authority": "demo_default", "ref": "S14 official grade requires an actual applicable policy receipt"},
+    "score.attainment_weight": {"value": "0.70", "authority": "demo_default", "ref": "S14"},
+    "score.adherence_weight": {"value": "0.30", "authority": "demo_default", "ref": "S14"},
+    "score.oos_rate": {"value": "0.10", "authority": "demo_default", "ref": "S14"},
+    "score.bands": {"value": [["A", 90], ["B", 80], ["C", 70], ["D", 60]], "authority": "demo_default", "ref": "S14 else F"},
+    "score.round_decimals": {"value": 1, "authority": "demo_default", "ref": "S14 round only after sums"},
+    "score.personal_grades_enabled": {"value": false, "authority": "manual_specified", "ref": "S14"},
+    "disruption.causes": {"value": ["LATE_PART", "CROSS_TEAM_PREDECESSOR", "SAME_TEAM_PREDECESSOR", "CAPACITY_SHORTAGE", "SKILL_SHORTAGE", "DURATION_OVERRUN", "REWORK_INJECTION", "PLAN_CHURN"], "authority": "user_requirement", "ref": "S01,S14 exactly 8"},
+    "disruption.nominally_excusable": {"value": ["LATE_PART", "CROSS_TEAM_PREDECESSOR", "CAPACITY_SHORTAGE", "SKILL_SHORTAGE", "REWORK_INJECTION"], "authority": "user_requirement", "ref": "S01,S14 exactly 5"},
+    "disruption.notes_required": {"value": ["SAME_TEAM_PREDECESSOR", "DURATION_OVERRUN"], "authority": "manual_specified", "ref": "S14"},
+    "disruption.separate_review": {"value": ["PLAN_CHURN"], "authority": "manual_specified", "ref": "S14"},
+    "lifecycle.cancel_after_verified_completion": {"value": "PRIOR_VERIFIED_COMPLETION_EARNS", "authority": "fixture_default", "ref": "S14 explicit ordered lifecycle policy"},
+    "recognition.base_divisor": {"value": 5, "authority": "demo_default", "ref": "S14 demo base=frozen standard effort/5"},
+    "xp.level_size": {"value": 1000, "authority": "demo_default", "ref": "S14 level=1+floor(xp/1000)"},
+    "badges.steady_shift_run": {"value": 3, "authority": "demo_default", "ref": "S14 SteadyShift"},
+    "badges.steady_shift_min_score": {"value": "90", "authority": "demo_default", "ref": "S14 SteadyShift"},
+    "badges.firebreak_min_unlocked": {"value": 3, "authority": "demo_default", "ref": "S14 Firebreak"},
+    "recognition.monthly_tiebreak": {"value": "TEAM_ID_ASCENDING", "authority": "demo_default", "ref": "S14 MonthlyChampion"}
+  }
+}
