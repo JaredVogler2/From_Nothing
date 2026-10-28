@@ -37,12 +37,11 @@ def main() -> None:
             "FOCUS fixture build failed: " +
             str(result.get("error") or result.get("plans") or result.get("status"))
         )
-    from focus.publication.repository import source_head_name, plan_head_name
-    from focus.domain import Purpose
+    from focus.web.api import source_head_name, plan_head_name
     # Source/accepted plan must be accessible from the same read-only fixture
     # repository that the deployed Flask app uses.
-    source = services.repositories.head(source_head_name(services.settings))
-    executable = services.repositories.head(plan_head_name(services.settings, Purpose.EXECUTABLE))
+    source = services.repositories.head(source_head_name(settings.scope_key))
+    executable = services.repositories.head(plan_head_name(settings.scope_key, "EXECUTABLE"))
     if source is None or executable is None:
         raise RuntimeError("FOCUS demo build produced no source or accepted executable plan")
     print(
