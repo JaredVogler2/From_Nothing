@@ -1,0 +1,229 @@
+{
+ "columns": [
+  "CLAIM_KEY",
+  "TEAM",
+  "SHIFT_DATE",
+  "SHIFT_NUMBER",
+  "WORK_REFS",
+  "CAUSE",
+  "ORIGIN_TEAM",
+  "EXECUTING_TEAM",
+  "EVIDENCE_REFS",
+  "NOTES",
+  "STATUS",
+  "REPORTED_BY",
+  "REPORTED_AT_UTC",
+  "OBSERVED_AT_UTC",
+  "SUPERSEDES_CLAIM_KEY"
+ ],
+ "dataset": "disruption_claims",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "covered_through_utc": "2026-10-28T23:59:59Z",
+  "producer": "fixture:manufacturing_demo",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "CAUSE": "REWORK_INJECTION",
+   "CLAIM_KEY": "CLM-B-01",
+   "EVIDENCE_REFS": [
+    "DEFECT:FIXTURE-NCR-303"
+   ],
+   "EXECUTING_TEAM": "PROD-B",
+   "NOTES": "Injected NC3B rework (NCR-303) took the ROOT3 crew from 12:40",
+   "OBSERVED_AT_UTC": "2026-10-26T19:05:00Z",
+   "ORIGIN_TEAM": "PROD-A",
+   "REPORTED_AT_UTC": "2026-10-26T19:00:00Z",
+   "REPORTED_BY": "demo:lead-prod-b",
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "STATUS": "SUBMITTED",
+   "SUPERSEDES_CLAIM_KEY": null,
+   "TEAM": "PROD-B",
+   "WORK_REFS": [
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 0,
+     "segment": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 2,
+     "soi": "ROOT3"
+    }
+   ]
+  },
+  {
+   "CAUSE": "SAME_TEAM_PREDECESSOR",
+   "CLAIM_KEY": "CLM-B-02",
+   "EVIDENCE_REFS": [
+    "PHASE:1303/PU3/WORK/0"
+   ],
+   "EXECUTING_TEAM": "PROD-B",
+   "NOTES": "PU3 supplier pickup overran about four hours; ROOT3 is gated by PU3 final QA",
+   "OBSERVED_AT_UTC": "2026-10-26T19:05:00Z",
+   "ORIGIN_TEAM": null,
+   "REPORTED_AT_UTC": "2026-10-26T19:00:00Z",
+   "REPORTED_BY": "demo:lead-prod-b",
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "STATUS": "SUBMITTED",
+   "SUPERSEDES_CLAIM_KEY": null,
+   "TEAM": "PROD-B",
+   "WORK_REFS": [
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 2,
+     "soi": "ROOT3"
+    }
+   ]
+  },
+  {
+   "CAUSE": "REWORK_INJECTION",
+   "CLAIM_KEY": "CLM-B-03",
+   "EVIDENCE_REFS": [
+    "DEFECT:FIXTURE-NCR-303"
+   ],
+   "EXECUTING_TEAM": "PROD-B",
+   "NOTES": "duplicate claim for the same missed ROOT3 work",
+   "OBSERVED_AT_UTC": "2026-10-26T19:05:00Z",
+   "ORIGIN_TEAM": "PROD-A",
+   "REPORTED_AT_UTC": "2026-10-26T19:00:00Z",
+   "REPORTED_BY": "demo:mechanic-b1-01",
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "STATUS": "SUBMITTED",
+   "SUPERSEDES_CLAIM_KEY": null,
+   "TEAM": "PROD-B",
+   "WORK_REFS": [
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 0,
+     "segment": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 2,
+     "soi": "ROOT3"
+    }
+   ]
+  },
+  {
+   "CAUSE": "DURATION_OVERRUN",
+   "CLAIM_KEY": "CLM-B-04",
+   "EVIDENCE_REFS": [],
+   "EXECUTING_TEAM": "PROD-B",
+   "NOTES": "",
+   "OBSERVED_AT_UTC": "2026-10-26T19:05:00Z",
+   "ORIGIN_TEAM": null,
+   "REPORTED_AT_UTC": "2026-10-26T19:00:00Z",
+   "REPORTED_BY": "demo:lead-prod-b",
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "STATUS": "SUBMITTED",
+   "SUPERSEDES_CLAIM_KEY": null,
+   "TEAM": "PROD-B",
+   "WORK_REFS": [
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 1,
+     "soi": "ROOT3"
+    }
+   ]
+  },
+  {
+   "CAUSE": "REWORK_INJECTION",
+   "CLAIM_KEY": "CLM-B-05",
+   "EVIDENCE_REFS": [
+    "DEFECT:FIXTURE-NCR-303"
+   ],
+   "EXECUTING_TEAM": "PROD-B",
+   "NOTES": "origin guessed from the executing team / DAG direction",
+   "OBSERVED_AT_UTC": "2026-10-26T19:05:00Z",
+   "ORIGIN_TEAM": "PROD-B",
+   "REPORTED_AT_UTC": "2026-10-26T19:00:00Z",
+   "REPORTED_BY": "demo:lead-prod-b",
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "STATUS": "SUBMITTED",
+   "SUPERSEDES_CLAIM_KEY": null,
+   "TEAM": "PROD-B",
+   "WORK_REFS": [
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 0,
+     "segment": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 2,
+     "soi": "ROOT3"
+    }
+   ]
+  },
+  {
+   "CAUSE": "CROSS_TEAM_PREDECESSOR",
+   "CLAIM_KEY": "CLM-B-06",
+   "EVIDENCE_REFS": [
+    "PHASE:1303/ROOT3/IP_QA/0"
+   ],
+   "EXECUTING_TEAM": "PROD-B",
+   "NOTES": "IP QA hold 0 was not bought off in time",
+   "OBSERVED_AT_UTC": "2026-10-26T19:05:00Z",
+   "ORIGIN_TEAM": "QA",
+   "REPORTED_AT_UTC": "2026-10-26T19:00:00Z",
+   "REPORTED_BY": "demo:lead-prod-b",
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "STATUS": "SUBMITTED",
+   "SUPERSEDES_CLAIM_KEY": null,
+   "TEAM": "PROD-B",
+   "WORK_REFS": [
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 1,
+     "soi": "ROOT3"
+    }
+   ]
+  }
+ ],
+ "schema_version": 1
+}

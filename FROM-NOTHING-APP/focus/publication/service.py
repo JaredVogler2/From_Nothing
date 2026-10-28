@@ -268,14 +268,12 @@ class CurrentPlan:
     head_version: int
 
 
-def current_plan(services: Any, scope: str, purpose: str, *, signer: Signer | None = None) -> tuple[CurrentPlan | None, str]:
-    """The accepted immutable head, verified end to end. A failure is explicit and makes nothing current."""
+def verify_publication(services: Any, plan_id: str, *, scope: str, purpose: str, signer: Signer | None = None,
+                       head_version: int | None = None) -> tuple[CurrentPlan | None, str]:
+    """One accepted plan verified end to end: complete records, exact payload hash, scope/purpose, signature, strict decode."""
     repo = repository_for(services)
-    head = repo.head(scope, purpose)
-    if head is None:
-        return None, "NO_ACCEPTED_PLAN"
     try:
-        published, receipt, payload = repo.published(head.record_id), repo.receipt(head.record_id), repo.payload(head.record_id)
+        published, receipt, payload = repo.published(plan_id), repo.receipt(plan_id), repo.payload(plan_id)
     except Exception as exc:  # noqa: BLE001 - unreadable or tampered storage is a security failure, never an accepted plan
         return None, f"SECURITY_FAILURE: stored acceptance is unreadable ({getattr(exc, 'code', type(exc).__name__)})"
     if published is None or receipt is None or payload is None:
@@ -296,7 +294,37 @@ def current_plan(services: Any, scope: str, purpose: str, *, signer: Signer | No
         return None, f"SECURITY_FAILURE: {exc}"
     if artifact.snapshot_hash != receipt.snapshot_hash or artifact.policy_hash != receipt.policy_hash:
         return None, "SECURITY_FAILURE: artifact bindings differ from the receipt"
-    return CurrentPlan(published, artifact, head.version), "OK"
+    return CurrentPlan(published, artifact, receipt.head_version if head_version is None else head_version), "OK"
+
+
+def current_plan(services: Any, scope: str, purpose: str, *, signer: Signer | None = None) -> tuple[CurrentPlan | None, str]:
+    """The accepted immutable head, verified end to end. A failure is explicit and makes nothing current."""
+    head = repository_for(services).head(scope, purpose)
+    if head is None:
+        return None, "NO_ACCEPTED_PLAN"
+    return verify_publication(services, head.record_id, scope=scope, purpose=purpose, signer=signer, head_version=head.version)
+
+
+def accepted_plans(services: Any, scope: str, purpose: str, *, signer: Signer | None = None) -> tuple[list[CurrentPlan], list[tuple[str, str]]]:
+    """Every accepted plan of a scope and purpose, verified, in acceptance order; unverifiable ones are listed, never used."""
+    repo = repository_for(services)
+    good: list[CurrentPlan] = []
+    bad: list[tuple[str, str]] = []
+    for plan_id in repo.accepted_ids():
+        try:
+            published = repo.published(plan_id)
+        except Exception as exc:  # noqa: BLE001 - tampered storage is reported, never used
+            bad.append((plan_id, f"SECURITY_FAILURE: unreadable ({type(exc).__name__})"))
+            continue
+        if published is None or published.scope != scope or published.purpose.value != purpose:
+            continue
+        verified, why = verify_publication(services, plan_id, scope=scope, purpose=purpose, signer=signer)
+        if verified is None:
+            bad.append((plan_id, why))
+        else:
+            good.append(verified)
+    good.sort(key=lambda c: (c.head_version, c.published.accepted_at, c.published.id))     # acceptance order: the head version is monotonic
+    return good, bad
 
 
 def cli_publish(services: Any, args: argparse.Namespace) -> dict[str, Any]:

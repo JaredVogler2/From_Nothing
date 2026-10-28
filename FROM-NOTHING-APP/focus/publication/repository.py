@@ -105,6 +105,9 @@ class FixturePublicationRepository:
     def head(self, scope: str, purpose: str):
         return self.repos.head(plan_head(scope, purpose))
 
+    def accepted_ids(self) -> list[str]:
+        return sorted(self.repos.list_ids(PUBLISHED))
+
     def accept(self, published: PublishedPlan, payload: PublishedPayload, goals: tuple[FrozenGoal, ...], expected_head_version: int) -> int:
         """Immutable records first, the head LAST (compare-and-set). Returns the new head version."""
         repos = self.repos
@@ -168,6 +171,9 @@ class SqlPublicationRepository:
 
     def head(self, scope: str, purpose: str):
         return None
+
+    def accepted_ids(self) -> list[str]:
+        return []
 
 
 def repository_for(services: Any):

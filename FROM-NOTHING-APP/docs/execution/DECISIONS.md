@@ -47,6 +47,13 @@ attendance. A conditional ETA is never physical receipt.
 - **D-12 Test signing keys are fixture-only.** HMAC-SHA256 with domain separation `FOCUS_PLAN_V1\0`. A fixture key ID always starts with `TEST-` and cannot accept an executable live plan.
 - **D-13 Operation registry (user directive: sound API, MCP-ready).** `focus/web/operations.py` declares every API operation once. Flask routes, `/api/v1/openapi.json` (OpenAPI 3.1) and the MCP catalog (`focus/mcp/`) are generated from it. Read operations are safe and idempotent GETs. Commands are POSTs that require trusted scope, a CSRF token, an idempotency key and an expected version, and return `202` with a worker run ID.
 - **D-14 Hosting (user directive).** Posit Connect first, then VMware Tanzu. The WSGI entrypoint is `app:app`. URLs are prefix-safe (`request.script_root` plus a `<meta name="focus-base">` read by the JS). Identity providers: `fixture` (demo login, visibly labeled), `posit_connect` (trusted `RStudio-Connect-Credentials` header) and `trusted_header` (Tanzu SSO / oauth2-proxy header named by `FOCUS_TRUSTED_USER_HEADER`). Grants are always server-owned (`FOCUS_GRANTS_JSON`). Tanzu `$PORT` and `VCAP_SERVICES` are read only by `focus/config.py`.
+- **D-16 Performance semantics (P17/P18).** Recorded in `PERFORMANCE_POLICY.md`:
+  - B0 comes from the first accepted executable plan of each obligation day; later replans only propose.
+  - A completion credits its goal inside the shift window, then the authorized OT window, then early; otherwise it is
+    offplan U where it happened.
+  - Bands apply to the displayed one-decimal score, rounded once after every sum.
+  - Planned OOS work keeps its frozen XP: the OOS charge lives once, in O ("no second charge in bonus/XP").
+  - Offplan output never earns XP.
 - **D-15 Python 3.12 (user directive).** The development, lock and test interpreter is CPython 3.12. `requires-python = ">=3.12"` per S02.
 
 ## Semantic gaps (live), each a precise readiness effect
@@ -69,6 +76,13 @@ capability until the owner admits the semantic:
 - OD-12 economics terms/caps/checkpoints
 - OD-13 master shop-order status meanings
 - OD-14 which accepted plan purpose drives delivery commitments (fixture: FORECAST)
+- OD-15 live observation producers: no S04 table carries lifecycle facts, raw actual intervals, claims, decisions,
+  amendments or defect evidence. The `queries/actuals` readers and the `lifecycle_draft.sql` landing tables are
+  proposed. Live collection reports `NOT_PROBED`, so official evaluation stays UNKNOWN until producers and receipts exist.
+- OD-16 score policy approval: `score.policy_status` is DEMONSTRATION with no `score.policy_approval_ref`. An OFFICIAL
+  grade needs the owner's approval receipt; personal grades need their own policy (both disabled).
+- OD-17 excusal reviewer identity: decisions require the server-granted `excusal_decider` role (`disruption.reviewer_roles`)
+  and never self-review; the live mapping of reviewer subjects to that grant is the operator's.
 
 ## Confirmation (P01 detailed requirement)
 

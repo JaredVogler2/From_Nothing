@@ -146,11 +146,16 @@ def _active(instant: datetime, start: datetime | None, end: datetime | None) -> 
     return (start is None or start <= instant) and (end is None or instant < end)
 
 
+def person_namespace(mode: str) -> str:
+    """The person-key authority namespace: invented fixture people never share an identity with live BEMS IDs."""
+    return "fixture-demo" if mode == "fixture" else "BEMS"
+
+
 def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mode: str, policy: Policy, shift_policy: ShiftPolicy,
                     tzp: TimezonePolicy, site: str, run_id: str, cutoff: datetime, horizon: tuple[date, date] | None,
                     dataset_ids: Mapping[str, str]) -> WorkforceBuild:
     out = WorkforceBuild()
-    namespace = "fixture-demo" if mode == "fixture" else "BEMS"
+    namespace = person_namespace(mode)
     directory = {str(r["PERSON_KEY"]): r for r in datasets.get("people_directory", ())}
     roster_rows = list(datasets.get("shift_roster", ()))
     assign_rows = list(datasets.get("person_team_map", ()))

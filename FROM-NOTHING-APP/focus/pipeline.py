@@ -2,8 +2,9 @@
 
 ``demo-bootstrap`` does three things, and never touches a live source or SQL:
 
-1. It verifies the deterministic S18 inputs against the builder, or writes them when absent.
-   Drift is reported, never silently overwritten.
+1. It verifies the deterministic S18 inputs (source datasets, the previous accepted plan and the
+   S14 observation feeds) against the builder, or writes them when absent. Drift is reported,
+   never silently overwritten.
 2. With ``--reset`` it first removes only ``<runtime>/<scenario>``.
 3. It records the S18 previous accepted plan as the ACCEPTED incumbent for both purposes in
    the persistent fixture runtime. A later process therefore reloads it from the repository,
@@ -15,7 +16,7 @@ import json
 import shutil
 from typing import Any
 
-from .data.fixture_builder import DEMO_INCUMBENT, build_manufacturing_demo
+from .data.fixture_builder import DEMO_INCUMBENT, build_manufacturing_demo, build_observations
 from .engine.commitments import import_fixture_incumbent
 
 DEMO_SCENARIO = "manufacturing_demo"
@@ -25,6 +26,8 @@ def _demo_files() -> dict[str, str]:
     files = {f"{name}.json": json.dumps(ds.to_json(), indent=1, sort_keys=True, ensure_ascii=False) + "\n"
              for name, ds in build_manufacturing_demo(DEMO_SCENARIO).items()}
     files["incumbent_plan.json"] = json.dumps(DEMO_INCUMBENT, indent=1, sort_keys=True) + "\n"
+    for name, payload in build_observations(DEMO_SCENARIO).items():
+        files[f"observations/{name}.json"] = json.dumps(payload, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
     return files
 
 
@@ -44,7 +47,7 @@ def cli_demo_bootstrap(services: Any, args: Any) -> dict[str, Any]:
     for name, text in sorted(expected.items()):
         path = target / name
         if not path.exists():
-            target.mkdir(parents=True, exist_ok=True)
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")
             written.append(name)
         elif path.read_text(encoding="utf-8") != text:

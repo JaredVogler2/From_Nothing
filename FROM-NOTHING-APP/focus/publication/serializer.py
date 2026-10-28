@@ -77,15 +77,10 @@ def obligation_dates(snapshot: PlanningSnapshot, policy: Policy) -> tuple[date, 
 
 
 def gate_context(policy: Policy, gate_date: date | None, valuation: date, effort: int) -> GateContext:
-    """S14 gate recognition frozen at publication: base = effort/divisor; bonus = base * weight * min(max(age,0)/cap, 1)."""
-    base = Fraction(effort, policy.int("recognition.base_divisor"))
-    basis = policy.str("gate.date_basis")
-    if gate_date is None:
-        return GateContext("UNAVAILABLE", None, None, valuation, None, None, base, None)
-    effective = gate_date + timedelta(days=policy.int("gate.proxy_grace_days")) if basis == "BASELINE_PROXY" else gate_date
-    behind = max((valuation - effective).days, 0)
-    raw = min(Fraction(behind, policy.int("gate.cap_days")), Fraction(1))
-    return GateContext(basis, gate_date, effective, valuation, behind, raw, base, base * Fraction(policy.int("gate.weight"), 100) * raw)
+    """S14 gate recognition frozen at publication; the rule itself lives in ``focus.analytics.points`` (one authority)."""
+    from ..analytics.points import gate_context as recognition_context
+
+    return recognition_context(policy, gate_date, valuation, effort)
 
 
 def _split(total: int, parts: list[int]) -> list[int]:

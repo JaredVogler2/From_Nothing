@@ -1,0 +1,46 @@
+{
+ "columns": [
+  "AMENDMENT_KEY",
+  "TEAM",
+  "SHIFT_DATE",
+  "SHIFT_NUMBER",
+  "WORK_REF",
+  "STANDARD_PERSON_MINUTES",
+  "EFFORT_BASIS",
+  "FEASIBILITY_REF",
+  "AUTHORITY",
+  "DECISION_AT_UTC",
+  "REASON",
+  "OBSERVED_AT_UTC"
+ ],
+ "dataset": "goal_amendments",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "covered_through_utc": "2026-10-28T23:59:59Z",
+  "producer": "fixture:manufacturing_demo",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "AMENDMENT_KEY": "AMD-NC3B",
+   "AUTHORITY": "demo:supervisor-prod-b",
+   "DECISION_AT_UTC": "2026-10-26T12:30:00Z",
+   "EFFORT_BASIS": "NC class P75 52 elapsed min x simultaneous crew 2 (S08 sourced rework statistic)",
+   "FEASIBILITY_REF": "FIXTURE-AMEND-FEAS-01: validated emergency addition (full crew, duty and graph feasible)",
+   "OBSERVED_AT_UTC": "2026-10-26T12:31:00Z",
+   "REASON": "Injected NCR-303 fastener rework on 1303 must clear before ROOT3",
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "STANDARD_PERSON_MINUTES": 104,
+   "TEAM": "PROD-B",
+   "WORK_REF": {
+    "kind": "WORK",
+    "line": 1303,
+    "ordinal": 0,
+    "soi": "NC3B"
+   }
+  }
+ ],
+ "schema_version": 1
+}

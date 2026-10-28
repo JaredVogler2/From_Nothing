@@ -1,0 +1,33 @@
+{
+ "columns": [
+  "SOURCE_EVENT_KEY",
+  "LINE_NUMBER",
+  "SOI",
+  "ROOT_SOI",
+  "REWORK_CLASS",
+  "DEFECT_ORIGIN_TEAM",
+  "EVIDENCE_REF",
+  "OBSERVED_AT_UTC"
+ ],
+ "dataset": "defect_evidence",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "covered_through_utc": "2026-10-28T23:59:59Z",
+  "producer": "fixture:manufacturing_demo",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "DEFECT_ORIGIN_TEAM": "PROD-A",
+   "EVIDENCE_REF": "FIXTURE-NCR-303",
+   "LINE_NUMBER": 1303,
+   "OBSERVED_AT_UTC": "2026-10-26T12:35:00Z",
+   "REWORK_CLASS": "NC",
+   "ROOT_SOI": "ROOT3",
+   "SOI": "NC3B",
+   "SOURCE_EVENT_KEY": "DEF-NC3B"
+  }
+ ],
+ "schema_version": 1
+}

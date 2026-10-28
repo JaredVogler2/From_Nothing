@@ -499,6 +499,197 @@ DEMO_INCUMBENT: dict[str, Any] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# observations (S14/S18: actual lifecycle, intervals, claims, decisions; P17)
+# ---------------------------------------------------------------------------
+
+OBSERVATION_POINTS_UTC = ("2026-10-26T19:30:00Z", "2026-10-27T16:00:00Z", "2026-10-28T16:00:00Z")
+OBSERVATION_COVERED_THROUGH = "2026-10-28T23:59:59Z"
+
+
+def _w(line: int, soi: str, kind: str = "WORK", ordinal: int = 0, segment: int | None = None) -> dict[str, Any]:
+    ref: dict[str, Any] = {"line": line, "soi": soi, "kind": kind, "ordinal": ordinal}
+    if segment is not None:
+        ref["segment"] = segment
+    return ref
+
+
+def _event(key: str, seq: int, line: int, soi: str, kind: str, effective: str, *, phase: str | None = "WORK", ordinal: int | None = 0,
+           person: str | None = None, verified: bool = False, verifier: str | None = None, recorded: str | None = None,
+           observed: str | None = None, segments: list[int] | None = None, revision: str = "1", supersedes: str | None = None,
+           directive: str | None = None, detail: str = "") -> dict[str, Any]:
+    recorded = recorded or effective
+    return {"SOURCE_EVENT_KEY": key, "SOURCE_SEQUENCE": seq, "SOURCE_REVISION": revision, "LINE_NUMBER": line, "SOI": soi,
+            "PHASE_KIND": phase, "PHASE_ORDINAL": ordinal if phase is not None else None, "SEGMENTS": segments, "KIND": kind,
+            "PERSON_KEY": person, "EFFECTIVE_AT_UTC": effective, "RECORDED_AT_UTC": recorded, "OBSERVED_AT_UTC": observed or recorded,
+            "VERIFIED": verified, "VERIFIED_BY": verifier, "DIRECTIVE_REF": directive, "SUPERSEDES_EVENT_KEY": supersedes,
+            "EVIDENCE_REF": f"FIXTURE-{key}", "DETAIL": detail}
+
+
+def _interval(key: str, line: int, soi: str, person: str, start: str, end: str, *, phase: str = "WORK", ordinal: int = 0,
+              observed: str | None = None, voided: bool = False, revision: str = "1") -> dict[str, Any]:
+    return {"SOURCE_EVENT_KEY": key, "SOURCE_REVISION": revision, "LINE_NUMBER": line, "SOI": soi, "PHASE_KIND": phase, "PHASE_ORDINAL": ordinal,
+            "PERSON_KEY": person, "START_UTC": start, "END_UTC": end, "IS_VOIDED": voided, "OBSERVED_AT_UTC": observed or end,
+            "EVIDENCE_REF": f"FIXTURE-CLOCK-{key}"}
+
+
+def build_observations(scenario: str = "manufacturing_demo") -> dict[str, dict[str, Any]]:
+    """What actually happened on 2026-10-26 S1 (and the late corrections/reviews after it), as raw observation feeds.
+
+    Expected demonstration outcomes (the integration tests derive them again from source facts):
+
+    * **PROD-A.** It completes A1 (planned) and works B1 and B2 offplan, starting B2 before B1
+      finished. That gives U = 240 + 180, and the offplan OOS has no second charge.
+    * **PROD-B.**
+      * It completes NC3 and PU3. PU3's actual burn is 5x its standard; NC3 burns 1.06x.
+      * It works the approved injected rework NC3B, whose defect origin PROD-A is explicitly
+        evidenced.
+      * It starts ROOT3 before PU3's final QA (a planned, discretionary OOS) and verifies segment 0.
+      * Overlapping and duplicate claims are reviewed: one exception approval, one rejection and
+        its appeal.
+    * **QA.**
+      * NC3 final QA is verified before NC3 is administratively cancelled (prior work earns).
+      * ROOT3's ODA buyoff is cancelled before completion (earns nothing; PLAN_CHURN).
+      * PU3 final QA is verified, then reopened; the reopen is voided late the next morning.
+    * **ROOT4.** It was started on 10-23 with PRE4 incomplete. That out-of-sequence record survives
+      PRE4's later completion.
+    """
+    d26 = "2026-10-26"
+    T = lambda hhmm, day=d26: f"{day}T{hhmm}:00Z"  # noqa: E731 - compact fixture clock helper
+    life = [
+        # PROD-A: planned A1, offplan B1 then B2 (B2 starts before B1 is complete)
+        _event("EV-A1-START", 1, 1301, "A1", "STARTED", T("10:20"), person="DEMO-A1-01", recorded=T("10:21"), observed=T("10:25")),
+        _event("EV-A1-DONE", 2, 1301, "A1", "COMPLETED", T("12:20"), person="DEMO-A1-01", verified=True, verifier="DEMO-Q1-01", recorded=T("12:30"),
+               observed=T("12:35")),
+        _event("EV-B1-START", 3, 1302, "B1", "STARTED", T("12:40"), person="DEMO-A1-01", observed=T("12:45")),
+        _event("EV-B2-START", 4, 1302, "B2", "STARTED", T("13:10"), person="DEMO-A1-05", observed=T("13:15")),
+        _event("EV-B1-DONE", 5, 1302, "B1", "COMPLETED", T("14:45"), person="DEMO-A1-01", verified=True, verifier="DEMO-Q1-01", observed=T("14:50")),
+        _event("EV-B2-DONE", 6, 1302, "B2", "COMPLETED", T("17:20"), person="DEMO-A1-05", verified=True, verifier="DEMO-Q1-01", observed=T("17:25")),
+        # PROD-B: NC3, PU3 (5x burn), injected NC3B, ROOT3 started out of sequence, segment 0 verified
+        _event("EV-NC3-START", 10, 1303, "NC3", "STARTED", T("10:18"), person="DEMO-B1-03", observed=T("10:20")),
+        _event("EV-NC3-DONE", 11, 1303, "NC3", "COMPLETED", T("11:13"), person="DEMO-B1-03", verified=True, verifier="DEMO-Q1-01", observed=T("11:15")),
+        _event("EV-PU3-START", 12, 1303, "PU3", "STARTED", T("11:20"), person="DEMO-B1-03", observed=T("11:22")),
+        _event("EV-NC3B-START", 13, 1303, "NC3B", "STARTED", T("12:40"), person="DEMO-B1-01", observed=T("12:42")),
+        _event("EV-NC3B-DONE", 14, 1303, "NC3B", "COMPLETED", T("14:20"), person="DEMO-B1-01", verified=True, verifier="DEMO-Q1-02",
+               observed=T("14:25")),
+        _event("EV-ROOT3-START", 15, 1303, "ROOT3", "STARTED", T("15:00"), person="DEMO-B1-01", observed=T("15:02")),
+        _event("EV-PU3-DONE", 16, 1303, "PU3", "COMPLETED", T("15:40"), person="DEMO-B1-03", verified=True, verifier="DEMO-Q1-01", observed=T("15:45")),
+        _event("EV-ROOT3-SEG0", 17, 1303, "ROOT3", "PROGRESS", T("17:30"), segments=[0], person="DEMO-B1-01", verified=True, verifier="DEMO-Q1-02",
+               observed=T("17:35")),
+        _event("EV-ROOT3-W1-REPORTED", 18, 1303, "ROOT3", "REPORTED_COMPLETION", T("18:00"), ordinal=1, person="DEMO-B1-02", observed=T("18:05"),
+               detail="mechanic reported WORK 1 complete; never verified"),
+        # QA: NC3 final QA verified, then NC3 administratively cancelled; ODA buyoff cancelled before completion;
+        # PU3 final QA verified, reopened, and the reopen voided late
+        _event("EV-NC3QA-DONE", 20, 1303, "NC3", "COMPLETED", T("11:58"), phase="FINAL_QA", person="DEMO-Q1-01", verified=True, verifier="DEMO-Q1-02",
+               observed=T("12:00")),
+        _event("EV-ODA-CANCEL", 21, 1303, "ROOT3", "CANCELLED", T("14:00"), phase="OTHER_BUYOFF", observed=T("14:05"),
+               detail="engineering withdrew the ODA buyoff requirement"),
+        _event("EV-PU3QA-DONE", 22, 1303, "PU3", "COMPLETED", T("16:25"), phase="FINAL_QA", person="DEMO-Q1-01", verified=True, verifier="DEMO-Q1-02",
+               recorded=T("16:30"), observed=T("16:32")),
+        _event("EV-NC3-CANCEL", 23, 1303, "NC3", "CANCELLED", T("17:00"), phase=None, ordinal=None, observed=T("17:05"),
+               detail="NCR dispositioned use-as-is: job administratively cancelled after verified completion"),
+        _event("EV-PU3QA-REOPEN", 24, 1303, "PU3", "REOPENED", T("17:10"), phase="FINAL_QA", observed=T("17:12"),
+               detail="reopened for an inspection finding"),
+        _event("EV-PU3QA-REOPEN-VOID", 25, 1303, "PU3", "VOIDED", "2026-10-27T09:00:00Z", phase="FINAL_QA", supersedes="EV-PU3QA-REOPEN",
+               observed="2026-10-27T09:05:00Z", detail="late correction: the reopen was entered against the wrong order"),
+        # ROOT4 started 2026-10-23 with PRE4 incomplete (A26); PRE4 completes later and never erases that record
+        _event("EV-ROOT4-START", 30, 1304, "ROOT4", "STARTED", "2026-10-23T12:00:00Z", person="DEMO-B1-01", recorded="2026-10-23T12:05:00Z",
+               observed="2026-10-23T12:10:00Z"),
+        _event("EV-PRE4-DONE", 31, 1304, "PRE4", "COMPLETED", "2026-10-28T11:20:00Z", person="DEMO-B1-02", verified=True, verifier="DEMO-Q1-01",
+               observed="2026-10-28T11:30:00Z"),
+        # replay and malformed rows: a duplicate, a conflicting revision and three unsupported facts (quarantined with reasons)
+        _event("EV-A1-DONE", 2, 1301, "A1", "COMPLETED", T("12:20"), person="DEMO-A1-01", verified=True, verifier="DEMO-Q1-01", recorded=T("12:30"),
+               observed=T("12:35")),
+        _event("EV-A1-DONE", 2, 1301, "A1", "COMPLETED", T("12:05"), person="DEMO-A1-01", verified=True, verifier="DEMO-Q1-01", recorded=T("12:30"),
+               observed=T("12:36")),
+        _event("EV-BAD-KIND", 40, 1301, "A2", "FINISHED", T("13:00"), observed=T("13:01")),
+        _event("EV-BAD-VERIFIED-REPORT", 41, 1301, "A2", "REPORTED_COMPLETION", T("13:00"), verified=True, verifier="DEMO-A1-02", observed=T("13:01")),
+        _event("EV-BAD-DISAPPEARED", 42, 1301, "A2", "DISAPPEARED", T("13:00"), phase=None, ordinal=None, observed=T("13:01")),
+    ]
+    intervals = [
+        _interval("CLK-NC3-1", 1303, "NC3", "DEMO-B1-03", T("10:18"), T("11:13")),
+        _interval("CLK-NC3-2", 1303, "NC3", "DEMO-B1-04", T("10:18"), T("11:13")),
+        _interval("CLK-PU3-1", 1303, "PU3", "DEMO-B1-03", T("11:20"), T("15:40")),
+        _interval("CLK-PU3-2", 1303, "PU3", "DEMO-B1-04", T("11:20"), T("15:40")),
+        _interval("CLK-NC3B-1", 1303, "NC3B", "DEMO-B1-01", T("12:40"), T("14:20")),
+        _interval("CLK-NC3B-2", 1303, "NC3B", "DEMO-B1-02", T("12:40"), T("14:20")),
+        _interval("CLK-ROOT3-1", 1303, "ROOT3", "DEMO-B1-01", T("15:00"), T("17:30")),
+        _interval("CLK-ROOT3-2", 1303, "ROOT3", "DEMO-B1-02", T("15:00"), T("17:30")),
+        _interval("CLK-ROOT3-X", 1303, "ROOT3", "DEMO-B1-02", T("17:40"), T("18:10"), voided=True),
+    ]
+    defects = [{"SOURCE_EVENT_KEY": "DEF-NC3B", "LINE_NUMBER": 1303, "SOI": "NC3B", "ROOT_SOI": "ROOT3", "REWORK_CLASS": "NC",
+                "DEFECT_ORIGIN_TEAM": "PROD-A", "EVIDENCE_REF": "FIXTURE-NCR-303", "OBSERVED_AT_UTC": T("12:35")}]
+    amendments = [{"AMENDMENT_KEY": "AMD-NC3B", "TEAM": "PROD-B", "SHIFT_DATE": d26, "SHIFT_NUMBER": 1, "WORK_REF": _w(1303, "NC3B"),
+                   "STANDARD_PERSON_MINUTES": 104, "EFFORT_BASIS": "NC class P75 52 elapsed min x simultaneous crew 2 (S08 sourced rework statistic)",
+                   "FEASIBILITY_REF": "FIXTURE-AMEND-FEAS-01: validated emergency addition (full crew, duty and graph feasible)",
+                   "AUTHORITY": "demo:supervisor-prod-b", "DECISION_AT_UTC": T("12:30"),
+                   "REASON": "Injected NCR-303 fastener rework on 1303 must clear before ROOT3", "OBSERVED_AT_UTC": T("12:31")}]
+    root3_missed = [_w(1303, "ROOT3", "WORK", 0, 1), _w(1303, "ROOT3", "WORK", 1), _w(1303, "ROOT3", "WORK", 2)]
+
+    def claim(key: str, refs: list[dict[str, Any]], cause: str, *, origin: str | None, notes: str, reporter: str, evidence: list[str],
+              reported: str = "2026-10-26T19:00:00Z", status: str = "SUBMITTED", supersedes: str | None = None) -> dict[str, Any]:
+        return {"CLAIM_KEY": key, "TEAM": "PROD-B", "SHIFT_DATE": d26, "SHIFT_NUMBER": 1, "WORK_REFS": refs, "CAUSE": cause, "ORIGIN_TEAM": origin,
+                "EXECUTING_TEAM": "PROD-B", "EVIDENCE_REFS": evidence, "NOTES": notes, "STATUS": status, "REPORTED_BY": reporter,
+                "REPORTED_AT_UTC": reported, "OBSERVED_AT_UTC": "2026-10-26T19:05:00Z", "SUPERSEDES_CLAIM_KEY": supersedes}
+
+    claims = [
+        claim("CLM-B-01", root3_missed, "REWORK_INJECTION", origin="PROD-A", reporter="demo:lead-prod-b", evidence=["DEFECT:FIXTURE-NCR-303"],
+              notes="Injected NC3B rework (NCR-303) took the ROOT3 crew from 12:40"),
+        claim("CLM-B-02", root3_missed[1:], "SAME_TEAM_PREDECESSOR", origin=None, reporter="demo:lead-prod-b", evidence=["PHASE:1303/PU3/WORK/0"],
+              notes="PU3 supplier pickup overran about four hours; ROOT3 is gated by PU3 final QA"),
+        claim("CLM-B-03", root3_missed, "REWORK_INJECTION", origin="PROD-A", reporter="demo:mechanic-b1-01", evidence=["DEFECT:FIXTURE-NCR-303"],
+              notes="duplicate claim for the same missed ROOT3 work"),
+        claim("CLM-B-04", root3_missed[1:2], "DURATION_OVERRUN", origin=None, reporter="demo:lead-prod-b", evidence=[], notes=""),
+        claim("CLM-B-05", root3_missed, "REWORK_INJECTION", origin="PROD-B", reporter="demo:lead-prod-b", evidence=["DEFECT:FIXTURE-NCR-303"],
+              notes="origin guessed from the executing team / DAG direction"),
+        claim("CLM-B-06", root3_missed[1:2], "CROSS_TEAM_PREDECESSOR", origin="QA", reporter="demo:lead-prod-b", evidence=["PHASE:1303/ROOT3/IP_QA/0"],
+              notes="IP QA hold 0 was not bought off in time"),
+    ]
+
+    def decision(key: str, claim_keys: list[str], verdict: str, refs: list[dict[str, Any]], at: str, reason: str,
+                 supersedes: str | None = None) -> dict[str, Any]:
+        return {"DECISION_KEY": key, "TEAM": "PROD-B", "SHIFT_DATE": d26, "SHIFT_NUMBER": 1, "CLAIM_KEYS": claim_keys, "APPROVED_WORK_REFS": refs,
+                "DECISION": verdict, "AUTHORITY": "demo:excusal", "AUTHORITY_ROLE": "excusal_decider", "DECISION_AT_UTC": at, "REASON": reason,
+                "REVIEW_TRACK": None, "SUPERSEDES_DECISION_KEY": supersedes, "OBSERVED_AT_UTC": at}
+
+    decisions = [
+        decision("DEC-B-01", ["CLM-B-01", "CLM-B-03"], "APPROVED", root3_missed, "2026-10-27T15:00:00Z",
+                 "NC3B injected rework evidenced by NCR-303 with defect origin PROD-A"),
+        decision("DEC-B-02", ["CLM-B-02"], "APPROVED", root3_missed[1:], "2026-10-27T15:05:00Z",
+                 "Reviewed exception: supplier pickup PU3 overran and gates ROOT3 through its final QA"),
+        decision("DEC-B-03", ["CLM-B-06"], "REJECTED", [], "2026-10-27T15:10:00Z",
+                 "IP QA hold 0 was blocked by PROD-B's own unfinished ROOT3 WORK 0"),
+        decision("DEC-B-04", ["CLM-B-06"], "REJECTED", [], "2026-10-28T14:00:00Z",
+                 "Appeal reviewed: QA was not culpable; DAG direction alone does not prove culpability", supersedes="DEC-B-03"),
+    ]
+    columns = {
+        "lifecycle_events": ("SOURCE_EVENT_KEY,SOURCE_SEQUENCE,SOURCE_REVISION,LINE_NUMBER,SOI,PHASE_KIND,PHASE_ORDINAL,SEGMENTS,KIND,PERSON_KEY,"
+                             "EFFECTIVE_AT_UTC,RECORDED_AT_UTC,OBSERVED_AT_UTC,VERIFIED,VERIFIED_BY,DIRECTIVE_REF,SUPERSEDES_EVENT_KEY,EVIDENCE_REF,DETAIL"),
+        "actual_intervals": "SOURCE_EVENT_KEY,SOURCE_REVISION,LINE_NUMBER,SOI,PHASE_KIND,PHASE_ORDINAL,PERSON_KEY,START_UTC,END_UTC,IS_VOIDED,OBSERVED_AT_UTC,EVIDENCE_REF",
+        "defect_evidence": "SOURCE_EVENT_KEY,LINE_NUMBER,SOI,ROOT_SOI,REWORK_CLASS,DEFECT_ORIGIN_TEAM,EVIDENCE_REF,OBSERVED_AT_UTC",
+        "goal_amendments": ("AMENDMENT_KEY,TEAM,SHIFT_DATE,SHIFT_NUMBER,WORK_REF,STANDARD_PERSON_MINUTES,EFFORT_BASIS,FEASIBILITY_REF,AUTHORITY,"
+                            "DECISION_AT_UTC,REASON,OBSERVED_AT_UTC"),
+        "disruption_claims": ("CLAIM_KEY,TEAM,SHIFT_DATE,SHIFT_NUMBER,WORK_REFS,CAUSE,ORIGIN_TEAM,EXECUTING_TEAM,EVIDENCE_REFS,NOTES,STATUS,REPORTED_BY,"
+                              "REPORTED_AT_UTC,OBSERVED_AT_UTC,SUPERSEDES_CLAIM_KEY"),
+        "excusal_decisions": ("DECISION_KEY,TEAM,SHIFT_DATE,SHIFT_NUMBER,CLAIM_KEYS,APPROVED_WORK_REFS,DECISION,AUTHORITY,AUTHORITY_ROLE,DECISION_AT_UTC,"
+                              "REASON,REVIEW_TRACK,SUPERSEDES_DECISION_KEY,OBSERVED_AT_UTC"),
+    }
+    rows = {"lifecycle_events": life, "actual_intervals": intervals, "defect_evidence": defects, "goal_amendments": amendments,
+            "disruption_claims": claims, "excusal_decisions": decisions}
+    out: dict[str, dict[str, Any]] = {}
+    for name, cols in columns.items():
+        col_tuple = [c for c in cols.split(",") if c]
+        for row in rows[name]:
+            if list(row) != col_tuple and set(row) != set(col_tuple):
+                raise ValueError(f"{name}: observation row keys differ from the feed contract")
+        out[name] = {"schema_version": 1, "dataset": name, "columns": col_tuple, "rows": rows[name],
+                     "receipt": {"complete": True, "certified_empty": False, "producer": f"fixture:{scenario}", "upstream_revision": "fixture-v1",
+                                 "covered_through_utc": OBSERVATION_COVERED_THROUGH}}
+    out["manifest"] = {"schema_version": 1, "scenario": scenario, "collection_points_utc": list(OBSERVATION_POINTS_UTC),
+                       "note": "Deterministic collection points for the S14 observation replay (fixture only)."}
+    return out
+
+
 def write_inputs(target: Path, datasets: dict[str, Dataset], extra: dict[str, Any] | None = None) -> list[Path]:
     target.mkdir(parents=True, exist_ok=True)
     written = []
