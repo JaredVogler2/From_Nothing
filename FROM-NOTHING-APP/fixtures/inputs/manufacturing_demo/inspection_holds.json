@@ -1,0 +1,38 @@
+{
+ "columns": [
+  "LINE_NUMBER",
+  "SOI",
+  "SEQUENCE",
+  "AFTER_WORK_MINUTES",
+  "INSPECTOR_MINUTES",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "inspection_holds",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "AFTER_WORK_MINUTES": 40,
+   "EVIDENCE_REF": "FIXTURE-OP-0040",
+   "INSPECTOR_MINUTES": 20,
+   "LINE_NUMBER": 1303,
+   "SEQUENCE": 1,
+   "SOI": "ROOT3"
+  },
+  {
+   "AFTER_WORK_MINUTES": 80,
+   "EVIDENCE_REF": "FIXTURE-OP-0080",
+   "INSPECTOR_MINUTES": 25,
+   "LINE_NUMBER": 1303,
+   "SEQUENCE": 2,
+   "SOI": "ROOT3"
+  }
+ ],
+ "schema_version": 1
+}

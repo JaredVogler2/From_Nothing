@@ -1,0 +1,47 @@
+{
+ "columns": [
+  "PRODUCTION_DAY",
+  "SHIFT_NUMBER",
+  "LINE_NUMBER",
+  "SOI",
+  "BEMS_ID",
+  "MINUTES",
+  "FIRST_ON_ET",
+  "LAST_OFF_ET",
+  "LOAD_TIMESTAMP"
+ ],
+ "dataset": "labor_shift",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "BEMS_ID": "DEMO-B1-01",
+   "FIRST_ON_ET": "2026-10-23T08:00:00",
+   "LAST_OFF_ET": "2026-10-23T08:40:00",
+   "LINE_NUMBER": 1304,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "MINUTES": "40.00",
+   "PRODUCTION_DAY": "2026-10-23",
+   "SHIFT_NUMBER": 1,
+   "SOI": "ROOT4"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-02",
+   "FIRST_ON_ET": "2026-10-23T08:00:00",
+   "LAST_OFF_ET": "2026-10-23T08:40:00",
+   "LINE_NUMBER": 1304,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "MINUTES": "40.00",
+   "PRODUCTION_DAY": "2026-10-23",
+   "SHIFT_NUMBER": 1,
+   "SOI": "ROOT4"
+  }
+ ],
+ "schema_version": 1
+}

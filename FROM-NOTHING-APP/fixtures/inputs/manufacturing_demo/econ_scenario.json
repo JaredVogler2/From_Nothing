@@ -1,0 +1,44 @@
+{
+ "columns": [
+  "ScenarioRevisionId",
+  "ScenarioKey",
+  "ScenarioRevision",
+  "Provenance",
+  "Methodology",
+  "OwnerSubject",
+  "EffectiveFromUtc",
+  "EffectiveToUtc",
+  "Currency",
+  "CapFraction",
+  "PriorityWeight",
+  "CreatedAtUtc",
+  "IsActive"
+ ],
+ "dataset": "econ_scenario",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "CapFraction": "0.2500",
+   "CreatedAtUtc": "2026-10-20T12:00:00.000",
+   "Currency": "USD",
+   "EffectiveFromUtc": "2026-01-01T00:00:00.000",
+   "EffectiveToUtc": null,
+   "IsActive": true,
+   "Methodology": "Fixture planning assumption; not contractual liability.",
+   "OwnerSubject": "fixture-economics",
+   "PriorityWeight": "1.00000",
+   "Provenance": "ASSUMED",
+   "ScenarioKey": "DEMO-PLANNING",
+   "ScenarioRevision": 1,
+   "ScenarioRevisionId": "06ce4812-0e1d-5087-a47c-3ee2213344fa"
+  }
+ ],
+ "schema_version": 1
+}

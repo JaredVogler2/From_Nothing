@@ -1,0 +1,73 @@
+{
+ "accepted_at_utc": "2026-10-25T22:30:00Z",
+ "assignments": [
+  {
+   "crew": [
+    "DEMO-A1-01",
+    "DEMO-A1-02"
+   ],
+   "date": "2026-10-26",
+   "line": 1301,
+   "ordinal": 0,
+   "phase": "WORK",
+   "shift": 1,
+   "soi": "A1",
+   "start_local": "06:15"
+  },
+  {
+   "crew": [
+    "DEMO-B1-03",
+    "DEMO-B1-04"
+   ],
+   "date": "2026-10-26",
+   "line": 1303,
+   "ordinal": 0,
+   "phase": "WORK",
+   "shift": 1,
+   "soi": "NC3",
+   "start_local": "06:15"
+  },
+  {
+   "crew": [
+    "DEMO-A1-03",
+    "DEMO-A1-04"
+   ],
+   "date": "2026-10-27",
+   "line": 1302,
+   "ordinal": 0,
+   "phase": "WORK",
+   "shift": 1,
+   "soi": "B1",
+   "start_local": "06:15"
+  },
+  {
+   "crew": [
+    "DEMO-A1-05",
+    "DEMO-A1-06"
+   ],
+   "date": "2026-10-28",
+   "line": 1301,
+   "ordinal": 0,
+   "phase": "WORK",
+   "shift": 1,
+   "soi": "A2",
+   "start_local": "06:15"
+  },
+  {
+   "crew": [
+    "DEMO-A1-05",
+    "DEMO-A1-07"
+   ],
+   "date": "2026-10-29",
+   "line": 1302,
+   "ordinal": 0,
+   "phase": "WORK",
+   "shift": 1,
+   "soi": "B2",
+   "start_local": "06:15"
+  }
+ ],
+ "description": "Previous accepted fixture plan with jobs at day offsets 0/1/2 (defended) and 3 (free).",
+ "previous_cutoff_utc": "2026-10-25T22:00:00Z",
+ "schema_version": 1
+}

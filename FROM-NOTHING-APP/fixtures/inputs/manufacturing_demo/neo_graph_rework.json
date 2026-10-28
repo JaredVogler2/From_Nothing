@@ -1,0 +1,35 @@
+{
+ "columns": [
+  "LINE_NUMBER",
+  "PARENT_SOI",
+  "CHILD_SOI",
+  "CHILD_STATUS",
+  "SNAPSHOT_TS"
+ ],
+ "dataset": "neo_graph_rework",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "CHILD_SOI": "NC3",
+   "CHILD_STATUS": "OPEN",
+   "LINE_NUMBER": 1303,
+   "PARENT_SOI": "ROOT3",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00"
+  },
+  {
+   "CHILD_SOI": "PU3",
+   "CHILD_STATUS": "OPEN",
+   "LINE_NUMBER": 1303,
+   "PARENT_SOI": "ROOT3",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00"
+  }
+ ],
+ "schema_version": 1
+}

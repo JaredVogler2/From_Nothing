@@ -7,7 +7,10 @@
   "mode": "fixture",
   "effective_from_utc": "2026-01-01T00:00:00Z",
   "effective_to_utc": null,
-  "includes": ["shift_fixture.json", "grading-demo-v1.json"],
+  "includes": [
+    "shift_fixture.json",
+    "grading-demo-v1.json"
+  ],
   "authority_legend": {
     "user_requirement": "Constant the user specified for this rebuild (manual S01/S09). Not re-approved, not changed by code.",
     "manual_specified": "Value the manual fixes explicitly for the implementation.",
@@ -16,132 +19,656 @@
     "open_decision": "Live semantic not yet resolved by an owner. Fixture choice recorded; live effect is a precise readiness gap."
   },
   "values": {
-    "scope.all_wip": {"value": true, "authority": "user_requirement", "ref": "S01,S09"},
-    "scope.fixed_line_cap": {"value": null, "authority": "user_requirement", "ref": "S01: never a fixed top-50 cap"},
-
-    "commitment.enabled": {"value": true, "authority": "user_requirement", "ref": "S09,S12"},
-    "commitment.horizon_calendar_days": {"value": 3, "authority": "user_requirement", "ref": "S09,S12"},
-    "commitment.attempts": {"value": ["EXACT_INCUMBENT", "SAME_SLOT_ALTERNATE_CREW"], "authority": "user_requirement", "ref": "S12"},
-    "commitment.after_attempts": {"value": "MINIMAL_AUDITED_MOVE_OR_DEFER", "authority": "manual_specified", "ref": "S12"},
-
-    "forecast.hysteresis_days": {"value": 2, "authority": "user_requirement", "ref": "S09,S12"},
-    "forecast.bad_news_days": {"value": 7, "authority": "user_requirement", "ref": "S09,S12"},
-    "forecast.confirmation_runs": {"value": 2, "authority": "manual_specified", "ref": "S09,S12"},
-    "forecast.tolerance_days": {"value": 1, "authority": "manual_specified", "ref": "S09,S12"},
-
-    "activation.fraction_numerator": {"value": 85, "authority": "user_requirement", "ref": "S01,S09,S11"},
-    "activation.fraction_denominator": {"value": 100, "authority": "user_requirement", "ref": "S01,S09,S11"},
-    "activation.minimum_one_exception": {"value": false, "authority": "manual_specified", "ref": "S09,S11"},
-    "activation.counted_duty_kinds": {"value": ["WORK", "TRAVEL", "TOOL", "WAIT", "OTHER"], "authority": "fixture_default", "ref": "S11"},
-
-    "travel.same_aircraft_minutes": {"value": 0, "authority": "fixture_default", "ref": "S09,S11"},
-    "travel.changed_aircraft_minutes": {"value": 15, "authority": "fixture_default", "ref": "S09,S11 travel.default_fixture_minutes"},
-    "travel.allow_during_protected_windows": {"value": false, "authority": "manual_specified", "ref": "S11"},
-    "travel.shift_start_origin": {"value": "MUSTER_AT_FIRST_ASSIGNMENT", "authority": "fixture_default", "ref": "S11: unknown origin needs an explicit bounded policy"},
-    "tools.reservation_policy": {"value": "NONE_UNLESS_SOURCED", "authority": "fixture_default", "ref": "S11"},
-
-    "qa.total_ip_minutes": {"value": 45, "authority": "user_requirement", "ref": "S01,S09,S10"},
-    "qa.final_minutes": {"value": 45, "authority": "user_requirement", "ref": "S01,S09,S10"},
-    "qa.ip_allocation": {"value": "SOURCED_HOLD_ALLOCATIONS", "authority": "manual_specified", "ref": "S10"},
-    "qa.unknown_hold_location": {"value": "BLOCK", "authority": "manual_specified", "ref": "S10,P10"},
-    "qa.crew_during_ip": {"value": "RELEASE", "authority": "fixture_default", "ref": "S10: retained crew WAIT also supported"},
-    "qa.inspector_team": {"value": "QA", "authority": "fixture_default", "ref": "S10,S18"},
-    "qa.inspector_cert_groups": {"value": [["QA"]], "authority": "fixture_default", "ref": "S18"},
-    "qa.other_buyoff_minutes": {"value": 20, "authority": "fixture_default", "ref": "S18 parallel OTHER_QA20"},
-
-    "duration.default_statistic": {"value": "P75", "authority": "user_requirement", "ref": "S01,S08,S09"},
-    "duration.available_statistics": {"value": ["P50", "P55", "MEAN", "P75", "P90"], "authority": "user_requirement", "ref": "S01,S08"},
-    "duration.minimum_fixture_sample": {"value": 30, "authority": "manual_specified", "ref": "S08,S09"},
-    "duration.rework_classes": {"value": ["NC", "PU", "CI"], "authority": "user_requirement", "ref": "S01,S08"},
-    "duration.group_fallback": {"value": ["CLASS_TEAM", "CLASS"], "authority": "fixture_default", "ref": "S08: exact group -> approved broader group -> sourced engineered -> unavailable"},
-    "duration.total_mechanics_semantics": {"value": "SIMULTANEOUS", "authority": "open_decision", "ref": "S08,P01 OD-01"},
-    "duration.standard_effort_basis": {"value": "ELAPSED_TIMES_CREW", "authority": "fixture_default", "ref": "S08 standard person effort"},
-    "duration.max_segment_minutes": {"value": 240, "authority": "fixture_default", "ref": "S08 phase split"},
-    "duration.tick": {"value": "CEIL_MINUTE", "authority": "manual_specified", "ref": "S08 quantize by ceiling after estimation"},
-
-    "calendar.generation_selector": {"value": "SINGLE_ACTIVE_LOAD", "authority": "fixture_default", "ref": "S05,S09"},
-    "calendar.working_statuses": {"value": ["WORKING"], "authority": "manual_specified", "ref": "S09"},
-    "calendar.nonworking_statuses": {"value": ["WEEKEND", "NONWORKING"], "authority": "manual_specified", "ref": "S09"},
-
-    "cs.generation_selector": {"value": "SINGLE_ACTIVE_LOAD", "authority": "fixture_default", "ref": "S09"},
-    "cs.date_mode": {"value": "RESOLVED", "authority": "open_decision", "ref": "S09 OD-05 (fixture: dates already resolved)"},
-    "cs.offset_day_basis": {"value": null, "authority": "open_decision", "ref": "S09 OD-05 (needed only for OFFSET_FROM_REFERENCE mode)"},
-    "cs.date_instant": {"value": "LOCAL_MIDNIGHT", "authority": "fixture_default", "ref": "S09 date-to-UTC convention"},
-    "cs.required_for_scheduling": {"value": true, "authority": "manual_specified", "ref": "S09 missing mapping is CS_WINDOW_GAP"},
-    "cs.hard_latest": {"value": "NONE", "authority": "manual_specified", "ref": "S09 hard latest only where policy says"},
-
-    "due.basis": {"value": "CS_PLANNING_PROXY", "authority": "open_decision", "ref": "S09,S12 OD-06 commercial due"},
-    "due.proxy_station": {"value": "744", "authority": "fixture_default", "ref": "S09,S18"},
-    "due.proxy_date_basis": {"value": "BASELINE_PROXY", "authority": "fixture_default", "ref": "S09 GRACE"},
-    "due.instant": {"value": "END_OF_LOCAL_DATE", "authority": "fixture_default", "ref": "S12"},
-
-    "gate.weight": {"value": 35, "authority": "user_requirement", "ref": "S01,S09,S14"},
-    "gate.cap_days": {"value": 5, "authority": "user_requirement", "ref": "S01,S09,S14"},
-    "gate.proxy_grace_days": {"value": 2, "authority": "user_requirement", "ref": "S01,S09,S14"},
-    "gate.date_basis": {"value": "ACTUAL_CS_GATE", "authority": "fixture_default", "ref": "S09,S14"},
-
-    "parts.date_only_floor": {"value": "END_OF_LOCAL_DATE", "authority": "manual_specified", "ref": "S10"},
-    "parts.timestamp_floor": {"value": "CEIL_MINUTE", "authority": "manual_specified", "ref": "S10"},
-    "parts.executable_requires_confirmed_receipt": {"value": true, "authority": "manual_specified", "ref": "S10,S13"},
-    "parts.unresolved_used_on": {"value": "LINE_CONDITIONAL_BLOCK_EXECUTABLE", "authority": "fixture_default", "ref": "S10 missing linkage exposes unresolved affected scope"},
-
-    "edges.relationship_map": {"value": {"FINISH <= START": "FS", "START <= START": "SS", "FINISH <= FINISH": "FF", "START <= FINISH": "SF", "CONCURRENT": "CONCURRENT", "NON-CONCURRENT": "NONCONCURRENT"}, "authority": "manual_specified", "ref": "S10"},
-    "edges.hard_flag_map": {"value": {"Y": "HARD", "N": "ADVISORY"}, "authority": "manual_specified", "ref": "S10"},
-    "edges.advisory_mandatory": {"value": false, "authority": "manual_specified", "ref": "S10"},
-    "edges.concurrent_mode": {"value": "REQUIRED_OVERLAP", "authority": "open_decision", "ref": "S10 OD-07 (fixture meaning)"},
-    "edges.nonconcurrent_mode": {"value": "NO_OVERLAP", "authority": "open_decision", "ref": "S10 OD-07 (fixture meaning)"},
-
-    "rework.started_root_mode": {"value": "HOLD_CONTINUATION", "authority": "fixture_default", "ref": "S10"},
-    "rework.classification_source": {"value": "SUPPLEMENTAL_CLASSIFICATION", "authority": "open_decision", "ref": "S10 OD-08"},
-
-    "qualifications.accepted_date_forms": {"value": ["YYYY/MM/DD", "YYYY-MM-DD", "YYYYMMDD"], "authority": "manual_specified", "ref": "S07"},
-    "qualifications.inclusive_expiry": {"value": true, "authority": "manual_specified", "ref": "S07"},
-    "qualifications.perpetual_sentinel": {"value": "9999/12/31", "authority": "fixture_default", "ref": "S07 explicit sentinel policy"},
-    "qualifications.active_statuses": {"value": ["ACTIVE", "CURRENT", "VALID"], "authority": "fixture_default", "ref": "S07"},
-    "qualifications.inactive_statuses": {"value": ["EXPIRED", "REVOKED", "SUSPENDED", "INACTIVE"], "authority": "fixture_default", "ref": "S07"},
-    "qualifications.full_bundle_every_member": {"value": true, "authority": "manual_specified", "ref": "S07"},
-    "qualifications.group_by_critical_process": {"value": false, "authority": "fixture_default", "ref": "S07 approved OR alternatives must be explicit"},
-
-    "workforce.assignment_overrides_inference": {"value": true, "authority": "manual_specified", "ref": "S07"},
-    "workforce.inference_window_days": {"value": 30, "authority": "manual_specified", "ref": "S07"},
-    "workforce.inference_tie_break": {"value": "TEAM_NAME_ASCENDING", "authority": "manual_specified", "ref": "S07"},
-    "workforce.executable_availability_bases": {"value": ["ATTENDANCE_CONFIRMED", "SCHEDULED_ROSTER"], "authority": "fixture_default", "ref": "S05,S07"},
-    "workforce.forecast_availability_bases": {"value": ["ATTENDANCE_CONFIRMED", "SCHEDULED_ROSTER", "INFERRED_NOMINAL", "SYNTHETIC"], "authority": "fixture_default", "ref": "S05,S07"},
-
-    "support.virtual_teams": {"value": ["MHE", "PSC", "TST"], "authority": "user_requirement", "ref": "S01,S07"},
-    "support.virtual_people_per_team_shift": {"value": 10, "authority": "user_requirement", "ref": "S01,S09"},
-    "support.virtual_cert_union": {"value": true, "authority": "user_requirement", "ref": "S01,S07"},
-
-    "economics.selector_precedence": {"value": ["AIRCRAFT_OVERRIDE", "CONTRACT", "CUSTOMER_MODEL"], "authority": "manual_specified", "ref": "S12"},
-    "economics.penalty_curve": {"value": "LINEAR_DAILY", "authority": "fixture_default", "ref": "S12"},
-    "economics.cap_policy": {"value": "EXPLICIT_ONLY", "authority": "manual_specified", "ref": "S12 no silent cap"},
-    "economics.monetary_tolerance_cents": {"value": 0, "authority": "manual_specified", "ref": "S12"},
-    "economics.supported_currencies": {"value": ["USD"], "authority": "fixture_default", "ref": "S12"},
-    "economics.weight_horizon_days": {"value": 1, "authority": "manual_specified", "ref": "S12"},
-
-    "objective.order": {"value": ["FEASIBILITY", "COMMITMENT_DEFENSE", "CONTROLLABLE_COST", "NVA_MINUTES", "OT_AND_CHURN", "SCARCITY_AFFINITY_GATE"], "authority": "manual_specified", "ref": "S12"},
-    "optimizer.budget_seconds": {"value": 30, "authority": "manual_specified", "ref": "S12"},
-    "optimizer.seed": {"value": 2601027, "authority": "manual_specified", "ref": "S18"},
-    "optimizer.max_neighborhood_moves": {"value": 400, "authority": "fixture_default", "ref": "S12"},
-    "optimizer.horizon": {"value": "CALENDAR_BOUNDS", "authority": "manual_specified", "ref": "S09 no automatic horizon extension"},
-    "solver.enabled": {"value": false, "authority": "user_requirement", "ref": "S09"},
-    "llm.provider": {"value": "none", "authority": "user_requirement", "ref": "S09"},
-
-    "api.page_default": {"value": 100, "authority": "manual_specified", "ref": "S15"},
-    "api.page_max": {"value": 500, "authority": "manual_specified", "ref": "S15"}
+    "scope.all_wip": {
+      "value": true,
+      "authority": "user_requirement",
+      "ref": "S01,S09"
+    },
+    "scope.fixed_line_cap": {
+      "value": null,
+      "authority": "user_requirement",
+      "ref": "S01: never a fixed top-50 cap"
+    },
+    "scope.status_classes": {
+      "value": {
+        "COMPLETE": "TERMINAL_COMPLETE",
+        "AVAILABLE": "OPEN",
+        "PLANNED": "OPEN",
+        "IDLE": "OPEN",
+        "IN WORK": "IN_PROGRESS",
+        "PREVIEW": "OPEN_FORECAST_ONLY",
+        "FORECASTED": "OPEN_FORECAST_ONLY",
+        "ON HOLD": "BLOCKED_HOLD",
+        "REVISIONHOLD": "BLOCKED_HOLD",
+        "FAILPREVIEW": "BLOCKED_SOURCE",
+        "UNRELEASED": "BLOCKED_UNRELEASED"
+      },
+      "authority": "open_decision",
+      "ref": "S04 master statuses; OD-13 (unknown statuses are quarantined, never dropped)"
+    },
+    "scope.default_basis": {
+      "value": "ALL_WIP",
+      "authority": "user_requirement",
+      "ref": "S01 all aircraft with WIP; narrower scope needs a source-backed receipt"
+    },
+    "commitment.enabled": {
+      "value": true,
+      "authority": "user_requirement",
+      "ref": "S09,S12"
+    },
+    "commitment.horizon_calendar_days": {
+      "value": 3,
+      "authority": "user_requirement",
+      "ref": "S09,S12"
+    },
+    "commitment.attempts": {
+      "value": [
+        "EXACT_INCUMBENT",
+        "SAME_SLOT_ALTERNATE_CREW"
+      ],
+      "authority": "user_requirement",
+      "ref": "S12"
+    },
+    "commitment.after_attempts": {
+      "value": "MINIMAL_AUDITED_MOVE_OR_DEFER",
+      "authority": "manual_specified",
+      "ref": "S12"
+    },
+    "forecast.hysteresis_days": {
+      "value": 2,
+      "authority": "user_requirement",
+      "ref": "S09,S12"
+    },
+    "forecast.bad_news_days": {
+      "value": 7,
+      "authority": "user_requirement",
+      "ref": "S09,S12"
+    },
+    "forecast.confirmation_runs": {
+      "value": 2,
+      "authority": "manual_specified",
+      "ref": "S09,S12"
+    },
+    "forecast.tolerance_days": {
+      "value": 1,
+      "authority": "manual_specified",
+      "ref": "S09,S12"
+    },
+    "activation.fraction_numerator": {
+      "value": 85,
+      "authority": "user_requirement",
+      "ref": "S01,S09,S11"
+    },
+    "activation.fraction_denominator": {
+      "value": 100,
+      "authority": "user_requirement",
+      "ref": "S01,S09,S11"
+    },
+    "activation.minimum_one_exception": {
+      "value": false,
+      "authority": "manual_specified",
+      "ref": "S09,S11"
+    },
+    "activation.counted_duty_kinds": {
+      "value": [
+        "WORK",
+        "TRAVEL",
+        "TOOL",
+        "WAIT",
+        "OTHER"
+      ],
+      "authority": "fixture_default",
+      "ref": "S11"
+    },
+    "travel.same_aircraft_minutes": {
+      "value": 0,
+      "authority": "fixture_default",
+      "ref": "S09,S11"
+    },
+    "travel.changed_aircraft_minutes": {
+      "value": 15,
+      "authority": "fixture_default",
+      "ref": "S09,S11 travel.default_fixture_minutes"
+    },
+    "travel.allow_during_protected_windows": {
+      "value": false,
+      "authority": "manual_specified",
+      "ref": "S11"
+    },
+    "travel.shift_start_origin": {
+      "value": "MUSTER_AT_FIRST_ASSIGNMENT",
+      "authority": "fixture_default",
+      "ref": "S11: unknown origin needs an explicit bounded policy"
+    },
+    "tools.reservation_policy": {
+      "value": "NONE_UNLESS_SOURCED",
+      "authority": "fixture_default",
+      "ref": "S11"
+    },
+    "qa.total_ip_minutes": {
+      "value": 45,
+      "authority": "user_requirement",
+      "ref": "S01,S09,S10"
+    },
+    "qa.final_minutes": {
+      "value": 45,
+      "authority": "user_requirement",
+      "ref": "S01,S09,S10"
+    },
+    "qa.ip_allocation": {
+      "value": "SOURCED_HOLD_ALLOCATIONS",
+      "authority": "manual_specified",
+      "ref": "S10"
+    },
+    "qa.unknown_hold_location": {
+      "value": "BLOCK",
+      "authority": "manual_specified",
+      "ref": "S10,P10"
+    },
+    "qa.crew_during_ip": {
+      "value": "RELEASE",
+      "authority": "fixture_default",
+      "ref": "S10: retained crew WAIT also supported"
+    },
+    "qa.inspector_team": {
+      "value": "QA",
+      "authority": "fixture_default",
+      "ref": "S10,S18"
+    },
+    "qa.inspector_cert_groups": {
+      "value": [
+        [
+          "QA"
+        ]
+      ],
+      "authority": "fixture_default",
+      "ref": "S18"
+    },
+    "qa.other_buyoff_minutes": {
+      "value": 20,
+      "authority": "fixture_default",
+      "ref": "S18 parallel OTHER_QA20"
+    },
+    "duration.default_statistic": {
+      "value": "P75",
+      "authority": "user_requirement",
+      "ref": "S01,S08,S09"
+    },
+    "duration.available_statistics": {
+      "value": [
+        "P50",
+        "P55",
+        "MEAN",
+        "P75",
+        "P90"
+      ],
+      "authority": "user_requirement",
+      "ref": "S01,S08"
+    },
+    "duration.minimum_fixture_sample": {
+      "value": 30,
+      "authority": "manual_specified",
+      "ref": "S08,S09"
+    },
+    "duration.rework_classes": {
+      "value": [
+        "NC",
+        "PU",
+        "CI"
+      ],
+      "authority": "user_requirement",
+      "ref": "S01,S08"
+    },
+    "duration.group_fallback": {
+      "value": [
+        "CLASS_TEAM",
+        "CLASS"
+      ],
+      "authority": "fixture_default",
+      "ref": "S08: exact group -> approved broader group -> sourced engineered -> unavailable"
+    },
+    "duration.total_mechanics_semantics": {
+      "value": "SIMULTANEOUS",
+      "authority": "open_decision",
+      "ref": "S08,P01 OD-01"
+    },
+    "duration.standard_effort_basis": {
+      "value": "ELAPSED_TIMES_CREW",
+      "authority": "fixture_default",
+      "ref": "S08 standard person effort"
+    },
+    "duration.max_segment_minutes": {
+      "value": 240,
+      "authority": "fixture_default",
+      "ref": "S08 phase split"
+    },
+    "duration.tick": {
+      "value": "CEIL_MINUTE",
+      "authority": "manual_specified",
+      "ref": "S08 quantize by ceiling after estimation"
+    },
+    "calendar.generation_selector": {
+      "value": "SINGLE_ACTIVE_LOAD",
+      "authority": "fixture_default",
+      "ref": "S05,S09"
+    },
+    "calendar.working_statuses": {
+      "value": [
+        "WORKING"
+      ],
+      "authority": "manual_specified",
+      "ref": "S09"
+    },
+    "calendar.nonworking_statuses": {
+      "value": [
+        "WEEKEND",
+        "NONWORKING"
+      ],
+      "authority": "manual_specified",
+      "ref": "S09"
+    },
+    "cs.generation_selector": {
+      "value": "SINGLE_ACTIVE_LOAD",
+      "authority": "fixture_default",
+      "ref": "S09"
+    },
+    "cs.date_mode": {
+      "value": "RESOLVED",
+      "authority": "open_decision",
+      "ref": "S09 OD-05 (fixture: dates already resolved)"
+    },
+    "cs.offset_day_basis": {
+      "value": null,
+      "authority": "open_decision",
+      "ref": "S09 OD-05 (needed only for OFFSET_FROM_REFERENCE mode)"
+    },
+    "cs.date_instant": {
+      "value": "LOCAL_MIDNIGHT",
+      "authority": "fixture_default",
+      "ref": "S09 date-to-UTC convention"
+    },
+    "cs.required_for_scheduling": {
+      "value": true,
+      "authority": "manual_specified",
+      "ref": "S09 missing mapping is CS_WINDOW_GAP"
+    },
+    "cs.hard_latest": {
+      "value": "NONE",
+      "authority": "manual_specified",
+      "ref": "S09 hard latest only where policy says"
+    },
+    "due.basis": {
+      "value": "CS_PLANNING_PROXY",
+      "authority": "open_decision",
+      "ref": "S09,S12 OD-06 commercial due"
+    },
+    "due.proxy_station": {
+      "value": "744",
+      "authority": "fixture_default",
+      "ref": "S09,S18"
+    },
+    "due.proxy_date_basis": {
+      "value": "BASELINE_PROXY",
+      "authority": "fixture_default",
+      "ref": "S09 GRACE"
+    },
+    "due.instant": {
+      "value": "END_OF_LOCAL_DATE",
+      "authority": "fixture_default",
+      "ref": "S12"
+    },
+    "gate.weight": {
+      "value": 35,
+      "authority": "user_requirement",
+      "ref": "S01,S09,S14"
+    },
+    "gate.cap_days": {
+      "value": 5,
+      "authority": "user_requirement",
+      "ref": "S01,S09,S14"
+    },
+    "gate.proxy_grace_days": {
+      "value": 2,
+      "authority": "user_requirement",
+      "ref": "S01,S09,S14"
+    },
+    "gate.date_basis": {
+      "value": "ACTUAL_CS_GATE",
+      "authority": "fixture_default",
+      "ref": "S09,S14"
+    },
+    "parts.date_only_floor": {
+      "value": "END_OF_LOCAL_DATE",
+      "authority": "manual_specified",
+      "ref": "S10"
+    },
+    "parts.timestamp_floor": {
+      "value": "CEIL_MINUTE",
+      "authority": "manual_specified",
+      "ref": "S10"
+    },
+    "parts.executable_requires_confirmed_receipt": {
+      "value": true,
+      "authority": "manual_specified",
+      "ref": "S10,S13"
+    },
+    "parts.unresolved_used_on": {
+      "value": "LINE_CONDITIONAL_BLOCK_EXECUTABLE",
+      "authority": "fixture_default",
+      "ref": "S10 missing linkage exposes unresolved affected scope"
+    },
+    "edges.relationship_map": {
+      "value": {
+        "FINISH <= START": "FS",
+        "START <= START": "SS",
+        "FINISH <= FINISH": "FF",
+        "START <= FINISH": "SF",
+        "CONCURRENT": "CONCURRENT",
+        "NON-CONCURRENT": "NONCONCURRENT"
+      },
+      "authority": "manual_specified",
+      "ref": "S10"
+    },
+    "edges.hard_flag_map": {
+      "value": {
+        "Y": "HARD",
+        "N": "ADVISORY"
+      },
+      "authority": "manual_specified",
+      "ref": "S10"
+    },
+    "edges.advisory_mandatory": {
+      "value": false,
+      "authority": "manual_specified",
+      "ref": "S10"
+    },
+    "edges.concurrent_mode": {
+      "value": "REQUIRED_OVERLAP",
+      "authority": "open_decision",
+      "ref": "S10 OD-07 (fixture meaning)"
+    },
+    "edges.nonconcurrent_mode": {
+      "value": "NO_OVERLAP",
+      "authority": "open_decision",
+      "ref": "S10 OD-07 (fixture meaning)"
+    },
+    "rework.started_root_mode": {
+      "value": "HOLD_CONTINUATION",
+      "authority": "fixture_default",
+      "ref": "S10"
+    },
+    "rework.classification_source": {
+      "value": "SUPPLEMENTAL_CLASSIFICATION",
+      "authority": "open_decision",
+      "ref": "S10 OD-08"
+    },
+    "qualifications.accepted_date_forms": {
+      "value": [
+        "YYYY/MM/DD",
+        "YYYY-MM-DD",
+        "YYYYMMDD"
+      ],
+      "authority": "manual_specified",
+      "ref": "S07"
+    },
+    "qualifications.inclusive_expiry": {
+      "value": true,
+      "authority": "manual_specified",
+      "ref": "S07"
+    },
+    "qualifications.perpetual_sentinel": {
+      "value": "9999/12/31",
+      "authority": "fixture_default",
+      "ref": "S07 explicit sentinel policy"
+    },
+    "qualifications.active_statuses": {
+      "value": [
+        "ACTIVE",
+        "CURRENT",
+        "VALID"
+      ],
+      "authority": "fixture_default",
+      "ref": "S07"
+    },
+    "qualifications.inactive_statuses": {
+      "value": [
+        "EXPIRED",
+        "REVOKED",
+        "SUSPENDED",
+        "INACTIVE"
+      ],
+      "authority": "fixture_default",
+      "ref": "S07"
+    },
+    "qualifications.full_bundle_every_member": {
+      "value": true,
+      "authority": "manual_specified",
+      "ref": "S07"
+    },
+    "qualifications.group_by_critical_process": {
+      "value": false,
+      "authority": "fixture_default",
+      "ref": "S07 approved OR alternatives must be explicit"
+    },
+    "workforce.assignment_overrides_inference": {
+      "value": true,
+      "authority": "manual_specified",
+      "ref": "S07"
+    },
+    "workforce.inference_window_days": {
+      "value": 30,
+      "authority": "manual_specified",
+      "ref": "S07"
+    },
+    "workforce.inference_tie_break": {
+      "value": "TEAM_NAME_ASCENDING",
+      "authority": "manual_specified",
+      "ref": "S07"
+    },
+    "workforce.executable_availability_bases": {
+      "value": [
+        "ATTENDANCE_CONFIRMED",
+        "SCHEDULED_ROSTER"
+      ],
+      "authority": "fixture_default",
+      "ref": "S05,S07"
+    },
+    "workforce.forecast_availability_bases": {
+      "value": [
+        "ATTENDANCE_CONFIRMED",
+        "SCHEDULED_ROSTER",
+        "INFERRED_NOMINAL",
+        "SYNTHETIC"
+      ],
+      "authority": "fixture_default",
+      "ref": "S05,S07"
+    },
+    "support.virtual_teams": {
+      "value": [
+        "MHE",
+        "PSC",
+        "TST"
+      ],
+      "authority": "user_requirement",
+      "ref": "S01,S07"
+    },
+    "support.virtual_people_per_team_shift": {
+      "value": 10,
+      "authority": "user_requirement",
+      "ref": "S01,S09"
+    },
+    "support.virtual_cert_union": {
+      "value": true,
+      "authority": "user_requirement",
+      "ref": "S01,S07"
+    },
+    "economics.selector_precedence": {
+      "value": [
+        "AIRCRAFT_OVERRIDE",
+        "CONTRACT",
+        "CUSTOMER_MODEL"
+      ],
+      "authority": "manual_specified",
+      "ref": "S12"
+    },
+    "economics.penalty_curve": {
+      "value": "LINEAR_DAILY",
+      "authority": "fixture_default",
+      "ref": "S12"
+    },
+    "economics.cap_policy": {
+      "value": "EXPLICIT_ONLY",
+      "authority": "manual_specified",
+      "ref": "S12 no silent cap"
+    },
+    "economics.monetary_tolerance_cents": {
+      "value": 0,
+      "authority": "manual_specified",
+      "ref": "S12"
+    },
+    "economics.supported_currencies": {
+      "value": [
+        "USD"
+      ],
+      "authority": "fixture_default",
+      "ref": "S12"
+    },
+    "economics.weight_horizon_days": {
+      "value": 1,
+      "authority": "manual_specified",
+      "ref": "S12"
+    },
+    "objective.order": {
+      "value": [
+        "FEASIBILITY",
+        "COMMITMENT_DEFENSE",
+        "CONTROLLABLE_COST",
+        "NVA_MINUTES",
+        "OT_AND_CHURN",
+        "SCARCITY_AFFINITY_GATE"
+      ],
+      "authority": "manual_specified",
+      "ref": "S12"
+    },
+    "optimizer.budget_seconds": {
+      "value": 30,
+      "authority": "manual_specified",
+      "ref": "S12"
+    },
+    "optimizer.seed": {
+      "value": 2601027,
+      "authority": "manual_specified",
+      "ref": "S18"
+    },
+    "optimizer.max_neighborhood_moves": {
+      "value": 400,
+      "authority": "fixture_default",
+      "ref": "S12"
+    },
+    "optimizer.horizon": {
+      "value": "CALENDAR_BOUNDS",
+      "authority": "manual_specified",
+      "ref": "S09 no automatic horizon extension"
+    },
+    "solver.enabled": {
+      "value": false,
+      "authority": "user_requirement",
+      "ref": "S09"
+    },
+    "llm.provider": {
+      "value": "none",
+      "authority": "user_requirement",
+      "ref": "S09"
+    },
+    "api.page_default": {
+      "value": 100,
+      "authority": "manual_specified",
+      "ref": "S15"
+    },
+    "api.page_max": {
+      "value": 500,
+      "authority": "manual_specified",
+      "ref": "S15"
+    }
   },
   "open_decisions": [
-    {"id": "OD-01", "topic": "FOCUS_FLOW_BUDGET.TOTAL_MECHANICS semantics", "fixture_choice": "Confirmed simultaneous crew count for the fixture.", "live_effect": "Live jobs keep TOTAL/PRIMARY/ASSIST fields. Executable crew demand needs the producer to confirm simultaneity, or role phases. Until then, live crew demand is an admission gap (FLOW_SEMANTICS_UNCONFIRMED)."},
-    {"id": "OD-02", "topic": "Elapsed-duration calibration from raw clock intervals", "fixture_choice": "Fixture episodes are verified elapsed-active observations (n=30 per class).", "live_effect": "No raw interval feed exists in S04. FOCUS_ACTUAL_LABOR is aggregate person effort only. Live rework P75 is unavailable until FOCUS_FN_ClockObservation is populated."},
-    {"id": "OD-03", "topic": "QA hold locations, inspector roles and pool ownership", "fixture_choice": "Sourced hold points after 40/80 minutes with 20/25 allocations; QA team pool with cert QA.", "live_effect": "Inspection counts do not locate holds. Live IP QA blocks executable work when the hold location is unknown."},
-    {"id": "OD-04", "topic": "Exact protected breaks, paid rest and overtime authorization", "fixture_choice": "Fixture breaks per S09; OT authorized for fixture people by an explicit fixture authorization dataset.", "live_effect": "Without a labor-source OT authorization, live OT is 0."},
-    {"id": "OD-05", "topic": "CS offsets, reference anchors and date basis", "fixture_choice": "Dates already resolved; raw signed offsets preserved; LOCAL_MIDNIGHT date-to-UTC.", "live_effect": "If producer semantics are not approved, conflicting loads or offset-based rows produce CS_WINDOW_GAP / CS_CONVERSION_POLICY_MISSING."},
-    {"id": "OD-06", "topic": "Commercial delivery due", "fixture_choice": "Station 744 unload date as an explicit planning delivery proxy plus 2-day grace (baseline_proxy).", "live_effect": "No contractual due without commercial authority. Missing due leaves modeled cost unknown, never zero."},
-    {"id": "OD-07", "topic": "CONCURRENT / NON-CONCURRENT relationship meaning", "fixture_choice": "CONCURRENT=required overlap, NON-CONCURRENT=no overlap (fixture meaning).", "live_effect": "Hard concurrency edges without an admitted meaning quarantine the affected jobs."},
-    {"id": "OD-08", "topic": "Rework NC/PU/CI classification and root linkage source", "fixture_choice": "Supplemental typed rework classification with root and defect-origin evidence.", "live_effect": "Without a classification source, live rework jobs have class UNKNOWN and no P75 estimate (DURATION_UNAVAILABLE)."},
-    {"id": "OD-09", "topic": "Affirmative no-certification requirement census", "fixture_choice": "Supplemental requirement census receipts for cert-free jobs.", "live_effect": "Positive-only NEO rows cannot prove cert-free work. Jobs without rows stay REQUIREMENTS_UNKNOWN (blocked)."},
-    {"id": "OD-10", "topic": "Current assignment and attendance feeds", "fixture_choice": "Explicit fixture roster and attendance with synthetic=false demonstration origin.", "live_effect": "FOCUS_PERSON_TEAM_MAP and FOCUS_ATTENDANCE_SHIFT are empty (S04), so no executable crew exists live. Inference is forecast evidence only."},
-    {"id": "OD-11", "topic": "Shift-start travel origin", "fixture_choice": "Muster at first assignment (0 minutes).", "live_effect": "Live origin needs an actual location source or approved bounded policy."},
-    {"id": "OD-12", "topic": "Economics terms, caps and checkpoints", "fixture_choice": "Assumed planning terms labeled ASSUMED; no cap unless explicit.", "live_effect": "No production default rate. Missing approval or basis leaves liability unknown."}
+    {
+      "id": "OD-01",
+      "topic": "FOCUS_FLOW_BUDGET.TOTAL_MECHANICS semantics",
+      "fixture_choice": "Confirmed simultaneous crew count for the fixture.",
+      "live_effect": "Live jobs keep TOTAL/PRIMARY/ASSIST fields. Executable crew demand needs the producer to confirm simultaneity, or role phases. Until then, live crew demand is an admission gap (FLOW_SEMANTICS_UNCONFIRMED)."
+    },
+    {
+      "id": "OD-02",
+      "topic": "Elapsed-duration calibration from raw clock intervals",
+      "fixture_choice": "Fixture episodes are verified elapsed-active observations (n=30 per class).",
+      "live_effect": "No raw interval feed exists in S04. FOCUS_ACTUAL_LABOR is aggregate person effort only. Live rework P75 is unavailable until FOCUS_FN_ClockObservation is populated."
+    },
+    {
+      "id": "OD-03",
+      "topic": "QA hold locations, inspector roles and pool ownership",
+      "fixture_choice": "Sourced hold points after 40/80 minutes with 20/25 allocations; QA team pool with cert QA.",
+      "live_effect": "Inspection counts do not locate holds. Live IP QA blocks executable work when the hold location is unknown."
+    },
+    {
+      "id": "OD-04",
+      "topic": "Exact protected breaks, paid rest and overtime authorization",
+      "fixture_choice": "Fixture breaks per S09; OT authorized for fixture people by an explicit fixture authorization dataset.",
+      "live_effect": "Without a labor-source OT authorization, live OT is 0."
+    },
+    {
+      "id": "OD-05",
+      "topic": "CS offsets, reference anchors and date basis",
+      "fixture_choice": "Dates already resolved; raw signed offsets preserved; LOCAL_MIDNIGHT date-to-UTC.",
+      "live_effect": "If producer semantics are not approved, conflicting loads or offset-based rows produce CS_WINDOW_GAP / CS_CONVERSION_POLICY_MISSING."
+    },
+    {
+      "id": "OD-06",
+      "topic": "Commercial delivery due",
+      "fixture_choice": "Station 744 unload date as an explicit planning delivery proxy plus 2-day grace (baseline_proxy).",
+      "live_effect": "No contractual due without commercial authority. Missing due leaves modeled cost unknown, never zero."
+    },
+    {
+      "id": "OD-07",
+      "topic": "CONCURRENT / NON-CONCURRENT relationship meaning",
+      "fixture_choice": "CONCURRENT=required overlap, NON-CONCURRENT=no overlap (fixture meaning).",
+      "live_effect": "Hard concurrency edges without an admitted meaning quarantine the affected jobs."
+    },
+    {
+      "id": "OD-08",
+      "topic": "Rework NC/PU/CI classification and root linkage source",
+      "fixture_choice": "Supplemental typed rework classification with root and defect-origin evidence.",
+      "live_effect": "Without a classification source, live rework jobs have class UNKNOWN and no P75 estimate (DURATION_UNAVAILABLE)."
+    },
+    {
+      "id": "OD-09",
+      "topic": "Affirmative no-certification requirement census",
+      "fixture_choice": "Supplemental requirement census receipts for cert-free jobs.",
+      "live_effect": "Positive-only NEO rows cannot prove cert-free work. Jobs without rows stay REQUIREMENTS_UNKNOWN (blocked)."
+    },
+    {
+      "id": "OD-10",
+      "topic": "Current assignment and attendance feeds",
+      "fixture_choice": "Explicit fixture roster and attendance with synthetic=false demonstration origin.",
+      "live_effect": "FOCUS_PERSON_TEAM_MAP and FOCUS_ATTENDANCE_SHIFT are empty (S04), so no executable crew exists live. Inference is forecast evidence only."
+    },
+    {
+      "id": "OD-11",
+      "topic": "Shift-start travel origin",
+      "fixture_choice": "Muster at first assignment (0 minutes).",
+      "live_effect": "Live origin needs an actual location source or approved bounded policy."
+    },
+    {
+      "id": "OD-12",
+      "topic": "Economics terms, caps and checkpoints",
+      "fixture_choice": "Assumed planning terms labeled ASSUMED; no cap unless explicit.",
+      "live_effect": "No production default rate. Missing approval or basis leaves liability unknown."
+    },
+    {
+      "id": "OD-13",
+      "topic": "Master SHOP_ORDER_STATUS semantics",
+      "fixture_choice": "AVAILABLE/PLANNED/IDLE open; IN WORK in progress; PREVIEW/FORECASTED forecast-only; ON HOLD/REVISIONHOLD/FAILPREVIEW/UNRELEASED blocked; unknown statuses quarantined.",
+      "live_effect": "Until the planning system owner confirms status meanings, PREVIEW/FORECASTED work stays forecast-only and unknown statuses are quarantined with reasons."
+    }
   ]
 }

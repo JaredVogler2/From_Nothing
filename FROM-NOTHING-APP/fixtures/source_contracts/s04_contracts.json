@@ -1,0 +1,565 @@
+{
+ "contracts_sha256": "6ff301d3dbb5440eafe523c03d8b21610f9bbe8650d91793ac2d9b6cd0086ab5",
+ "economics_foreign_keys": [
+  [
+   "AircraftMapping.MappingRevisionId",
+   "MappingRevision.MappingRevisionId"
+  ],
+  [
+   "ContractAssignment.MappingRevisionId",
+   "MappingRevision.MappingRevisionId"
+  ],
+  [
+   "ContractAssignment.ScenarioRevisionId",
+   "EconomicsScenario.ScenarioRevisionId"
+  ],
+  [
+   "EconomicsTerm.ScenarioRevisionId",
+   "EconomicsScenario.ScenarioRevisionId"
+  ],
+  [
+   "OriginalSaleBasis.AssignmentId",
+   "ContractAssignment.AssignmentId"
+  ],
+  [
+   "OriginalSaleBasis.ScenarioRevisionId",
+   "EconomicsScenario.ScenarioRevisionId"
+  ],
+  [
+   "OriginalSaleBasis.TermId",
+   "EconomicsTerm.TermId"
+  ],
+  [
+   "LiabilityCheckpoint.OriginalBasisId",
+   "OriginalSaleBasis.OriginalBasisId"
+  ]
+ ],
+ "schema_version": 1,
+ "source": "FOCUS_FROM_NOTHING_MASTER.txt S04 (SQL Server MCP read-only verification 2026-10-27, SQL-D-22D10090/SHARED)",
+ "tables": {
+  "WEB_APP.FOCUS_ACTUAL_LABOR": {
+   "columns": [
+    "SHOP_ORDER_IDENTIFIER varchar(30)!",
+    "LINE_NUMBER int!",
+    "SHOP_ORDER_STATUS varchar(20)?",
+    "LABOR_RECORDS int?",
+    "ACTUAL_MINUTES_BURNED decimal(18,2)?",
+    "ACTUAL_HOURS_BURNED decimal(18,2)?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "SHOP_ORDER_IDENTIFIER",
+    "LINE_NUMBER"
+   ]
+  },
+  "WEB_APP.FOCUS_ATTENDANCE_SHIFT": {
+   "columns": [
+    "PRODUCTION_DAY date!",
+    "SHIFT_NUMBER tinyint!",
+    "BEMS_ID varchar(10)!",
+    "PRESENT bit!",
+    "SOURCE varchar(20)!",
+    "HOURS decimal(5,2)?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "PRODUCTION_DAY",
+    "SHIFT_NUMBER",
+    "BEMS_ID"
+   ]
+  },
+  "WEB_APP.FOCUS_BUYOFF_PLAN": {
+   "columns": [
+    "SHOP_ORDER_IDENTIFIER varchar(30)!",
+    "LINE_NUMBER int!",
+    "SHOP_ORDER_STATUS varchar(20)?",
+    "MANUFACTURING_INSP int?",
+    "QUALITY_INSP int?",
+    "CC_INSP int?",
+    "ODAUNITMEMBER_INSP int?",
+    "PARTNER_QT_INSP int?",
+    "FINAL_QUALITY_INSP int?",
+    "IN_PROCESS_QUALITY_INSP int?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "SHOP_ORDER_IDENTIFIER",
+    "LINE_NUMBER"
+   ]
+  },
+  "WEB_APP.FOCUS_CDAY_OP_PLAN": {
+   "columns": [
+    "LINE_NUMBER int!",
+    "LINE nvarchar(10)?",
+    "CALENDAR_DATE date!",
+    "POSITION nvarchar(10)?",
+    "DAY_STATUS nvarchar(15)?",
+    "LAST_MODIFIED_DT date!",
+    "LOAD_ID int!",
+    "LOAD_TS datetime2(0)!",
+    "IS_ACTIVE bit!"
+   ],
+   "primary_key": []
+  },
+  "WEB_APP.FOCUS_CERT_ELIGIBILITY": {
+   "columns": [
+    "TEAM varchar(30)?",
+    "JOB_SOI varchar(30)?",
+    "DESCRIPTION varchar(500)?",
+    "MINOR_MODEL varchar(10)?",
+    "LINE_NUMBER int?",
+    "CONTROL_STATION varchar(10)?",
+    "BEMS_ID bigint?",
+    "MECHANIC varchar(80)?",
+    "SHIFT varchar(5)?",
+    "ELIGIBLE varchar(15)?",
+    "PCT_CERTS_HELD decimal(5,1)?",
+    "CERTS_REQUIRED int?",
+    "CERTS_HELD int?",
+    "MISSING_CERTS varchar(2000)?",
+    "MISSING_TRAININGS varchar(4000)?",
+    "SUBSTITUTION varchar(8)?",
+    "LINE_RANGE varchar(20)?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": []
+  },
+  "WEB_APP.FOCUS_CS_WINDOWS": {
+   "columns": [
+    "MBU nvarchar(15)?",
+    "CONTROL_STATION int!",
+    "LINE_NUMBER int!",
+    "LOAD_REF_POS nvarchar(5)?",
+    "LOAD_OFFSET int?",
+    "CS_OP_LOAD date?",
+    "UNLOAD_REF_POS nvarchar(5)?",
+    "UNLOAD_OFFSET int?",
+    "CS_OP_UNLOAD date?",
+    "LAST_MODIFIED_DT date!",
+    "LOAD_ID int!",
+    "LOAD_TS datetime2(0)!",
+    "IS_ACTIVE bit!"
+   ],
+   "primary_key": []
+  },
+  "WEB_APP.FOCUS_DEPT_TEAM_SKILL_REF": {
+   "columns": [
+    "ACCTG_DEPT_CD varchar(10)!",
+    "PRIMARY_TEAM varchar(30)?",
+    "DOMINANT_SKILL varchar(5)?",
+    "LABOR_RECORDS int?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "ACCTG_DEPT_CD"
+   ]
+  },
+  "WEB_APP.FOCUS_ETRACS_ACTIVE": {
+   "columns": [
+    "RECORD_ID int!",
+    "LINE_NUMBER int!",
+    "MINOR_MODEL_IDENT varchar(10)?",
+    "ETRAC_CREATED_DT date?",
+    "ITEM_NUMBER varchar(50)?",
+    "USED_ON varchar(50)?",
+    "ITEM_DESCRIPTION varchar(500)?",
+    "BUS_PARTNER_NAME varchar(200)?",
+    "BUS_PARTNER_CODE varchar(30)?",
+    "REASON_CODE varchar(10)?",
+    "TEAM varchar(50)?",
+    "ETRAC_ECD date?",
+    "LEAD_TIME_FLOW_DAYS int?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "RECORD_ID"
+   ]
+  },
+  "WEB_APP.FOCUS_ETRACS_HISTORY": {
+   "columns": [
+    "RECORD_ID int!",
+    "LINE_NUMBER int!",
+    "MINOR_MODEL_IDENT varchar(10)?",
+    "ETRAC_CREATED_DT date?",
+    "ITEM_NUMBER varchar(50)?",
+    "ITEM_DESCRIPTION varchar(500)?",
+    "BUS_PARTNER_NAME varchar(200)?",
+    "REASON_CODE varchar(10)?",
+    "TEAM varchar(50)?",
+    "CONTROL_STATION varchar(10)?",
+    "USED_ON varchar(50)?",
+    "PARENT_SOI varchar(50)?",
+    "ETRAC_ECD date?",
+    "ACTUAL_CLOSURE_DATE date?",
+    "PRIMARY_JOB varchar(50)?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "RECORD_ID"
+   ]
+  },
+  "WEB_APP.FOCUS_FLOW_BUDGET": {
+   "columns": [
+    "JOB_NUMBER varchar(30)!",
+    "LINE_NUMBER int!",
+    "MINOR_MODEL_IDENT varchar(10)?",
+    "CUSTOMER_CODE varchar(10)?",
+    "SUPERINTENDENT varchar(50)?",
+    "TEAM varchar(30)?",
+    "ASSIST_COUNT int?",
+    "ASSIST_LABOR_MINUTES int?",
+    "PRIMARY_MECHANIC_COUNT int?",
+    "PRIMARY_MECHANIC_DURATION int?",
+    "TOTAL_MECHANICS int?",
+    "TOTAL_LABOR_MINUTES int?",
+    "CRITICAL_FLOW_MINUTES int?",
+    "DURATION_SOURCE varchar(30)?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "JOB_NUMBER",
+    "LINE_NUMBER"
+   ]
+  },
+  "WEB_APP.FOCUS_INSPECTION_COUNTS": {
+   "columns": [
+    "SHOP_ORDER_IDENTIFIER varchar(50)!",
+    "LINE_NUMBER int!",
+    "MANUFACTURING_INSPECTIONS int!",
+    "QUALITY_INSPECTIONS int!",
+    "FINAL_QUALITY_INSPECTIONS int!",
+    "IN_PROCESS_QUALITY_INSPECTIONS int!",
+    "CC_INSPECTIONS int!",
+    "ODAUNITMEMBER_INSPECTIONS int!",
+    "PARTNER_QT_INSPECTIONS int!",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": []
+  },
+  "WEB_APP.FOCUS_INSPECTION_STANDARDS": {
+   "columns": [
+    "INSPECTION_TYPE varchar(30)!",
+    "DURATION_MINUTES int!",
+    "SCHEDULING_RELATIONSHIP varchar(20)!",
+    "DESCRIPTION varchar(200)?"
+   ],
+   "primary_key": [
+    "INSPECTION_TYPE"
+   ]
+  },
+  "WEB_APP.FOCUS_LABOR_SHIFT": {
+   "columns": [
+    "PRODUCTION_DAY date!",
+    "SHIFT_NUMBER tinyint!",
+    "LINE_NUMBER int!",
+    "SOI varchar(40)!",
+    "BEMS_ID varchar(10)!",
+    "MINUTES decimal(9,2)!",
+    "FIRST_ON_ET datetime2(0)?",
+    "LAST_OFF_ET datetime2(0)?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "PRODUCTION_DAY",
+    "SHIFT_NUMBER",
+    "LINE_NUMBER",
+    "SOI",
+    "BEMS_ID"
+   ]
+  },
+  "WEB_APP.FOCUS_MASTER_TASK_LIST": {
+   "columns": [
+    "SHOP_ORDER_IDENTIFIER varchar(30)!",
+    "SHOP_ORDER_DESCRIPTION varchar(500)?",
+    "LINE_NUMBER int!",
+    "TEAM varchar(30)?",
+    "CURRENT_CONTROL_STATION varchar(10)?",
+    "MINOR_MODEL_IDENT varchar(10)?",
+    "CUSTOMER_CODE varchar(10)?",
+    "PARENT_SOI varchar(30)?",
+    "SUPERINTENDENT varchar(50)?",
+    "SHOP_ORDER_STATUS varchar(20)!",
+    "FIRST_AVAILABLE datetime2(0)?",
+    "ACT_START datetime2(0)?",
+    "ACT_COMP datetime2(0)?",
+    "LOAD_TIMESTAMP datetime2(3)!",
+    "PLANNING_SYSTEM_NAME varchar(50)?",
+    "IS_REWORK bit?",
+    "RECORD_KEY int?"
+   ],
+   "primary_key": [
+    "SHOP_ORDER_IDENTIFIER",
+    "LINE_NUMBER"
+   ]
+  },
+  "WEB_APP.FOCUS_MECHANIC_CERTS": {
+   "columns": [
+    "BEMS_ID varchar(10)!",
+    "CERT_CODE varchar(20)?",
+    "STATUS varchar(10)?",
+    "LAST_CERT_DATE varchar(10)?",
+    "CERT_EXP_DATE varchar(10)?",
+    "SNAPSHOT_TS datetime?"
+   ],
+   "primary_key": []
+  },
+  "WEB_APP.FOCUS_MECH_TEAM_INFERRED": {
+   "columns": [
+    "BEMS_ID bigint!",
+    "INFERRED_TEAM varchar(30)!",
+    "SOURCE varchar(15)!",
+    "LABOR_RECORDS int!",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "BEMS_ID",
+    "INFERRED_TEAM"
+   ]
+  },
+  "WEB_APP.FOCUS_PERSON_TEAM_MAP": {
+   "columns": [
+    "BEMS_ID varchar(10)!",
+    "ROLE varchar(10)!",
+    "TEAM varchar(40)?",
+    "SUPERINTENDENT varchar(50)?",
+    "QA_AREA varchar(20)?",
+    "IN_SCOPE bit!",
+    "BASIS varchar(30)!",
+    "TOP_SHARE decimal(5,4)?",
+    "SECOND_TEAM varchar(40)?",
+    "EVIDENCE_COUNT int!",
+    "LOOKBACK_DAYS smallint!",
+    "LAST_EVIDENCE_DATE date?",
+    "FLAGS varchar(40)?",
+    "EFFECTIVE_FROM datetime2(0)!",
+    "EFFECTIVE_TO datetime2(0)?",
+    "RUN_ID varchar(40)?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": [
+    "BEMS_ID",
+    "EFFECTIVE_FROM"
+   ]
+  },
+  "WEB_APP.FOCUS_PNET_DAG": {
+   "columns": [
+    "PREDECESSOR_SOI varchar(30)!",
+    "SUCCESSOR_SOI varchar(30)!",
+    "RELATIONSHIP_TYPE varchar(30)?",
+    "IS_HARD char(1)?",
+    "PRED_MINOR_MODEL varchar(10)?",
+    "SUC_MINOR_MODEL varchar(10)?",
+    "ORIGINAL_PRED_JOBNUMBER varchar(50)?",
+    "ORIGINAL_SUC_JOBNUMBER varchar(50)?",
+    "NOTE varchar(200)?",
+    "OFFSET_MINUTES int?",
+    "LOAD_TIMESTAMP datetime2(3)!"
+   ],
+   "primary_key": []
+  },
+  "WEB_APP.FOCUS_SOL_TESTING2_AircraftMapping": {
+   "columns": [
+    "MappingRevisionId uniqueidentifier!",
+    "LineNumber int!",
+    "CustomerCode varchar(7)!",
+    "CustomerBytes varbinary(7)?^",
+    "CustomerLength int?^",
+    "MinorModel tinyint!",
+    "SourceStart datetimeoffset(6)?",
+    "SourceEnd datetimeoffset(6)?",
+    "RevisionDate date?",
+    "ShopCompleteDate date?",
+    "AssemblyLocation char(1)?",
+    "SourceContentSha256 char(64)!",
+    "ImportedAtUtc datetime2(3)!"
+   ],
+   "primary_key": [
+    "MappingRevisionId",
+    "LineNumber"
+   ]
+  },
+  "WEB_APP.FOCUS_SOL_TESTING2_ContractAssignment": {
+   "columns": [
+    "AssignmentId uniqueidentifier!",
+    "LineNumber int!",
+    "MappingRevisionId uniqueidentifier!",
+    "ScenarioRevisionId uniqueidentifier!",
+    "ContractKey varchar(128)!",
+    "ContractKeyBytes varbinary(128)?^",
+    "ContractKeyLength int?^",
+    "Provenance varchar(24)!",
+    "EffectiveFromUtc datetime2(3)!",
+    "EffectiveToUtc datetime2(3)?",
+    "OwnerSubject nvarchar(128)!",
+    "ApprovedBy nvarchar(128)?",
+    "SourceReference nvarchar(512)!",
+    "CreatedByKey varbinary(256)!",
+    "CreatedByKeyLength int?^",
+    "CreatedAtUtc datetime2(3)!",
+    "IsActive bit!"
+   ],
+   "primary_key": [
+    "AssignmentId"
+   ]
+  },
+  "WEB_APP.FOCUS_SOL_TESTING2_EconomicsScenario": {
+   "columns": [
+    "ScenarioRevisionId uniqueidentifier!",
+    "ScenarioKey varchar(64)!",
+    "ScenarioKeyBytes varbinary(64)?^",
+    "ScenarioKeyLength int?^",
+    "ScenarioRevision int!",
+    "Provenance varchar(24)!",
+    "Methodology nvarchar(1000)!",
+    "OwnerSubject nvarchar(128)!",
+    "EffectiveFromUtc datetime2(3)!",
+    "EffectiveToUtc datetime2(3)?",
+    "Currency char(3)!",
+    "CapFraction decimal(5,4)!",
+    "PriorityWeight decimal(6,5)!",
+    "CreatedByKey varbinary(256)!",
+    "CreatedByKeyLength int?^",
+    "CreatedAtUtc datetime2(3)!",
+    "IsActive bit!"
+   ],
+   "primary_key": [
+    "ScenarioRevisionId"
+   ]
+  },
+  "WEB_APP.FOCUS_SOL_TESTING2_EconomicsTerm": {
+   "columns": [
+    "TermId uniqueidentifier!",
+    "ScenarioRevisionId uniqueidentifier!",
+    "SelectorType varchar(24)!",
+    "SelectorKey varbinary(256)!",
+    "SelectorLength smallint!",
+    "CustomerCode varchar(7)!",
+    "CustomerBytes varbinary(7)?^",
+    "CustomerLength int?^",
+    "MinorModel tinyint!",
+    "LineNumber int?",
+    "ContractKey varchar(128)?",
+    "ContractIsNull bit?^",
+    "ContractBytes varbinary(128)?^",
+    "ContractLength int?^",
+    "OriginalSalePrice decimal(19,4)!",
+    "DailyRate decimal(19,4)!",
+    "Currency char(3)!",
+    "EffectiveFromUtc datetime2(3)!",
+    "EffectiveToUtc datetime2(3)?",
+    "Provenance varchar(24)!",
+    "Methodology nvarchar(1000)!",
+    "SourceReference nvarchar(512)!",
+    "OwnerSubject nvarchar(128)!",
+    "ApprovedBy nvarchar(128)?",
+    "TermVersion bigint!",
+    "CreatedByKey varbinary(256)!",
+    "CreatedByKeyLength int?^",
+    "CreatedAtUtc datetime2(3)!"
+   ],
+   "primary_key": [
+    "TermId"
+   ]
+  },
+  "WEB_APP.FOCUS_SOL_TESTING2_LiabilityCheckpoint": {
+   "columns": [
+    "CheckpointId uniqueidentifier!",
+    "OriginalBasisId uniqueidentifier!",
+    "SequenceNumber bigint!",
+    "AsOfUtc datetime2(3)!",
+    "ElapsedLateDays decimal(18,6)!",
+    "AssessedAmount decimal(19,4)!",
+    "CumulativeAccounted decimal(19,4)!",
+    "AssessmentCoverage varchar(32)!",
+    "AssessmentReference nvarchar(512)?",
+    "CheckpointKind varchar(16)!",
+    "ActorKey varbinary(256)!",
+    "ActorKeyLength int?^",
+    "CreatedAtUtc datetime2(3)!"
+   ],
+   "primary_key": [
+    "CheckpointId"
+   ]
+  },
+  "WEB_APP.FOCUS_SOL_TESTING2_MappingRevision": {
+   "columns": [
+    "MappingRevisionId uniqueidentifier!",
+    "SourceName varchar(128)!",
+    "SourcePredicate nvarchar(500)!",
+    "QuerySha256 char(64)!",
+    "ContentSha256 char(64)!",
+    "RowCount int!",
+    "ImportedByKey varbinary(256)!",
+    "ImportedByKeyLength int?^",
+    "ImportedAtUtc datetime2(3)!",
+    "CoverageJson nvarchar(4000)!",
+    "IsCurrent bit!"
+   ],
+   "primary_key": [
+    "MappingRevisionId"
+   ]
+  },
+  "WEB_APP.FOCUS_SOL_TESTING2_OriginalSaleBasis": {
+   "columns": [
+    "OriginalBasisId uniqueidentifier!",
+    "LineNumber int!",
+    "ContractKey varchar(128)!",
+    "ContractKeyBytes varbinary(128)?^",
+    "ContractKeyLength int?^",
+    "ScenarioRevisionId uniqueidentifier!",
+    "AssignmentId uniqueidentifier!",
+    "OriginalSalePrice decimal(19,4)!",
+    "Currency char(3)!",
+    "Provenance varchar(24)!",
+    "TermId uniqueidentifier!",
+    "SourceReference nvarchar(512)!",
+    "CreatedByKey varbinary(256)!",
+    "CreatedByKeyLength int?^",
+    "CreatedAtUtc datetime2(3)!"
+   ],
+   "primary_key": [
+    "OriginalBasisId"
+   ]
+  },
+  "WEB_APP.NEO_CERT_COURSE_MAP": {
+   "columns": [
+    "CRITICAL_PROCESS_NAME varchar(200)!",
+    "CERT_CODE varchar(100)!",
+    "CERT_TYPE varchar(20)?",
+    "BAC_SPEC varchar(50)?",
+    "BAC_VERB varchar(150)?",
+    "SNAPSHOT_TS datetime?"
+   ],
+   "primary_key": [
+    "CRITICAL_PROCESS_NAME",
+    "CERT_CODE"
+   ]
+  },
+  "WEB_APP.NEO_GRAPH_REWORK": {
+   "columns": [
+    "LINE_NUMBER int!",
+    "PARENT_SOI varchar(30)!",
+    "CHILD_SOI varchar(30)!",
+    "CHILD_STATUS varchar(30)?",
+    "CHILD_DESCRIPTION varchar(200)?",
+    "SNAPSHOT_TS datetime?"
+   ],
+   "primary_key": [
+    "LINE_NUMBER",
+    "CHILD_SOI"
+   ]
+  },
+  "WEB_APP.NEO_SOI_CERT_REQUIREMENTS": {
+   "columns": [
+    "SOI_ID varchar(30)!",
+    "LINE_NUMBER int!",
+    "CRITICAL_PROCESS_NAME varchar(200)?",
+    "CERT_CODE varchar(100)!",
+    "CERT_TYPE varchar(20)?",
+    "REQ_CERT char(1)?",
+    "SNAPSHOT_TS datetime?"
+   ],
+   "primary_key": []
+  }
+ }
+}

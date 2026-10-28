@@ -1,0 +1,50 @@
+{
+ "columns": [
+  "RECORD_ID",
+  "LINE_NUMBER",
+  "MINOR_MODEL_IDENT",
+  "USED_ON",
+  "ETRAC_ECD",
+  "TEAM",
+  "REASON_CODE",
+  "ETRAC_CREATED_DT",
+  "ITEM_NUMBER",
+  "LOAD_TIMESTAMP"
+ ],
+ "dataset": "etracs_active",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "ETRAC_CREATED_DT": "2026-10-20",
+   "ETRAC_ECD": "2026-10-27",
+   "ITEM_NUMBER": "DEMO-P-0001",
+   "LINE_NUMBER": 1305,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "MINOR_MODEL_IDENT": "9",
+   "REASON_CODE": "LP",
+   "RECORD_ID": 50501,
+   "TEAM": "PROD-A",
+   "USED_ON": "CHILD5"
+  },
+  {
+   "ETRAC_CREATED_DT": "2026-10-21",
+   "ETRAC_ECD": null,
+   "ITEM_NUMBER": "DEMO-P-0002",
+   "LINE_NUMBER": 1306,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "MINOR_MODEL_IDENT": "9",
+   "REASON_CODE": "LP",
+   "RECORD_ID": 50502,
+   "TEAM": "TST",
+   "USED_ON": ""
+  }
+ ],
+ "schema_version": 1
+}

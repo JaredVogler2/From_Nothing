@@ -1,0 +1,30 @@
+{
+ "columns": [
+  "BEMS_ID",
+  "CERT_CODE",
+  "EVENT",
+  "EFFECTIVE_AT_UTC",
+  "OBSERVED_AT_UTC",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "holding_events",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "BEMS_ID": "DEMO-A1-08",
+   "CERT_CODE": "C",
+   "EFFECTIVE_AT_UTC": "2026-10-29T12:00:00Z",
+   "EVENT": "REVOKED",
+   "EVIDENCE_REF": "FIXTURE-REVOKE-A108-C",
+   "OBSERVED_AT_UTC": "2026-10-25T12:00:00Z"
+  }
+ ],
+ "schema_version": 1
+}

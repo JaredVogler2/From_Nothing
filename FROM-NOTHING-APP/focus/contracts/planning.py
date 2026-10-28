@@ -243,17 +243,55 @@ class Availability:
 
 @dataclass(frozen=True, slots=True)
 class Pool:
+    """Pure pool: one team, one shift start date, one shift number, one source run.
+
+    ``executable_members`` have admitted roster/attendance availability; ``forecast_members``
+    additionally include nominal (inferred) and synthetic virtual people. Each purpose has its
+    own denominator N and activation cap floor(85*N/100) computed on distinct admitted people.
+    """
+
     key: PoolKey
     members: tuple[str, ...]
+    executable_members: tuple[str, ...]
+    forecast_members: tuple[str, ...]
     synthetic: bool
-    admitted_n: int
-    activation_cap: int
+    n_executable: int
+    cap_executable: int
+    n_forecast: int
+    cap_forecast: int
     basis: str
-    conflicts: tuple[str, ...] = ()
+    excluded: tuple[str, ...] = ()
 
     @property
     def id(self) -> str:
         return self.key.id
+
+    def denominator(self, purpose: Purpose) -> int:
+        return self.n_executable if purpose is Purpose.EXECUTABLE else self.n_forecast
+
+    def cap(self, purpose: Purpose) -> int:
+        return self.cap_executable if purpose is Purpose.EXECUTABLE else self.cap_forecast
+
+    def eligible_members(self, purpose: Purpose) -> tuple[str, ...]:
+        return self.executable_members if purpose is Purpose.EXECUTABLE else self.forecast_members
+
+
+@dataclass(frozen=True, slots=True)
+class TeamInferenceRecord:
+    person: str
+    inferred_team: str | None
+    evidence_count: int
+    effort_minutes: Decimal
+    top_share: Decimal | None
+    runner_up_team: str | None
+    runner_up_count: int | None
+    is_tie: bool
+    basis: str
+    window_start: datetime | None
+    window_end: datetime | None
+    algorithm_version: str
+    effective_team: str | None
+    effective_basis: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -441,8 +479,11 @@ class PlanningSnapshot:
     rework_links: tuple[ReworkLink, ...]
     economics: tuple[AircraftEconomics, ...]
     carry_in: tuple[CarryIn, ...]
+    inference: tuple[TeamInferenceRecord, ...]
+    shift_ids: tuple[str, ...]
     gaps: tuple[ReadinessGap, ...]
     statistics_ids: tuple[str, ...]
+    dataset_lineage: dict[str, str]
     incumbent_id: str | None
     hash: str
 

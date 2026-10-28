@@ -1,0 +1,35 @@
+{
+ "columns": [
+  "SOI_ID",
+  "LINE_NUMBER",
+  "GROUP_ID",
+  "CERT_CODE",
+  "APPROVAL_REF"
+ ],
+ "dataset": "requirement_alternatives",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "APPROVAL_REF": "FIXTURE-ALT-ROOT5",
+   "CERT_CODE": "B",
+   "GROUP_ID": "G1",
+   "LINE_NUMBER": 1305,
+   "SOI_ID": "ROOT5"
+  },
+  {
+   "APPROVAL_REF": "FIXTURE-ALT-ROOT5",
+   "CERT_CODE": "C",
+   "GROUP_ID": "G1",
+   "LINE_NUMBER": 1305,
+   "SOI_ID": "ROOT5"
+  }
+ ],
+ "schema_version": 1
+}

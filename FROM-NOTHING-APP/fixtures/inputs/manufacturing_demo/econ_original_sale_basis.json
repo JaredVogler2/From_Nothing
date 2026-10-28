@@ -1,0 +1,27 @@
+{
+ "columns": [
+  "OriginalBasisId",
+  "LineNumber",
+  "ContractKey",
+  "ScenarioRevisionId",
+  "AssignmentId",
+  "OriginalSalePrice",
+  "Currency",
+  "Provenance",
+  "TermId",
+  "SourceReference",
+  "CreatedAtUtc"
+ ],
+ "dataset": "econ_original_sale_basis",
+ "receipt": {
+  "certified_empty": true,
+  "complete": true,
+  "note": "no actual sale basis in the fixture (assumed planning terms only)",
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [],
+ "schema_version": 1
+}

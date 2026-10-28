@@ -1,0 +1,41 @@
+{
+ "columns": [
+  "SHOP_ORDER_IDENTIFIER",
+  "LINE_NUMBER",
+  "SHOP_ORDER_STATUS",
+  "LABOR_RECORDS",
+  "ACTUAL_MINUTES_BURNED",
+  "ACTUAL_HOURS_BURNED",
+  "LOAD_TIMESTAMP"
+ ],
+ "dataset": "actual_labor",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "ACTUAL_HOURS_BURNED": "2.00",
+   "ACTUAL_MINUTES_BURNED": "120.00",
+   "LABOR_RECORDS": 2,
+   "LINE_NUMBER": 1301,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "SHOP_ORDER_IDENTIFIER": "A0",
+   "SHOP_ORDER_STATUS": "COMPLETE"
+  },
+  {
+   "ACTUAL_HOURS_BURNED": "1.33",
+   "ACTUAL_MINUTES_BURNED": "80.00",
+   "LABOR_RECORDS": 2,
+   "LINE_NUMBER": 1304,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "SHOP_ORDER_IDENTIFIER": "ROOT4",
+   "SHOP_ORDER_STATUS": "IN WORK"
+  }
+ ],
+ "schema_version": 1
+}

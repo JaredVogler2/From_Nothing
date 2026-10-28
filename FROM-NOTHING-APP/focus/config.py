@@ -39,7 +39,10 @@ ALLOWED_KEYS = frozenset({
     "FOCUS_SOURCE_TIMEZONE_MAP_JSON",
     "FOCUS_POLICY_ID",
     "FOCUS_SCENARIO_ID",
+    "FOCUS_RUNTIME_DIR",
     "FOCUS_SCOPE_KEY",
+    "FOCUS_SITE",
+    "FOCUS_PROGRAM",
     "FOCUS_WORKER_BUDGET_SECONDS",
     "FOCUS_SOLVER_ENABLED",
     "FOCUS_LLM_PROVIDER",
@@ -234,7 +237,10 @@ class Settings:
     source_timezone_map: Mapping[str, str] = field(default_factory=dict)
     policy_id: str = "rebuild-v1"
     scenario_id: str = "manufacturing_demo"
+    runtime_root: Path | None = None
     scope_key: str = "DEMO-787"
+    site: str = "DEMO"
+    program: str = "787"
     worker_budget_seconds: float = 30.0
     solver_enabled: bool = False
     llm_provider: str = "none"
@@ -285,7 +291,8 @@ class Settings:
         name = scenario or self.scenario_id
         if not name.replace("_", "").replace("-", "").isalnum():
             raise SettingsError("BAD_SCENARIO", f"scenario id {name!r} must be alphanumeric/underscore/dash")
-        return self.app_root / "fixtures" / "runtime" / name
+        base = self.runtime_root if self.runtime_root is not None else self.app_root / "fixtures" / "runtime"
+        return base / name
 
     @property
     def sql_configured(self) -> bool:
@@ -384,7 +391,10 @@ class Settings:
             source_timezone_map=tz_map,
             policy_id=get("FOCUS_POLICY_ID") or "rebuild-v1",
             scenario_id=get("FOCUS_SCENARIO_ID") or "manufacturing_demo",
+            runtime_root=Path(get("FOCUS_RUNTIME_DIR")).expanduser().resolve() if get("FOCUS_RUNTIME_DIR") else None,
             scope_key=get("FOCUS_SCOPE_KEY") or "DEMO-787",
+            site=get("FOCUS_SITE") or "DEMO",
+            program=get("FOCUS_PROGRAM") or "787",
             worker_budget_seconds=_parse_float("FOCUS_WORKER_BUDGET_SECONDS", get("FOCUS_WORKER_BUDGET_SECONDS"), 30.0, 0.1, 3600.0),
             solver_enabled=_parse_bool("FOCUS_SOLVER_ENABLED", get("FOCUS_SOLVER_ENABLED"), False),
             llm_provider=_choice("FOCUS_LLM_PROVIDER", get("FOCUS_LLM_PROVIDER"), LLM_PROVIDERS, "none"),

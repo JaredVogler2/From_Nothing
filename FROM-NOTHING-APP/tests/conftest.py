@@ -83,3 +83,43 @@ def login(client: Any, persona: str) -> str:
     assert response.status_code == 200, response.get_data(as_text=True)
     context = client.get("/api/v1/context").get_json()
     return context["data"]["csrf_token"]
+
+
+def acquire_demo(services, key: str = "test-demo", cutoff=FIXTURE_CUTOFF, reader=None, fault=None):
+    from focus.data.acquisition import acquire, make_reader
+
+    return acquire(services, reader or make_reader(services, "manufacturing_demo"), cutoff=cutoff, idempotency_key=key, fault=fault)
+
+
+@pytest.fixture()
+def demo(services_factory):
+    """Services with the manufacturing_demo source run acquired into a temp fixture store."""
+    services = services_factory()
+    outcome = acquire_demo(services)
+    assert outcome.status == "COMPLETE", outcome.rejection
+    from focus.data.acquisition import load_snapshot
+
+    snapshot = load_snapshot(services.repositories, outcome.snapshot_id)
+    return services, outcome, snapshot
+
+
+@pytest.fixture(scope="session")
+def demo_snapshot(tmp_path_factory, app_root):
+    """Session-cached demo snapshot for read-only domain assertions."""
+    from focus.data.acquisition import load_snapshot
+
+    root = tmp_path_factory.mktemp("demo_session")
+    settings = Settings.from_env({}, app_root=app_root)
+    clock = FixedClock(FIXTURE_CUTOFF)
+    repos = Repositories(FixtureStore(root / "runtime"), mode="fixture", scope_key=settings.scope_key, clock=clock)
+    services = build_services(settings, repositories=repos, clock=clock)
+    outcome = acquire_demo(services, key="session-demo")
+    assert outcome.status == "COMPLETE", outcome.rejection
+    return load_snapshot(repos, outcome.snapshot_id)
+
+
+def job_id(snapshot, line: int, soi: str) -> str:
+    for job in snapshot.jobs:
+        if job.line == line and job.key.native_id == soi:
+            return job.id
+    raise KeyError((line, soi))

@@ -1,0 +1,74 @@
+{
+ "columns": [
+  "AssignmentId",
+  "LineNumber",
+  "MappingRevisionId",
+  "ScenarioRevisionId",
+  "ContractKey",
+  "Provenance",
+  "EffectiveFromUtc",
+  "EffectiveToUtc",
+  "OwnerSubject",
+  "ApprovedBy",
+  "SourceReference",
+  "CreatedAtUtc",
+  "IsActive"
+ ],
+ "dataset": "econ_contract_assignment",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "ApprovedBy": null,
+   "AssignmentId": "4f495d64-9b5b-55bc-8184-6d7339c78d63",
+   "ContractKey": "DEMO-K1",
+   "CreatedAtUtc": "2026-10-20T12:00:00.000",
+   "EffectiveFromUtc": "2026-01-01T00:00:00.000",
+   "EffectiveToUtc": null,
+   "IsActive": true,
+   "LineNumber": 1303,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "OwnerSubject": "fixture-economics",
+   "Provenance": "ASSUMED",
+   "ScenarioRevisionId": "06ce4812-0e1d-5087-a47c-3ee2213344fa",
+   "SourceReference": "FIXTURE-CONTRACT-DEMO-K1"
+  },
+  {
+   "ApprovedBy": null,
+   "AssignmentId": "9d54aed3-1a6a-5625-8a89-132f434925fe",
+   "ContractKey": "DEMO-K1",
+   "CreatedAtUtc": "2026-10-20T12:00:00.000",
+   "EffectiveFromUtc": "2026-01-01T00:00:00.000",
+   "EffectiveToUtc": null,
+   "IsActive": true,
+   "LineNumber": 1304,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "OwnerSubject": "fixture-economics",
+   "Provenance": "ASSUMED",
+   "ScenarioRevisionId": "06ce4812-0e1d-5087-a47c-3ee2213344fa",
+   "SourceReference": "FIXTURE-CONTRACT-DEMO-K1"
+  },
+  {
+   "ApprovedBy": null,
+   "AssignmentId": "8d26bd4a-742b-5b5c-bc24-3e27e1766bb9",
+   "ContractKey": "DEMO-K2",
+   "CreatedAtUtc": "2026-10-20T12:00:00.000",
+   "EffectiveFromUtc": "2026-01-01T00:00:00.000",
+   "EffectiveToUtc": null,
+   "IsActive": true,
+   "LineNumber": 1305,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "OwnerSubject": "fixture-economics",
+   "Provenance": "ASSUMED",
+   "ScenarioRevisionId": "06ce4812-0e1d-5087-a47c-3ee2213344fa",
+   "SourceReference": "FIXTURE-CONTRACT-DEMO-K2"
+  }
+ ],
+ "schema_version": 1
+}

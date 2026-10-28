@@ -1,0 +1,909 @@
+{
+ "datasets": {
+  "actual_labor": {
+   "capabilities": [
+    "performance"
+   ],
+   "columns": [
+    "SHOP_ORDER_IDENTIFIER",
+    "LINE_NUMBER",
+    "SHOP_ORDER_STATUS",
+    "LABOR_RECORDS",
+    "ACTUAL_MINUTES_BURNED",
+    "ACTUAL_HOURS_BURNED",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_ACTUAL_LABOR"
+  },
+  "attendance_shift": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "PRODUCTION_DAY",
+    "SHIFT_NUMBER",
+    "BEMS_ID",
+    "PRESENT",
+    "HOURS",
+    "SOURCE",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": "LOAD_TIMESTAMP",
+   "description": "Current attendance (empty live on 2026-10-27).",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_ATTENDANCE_SHIFT"
+  },
+  "availability_exceptions": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "PERSON_KEY",
+    "PRODUCTION_DAY",
+    "SHIFT_NUMBER",
+    "KIND",
+    "START_LOCAL",
+    "END_LOCAL",
+    "OBSERVED_AT_UTC",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": "OBSERVED_AT_UTC",
+   "description": "Planned leave and other duty that removes or reduces availability.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "buyoff_plan": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "SHOP_ORDER_IDENTIFIER",
+    "LINE_NUMBER",
+    "SHOP_ORDER_STATUS",
+    "MANUFACTURING_INSP",
+    "QUALITY_INSP",
+    "CC_INSP",
+    "ODAUNITMEMBER_INSP",
+    "PARTNER_QT_INSP",
+    "FINAL_QUALITY_INSP",
+    "IN_PROCESS_QUALITY_INSP",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_BUYOFF_PLAN"
+  },
+  "carry_in": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "PERSON_KEY",
+    "KIND",
+    "START_UTC",
+    "END_UTC",
+    "LINE_NUMBER",
+    "SOI",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": null,
+   "description": "Actual or other duty already occupying people inside the horizon.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "cday_op_plan": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "LINE_NUMBER",
+    "LINE",
+    "CALENDAR_DATE",
+    "POSITION",
+    "DAY_STATUS",
+    "LAST_MODIFIED_DT",
+    "LOAD_ID",
+    "LOAD_TS",
+    "IS_ACTIVE"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_CDAY_OP_PLAN"
+  },
+  "cert_course_map": {
+   "capabilities": [
+    "forecast"
+   ],
+   "columns": [
+    "CRITICAL_PROCESS_NAME",
+    "CERT_CODE",
+    "CERT_TYPE",
+    "BAC_SPEC",
+    "BAC_VERB",
+    "SNAPSHOT_TS"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.NEO_CERT_COURSE_MAP"
+  },
+  "clock_observations": {
+   "capabilities": [
+    "duration"
+   ],
+   "columns": [
+    "SOURCE_EVENT_KEY",
+    "LINE_NUMBER",
+    "NATIVE_SOI",
+    "PERSON_KEY",
+    "EPISODE_KEY",
+    "TEAM",
+    "REWORK_CLASS",
+    "START_UTC",
+    "END_UTC",
+    "SOURCE_REVISION",
+    "IS_VOIDED"
+   ],
+   "cutoff_column": null,
+   "description": "FOCUS_FN_ClockObservation raw intervals.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "cs_windows": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "MBU",
+    "CONTROL_STATION",
+    "LINE_NUMBER",
+    "LOAD_REF_POS",
+    "LOAD_OFFSET",
+    "CS_OP_LOAD",
+    "UNLOAD_REF_POS",
+    "UNLOAD_OFFSET",
+    "CS_OP_UNLOAD",
+    "LAST_MODIFIED_DT",
+    "LOAD_ID",
+    "LOAD_TS",
+    "IS_ACTIVE"
+   ],
+   "cutoff_column": null,
+   "description": "Mandatory same-run CS source; never re-queried during scheduling.",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_CS_WINDOWS"
+  },
+  "dept_team_skill_ref": {
+   "capabilities": [
+    "forecast"
+   ],
+   "columns": [
+    "ACCTG_DEPT_CD",
+    "PRIMARY_TEAM",
+    "DOMINANT_SKILL",
+    "LABOR_RECORDS",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_DEPT_TEAM_SKILL_REF"
+  },
+  "duration_episodes": {
+   "capabilities": [
+    "duration"
+   ],
+   "columns": [
+    "EPISODE_KEY",
+    "REWORK_CLASS",
+    "TEAM",
+    "MODEL",
+    "ELAPSED_MINUTES",
+    "PERSON_EFFORT_MINUTES",
+    "CYCLE_MINUTES",
+    "STATUS",
+    "CREW",
+    "COMPLETED_AT_UTC",
+    "SOURCE"
+   ],
+   "cutoff_column": null,
+   "description": "Completed comparable episodes (verified completion).",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "econ_aircraft_mapping": {
+   "capabilities": [
+    "economics"
+   ],
+   "columns": [
+    "MappingRevisionId",
+    "LineNumber",
+    "CustomerCode",
+    "MinorModel",
+    "SourceStart",
+    "SourceEnd",
+    "RevisionDate",
+    "ShopCompleteDate",
+    "AssemblyLocation",
+    "SourceContentSha256",
+    "ImportedAtUtc"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_SOL_TESTING2_AircraftMapping"
+  },
+  "econ_contract_assignment": {
+   "capabilities": [
+    "economics"
+   ],
+   "columns": [
+    "AssignmentId",
+    "LineNumber",
+    "MappingRevisionId",
+    "ScenarioRevisionId",
+    "ContractKey",
+    "Provenance",
+    "EffectiveFromUtc",
+    "EffectiveToUtc",
+    "OwnerSubject",
+    "ApprovedBy",
+    "SourceReference",
+    "CreatedAtUtc",
+    "IsActive"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_SOL_TESTING2_ContractAssignment"
+  },
+  "econ_liability_checkpoint": {
+   "capabilities": [
+    "economics"
+   ],
+   "columns": [
+    "CheckpointId",
+    "OriginalBasisId",
+    "SequenceNumber",
+    "AsOfUtc",
+    "ElapsedLateDays",
+    "AssessedAmount",
+    "CumulativeAccounted",
+    "AssessmentCoverage",
+    "AssessmentReference",
+    "CheckpointKind",
+    "CreatedAtUtc"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_SOL_TESTING2_LiabilityCheckpoint"
+  },
+  "econ_mapping_revision": {
+   "capabilities": [
+    "economics"
+   ],
+   "columns": [
+    "MappingRevisionId",
+    "SourceName",
+    "SourcePredicate",
+    "QuerySha256",
+    "ContentSha256",
+    "RowCount",
+    "ImportedAtUtc",
+    "CoverageJson",
+    "IsCurrent"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_SOL_TESTING2_MappingRevision"
+  },
+  "econ_original_sale_basis": {
+   "capabilities": [
+    "economics"
+   ],
+   "columns": [
+    "OriginalBasisId",
+    "LineNumber",
+    "ContractKey",
+    "ScenarioRevisionId",
+    "AssignmentId",
+    "OriginalSalePrice",
+    "Currency",
+    "Provenance",
+    "TermId",
+    "SourceReference",
+    "CreatedAtUtc"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_SOL_TESTING2_OriginalSaleBasis"
+  },
+  "econ_scenario": {
+   "capabilities": [
+    "economics"
+   ],
+   "columns": [
+    "ScenarioRevisionId",
+    "ScenarioKey",
+    "ScenarioRevision",
+    "Provenance",
+    "Methodology",
+    "OwnerSubject",
+    "EffectiveFromUtc",
+    "EffectiveToUtc",
+    "Currency",
+    "CapFraction",
+    "PriorityWeight",
+    "CreatedAtUtc",
+    "IsActive"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_SOL_TESTING2_EconomicsScenario"
+  },
+  "econ_term": {
+   "capabilities": [
+    "economics"
+   ],
+   "columns": [
+    "TermId",
+    "ScenarioRevisionId",
+    "SelectorType",
+    "SelectorLength",
+    "CustomerCode",
+    "MinorModel",
+    "LineNumber",
+    "ContractKey",
+    "OriginalSalePrice",
+    "DailyRate",
+    "Currency",
+    "EffectiveFromUtc",
+    "EffectiveToUtc",
+    "Provenance",
+    "Methodology",
+    "SourceReference",
+    "OwnerSubject",
+    "ApprovedBy",
+    "TermVersion",
+    "CreatedAtUtc"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_SOL_TESTING2_EconomicsTerm"
+  },
+  "etracs_active": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "RECORD_ID",
+    "LINE_NUMBER",
+    "MINOR_MODEL_IDENT",
+    "USED_ON",
+    "ETRAC_ECD",
+    "TEAM",
+    "REASON_CODE",
+    "ETRAC_CREATED_DT",
+    "ITEM_NUMBER",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_ETRACS_ACTIVE"
+  },
+  "etracs_history": {
+   "capabilities": [
+    "forecast"
+   ],
+   "columns": [
+    "RECORD_ID",
+    "LINE_NUMBER",
+    "USED_ON",
+    "PARENT_SOI",
+    "PRIMARY_JOB",
+    "ETRAC_ECD",
+    "ACTUAL_CLOSURE_DATE",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_ETRACS_HISTORY"
+  },
+  "flow_budget": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "JOB_NUMBER",
+    "LINE_NUMBER",
+    "CRITICAL_FLOW_MINUTES",
+    "TOTAL_MECHANICS",
+    "PRIMARY_MECHANIC_COUNT",
+    "PRIMARY_MECHANIC_DURATION",
+    "ASSIST_COUNT",
+    "ASSIST_LABOR_MINUTES",
+    "TOTAL_LABOR_MINUTES",
+    "DURATION_SOURCE",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_FLOW_BUDGET"
+  },
+  "holding_events": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "BEMS_ID",
+    "CERT_CODE",
+    "EVENT",
+    "EFFECTIVE_AT_UTC",
+    "OBSERVED_AT_UTC",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": "OBSERVED_AT_UTC",
+   "description": "Revocation/reinstatement events with effective time.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "inspection_counts": {
+   "capabilities": [
+    "forecast"
+   ],
+   "columns": [
+    "SHOP_ORDER_IDENTIFIER",
+    "LINE_NUMBER",
+    "MANUFACTURING_INSPECTIONS",
+    "QUALITY_INSPECTIONS",
+    "FINAL_QUALITY_INSPECTIONS",
+    "IN_PROCESS_QUALITY_INSPECTIONS",
+    "CC_INSPECTIONS",
+    "ODAUNITMEMBER_INSPECTIONS",
+    "PARTNER_QT_INSPECTIONS",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_INSPECTION_COUNTS"
+  },
+  "inspection_holds": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "LINE_NUMBER",
+    "SOI",
+    "SEQUENCE",
+    "AFTER_WORK_MINUTES",
+    "INSPECTOR_MINUTES",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": null,
+   "description": "Sourced in-process QA hold points with allocated inspector minutes.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "inspection_standards": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "INSPECTION_TYPE",
+    "DURATION_MINUTES",
+    "SCHEDULING_RELATIONSHIP",
+    "DESCRIPTION"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_INSPECTION_STANDARDS"
+  },
+  "labor_shift": {
+   "capabilities": [
+    "performance"
+   ],
+   "columns": [
+    "PRODUCTION_DAY",
+    "SHIFT_NUMBER",
+    "LINE_NUMBER",
+    "SOI",
+    "BEMS_ID",
+    "MINUTES",
+    "FIRST_ON_ET",
+    "LAST_OFF_ET",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_LABOR_SHIFT"
+  },
+  "master_task_list": {
+   "capabilities": [
+    "inventory"
+   ],
+   "columns": [
+    "SHOP_ORDER_IDENTIFIER",
+    "SHOP_ORDER_DESCRIPTION",
+    "LINE_NUMBER",
+    "SHOP_ORDER_STATUS",
+    "TEAM",
+    "CURRENT_CONTROL_STATION",
+    "MINOR_MODEL_IDENT",
+    "CUSTOMER_CODE",
+    "PARENT_SOI",
+    "SUPERINTENDENT",
+    "FIRST_AVAILABLE",
+    "ACT_START",
+    "ACT_COMP",
+    "LOAD_TIMESTAMP",
+    "PLANNING_SYSTEM_NAME",
+    "IS_REWORK",
+    "RECORD_KEY"
+   ],
+   "cutoff_column": null,
+   "description": "Broad WIP/anchor census: every job on every line with any non-COMPLETE status.",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_MASTER_TASK_LIST"
+  },
+  "mech_team_inferred": {
+   "capabilities": [
+    "forecast"
+   ],
+   "columns": [
+    "BEMS_ID",
+    "INFERRED_TEAM",
+    "SOURCE",
+    "LABOR_RECORDS",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "Legacy inference evidence only; FOCUS_FN_TeamInference is the SQL-owned authority.",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_MECH_TEAM_INFERRED"
+  },
+  "mechanic_certs": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "BEMS_ID",
+    "CERT_CODE",
+    "STATUS",
+    "LAST_CERT_DATE",
+    "CERT_EXP_DATE",
+    "SNAPSHOT_TS"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_MECHANIC_CERTS"
+  },
+  "neo_graph_rework": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "LINE_NUMBER",
+    "PARENT_SOI",
+    "CHILD_SOI",
+    "CHILD_STATUS",
+    "SNAPSHOT_TS"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.NEO_GRAPH_REWORK"
+  },
+  "ot_authorizations": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "TEAM",
+    "SHIFT_NUMBER",
+    "DATE_FROM",
+    "DATE_TO",
+    "MINUTES",
+    "AUTHORITY",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": null,
+   "description": "Explicit overtime authority; absent authority means OT 0.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "part_events": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "RECORD_ID",
+    "EVENT",
+    "EFFECTIVE_AT_UTC",
+    "OBSERVED_AT_UTC",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": "OBSERVED_AT_UTC",
+   "description": "Physical receipt / reopen / cancellation evidence for shortages.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "people_directory": {
+   "capabilities": [
+    "inventory"
+   ],
+   "columns": [
+    "PERSON_KEY",
+    "DISPLAY_NAME",
+    "ORIGIN"
+   ],
+   "cutoff_column": null,
+   "description": "Display names. Fixture people are invented; live omits private HR fields.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "person_team_map": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "BEMS_ID",
+    "ROLE",
+    "TEAM",
+    "IN_SCOPE",
+    "BASIS",
+    "EFFECTIVE_FROM",
+    "EFFECTIVE_TO",
+    "RUN_ID",
+    "EVIDENCE_COUNT",
+    "LOOKBACK_DAYS",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "Current effective assignment (empty live on 2026-10-27).",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_PERSON_TEAM_MAP"
+  },
+  "pnet_dag": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "PREDECESSOR_SOI",
+    "SUCCESSOR_SOI",
+    "RELATIONSHIP_TYPE",
+    "IS_HARD",
+    "PRED_MINOR_MODEL",
+    "SUC_MINOR_MODEL",
+    "ORIGINAL_PRED_JOBNUMBER",
+    "ORIGINAL_SUC_JOBNUMBER",
+    "OFFSET_MINUTES",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.FOCUS_PNET_DAG"
+  },
+  "requirement_alternatives": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "SOI_ID",
+    "LINE_NUMBER",
+    "GROUP_ID",
+    "CERT_CODE",
+    "APPROVAL_REF"
+   ],
+   "cutoff_column": null,
+   "description": "Explicitly approved OR alternatives (one approved group per GROUP_ID).",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "requirement_census": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "SOI_ID",
+    "LINE_NUMBER",
+    "STATUS",
+    "APPLICABILITY",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": null,
+   "description": "Affirmative requirement census (e.g. AFFIRMATIVELY_NONE receipts).",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "rework_classification": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "LINE_NUMBER",
+    "CHILD_SOI",
+    "REWORK_CLASS",
+    "ROOT_SOI",
+    "DEFECT_ORIGIN_TEAM",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": null,
+   "description": "Source NC/PU/CI class and authoritative root linkage.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "scope_receipt": {
+   "capabilities": [
+    "inventory"
+   ],
+   "columns": [
+    "SITE",
+    "PROGRAM",
+    "SCOPE_BASIS",
+    "LINE_NUMBER",
+    "ADMISSION",
+    "REASON",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": null,
+   "description": "Explicit source-backed operational scope; ALL_WIP admits every observed non-COMPLETE line.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "shift_roster": {
+   "capabilities": [
+    "executable"
+   ],
+   "columns": [
+    "PERSON_KEY",
+    "TEAM",
+    "ROLE",
+    "SITE",
+    "SHIFT_NUMBER",
+    "EFFECTIVE_FROM",
+    "EFFECTIVE_TO",
+    "BASIS",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": null,
+   "description": "Scheduled team/shift roster (planned availability for future dates).",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "soi_cert_requirements": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "SOI_ID",
+    "LINE_NUMBER",
+    "CRITICAL_PROCESS_NAME",
+    "CERT_CODE",
+    "CERT_TYPE",
+    "REQ_CERT",
+    "SNAPSHOT_TS"
+   ],
+   "cutoff_column": null,
+   "description": "",
+   "kind": "SOURCE",
+   "required_for_run": true,
+   "source_object": "WEB_APP.NEO_SOI_CERT_REQUIREMENTS"
+  },
+  "team_inference": {
+   "capabilities": [
+    "forecast"
+   ],
+   "columns": [
+    "RUN_ID",
+    "PERSON_KEY",
+    "INFERRED_TEAM",
+    "WINDOW_START_UTC",
+    "WINDOW_END_UTC",
+    "EVIDENCE_COUNT",
+    "EFFORT_MINUTES",
+    "TOP_SHARE",
+    "RUNNER_UP_TEAM",
+    "RUNNER_UP_COUNT",
+    "IS_TIE",
+    "BASIS",
+    "ALGORITHM_VERSION",
+    "FIRST_EVIDENCE_UTC",
+    "LAST_EVIDENCE_UTC"
+   ],
+   "cutoff_column": null,
+   "description": "FOCUS_FN_TeamInference rows computed in SQL Server (S07).",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  },
+  "work_progress": {
+   "capabilities": [
+    "forecast",
+    "executable"
+   ],
+   "columns": [
+    "LINE_NUMBER",
+    "SOI",
+    "PERFORMED_ELAPSED_MINUTES",
+    "REMAINING_ELAPSED_MINUTES",
+    "AS_OF_UTC",
+    "EVIDENCE_REF"
+   ],
+   "cutoff_column": "AS_OF_UTC",
+   "description": "Actual performed/remaining elapsed work for in-progress jobs.",
+   "kind": "SUPPLEMENTAL",
+   "required_for_run": false,
+   "source_object": null
+  }
+ },
+ "schema_version": 1
+}

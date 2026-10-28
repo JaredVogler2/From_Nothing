@@ -1,0 +1,28 @@
+{
+ "columns": [
+  "SOI_ID",
+  "LINE_NUMBER",
+  "STATUS",
+  "APPLICABILITY",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "requirement_census",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "APPLICABILITY": "JOB",
+   "EVIDENCE_REF": "FIXTURE-CENSUS-PSC6",
+   "LINE_NUMBER": 1306,
+   "SOI_ID": "PSC6",
+   "STATUS": "AFFIRMATIVELY_NONE"
+  }
+ ],
+ "schema_version": 1
+}

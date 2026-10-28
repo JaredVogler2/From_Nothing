@@ -1,0 +1,229 @@
+{
+ "columns": [
+  "PERSON_KEY",
+  "DISPLAY_NAME",
+  "ORIGIN"
+ ],
+ "dataset": "people_directory",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "DISPLAY_NAME": "PROD-A S1 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A1-01"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S1 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A1-02"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S1 #03",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A1-03"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S1 #04",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A1-04"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S1 #05",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A1-05"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S1 #06",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A1-06"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S1 #07",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A1-07"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S1 #08",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A1-08"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S2 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A2-01"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S2 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A2-02"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S2 #03",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A2-03"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S2 #04",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A2-04"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S2 #05",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A2-05"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S2 #06",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A2-06"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S2 #07",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A2-07"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S2 #08",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A2-08"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S3 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A3-01"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S3 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A3-02"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S3 #03",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A3-03"
+  },
+  {
+   "DISPLAY_NAME": "PROD-A S3 #04",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-A3-04"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S1 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B1-01"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S1 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B1-02"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S1 #03",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B1-03"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S1 #04",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B1-04"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S2 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B2-01"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S2 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B2-02"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S2 #03",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B2-03"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S2 #04",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B2-04"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S3 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B3-01"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S3 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B3-02"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S3 #03",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B3-03"
+  },
+  {
+   "DISPLAY_NAME": "PROD-B S3 #04",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-B3-04"
+  },
+  {
+   "DISPLAY_NAME": "QA S1 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q1-01"
+  },
+  {
+   "DISPLAY_NAME": "QA S1 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q1-02"
+  },
+  {
+   "DISPLAY_NAME": "QA S1 #03",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q1-03"
+  },
+  {
+   "DISPLAY_NAME": "QA S1 #04",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q1-04"
+  },
+  {
+   "DISPLAY_NAME": "QA S2 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q2-01"
+  },
+  {
+   "DISPLAY_NAME": "QA S2 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q2-02"
+  },
+  {
+   "DISPLAY_NAME": "QA S2 #03",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q2-03"
+  },
+  {
+   "DISPLAY_NAME": "QA S2 #04",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q2-04"
+  },
+  {
+   "DISPLAY_NAME": "QA S3 #01",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q3-01"
+  },
+  {
+   "DISPLAY_NAME": "QA S3 #02",
+   "ORIGIN": "FIXTURE_DEMO",
+   "PERSON_KEY": "DEMO-Q3-02"
+  }
+ ],
+ "schema_version": 1
+}

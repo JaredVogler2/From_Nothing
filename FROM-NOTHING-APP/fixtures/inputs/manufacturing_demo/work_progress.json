@@ -1,0 +1,30 @@
+{
+ "columns": [
+  "LINE_NUMBER",
+  "SOI",
+  "PERFORMED_ELAPSED_MINUTES",
+  "REMAINING_ELAPSED_MINUTES",
+  "AS_OF_UTC",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "work_progress",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "AS_OF_UTC": "2026-10-26T09:30:00Z",
+   "EVIDENCE_REF": "FIXTURE-PROGRESS-ROOT4",
+   "LINE_NUMBER": 1304,
+   "PERFORMED_ELAPSED_MINUTES": 40,
+   "REMAINING_ELAPSED_MINUTES": 60,
+   "SOI": "ROOT4"
+  }
+ ],
+ "schema_version": 1
+}

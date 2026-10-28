@@ -1,0 +1,92 @@
+{
+ "columns": [
+  "SOURCE_EVENT_KEY",
+  "LINE_NUMBER",
+  "NATIVE_SOI",
+  "PERSON_KEY",
+  "EPISODE_KEY",
+  "TEAM",
+  "REWORK_CLASS",
+  "START_UTC",
+  "END_UTC",
+  "SOURCE_REVISION",
+  "IS_VOIDED"
+ ],
+ "dataset": "clock_observations",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "END_UTC": "2026-10-01T13:00:00Z",
+   "EPISODE_KEY": "UNION-DEMO",
+   "IS_VOIDED": false,
+   "LINE_NUMBER": 1303,
+   "NATIVE_SOI": "NC3-HIST",
+   "PERSON_KEY": "DEMO-B1-01",
+   "REWORK_CLASS": "NC",
+   "SOURCE_EVENT_KEY": "CLK-1",
+   "SOURCE_REVISION": "1",
+   "START_UTC": "2026-10-01T12:00:00Z",
+   "TEAM": "PROD-B"
+  },
+  {
+   "END_UTC": "2026-10-01T12:20:00Z",
+   "EPISODE_KEY": "UNION-DEMO",
+   "IS_VOIDED": false,
+   "LINE_NUMBER": 1303,
+   "NATIVE_SOI": "NC3-HIST",
+   "PERSON_KEY": "DEMO-B1-02",
+   "REWORK_CLASS": "NC",
+   "SOURCE_EVENT_KEY": "CLK-2",
+   "SOURCE_REVISION": "1",
+   "START_UTC": "2026-10-01T12:10:00Z",
+   "TEAM": "PROD-B"
+  },
+  {
+   "END_UTC": "2026-10-01T13:30:00Z",
+   "EPISODE_KEY": "UNION-DEMO",
+   "IS_VOIDED": false,
+   "LINE_NUMBER": 1303,
+   "NATIVE_SOI": "NC3-HIST",
+   "PERSON_KEY": "DEMO-B1-01",
+   "REWORK_CLASS": "NC",
+   "SOURCE_EVENT_KEY": "CLK-3",
+   "SOURCE_REVISION": "1",
+   "START_UTC": "2026-10-01T13:00:00Z",
+   "TEAM": "PROD-B"
+  },
+  {
+   "END_UTC": "2026-10-01T13:50:00Z",
+   "EPISODE_KEY": "UNION-DEMO",
+   "IS_VOIDED": false,
+   "LINE_NUMBER": 1303,
+   "NATIVE_SOI": "NC3-HIST",
+   "PERSON_KEY": "DEMO-B1-02",
+   "REWORK_CLASS": "NC",
+   "SOURCE_EVENT_KEY": "CLK-4",
+   "SOURCE_REVISION": "1",
+   "START_UTC": "2026-10-01T13:40:00Z",
+   "TEAM": "PROD-B"
+  },
+  {
+   "END_UTC": "2026-10-01T16:20:00Z",
+   "EPISODE_KEY": "UNION-DEMO",
+   "IS_VOIDED": true,
+   "LINE_NUMBER": 1303,
+   "NATIVE_SOI": "NC3-HIST",
+   "PERSON_KEY": "DEMO-B1-02",
+   "REWORK_CLASS": "NC",
+   "SOURCE_EVENT_KEY": "CLK-5",
+   "SOURCE_REVISION": "1",
+   "START_UTC": "2026-10-01T15:20:00Z",
+   "TEAM": "PROD-B"
+  }
+ ],
+ "schema_version": 1
+}

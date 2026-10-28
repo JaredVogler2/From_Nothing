@@ -1,0 +1,32 @@
+{
+ "columns": [
+  "SITE",
+  "PROGRAM",
+  "SCOPE_BASIS",
+  "LINE_NUMBER",
+  "ADMISSION",
+  "REASON",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "scope_receipt",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "ADMISSION": "ADMIT",
+   "EVIDENCE_REF": "FIXTURE-SCOPE-01",
+   "LINE_NUMBER": null,
+   "PROGRAM": "787",
+   "REASON": "fixture scope admits every observed non-COMPLETE line",
+   "SCOPE_BASIS": "ALL_WIP",
+   "SITE": "DEMO"
+  }
+ ],
+ "schema_version": 1
+}

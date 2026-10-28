@@ -1,0 +1,478 @@
+{
+ "columns": [
+  "BEMS_ID",
+  "CERT_CODE",
+  "STATUS",
+  "LAST_CERT_DATE",
+  "CERT_EXP_DATE",
+  "SNAPSHOT_TS"
+ ],
+ "dataset": "mechanic_certs",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "BEMS_ID": "DEMO-A1-01",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-02",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-03",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-04",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027-12-31",
+   "LAST_CERT_DATE": "20260101",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-05",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-05",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-06",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-06",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-07",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-07",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-07",
+   "CERT_CODE": "C",
+   "CERT_EXP_DATE": "9999/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-08",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-08",
+   "CERT_CODE": "C",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-01",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-02",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-03",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-04",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-05",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-05",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-06",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-06",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-07",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-07",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-07",
+   "CERT_CODE": "C",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-08",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-08",
+   "CERT_CODE": "C",
+   "CERT_EXP_DATE": "2026/10/27",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-01",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-02",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/13/45",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-03",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-03",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-04",
+   "CERT_CODE": "A",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-04",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-01",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-02",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-03",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-04",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-04",
+   "CERT_CODE": "C",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "REVOKED"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-01",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-02",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-03",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/11/02",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-04",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-04",
+   "CERT_CODE": "C",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-01",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-02",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-03",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-04",
+   "CERT_CODE": "B",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-04",
+   "CERT_CODE": "C",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q1-01",
+   "CERT_CODE": "QA",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q1-02",
+   "CERT_CODE": "QA",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q1-03",
+   "CERT_CODE": "Z9",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q1-04",
+   "CERT_CODE": "Z9",
+   "CERT_EXP_DATE": "",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q2-01",
+   "CERT_CODE": "QA",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q2-02",
+   "CERT_CODE": "QA",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q2-03",
+   "CERT_CODE": "Z9",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q2-04",
+   "CERT_CODE": "Z9",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q3-01",
+   "CERT_CODE": "QA",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q3-02",
+   "CERT_CODE": "QA",
+   "CERT_EXP_DATE": "2027/12/31",
+   "LAST_CERT_DATE": "2026/01/01",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "STATUS": "ACTIVE"
+  }
+ ],
+ "schema_version": 1
+}

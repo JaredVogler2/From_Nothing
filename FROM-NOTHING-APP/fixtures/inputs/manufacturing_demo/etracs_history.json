@@ -1,0 +1,34 @@
+{
+ "columns": [
+  "RECORD_ID",
+  "LINE_NUMBER",
+  "USED_ON",
+  "PARENT_SOI",
+  "PRIMARY_JOB",
+  "ETRAC_ECD",
+  "ACTUAL_CLOSURE_DATE",
+  "LOAD_TIMESTAMP"
+ ],
+ "dataset": "etracs_history",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "ACTUAL_CLOSURE_DATE": "2026-10-10",
+   "ETRAC_ECD": "2026-10-08",
+   "LINE_NUMBER": 1301,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "PARENT_SOI": null,
+   "PRIMARY_JOB": "A1",
+   "RECORD_ID": 40001,
+   "USED_ON": "A1"
+  }
+ ],
+ "schema_version": 1
+}

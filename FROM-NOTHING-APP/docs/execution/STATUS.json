@@ -125,9 +125,42 @@
       "title": "Single Flask runtime and canonical domain"
     },
     "03": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A03",
+          "result": "pass"
+        },
+        {
+          "case": "A04",
+          "result": "pass (census/graph/duration part)"
+        },
+        {
+          "case": "A15",
+          "result": "pass (census part)"
+        },
+        {
+          "case": "A46",
+          "result": "pass"
+        }
+      ],
+      "changed_paths": [
+        "focus/data/discovery.py",
+        "focus/data/datasets.py",
+        "focus/data/scope.py",
+        "focus/data/sourcetime.py",
+        "focus/data/fixture_builder.py",
+        "queries/",
+        "fixtures/source_contracts/",
+        "fixtures/inputs/manufacturing_demo/",
+        "docs/execution/SQL_SCHEMA_LEDGER.md",
+        "docs/execution/SOURCE_READINESS.md",
+        "tests/integration/test_source_scope.py"
+      ],
+      "commands": [
+        "python tools/write_source_queries.py",
+        "python tools/build_fixtures.py",
+        "python -m pytest tests -q (56 passed)"
+      ],
       "depends_on": [
         "01",
         "02"
@@ -135,17 +168,54 @@
       "evidence": [
         "evidence/03/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "CONTRACTS (28 S04 tables)",
+        "compare_catalog -> drift findings",
+        "build_census",
+        "DATASETS registry"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "live discovery not probed from build container",
+        "OD-13 live status semantics",
+        "live source timezone map"
+      ],
+      "status": "fixture_verified",
       "title": "SQL discovery and complete WIP census"
     },
     "04": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A05",
+          "result": "pass"
+        },
+        {
+          "case": "A06",
+          "result": "pass"
+        },
+        {
+          "case": "A07",
+          "result": "pass"
+        },
+        {
+          "case": "A48",
+          "result": "pass (source part; publication part in P16)"
+        }
+      ],
+      "changed_paths": [
+        "focus/data/acquisition.py",
+        "focus/data/fixture_reader.py",
+        "focus/data/snapshot_builder.py",
+        "sql/migrations/001_focus_fn_core.sql",
+        "sql/migrations/source_runs_draft.sql",
+        "tools/acquire_sources.py",
+        "tests/integration/test_source_runs.py"
+      ],
+      "commands": [
+        "python -m focus.cli acquire --mode fixture --scenario manufacturing_demo",
+        "python -m pytest tests -q (56 passed)"
+      ],
       "depends_on": [
         "02",
         "03"
@@ -153,11 +223,19 @@
       "evidence": [
         "evidence/04/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "acquire(services, reader, cutoff, idempotency_key)",
+        "snapshot_for_run",
+        "current_source",
+        "build_snapshot"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "SqlStore live adapter (P23)",
+        "live supplemental producers NOT_PROBED"
+      ],
+      "status": "fixture_verified",
       "title": "Atomic source runs and immutable planning snapshots"
     },
     "05": {

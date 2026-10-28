@@ -120,6 +120,7 @@ class DecisionStatus(str, enum.Enum):
 
 
 class Disposition(str, enum.Enum):
+    ADMITTED = "admitted"          # snapshot admission only (S05 step 4); plans use the values below
     SCHEDULED = "scheduled"
     BLOCKED = "blocked"
     QUARANTINED = "quarantined"

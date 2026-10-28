@@ -1,0 +1,28 @@
+{
+ "columns": [
+  "RECORD_ID",
+  "EVENT",
+  "EFFECTIVE_AT_UTC",
+  "OBSERVED_AT_UTC",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "part_events",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "EFFECTIVE_AT_UTC": "2026-10-27T18:15:00Z",
+   "EVENT": "RECEIVED",
+   "EVIDENCE_REF": "FIXTURE-RCV-50501",
+   "OBSERVED_AT_UTC": "2026-10-27T18:20:00Z",
+   "RECORD_ID": 50501
+  }
+ ],
+ "schema_version": 1
+}
