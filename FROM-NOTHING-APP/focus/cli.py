@@ -91,15 +91,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--plan", required=True)
     p.add_argument("--action", required=True)
 
-    p = sub.add_parser("collect-observations", help="collect lifecycle observations")
+    p = sub.add_parser("collect-observations", help="collect lifecycle/actual/claim/decision observations into an evaluation-ready run")
     p.add_argument("--mode", choices=["fixture", "live"], required=True)
     p.add_argument("--scenario", default=None)
+    p.add_argument("--as-of", default=None, help="RFC3339 collection instant (default: the runtime clock)")
 
-    p = sub.add_parser("evaluate", help="canonical shift evaluation")
-    p.add_argument("--plan", required=True)
-    p.add_argument("--shift", required=True)
+    p = sub.add_parser("evaluate", help="canonical shift evaluation (appends a revision only when evidence changed)")
+    p.add_argument("--shift", required=True, help="shift id, e.g. DEMO:2026-10-26:S1")
     p.add_argument("--policy", required=True)
     p.add_argument("--team", default=None)
+    p.add_argument("--plan", default=None, help="optional: assert the obligation plan of record for the shift day")
+    p.add_argument("--as-of", default=None, help="RFC3339 as-known instant (default: the runtime clock)")
 
     p = sub.add_parser("scenario", help="isolated what-if scenario")
     p.add_argument("--source-run", required=True)

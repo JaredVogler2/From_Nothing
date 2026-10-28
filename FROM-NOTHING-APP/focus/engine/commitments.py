@@ -52,7 +52,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..codec import parse_utc, to_jsonable
-from ..contracts.planning import CommitmentResult
+from ..contracts.planning import CommitmentResult, IncumbentAssignment, IncumbentPlan
 from ..data.sourcetime import local_to_utc
 from ..data.store import VersionConflict
 from ..domain import Disposition, PersonKey, PhaseKind, digest_id, to_minute
@@ -70,31 +70,6 @@ COUNTED_KEEP = 64                     # per-line counted plan ids kept for crash
 
 def incumbent_head(scope: str, purpose: str) -> str:
     return f"incumbent:{scope}:{purpose}"
-
-
-@dataclass(frozen=True)
-class IncumbentAssignment:
-    line: int
-    soi: str
-    phase: str
-    ordinal: int
-    day: date
-    shift: int
-    start_local: str
-    crew: tuple[str, ...]                 # native person keys
-
-
-@dataclass(frozen=True)
-class IncumbentPlan:
-    id: str
-    scope: str
-    purpose: str
-    policy_id: str
-    origin: str                           # FIXTURE_ACCEPTED | PUBLISHED
-    accepted_at: datetime
-    previous_cutoff: datetime
-    namespace: str
-    assignments: tuple[IncumbentAssignment, ...]
 
 
 @dataclass(frozen=True)

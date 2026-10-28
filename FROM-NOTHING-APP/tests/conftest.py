@@ -123,3 +123,36 @@ def job_id(snapshot, line: int, soi: str) -> str:
         if job.line == line and job.key.native_id == soi:
             return job.id
     raise KeyError((line, soi))
+
+
+OBSERVATION_SHIFT = "DEMO:2026-10-26:S1"
+
+
+def observed_world(root: Path, app_root: Path, *, points: tuple[str, ...] = (), teams: tuple[str, ...] = ("PROD-A", "PROD-B", "QA"), policy=None):
+    """Publish the 2026-10-26 obligation plan, then collect the S18 observation feeds and evaluate at each point (P17/P18)."""
+    from types import SimpleNamespace
+
+    from focus.codec import parse_utc
+    from focus.data.acquisition import acquire, make_reader, snapshot_for_run
+    from focus.domain import Purpose
+    from focus.engine.commitments import import_fixture_incumbent
+    from focus.engine.max.optimizer.orchestrator import schedule
+    from focus.performance.actuals import collect_observations
+    from focus.performance.score import evaluate_shift
+    from focus.publication.service import publish
+
+    settings = Settings.from_env({}, app_root=app_root)
+    clock = FixedClock(FIXTURE_CUTOFF)
+    repos = Repositories(FixtureStore(root), mode="fixture", scope_key=settings.scope_key, clock=clock)
+    services = build_services(settings, repositories=repos, clock=clock, policy=policy)
+    run = acquire(services, make_reader(services, "manufacturing_demo"), cutoff=FIXTURE_CUTOFF, idempotency_key="observed-world")
+    import_fixture_incumbent(services)
+    candidate, _ = schedule(services, source_run=run.run_id, purpose=Purpose.EXECUTABLE, budget_seconds=5, max_moves=5)
+    result = publish(services, candidate.id)
+    assert result.status == "ACCEPTED", result.reasons
+    runs, evals = {}, {}
+    for text in points:
+        at = parse_utc(text)
+        runs[at] = collect_observations(services, as_of=at)
+        evals[at] = {team: evaluate_shift(services, team, OBSERVATION_SHIFT, as_of=at) for team in teams}
+    return SimpleNamespace(services=services, root=root, runs=runs, evals=evals, plan_id=result.plan_id, snap=snapshot_for_run(services, run.run_id))

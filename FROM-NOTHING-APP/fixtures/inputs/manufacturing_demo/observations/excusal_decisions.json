@@ -1,0 +1,135 @@
+{
+ "columns": [
+  "DECISION_KEY",
+  "TEAM",
+  "SHIFT_DATE",
+  "SHIFT_NUMBER",
+  "CLAIM_KEYS",
+  "APPROVED_WORK_REFS",
+  "DECISION",
+  "AUTHORITY",
+  "AUTHORITY_ROLE",
+  "DECISION_AT_UTC",
+  "REASON",
+  "REVIEW_TRACK",
+  "SUPERSEDES_DECISION_KEY",
+  "OBSERVED_AT_UTC"
+ ],
+ "dataset": "excusal_decisions",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "covered_through_utc": "2026-10-28T23:59:59Z",
+  "producer": "fixture:manufacturing_demo",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "APPROVED_WORK_REFS": [
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 0,
+     "segment": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 2,
+     "soi": "ROOT3"
+    }
+   ],
+   "AUTHORITY": "demo:excusal",
+   "AUTHORITY_ROLE": "excusal_decider",
+   "CLAIM_KEYS": [
+    "CLM-B-01",
+    "CLM-B-03"
+   ],
+   "DECISION": "APPROVED",
+   "DECISION_AT_UTC": "2026-10-27T15:00:00Z",
+   "DECISION_KEY": "DEC-B-01",
+   "OBSERVED_AT_UTC": "2026-10-27T15:00:00Z",
+   "REASON": "NC3B injected rework evidenced by NCR-303 with defect origin PROD-A",
+   "REVIEW_TRACK": null,
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SUPERSEDES_DECISION_KEY": null,
+   "TEAM": "PROD-B"
+  },
+  {
+   "APPROVED_WORK_REFS": [
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 1,
+     "soi": "ROOT3"
+    },
+    {
+     "kind": "WORK",
+     "line": 1303,
+     "ordinal": 2,
+     "soi": "ROOT3"
+    }
+   ],
+   "AUTHORITY": "demo:excusal",
+   "AUTHORITY_ROLE": "excusal_decider",
+   "CLAIM_KEYS": [
+    "CLM-B-02"
+   ],
+   "DECISION": "APPROVED",
+   "DECISION_AT_UTC": "2026-10-27T15:05:00Z",
+   "DECISION_KEY": "DEC-B-02",
+   "OBSERVED_AT_UTC": "2026-10-27T15:05:00Z",
+   "REASON": "Reviewed exception: supplier pickup PU3 overran and gates ROOT3 through its final QA",
+   "REVIEW_TRACK": null,
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SUPERSEDES_DECISION_KEY": null,
+   "TEAM": "PROD-B"
+  },
+  {
+   "APPROVED_WORK_REFS": [],
+   "AUTHORITY": "demo:excusal",
+   "AUTHORITY_ROLE": "excusal_decider",
+   "CLAIM_KEYS": [
+    "CLM-B-06"
+   ],
+   "DECISION": "REJECTED",
+   "DECISION_AT_UTC": "2026-10-27T15:10:00Z",
+   "DECISION_KEY": "DEC-B-03",
+   "OBSERVED_AT_UTC": "2026-10-27T15:10:00Z",
+   "REASON": "IP QA hold 0 was blocked by PROD-B's own unfinished ROOT3 WORK 0",
+   "REVIEW_TRACK": null,
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SUPERSEDES_DECISION_KEY": null,
+   "TEAM": "PROD-B"
+  },
+  {
+   "APPROVED_WORK_REFS": [],
+   "AUTHORITY": "demo:excusal",
+   "AUTHORITY_ROLE": "excusal_decider",
+   "CLAIM_KEYS": [
+    "CLM-B-06"
+   ],
+   "DECISION": "REJECTED",
+   "DECISION_AT_UTC": "2026-10-28T14:00:00Z",
+   "DECISION_KEY": "DEC-B-04",
+   "OBSERVED_AT_UTC": "2026-10-28T14:00:00Z",
+   "REASON": "Appeal reviewed: QA was not culpable; DAG direction alone does not prove culpability",
+   "REVIEW_TRACK": null,
+   "SHIFT_DATE": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SUPERSEDES_DECISION_KEY": "DEC-B-03",
+   "TEAM": "PROD-B"
+  }
+ ],
+ "schema_version": 1
+}

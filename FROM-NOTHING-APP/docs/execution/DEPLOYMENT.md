@@ -24,6 +24,24 @@ credentials.
 - Health: `/health/live` (process up; use it for platform health checks) and
   `/health/ready` (source/plan/policy readiness; 503 with reasons until ready).
 
+## Plan signing (P16)
+
+- Publication signs with a domain-separated HMAC-SHA256 (`FOCUS_PLAN_V1`). The trusted key is
+  named by `FOCUS_SIGN_KEY_ID`, and its material is referenced, never inlined, by
+  `FOCUS_SIGN_KEY_REF`:
+  - `env:NAME`: an environment variable on the signer process only;
+  - `vcap:service/field`: a Tanzu user-provided service credential, for example
+    `vcap:focus-secrets/sign_key`. This form is set automatically when `focus-secrets` carries
+    `sign_key`.
+- The material must be at least 32 bytes, as hex or base64url. HMAC is symmetric: verifying the
+  current plan needs the same key, so verify-only custody is never claimed.
+- Fixture mode without a configured key uses a public TEST key (`fixture-test-key-v1`).
+  Receipts are labelled `fixture_readback`. A TEST key, or any key other than the configured
+  one, is refused (`TEST_KEY_NOT_LIVE`, `UNAUTHORIZED_SIGNER`).
+- Live publication stays `UNAVAILABLE` until the proposed `FOCUS_FN` stage, readback and
+  acceptance objects (`sql/migrations/publication_draft.sql`) are installed by an authorized
+  migration (P23). No live signature, acceptance or head move happens before that.
+
 ## Posit Connect
 
 The content type is a Python API (WSGI/Flask), entrypoint `app:app`.

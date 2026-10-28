@@ -615,6 +615,35 @@ class CommitmentResult:
 
 
 @dataclass(frozen=True, slots=True)
+class IncumbentAssignment:
+    """One committed task of an accepted plan (P14): local day/shift/start and the native crew keys."""
+
+    line: int
+    soi: str
+    phase: str
+    ordinal: int
+    day: date
+    shift: int
+    start_local: str
+    crew: tuple[str, ...]                 # native person keys
+
+
+@dataclass(frozen=True, slots=True)
+class IncumbentPlan:
+    """The accepted incumbent for one scope/purpose: the only source of defeasible task commitments."""
+
+    id: str
+    scope: str
+    purpose: str
+    policy_id: str
+    origin: str                           # FIXTURE_ACCEPTED | PUBLISHED
+    accepted_at: datetime
+    previous_cutoff: datetime
+    namespace: str
+    assignments: tuple[IncumbentAssignment, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class StageMetric:
     stage: str
     runtime_ms: int
@@ -725,6 +754,8 @@ class GateContext:
 
 @dataclass(frozen=True, slots=True)
 class FrozenGoal:
+    """One team-shift obligation frozen at publication (B0): units, effort, membership and recognition basis."""
+
     id: str
     plan_id: str
     shift_id: str
@@ -734,7 +765,63 @@ class FrozenGoal:
     earning_units: tuple[EarningUnit, ...]
     standard_person_minutes: int
     gate_contexts: dict[str, GateContext]
+    members: tuple[str, ...]                 # admitted shift membership at publication
     hash: str
+
+    def computed_hash(self) -> str:
+        return record_hash(self)
+
+
+@dataclass(frozen=True, slots=True)
+class EdgeLineage:
+    id: str
+    pred_phase: str
+    succ_phase: str
+    type: EdgeType
+    lag_minutes: int
+    hard: bool
+    basis: str
+
+
+@dataclass(frozen=True, slots=True)
+class CSLineage:
+    line: int
+    station: str
+    source_run_id: str
+    raw_row_id: str
+    raw_load_id: int | None
+    load_ref_pos: str | None
+    load_offset: int | None
+    unload_ref_pos: str | None
+    unload_offset: int | None
+    gate_date: date | None
+    earliest_at: datetime | None
+    hard_latest_at: datetime | None
+    conversion_policy: str
+
+
+@dataclass(frozen=True, slots=True)
+class PlanArtifact:
+    """The canonical, signable publication payload (S13). Every declared lineage section is re-derived on readback."""
+
+    schema_version: int
+    artifact_type: str                       # FOCUS_PLAN_V1
+    scope: str
+    purpose: Purpose
+    capability: str                          # EXECUTABLE_DISPATCH | FORECAST_ONLY
+    source_run_id: str
+    snapshot_id: str
+    snapshot_hash: str
+    manifest_hash: str
+    policy_id: str
+    policy_hash: str
+    timezone: str
+    candidate: CandidatePlan
+    final_validation_id: str
+    graph: tuple[EdgeLineage, ...]
+    cs_lineage: tuple[CSLineage, ...]
+    obligation_dates: tuple[date, ...]
+    frozen_goals: tuple[FrozenGoal, ...]
 
 
 @dataclass(frozen=True, slots=True)

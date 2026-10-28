@@ -13,8 +13,11 @@
    the wall-clock budget or cancellation.
 7. Keep a candidate only when it is strictly better under the exact lexicographic comparison
    (S12), with no monetary tolerance, and it keeps every commitment the current best keeps
-   (a later move can never silently undo a feasible defended task):
+   (a later move can never silently undo a feasible defended task). The independent validator
+   (``focus.validation.plan``) gates the seed and every retained candidate: an invalid candidate
+   is rolled back, and any valid candidate beats an invalid best. The levels are:
 
+   0. hard feasibility: independent validation with zero violations;
    1. commitments defended (same slot), then exact incumbent crews;
    2. aircraft with unknown completion;
    3. deferred phases;
@@ -82,6 +85,11 @@ class MaxRun:
     deadline_reached: bool = False
     moves: int = 0
     accepted_moves: list[str] = field(default_factory=list)
+    seed_valid: bool = True
+    best_valid: bool = True
+    validated: int = 0                   # retained candidates (seed included) independently validated in search
+    validator_rejections: list[str] = field(default_factory=list)
+    validation: Any = None               # final ValidationReceipt (schedule)
 
 
 def make_priority(ctx: EngineContext, state: PriorityState, weights: Mapping[int, Fraction] | None) -> Callable[[str], tuple]:
@@ -96,8 +104,13 @@ def make_priority(ctx: EngineContext, state: PriorityState, weights: Mapping[int
 class MaxOptimizer:
     def __init__(self, ctx: EngineContext, *, defended: Mapping[str, DefendedTask] | None = None, budget_seconds: float | None = None,
                  seed: int | None = None, max_moves: int | None = None, cancel: Callable[[], bool] | None = None,
-                 clock: Callable[[], float] = time.monotonic):
+                 clock: Callable[[], float] = time.monotonic, gate: bool = True, incumbent_id: str | None = None):
         self.ctx = ctx
+        self.gate = gate
+        self.incumbent_id = incumbent_id
+        self._vinp = None
+        self._gate_log: list[str] = []
+        self._gate_count = 0
         self.registry = EconomicsRegistry(ctx.economics, ctx.policy)
         self.defended = dict(defended or {})
         self.budget = float(budget_seconds if budget_seconds is not None else ctx.policy.int("optimizer.budget_seconds"))
@@ -182,17 +195,19 @@ class MaxOptimizer:
         t = self.clock()
         neutral = PriorityState()
         baseline = self.evaluate(self.decode(neutral, None))
-        stages.append(stage("neutral_seed", t, 1, 1, f"{len(baseline.decode.placements)} placed, {len(baseline.decode.deferred)} deferred"))
-        best, best_state = baseline, neutral
+        seed_valid = self._valid(baseline, "neutral_seed")
+        stages.append(stage("neutral_seed", t, 1, 1, f"{len(baseline.decode.placements)} placed, {len(baseline.decode.deferred)} deferred; "
+                                                    f"independent validation {'passed' if seed_valid else 'FAILED'}"))
+        best, best_state, best_valid = baseline, neutral, seed_valid
         t = self.clock()
         weight_records = self.registry.derive_priority_weights(completion_minutes(baseline.completions))
         weights = {line: w.normalized for line, w in weight_records.items()}
         econ = self.evaluate(self.decode(neutral, weights))
-        accepted = self.better(econ, best)
+        accepted = self._admit(econ, best, best_valid, "economic_redispatch")
         if accepted:
-            best = econ
+            best, best_valid = econ, True
         stages.append(stage("economic_redispatch", t, 1, int(accepted), "registry marginal weights; exact complete-candidate comparison"))
-        run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages)
+        run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages, seed_valid=seed_valid)
         t = self.clock()
         phase_job = {pid: p.job for pid, p in self.ctx.phases.items()}
         repaired = 0
@@ -202,8 +217,8 @@ class MaxOptimizer:
                 break
             state = best_state.apply(Move("boost", (job,), "repair"), self.peers)
             cand = self.evaluate(self.decode(state, weights))
-            if self.better(cand, best):
-                best, best_state = cand, state
+            if self._admit(cand, best, best_valid, "delay_repair"):
+                best, best_state, best_valid = cand, state, True
                 repaired += 1
                 run.accepted_moves.append(f"repair boost {job}")
         stages.append(stage("delay_repair", t, len(repairable_jobs(baseline.decode.deferred, phase_job)), repaired, "bounded boosts"))
@@ -221,13 +236,40 @@ class MaxOptimizer:
             moves += 1
             state = best_state.apply(move, self.peers)
             cand = self.evaluate(self.decode(state, weights))
-            if self.better(cand, best):
-                best, best_state = cand, state
+            if self._admit(cand, best, best_valid, f"neighborhoods:{move.kind}"):
+                best, best_state, best_valid = cand, state, True
                 accepted_n += 1
                 run.accepted_moves.append(f"{move.kind} {','.join(move.jobs)}")
-        stages.append(stage("neighborhoods", t, moves, accepted_n, f"seed {self.seed}; bound {self.max_moves} moves, {self.budget}s"))
-        run.best, run.moves, run.stages = best, moves, stages
+        stages.append(stage("neighborhoods", t, moves, accepted_n, f"seed {self.seed}; bound {self.max_moves} moves, {self.budget}s; "
+                                                                  f"{self._gate_count} candidates independently validated, "
+                                                                  f"{len(self._gate_log)} rolled back"))
+        run.best, run.moves, run.stages, run.best_valid = best, moves, stages, best_valid
+        run.validated, run.validator_rejections = self._gate_count, list(self._gate_log)
         return run
+
+    # ------------------------------------------------------------------ independent validation gate
+    def _admit(self, cand: Evaluation, best: Evaluation, best_valid: bool, path: str) -> bool:
+        """Validity first (S12 level 0), then the exact key: an invalid candidate is rolled back on every path."""
+        if best_valid and not self.better(cand, best):
+            return False
+        return self._valid(cand, path)
+
+    def _valid(self, ev: Evaluation, path: str) -> bool:
+        if not self.gate:
+            return True
+        from ....validation.input import ValidationInput      # the validator never imports the engine; the engine calls it
+        from ....validation.plan import GATE_CHECKS, validate
+
+        if self._vinp is None:
+            self._vinp = ValidationInput.build(self.ctx.snapshot, self.ctx.policy, self.ctx.purpose)
+        plan = build_candidate(self.ctx, MaxRun(ev, ev, {}), created_at=self.ctx.snapshot.cutoff, incumbent_id=self.incumbent_id)
+        receipt = validate(self.ctx.snapshot, self.ctx.policy, plan, required=GATE_CHECKS, inp=self._vinp)
+        self._gate_count += 1
+        if receipt.violations:
+            codes = sorted({f"{v.check}:{v.code}" for v in receipt.violations})
+            self._gate_log.append(f"{path}: {', '.join(codes[:6])}")
+            return False
+        return True
 
     def _out_of_time(self, start: float) -> bool:
         return self.cancel() or (self.clock() - start) >= self.budget
@@ -364,20 +406,30 @@ def schedule(services: Any, *, source_run: str, purpose: Purpose, budget_seconds
     snapshot = snapshot_for_run(services, source_run, policy)
     ctx = EngineContext(snapshot, policy, purpose)
     defense = defended_tasks(services, ctx)
-    optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves)
+    optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves, incumbent_id=defense.incumbent_id)
     run = optimizer.run()
     plan = build_candidate(ctx, run, created_at=services.clock.now(), incumbent_id=defense.incumbent_id, extra_commitments=defense.other_results,
                            incumbent=defense.receipt())
     stored = services.repositories.get_typed(CANDIDATES, plan.id, "CandidatePlan", CandidatePlan)
     if stored is not None:
-        return stored, run                     # the same substance was already scheduled: the persisted candidate is the receipt
-    services.repositories.put_record(CANDIDATES, "CandidatePlan", plan.id, plan, source_run_id=plan.source_run_id,
-                                     policy_hash=plan.policy_hash, purpose=plan.purpose.value)
+        plan = stored                          # the same substance was already scheduled: the persisted candidate is the receipt
+    else:
+        services.repositories.put_record(CANDIDATES, "CandidatePlan", plan.id, plan, source_run_id=plan.source_run_id,
+                                         policy_hash=plan.policy_hash, purpose=plan.purpose.value)
+    from ....validation.plan import load_incumbent, persist_receipt, validate
+
+    run.validation = validate(snapshot, policy, plan, incumbent=load_incumbent(services.repositories, plan.incumbent_id), kind="FINAL",
+                              inp=optimizer._vinp, created_at=services.clock.now())
+    persist_receipt(services.repositories, run.validation, plan)
     return plan, run
 
 
 def cli_schedule(services: Any, args: Any) -> dict[str, Any]:
     if args.policy != services.policy.id:
         return {"status": "invalid", "error": {"code": "POLICY_MISMATCH", "message": f"active policy is {services.policy.id}, not {args.policy}"}}
-    plan, _ = schedule(services, source_run=args.source_run, purpose=Purpose(args.purpose), budget_seconds=args.budget_seconds)
-    return {"status": "ok", **receipt(plan), "published": False}
+    from ....validation.plan import receipt_summary
+
+    plan, run = schedule(services, source_run=args.source_run, purpose=Purpose(args.purpose), budget_seconds=args.budget_seconds)
+    return {"status": "ok", **receipt(plan), "validation": receipt_summary(run.validation, limit=20), "publishable": run.validation.valid,
+            "search_validation": {"validated": run.validated, "rolled_back": run.validator_rejections, "seed_valid": run.seed_valid},
+            "published": False}

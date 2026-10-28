@@ -880,9 +880,45 @@
       "title": "Incumbent defense and persistent delivery commitments"
     },
     "15": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A47",
+          "result": "pass"
+        },
+        {
+          "case": "A48",
+          "result": "pass (P15 part: detached bytes)"
+        },
+        {
+          "case": "A26",
+          "result": "pass"
+        },
+        {
+          "case": "A38",
+          "result": "pass"
+        },
+        {
+          "case": "A64",
+          "result": "pass (P15 part: origin evidence)"
+        }
+      ],
+      "changed_paths": [
+        "focus/validation/input.py",
+        "focus/validation/plan.py",
+        "focus/validation/duty.py",
+        "focus/validation/publication.py",
+        "focus/engine/max/optimizer/orchestrator.py",
+        "focus/contracts/planning.py",
+        "focus/engine/commitments.py",
+        "tools/validate_plan.py",
+        "docs/execution/VALIDATION_COVERAGE.md",
+        "tests/integration/test_validator_mutations.py"
+      ],
+      "commands": [
+        "python -m pytest tests/integration/test_validator_mutations.py -q (51 passed)",
+        "python -m pytest tests -q (277 passed)",
+        "python -m focus.cli validate --candidate <id> --all-required (fresh process)"
+      ],
       "depends_on": [
         "04",
         "06",
@@ -898,17 +934,61 @@
       "evidence": [
         "evidence/15/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "validate(snapshot, policy, plan, purpose, incumbent, kind) -> ValidationReceipt (V1-V9, E_*)",
+        "ValidationInput",
+        "validate_artifact(bytes, ...) (E_ARTIFACT)",
+        "publication_capability(plan, receipt)",
+        "MaxOptimizer validation gate",
+        "cli validate"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "no tool-requirement source mapped (tool overlap not applicable)",
+        "solver path (P22) uses the same gate"
+      ],
+      "status": "fixture_verified",
       "title": "Independent nine-check and extended final validation"
     },
     "16": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A48",
+          "result": "pass (fixture readback rehearsal; no live signing/acceptance)"
+        },
+        {
+          "case": "A51",
+          "result": "pass (fixture readback rehearsal; no live signing/acceptance)"
+        },
+        {
+          "case": "A52",
+          "result": "pass (fixture readback rehearsal; no live signing/acceptance)"
+        },
+        {
+          "case": "A53",
+          "result": "pass (fixture readback rehearsal; no live signing/acceptance)"
+        }
+      ],
+      "changed_paths": [
+        "focus/publication/serializer.py",
+        "focus/publication/signing.py",
+        "focus/publication/repository.py",
+        "focus/publication/service.py",
+        "focus/publication/dispatch.py",
+        "config/policies/rebuild-v1.json",
+        "sql/migrations/publication_draft.sql",
+        "tools/publish_plan.py",
+        "docs/execution/DEPLOYMENT.md",
+        "docs/execution/SQL_SCHEMA_LEDGER.md",
+        "tests/integration/test_publication_recovery.py"
+      ],
+      "commands": [
+        "python -m pytest tests/integration/test_publication_recovery.py -q (23 passed)",
+        "python -m pytest tests -q (277 passed)",
+        "python -m focus.cli publish --candidate <id> --mode fixture --rehearse-readback (ACCEPTED, fixture_readback)",
+        "python -m focus.cli dispatch-check --plan <plan> --action <assignment>"
+      ],
       "depends_on": [
         "14",
         "15"
@@ -916,17 +996,74 @@
       "evidence": [
         "evidence/16/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "build_artifact / artifact_bytes / decode_artifact / freeze_goals",
+        "Signer / resolve_signer",
+        "FixturePublicationRepository (stage, read_stage, accept head-last)",
+        "publish(services, candidate_id) / current_plan",
+        "dispatch_check(services, plan_id, action_id)",
+        "cli publish / dispatch-check"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "publication_draft.sql not installed (P23); live adapter pending",
+        "live signer custody supplied by the operator",
+        "goal excusal/amendment records arrive with P17/P18"
+      ],
+      "status": "fixture_verified",
       "title": "Immutable publication, pre-sign readback and dispatch"
     },
     "17": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A54",
+          "result": "pass (fixture observation feeds; no live producer, DDL or write)"
+        },
+        {
+          "case": "A55",
+          "result": "pass (fixture observation feeds; no live producer, DDL or write)"
+        },
+        {
+          "case": "A56",
+          "result": "pass (fixture observation feeds; no live producer, DDL or write)"
+        },
+        {
+          "case": "A26",
+          "result": "pass (fixture observation feeds; no live producer, DDL or write)"
+        }
+      ],
+      "changed_paths": [
+        "focus/contracts/events.py",
+        "focus/performance/actuals.py",
+        "focus/performance/lifecycle.py",
+        "focus/performance/disruption.py",
+        "focus/performance/history.py",
+        "focus/publication/service.py",
+        "focus/publication/repository.py",
+        "focus/data/fixture_builder.py",
+        "focus/data/workforce.py",
+        "focus/data/sql.py",
+        "focus/pipeline.py",
+        "focus/cli.py",
+        "config/policies/grading-demo-v1.json",
+        "config/policies/rebuild-v1.json",
+        "fixtures/inputs/manufacturing_demo/observations/",
+        "queries/actuals/",
+        "sql/migrations/lifecycle_draft.sql",
+        "tools/collect_observations.py",
+        "docs/execution/PERFORMANCE_POLICY.md",
+        "docs/execution/DECISIONS.md",
+        "docs/execution/SQL_SCHEMA_LEDGER.md",
+        "tests/integration/test_lifecycle_excusals.py",
+        "tests/conftest.py"
+      ],
+      "commands": [
+        "python -m pytest tests/integration/test_lifecycle_excusals.py -q (21 passed)",
+        "python -m pytest tests -q (323 passed)",
+        "python -m focus.cli collect-observations --mode fixture --as-of 2026-10-26T19:30:00Z (6 feeds usable; stable quarantine codes)",
+        "python tools/collect_observations.py --mode fixture --all-points"
+      ],
       "depends_on": [
         "09",
         "14",
@@ -935,17 +1072,76 @@
       "evidence": [
         "evidence/17/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "collect_observations(services, as_of) -> ObservationRun (FEEDS, FixtureObservationReader, LiveObservationReader, ObservationStore)",
+        "GoalRegistry / ObservationView (resolve_revisions, phase_lifecycle, credits, unit_facts, offplan, oos_for)",
+        "derive_sequence_violations / derive_disappearances",
+        "disruption.Intake (admit_claim, admit_decision), auto_attribute, culpable_blockers, approved_units, submit_claim, decide",
+        "history.append / revisions / as_known; worker_claim, worker_decision, worker_reported_observation, worker_ie_review",
+        "cli collect-observations"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "OD-15: live observation producers are proposed (queries/actuals, lifecycle_draft.sql not installed); live collection is NOT_PROBED",
+        "OD-17: reviewer subject to excusal_decider grant mapping is the operator's",
+        "POST /amendments command with feasibility validation arrives with the P19-P21 command API",
+        "automatic CAPACITY/SKILL attribution needs live attendance-withdrawal and skill evidence feeds"
+      ],
+      "status": "fixture_verified",
       "title": "Lifecycle actuals and disruption/excusal evidence"
     },
     "18": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A57",
+          "result": "pass (S14 numeric examples asserted; DEMONSTRATION policy; fixture store)"
+        },
+        {
+          "case": "A58",
+          "result": "pass (S14 numeric examples asserted; DEMONSTRATION policy; fixture store)"
+        },
+        {
+          "case": "A59",
+          "result": "pass (S14 numeric examples asserted; DEMONSTRATION policy; fixture store)"
+        },
+        {
+          "case": "A60",
+          "result": "pass (S14 numeric examples asserted; DEMONSTRATION policy; fixture store)"
+        },
+        {
+          "case": "A61",
+          "result": "pass (S14 numeric examples asserted; DEMONSTRATION policy; fixture store)"
+        },
+        {
+          "case": "A62",
+          "result": "pass (S14 numeric examples asserted; DEMONSTRATION policy; fixture store)"
+        },
+        {
+          "case": "A63",
+          "result": "pass (S14 numeric examples asserted; DEMONSTRATION policy; fixture store)"
+        }
+      ],
+      "changed_paths": [
+        "focus/performance/score.py",
+        "focus/performance/history.py",
+        "focus/analytics/points.py",
+        "focus/analytics/progression.py",
+        "focus/contracts/evaluation.py",
+        "focus/publication/serializer.py",
+        "config/policies/grading-demo-v1.json",
+        "sql/migrations/evaluation_draft.sql",
+        "tools/evaluate_shift.py",
+        "tests/unit/test_score_facts.py",
+        "tests/integration/test_progression.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_score_facts.py -q (18 passed)",
+        "python -m pytest tests/integration/test_progression.py -q (7 passed)",
+        "python -m pytest tests -q (323 passed)",
+        "python -m focus.cli evaluate --shift DEMO:2026-10-26:S1 --policy rebuild-v1 --as-of <point>",
+        "python tools/evaluate_shift.py --shift DEMO:2026-10-26:S1 --policy rebuild-v1 --as-of 2026-11-01T12:00:00Z --project"
+      ],
       "depends_on": [
         "16",
         "17"
@@ -953,11 +1149,20 @@
       "evidence": [
         "evidence/18/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "score.formula / components / pooled / status_and_score / round_half_up / grade_for / score_policy_errors",
+        "evaluate_shift / evaluate_all / aggregate / canonical / personal_grade_refusal / cli evaluate",
+        "points.gate_context / unit_values (serializer freezes goals through it)",
+        "progression.project / team_progress / inflation_monitor (RecognitionEvent and BadgeAward chains)"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "OD-16: OFFICIAL grading needs score.policy_approval_ref; personal grades need their own approved policy",
+        "evaluation_draft.sql not installed (P23)",
+        "performance/recognition/progression API and the 17 views read canonical() in P19-P21"
+      ],
+      "status": "fixture_verified",
       "title": "Canonical effort scoring, gate points and progression"
     },
     "19": {
