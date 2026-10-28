@@ -94,6 +94,11 @@
       "authority": "manual_specified",
       "ref": "S09,S12"
     },
+    "forecast.delivery_commitment_purpose": {
+      "value": "FORECAST",
+      "authority": "open_decision",
+      "ref": "S12 delivery hysteresis; OD-14 (accepted FORECAST plans feed the per-aircraft committed date; EXECUTABLE plans drive dispatch)"
+    },
     "activation.fraction_numerator": {
       "value": 85,
       "authority": "user_requirement",
@@ -134,6 +139,11 @@
       "value": false,
       "authority": "manual_specified",
       "ref": "S11"
+    },
+    "travel.unknown_origin_minutes": {
+      "value": 15,
+      "authority": "fixture_default",
+      "ref": "S11 bounded explicit policy: after a duty with no known aircraft location (e.g. off-aircraft training) the next aircraft needs a full changed-aircraft transfer"
     },
     "travel.shift_start_origin": {
       "value": "MUSTER_AT_FIRST_ASSIGNMENT",
@@ -694,6 +704,12 @@
       "topic": "Master SHOP_ORDER_STATUS semantics",
       "fixture_choice": "AVAILABLE/PLANNED/IDLE open; IN WORK in progress; PREVIEW/FORECASTED forecast-only; ON HOLD/REVISIONHOLD/FAILPREVIEW/UNRELEASED blocked; unknown statuses quarantined.",
       "live_effect": "Until the planning system owner confirms status meanings, PREVIEW/FORECASTED work stays forecast-only and unknown statuses are quarantined with reasons."
+    },
+    {
+      "id": "OD-14",
+      "topic": "Which accepted plan purpose drives delivery commitments",
+      "fixture_choice": "Accepted FORECAST plans (complete-WIP projections, conditional support labelled) feed the per-aircraft committed delivery date; accepted EXECUTABLE plans drive dispatch only. One commitment row per scope and aircraft (S06 FOCUS_FN_Commitment).",
+      "live_effect": "Until the delivery owner confirms the purpose and date basis, the committed date is a planning commitment shown with its raw risk, never a contractual promise."
     }
   ]
 }

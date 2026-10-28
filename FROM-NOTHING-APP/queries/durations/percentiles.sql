@@ -7,7 +7,7 @@
 -- Group key hashes equal the application's content_hash(list(group)) (lowercase SHA-256 of UTF-8 canonical JSON)
 -- for admitted ASCII class/team codes without JSON escapes; codes outside that set are rejected at admission.
 --
--- Bound parameters (pymssql %s, in order): RunId, PolicyId, MinimumSample, MethodSha (the application's METHOD_SHA,
+-- Bound parameters (pymssql positional placeholders, in order): RunId, PolicyId, MinimumSample, MethodSha (the application's METHOD_SHA,
 -- passed in so the method text has one authority).
 SET NOCOUNT ON;
 SET XACT_ABORT ON;

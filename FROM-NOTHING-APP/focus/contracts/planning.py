@@ -1,7 +1,7 @@
 """Planning contracts: snapshot, phases, candidate plans, receipts, publications (S03)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields, replace
+from dataclasses import dataclass, fields, replace
 from datetime import date, datetime
 from decimal import Decimal
 from fractions import Fraction
@@ -635,6 +635,7 @@ class AlgorithmStatus:
     weights: dict[str, str]
     baseline_comparison: dict[str, Any]
     paths_used: tuple[str, ...]
+    incumbent: dict[str, str]          # id, status (LOADED | NO_INCUMBENT | INCOMPATIBLE_* | DISABLED ...), detail, defended count
 
 
 @dataclass(frozen=True, slots=True)

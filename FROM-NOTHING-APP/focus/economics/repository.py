@@ -23,7 +23,7 @@ Rules:
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 from typing import Any, Iterable, Mapping
@@ -71,12 +71,14 @@ def build_economics(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], li
     scenarios = [r for r in datasets.get("econ_scenario", ()) if r.get("IsActive") and _effective(r, cutoff, tzp, "econ_scenario")]
     scenario = scenarios[0] if len(scenarios) == 1 else None
     scenario_id = str(scenario["ScenarioRevisionId"]) if scenario else None
-    assignments: dict[int, Mapping[str, Any]] = {}
+    assignments: dict[int, list[Mapping[str, Any]]] = {}
     for r in datasets.get("econ_contract_assignment", ()):
         if r.get("IsActive") and str(r.get("ScenarioRevisionId")) == scenario_id and _effective(r, cutoff, tzp, "econ_contract_assignment"):
-            assignments[int(r["LineNumber"])] = r
+            assignments.setdefault(int(r["LineNumber"]), []).append(r)
     terms = [r for r in datasets.get("econ_term", ()) if str(r.get("ScenarioRevisionId")) == scenario_id and _effective(r, cutoff, tzp, "econ_term")]
-    sale_basis = {int(r["LineNumber"]): r for r in datasets.get("econ_original_sale_basis", ())}
+    sale_basis: dict[int, list[Mapping[str, Any]]] = {}
+    for r in datasets.get("econ_original_sale_basis", ()):
+        sale_basis.setdefault(int(r["LineNumber"]), []).append(r)
     checkpoints: dict[str, Mapping[str, Any]] = {}
     for r in datasets.get("econ_liability_checkpoint", ()):
         prev = checkpoints.get(str(r["OriginalBasisId"]))
@@ -92,11 +94,14 @@ def build_economics(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], li
         mapping = aircraft.get(line)
         if mapping is None:
             reasons.append("AIRCRAFT_NOT_MAPPED")
-        contract = assignments.get(line)
+        effective = assignments.get(line, [])
+        if len(effective) > 1:                    # one assignment per aircraft: ambiguity is never resolved by row order
+            reasons.append(f"CONTRACT_ASSIGNMENT_CONFLICT: {len(effective)} effective active assignments")
+        contract = effective[0] if len(effective) == 1 else None
         contract_key = str(contract["ContractKey"]) if contract else None
         chosen = None
         selector = None
-        if mapping is not None and scenario is not None:
+        if mapping is not None and scenario is not None and len(effective) <= 1:
             for sel in precedence:
                 if sel == "AIRCRAFT_OVERRIDE":
                     cands = [t for t in terms if t["SelectorType"] == sel and t.get("LineNumber") is not None and int(t["LineNumber"]) == line]
@@ -140,7 +145,10 @@ def build_economics(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], li
                                           due_at, due_label, curve, tuple(reasons + ["DAILY_RATE_INVALID"]))
             continue
         provenance = str(chosen.get("Provenance") or "")
-        basis_row = sale_basis.get(line)
+        bases = [b for b in sale_basis.get(line, []) if str(b.get("TermId")) == str(chosen["TermId"])]   # FK: the basis names its term
+        if len(bases) > 1:
+            reasons.append(f"SALE_BASIS_CONFLICT: {len(bases)} original sale bases for term {chosen['TermId']}")
+        basis_row = bases[0] if len(bases) == 1 else None
         if provenance == "ACTUAL" and chosen.get("ApprovedBy") and basis_row is not None:
             authority = "ACTUAL"
         elif provenance == "ASSUMED":

@@ -48,7 +48,7 @@ to the authoritative decision as a `CERT_MATRIX_PROJECTION_ONLY` note (S05, S07)
 | team_inference | FOCUS_FN_TeamInference (S06/S07 SQL) | Not installed; `queries/workforce/read_team_inference.sql` ready |
 | clock_observations | FOCUS_FN_ClockObservation | Not installed (no raw interval feed in S04) |
 | duration_episodes | FOCUS_FN_DurationObservation | Not installed |
-| scope_receipt, shift_roster, availability_exceptions, ot_authorizations, requirement_census, requirement_alternatives, holding_events, rework_classification, inspection_holds, work_progress, part_events, carry_in, people_directory | none yet | `NOT_PROBED`: precise readiness gaps (OD-01..OD-13) |
+| scope_receipt, shift_roster, availability_exceptions, ot_authorizations, requirement_census, requirement_alternatives, holding_events, rework_classification, inspection_holds, work_progress, part_events, carry_in, people_directory | none yet | `NOT_PROBED`: precise readiness gaps (OD-01..OD-14) |
 
 Proposed `FOCUS_FN_*` output tables (S06) are **not installed**. See
 `sql/migrations/` (drafts, never executed by this build).
@@ -63,6 +63,9 @@ Proposed `FOCUS_FN_*` output tables (S06) are **not installed**. See
 | `queries/durations/build_observations.sql` | P07 | Episode metrics (job/owner unions, cycle) into FOCUS_FN_DurationObservation |
 | `queries/durations/percentiles.sql` | P07 | PERCENTILE_CONT P50/P55/P75/P90 + mean into FOCUS_FN_DurationStatistics per policy |
 | `sql/migrations/durations_draft.sql` | P07 | Duration constraints, UX(RunId, GroupKeySha, PolicyId), indexes, sealed triggers, head view, retention |
+| `queries/calendars/*.sql`, `queries/graph/*.sql`, `queries/parts/shortage_profile.sql`, `queries/quality/inspection_profile.sql` | P08-P10 | Read-only readiness: calendar generations and CS grain, template edges and rework linkage, shortages, inspection counts |
+| `queries/economics/effective_terms.sql`, `liability_floor.sql` | P12 | Read-only mirror of the term resolution (one current mapping, one active scenario, one assignment, selector precedence, version conflicts, authority) and the latest checkpoint floor |
+| `sql/migrations/commitments_draft.sql` | P14 | FOCUS_FN_Commitment checks; CommitmentObservation (replay key per accepted plan), DeliveryReceipt, CommitmentResult projection; immutability triggers; IncumbentAtHead view; one-transaction RecordDeliveryObservation with an optimistic version check; state readback view |
 
 All of them are consolidated into the versioned migration set in P23. Installing any of them
 requires authorized migration tooling. None was executed against a server by this build.

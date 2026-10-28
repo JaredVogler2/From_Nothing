@@ -8,7 +8,7 @@
 -- authority. Run by the source-run refresh worker while the run is still CAPTURING, so the
 -- inference is part of the run's atomic capture and a rejected run never exposes it.
 --
--- Bound parameters (pymssql %s, in order): RunId, WindowStartUtc, WindowEndUtc.
+-- Bound parameters (pymssql positional placeholders, in order): RunId, WindowStartUtc, WindowEndUtc.
 -- Default window: trailing 30 days ending at the run cutoff, half-open [start, end).
 --
 -- Semantics (S07):

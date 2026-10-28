@@ -569,7 +569,7 @@
         },
         {
           "case": "A33",
-          "result": "pass (P10 part: qualified inspector role and pool; non-overlap and WAIT duty via the P11 ledger)"
+          "result": "pass (P10: qualified inspector role and pool; P11 ledger: one inspector never overlaps and retained crew WAIT duty is booked, tests/integration/test_named_crew.py::test_a33_one_inspector_never_overlaps_and_wait_duty_is_booked)"
         }
       ],
       "changed_paths": [
@@ -602,16 +602,61 @@
       "live_verified": false,
       "remaining_gaps": [
         "no live IP hold-location producer",
-        "buyoff void/reopen lifecycle events (P17)",
-        "inspector non-overlap/WAIT duty in the P11 ledger"
+        "buyoff void/reopen lifecycle events (P17)"
       ],
       "status": "fixture_verified",
       "title": "Quality holds, final buyoffs and phase conservation"
     },
     "11": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A34",
+          "result": "pass"
+        },
+        {
+          "case": "A35",
+          "result": "pass"
+        },
+        {
+          "case": "A36",
+          "result": "pass"
+        },
+        {
+          "case": "A37",
+          "result": "pass"
+        },
+        {
+          "case": "A38",
+          "result": "pass"
+        },
+        {
+          "case": "A39",
+          "result": "pass"
+        },
+        {
+          "case": "A40",
+          "result": "pass"
+        },
+        {
+          "case": "A41",
+          "result": "pass"
+        }
+      ],
+      "changed_paths": [
+        "focus/engine/travel.py",
+        "focus/engine/ledger.py",
+        "focus/engine/crew_selection.py",
+        "focus/engine/model.py",
+        "focus/validation/duty.py",
+        "config/policies/rebuild-v1.json",
+        "tests/unit/test_duty_ledger.py",
+        "tests/integration/test_named_crew.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_duty_ledger.py -q (10 passed)",
+        "python -m pytest tests/integration/test_named_crew.py -q (4 passed)",
+        "python -m pytest tests -q (203 passed)"
+      ],
       "depends_on": [
         "06",
         "07",
@@ -622,17 +667,62 @@
       "evidence": [
         "evidence/11/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "TravelPolicy",
+        "DutyLedger (plan/commit/book/remove/transaction, re-derived transfers, budgets, activation, tools)",
+        "choose_crew (exact full crew, scarcity/affinity preference)",
+        "EngineContext(snapshot, policy, purpose)",
+        "validation.duty.reconstruct (V6/V7/V8, engine-independent)"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "live assignment/attendance/OT feeds (OD-04, OD-10)",
+        "shift-start location source (OD-11)",
+        "no tool-requirement source mapped (tool calendars enforced when present)"
+      ],
+      "status": "fixture_verified",
       "title": "Named duty ledger, activation, travel and crew selection"
     },
     "12": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A44",
+          "result": "pass"
+        },
+        {
+          "case": "A45",
+          "result": "pass"
+        },
+        {
+          "case": "A46",
+          "result": "pass"
+        },
+        {
+          "case": "A23",
+          "result": "pass (P12 part: economic due is the explicit CS744 proxy, distinct from gate/earliest)"
+        }
+      ],
+      "changed_paths": [
+        "focus/economics/repository.py",
+        "focus/economics/registry.py",
+        "focus/economics/evaluator.py",
+        "queries/economics/effective_terms.sql",
+        "queries/economics/liability_floor.sql",
+        "docs/execution/ECONOMICS_POLICY.md",
+        "queries/durations/build_observations.sql",
+        "queries/durations/percentiles.sql",
+        "queries/workforce/infer_mechanic_teams.sql",
+        "tests/unit/test_economics.py",
+        "tests/integration/test_economic_steering.py",
+        "tests/unit/test_query_files.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_economics.py -q (7 passed)",
+        "python -m pytest tests/integration/test_economic_steering.py -q (2 passed)",
+        "python -m pytest tests/unit/test_query_files.py -q (3 passed)",
+        "python -m pytest tests -q (203 passed)"
+      ],
       "depends_on": [
         "04",
         "08",
@@ -642,17 +732,65 @@
       "evidence": [
         "evidence/12/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "build_economics (one mapping/scenario/assignment, selector precedence, ambiguity explicit)",
+        "EconomicsRegistry (exact penalty, marginal, derive_priority_weights)",
+        "aircraft_completions / line_costs / summarize",
+        "queries/economics read-only mirrors"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "no live economics terms/approvals/sale basis/checkpoints (OD-12)",
+        "no commercial due policy (OD-06)",
+        "only LINEAR_DAILY supported; other curves explicit UNSUPPORTED_CURVE"
+      ],
+      "status": "fixture_verified",
       "title": "SQL economics Registry and complete-fleet cost evaluation"
     },
     "13": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A26",
+          "result": "pass (engine part)"
+        },
+        {
+          "case": "A38",
+          "result": "pass"
+        },
+        {
+          "case": "A44",
+          "result": "pass"
+        },
+        {
+          "case": "A45",
+          "result": "pass"
+        },
+        {
+          "case": "A47",
+          "result": "partial (P13 part: final candidate passes independent V6/V7/V8 duty reconstruction; V1-V9 mutation corpus is P15)"
+        },
+        {
+          "case": "A70",
+          "result": "partial (engine part: determinism, wall-clock/cancel bounds, complete inventory; scale benchmark is P22)"
+        }
+      ],
+      "changed_paths": [
+        "focus/engine/max/optimizer/greedy.py",
+        "focus/engine/max/optimizer/orchestrator.py",
+        "focus/engine/max/optimizer/neighborhoods.py",
+        "focus/engine/max/optimizer/repair.py",
+        "focus/engine/max/optimizer/continuity.py",
+        "focus/contracts/planning.py",
+        "tools/run_schedule.py",
+        "tests/integration/test_max_pipeline.py"
+      ],
+      "commands": [
+        "python -m pytest tests/integration/test_max_pipeline.py -q (6 passed)",
+        "python -m pytest tests -q (203 passed)",
+        "python -m focus.cli schedule --source-run <run> --policy rebuild-v1 --purpose EXECUTABLE (5.5 s, 400 moves)",
+        "python -m focus.cli schedule --source-run <run> --policy rebuild-v1 --purpose FORECAST (8.5 s, 400 moves)"
+      ],
       "depends_on": [
         "09",
         "10",
@@ -662,17 +800,60 @@
       "evidence": [
         "evidence/13/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "Decoder (ready-frontier list scheduling, dispatch classes)",
+        "MaxOptimizer.run / evaluate / better",
+        "build_candidate (substance-addressed sealed CandidatePlan)",
+        "schedule / cli_schedule / receipt"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "independent V1-V9 validator and mutation corpus (P15)",
+        "publication (P16)",
+        "scale benchmark and optional solver (P22)"
+      ],
+      "status": "fixture_verified",
       "title": "Rich MAX whole-WIP scheduling and economic search"
     },
     "14": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A42",
+          "result": "pass"
+        },
+        {
+          "case": "A43",
+          "result": "pass"
+        },
+        {
+          "case": "A49",
+          "result": "pass"
+        },
+        {
+          "case": "A50",
+          "result": "pass"
+        }
+      ],
+      "changed_paths": [
+        "focus/engine/commitments.py",
+        "focus/engine/projections.py",
+        "focus/engine/max/optimizer/greedy.py",
+        "focus/engine/max/optimizer/orchestrator.py",
+        "focus/pipeline.py",
+        "config/policies/rebuild-v1.json",
+        "docs/execution/DECISIONS.md",
+        "sql/migrations/commitments_draft.sql",
+        "docs/execution/SQL_SCHEMA_LEDGER.md",
+        "tests/unit/test_commitments.py",
+        "tests/integration/test_incumbent_defense.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_commitments.py -q (15 passed)",
+        "python -m pytest tests/integration/test_incumbent_defense.py -q (8 passed)",
+        "python -m pytest tests -q (203 passed)",
+        "python -m focus.cli demo-bootstrap --scenario manufacturing_demo (45 inputs verified, 2 incumbents)"
+      ],
       "depends_on": [
         "11",
         "12",
@@ -681,11 +862,21 @@
       "evidence": [
         "evidence/14/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "record_accepted_incumbent / lookup_incumbent / defended_tasks",
+        "observe (pure hysteresis)",
+        "DeliveryCommitments (versioned state, acknowledged outbox, receipts, CAS retry)",
+        "projections.record_accepted / delivery_projections / safety_alerts",
+        "cli demo-bootstrap"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "P16 must call projections.record_accepted at acceptance and record live incumbents via FOCUS_FN_PlanHead",
+        "live SqlStore adapter for commitment collections (P23)",
+        "OD-14 delivery purpose owner decision"
+      ],
+      "status": "fixture_verified",
       "title": "Incumbent defense and persistent delivery commitments"
     },
     "15": {
