@@ -90,7 +90,8 @@ class HoldingsBuild:
 
 
 def build_holdings(cert_rows: Iterable[Mapping[str, Any]], events: Iterable[Mapping[str, Any]], person_ids: Mapping[str, str],
-                   policy: Policy, tz: ZoneInfo, dataset_id: str, run_id: str) -> HoldingsBuild:
+                   policy: Policy, tz: ZoneInfo | None, dataset_id: str, run_id: str) -> HoldingsBuild:
+    """Holdings with validity in UTC; ``tz`` is the mechanic_certs source timezone (None: every validity is UNKNOWN)."""
     forms = list(policy.seq("qualifications.accepted_date_forms"))
     sentinel = policy.optional("qualifications.perpetual_sentinel")
     active = set(policy.seq("qualifications.active_statuses"))
@@ -129,7 +130,11 @@ def build_holdings(cert_rows: Iterable[Mapping[str, Any]], events: Iterable[Mapp
             status = "UNKNOWN"
         start = parse_cert_date(row.get("LAST_CERT_DATE"), forms, None)
         expiry = parse_cert_date(row.get("CERT_EXP_DATE"), forms, sentinel)
-        valid_from = local_midnight_utc(start.value, tz) if start.value else None
+        if tz is None:
+            problems.append(f"HOLDING_SOURCE_TIMEZONE_MISSING:{native}:{cert}")
+            start = DateParse(None, "TIMEZONE_MISSING", start.form)
+            expiry = DateParse(None, "TIMEZONE_MISSING", expiry.form) if not expiry.sentinel else expiry
+        valid_from = local_midnight_utc(start.value, tz) if start.value and tz else None
         validity = "UNKNOWN"
         valid_to = None
         if expiry.sentinel:
@@ -137,7 +142,7 @@ def build_holdings(cert_rows: Iterable[Mapping[str, Any]], events: Iterable[Mapp
         elif expiry.value is not None:
             try:
                 end_day = expiry.value + timedelta(days=1) if inclusive else expiry.value
-                valid_to = local_midnight_utc(end_day, tz)
+                valid_to = local_midnight_utc(end_day, tz)  # type: ignore[arg-type]  # tz is set whenever expiry.value is
                 validity = "BOUNDED"
             except (OverflowError, ValueError):
                 # no year-10000 arithmetic: without an explicit sentinel policy the expiry stays unknown

@@ -75,9 +75,15 @@ def _anchor(calendar: LineCalendar | None, position: str | None) -> date | None:
     return None
 
 
+SUPPORTED_DATE_MODES = ("RESOLVED", "OFFSET_FROM_REFERENCE")
+SUPPORTED_DATE_INSTANTS = ("LOCAL_MIDNIGHT",)
+
+
 def build_cs_facts(*, rows: list[RawCSRow], run_id: str, needed: Iterable[tuple[int, str | None]], calendars: Mapping[int, LineCalendar],
-                   policy: Policy, tz: ZoneInfo, dataset_id: str) -> dict[tuple[int, str | None], CSFacts]:
-    mode = policy.str("cs.date_mode")
+                   policy: Policy, tz: ZoneInfo | None, dataset_id: str) -> dict[tuple[int, str | None], CSFacts]:
+    """Typed CS facts per needed (line, station). ``tz`` is the cs_windows dataset's declared source timezone."""
+    mode = policy.optional("cs.date_mode")
+    instant = policy.optional("cs.date_instant")
     day_basis = policy.optional("cs.offset_day_basis")
     proxy_station = str(policy.optional("due.proxy_station", ""))
     proxy_basis = str(policy.optional("due.proxy_date_basis", "ACTUAL_CS_GATE"))
@@ -88,10 +94,21 @@ def build_cs_facts(*, rows: list[RawCSRow], run_id: str, needed: Iterable[tuple[
         if r.is_active:
             index.setdefault((r.line, r.control_station), []).append(r)
     out: dict[tuple[int, str | None], CSFacts] = {}
-    conversion = f"{mode}/{policy.str('cs.date_instant')}/{day_basis or '-'}"
+    conversion = f"{mode or '-'}/{instant or '-'}/{day_basis or '-'}"
+    policy_problem = None
+    if mode not in SUPPORTED_DATE_MODES:
+        policy_problem = f"CS_CONVERSION_POLICY_MISSING: date mode {mode!r} is not an admitted conversion"
+    elif instant not in SUPPORTED_DATE_INSTANTS:
+        policy_problem = f"CS_CONVERSION_POLICY_MISSING: date-to-UTC convention {instant!r} is not admitted (no guessed convention)"
+    elif tz is None:
+        policy_problem = "CS_SOURCE_TIMEZONE_MISSING: no declared source timezone for cs_windows dates"
     for line, station in sorted(set(needed), key=lambda k: (k[0], k[1] or "")):
         def gap(code: str, detail: str, status: str = "GAP", load: int | None = None, offsets: dict | None = None) -> CSFacts:
             return CSFacts(line, station or "", None, status, None, None, None, None, load, offsets or {}, conversion, run_id, (f"{code}: {detail}",), ())
+        if policy_problem:
+            code, detail = policy_problem.split(": ", 1)
+            out[(line, station)] = gap(code, detail, status="POLICY_MISSING")
+            continue
         if station is None or not station.isdigit():
             out[(line, station)] = gap("CS_STATION_UNPARSEABLE", f"control station text {station!r} is not an exact integer station")
             continue
@@ -118,7 +135,7 @@ def build_cs_facts(*, rows: list[RawCSRow], run_id: str, needed: Iterable[tuple[
         reasons: list[str] = []
         if mode == "RESOLVED":
             earliest_day, gate_day = row.cs_op_load, row.cs_op_unload
-        elif mode == "OFFSET_FROM_REFERENCE":
+        else:  # OFFSET_FROM_REFERENCE
             if day_basis not in ("WORKDAY", "CALENDAR_DAY"):
                 out[(line, station)] = CSFacts(line, station, row.mbu, "POLICY_MISSING", None, None, None, None, row.load_id, offsets, conversion, run_id,
                                                ("CS_CONVERSION_POLICY_MISSING: offset day basis not admitted",), evidence)
@@ -129,10 +146,6 @@ def build_cs_facts(*, rows: list[RawCSRow], run_id: str, needed: Iterable[tuple[
             gate_day = _shift_days(ua, row.unload_offset or 0, day_basis, cal) if ua else None
             if earliest_day is None:
                 reasons.append("CS_ANCHOR_UNRESOLVED: load reference position/offset cannot be resolved on the line calendar")
-        else:
-            out[(line, station)] = CSFacts(line, station, row.mbu, "POLICY_MISSING", None, None, None, None, row.load_id, offsets, conversion, run_id,
-                                           (f"CS_CONVERSION_POLICY_MISSING: unsupported date mode {mode}",), evidence)
-            continue
         if earliest_day is None:
             out[(line, station)] = CSFacts(line, station, row.mbu, "GAP", None, gate_day, None, None, row.load_id, offsets, conversion, run_id,
                                            tuple(reasons or ["CS_EARLIEST_MISSING: no earliest date"]), evidence)

@@ -70,7 +70,9 @@ class GraphBuild:
     job_preds: dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))
     cycles: list[list[str]] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
+    diagnostics: list[tuple[str, str, str, str]] = field(default_factory=list)   # (code, scope, detail, effect)
     template_absent: int = 0
+    template_pred_absent: int = 0
 
 
 def _tarjan(nodes: Iterable[str], adj: Mapping[str, set[str]]) -> list[list[str]]:
@@ -228,9 +230,12 @@ def build_graph(*, census: CensusBuild, durations: Mapping[str, DurationResoluti
         by_soi[native].append((line, job_id))
     job_edges: list[Edge] = []
     job_adj: dict[str, set[str]] = defaultdict(set)
+    job_edge_types: dict[tuple[str, str], set[EdgeType]] = defaultdict(set)
     seen_template: set[tuple[str, str, str, int]] = set()
     for ordinal, row in enumerate(pnet_rows):
         pred_soi, succ_soi = str(row["PREDECESSOR_SOI"]), str(row["SUCCESSOR_SOI"])
+        pred_lines = {line for line, _ in by_soi.get(pred_soi, ())}
+        out.template_pred_absent += sum(1 for line, _ in by_soi.get(succ_soi, ()) if line not in pred_lines)
         raw_type, raw_hard = row.get("RELATIONSHIP_TYPE"), row.get("IS_HARD")
         lag = int(row["OFFSET_MINUTES"]) if row.get("OFFSET_MINUTES") is not None else 0
         etype = rel_map.get(str(raw_type)) if raw_type is not None else None
@@ -288,8 +293,13 @@ def build_graph(*, census: CensusBuild, durations: Mapping[str, DurationResoluti
             if hard and et not in (EdgeType.CONCURRENT, EdgeType.NONCONCURRENT):
                 job_adj[pred_job].add(succ_job)
                 out.job_preds[succ_job].add(pred_job)
+                job_edge_types[(pred_job, succ_job)].add(et)
 
     # -------------------------------------------------------------- rework
+    started_root_hold = policy.str("rework.started_root_hold")
+    if started_root_hold not in ("CONTINUATION", "CLOSURE"):
+        raise ValueError(f"unsupported rework.started_root_hold {started_root_hold!r}")
+    status_classes: Mapping[str, str] = policy.map("scope.status_classes")
     classification = {(int(r["LINE_NUMBER"]), str(r["CHILD_SOI"])): r for r in classification_rows}
     neo = {(int(r["LINE_NUMBER"]), str(r["CHILD_SOI"])): r for r in neo_rows}
     for (line, child_soi) in sorted(set(classification) | set(neo)):
@@ -320,20 +330,63 @@ def build_graph(*, census: CensusBuild, durations: Mapping[str, DurationResoluti
         if status in ("QUARANTINED", "UNRESOLVED"):
             for j in filter(None, (child, root)):
                 census.quarantined[j].append(reasons[-1])
-        elif child not in census.verified_complete and root is not None:
+        else:
+            # ordered verified lifecycle facts decide the child release: NEO and the census must agree
+            neo_status = str(neo_row["CHILD_STATUS"]) if neo_row and neo_row.get("CHILD_STATUS") is not None else None
+            if neo_status is not None and root is not None:
+                neo_complete = status_classes.get(neo_status) == "TERMINAL_COMPLETE"
+                if neo_complete != (child in census.verified_complete):
+                    reasons.append(f"REWORK_STATUS_CONFLICT: NEO child status {neo_status} disagrees with census "
+                                   f"{census.status_class.get(child)}; release requires reconciled lifecycle evidence")
+                    census.executable_only[root].append(reasons[-1])
+        if status not in ("QUARANTINED", "UNRESOLVED") and child not in census.verified_complete and root is not None:
+            evidence = (EvidenceRef(dataset_ids.get("rework_classification", ""), f"{line}/{child_soi}", source_run_id=run_id),)
             if root in census.verified_complete:
-                reasons.append("ROOT_COMPLETE_WITH_OPEN_REWORK: root closure must be re-evidenced by lifecycle facts")
+                # the root closed while rework is open (reopened/voided completion): its closure must be re-evidenced,
+                # so every hard successor of the root waits for the rework release
+                reasons.append("ROOT_CLOSURE_REOPENED: root closure must be re-evidenced; its successors wait for the rework release")
+                out.diagnostics.append(("ROOT_CLOSURE_REOPENED", census.label(root), f"open rework {census.label(child)}", "INFO"))
+                for succ in sorted(job_adj.get(root, ())):
+                    a, b = out.finish_phase[child], out.start_phase[succ]
+                    job_edges.append(Edge(digest_id("E", a, b, "FS", 0, "REWORK_REOPENED_ROOT"), a, b, EdgeType.FS, 0, True,
+                                          "REWORK_REOPENED_ROOT", None, None, None, None, evidence))
+                    job_adj[child].add(succ)
+                    out.job_preds[succ].add(child)
             else:
-                in_progress = census.status_class.get(root) == "IN_PROGRESS"
-                basis = "REWORK_CONTINUATION_HOLD" if in_progress else "REWORK_INJECTED"
-                a, b = out.finish_phase[child], out.start_phase[root]
-                job_edges.append(Edge(digest_id("E", a, b, "FS", 0, basis), a, b, EdgeType.FS, 0, True, basis, None, None, None, None,
-                                      (EvidenceRef(dataset_ids.get("rework_classification", ""), f"{line}/{child_soi}", source_run_id=run_id),)))
+                started = census.status_class.get(root) == "IN_PROGRESS"
+                if started and started_root_hold == "CLOSURE":
+                    basis, a, b = "REWORK_CLOSURE_HOLD", out.finish_phase[child], out.finish_phase[root]
+                elif started:
+                    basis, a, b = "REWORK_CONTINUATION_HOLD", out.finish_phase[child], out.start_phase[root]
+                else:
+                    basis, a, b = "REWORK_INJECTED", out.finish_phase[child], out.start_phase[root]
+                job_edges.append(Edge(digest_id("E", a, b, "FS", 0, basis), a, b, EdgeType.FS, 0, True, basis, None, None, None, None, evidence))
                 job_adj[child].add(root)
                 out.job_preds[root].add(child)
+                job_edge_types[(child, root)].add(EdgeType.FS if basis != "REWORK_CLOSURE_HOLD" else EdgeType.FF)
         out.rework_links.append(ReworkLink(line, child, root, parent, census.jobs[child].rework_class,
                                            str(neo_row["CHILD_STATUS"]) if neo_row and neo_row.get("CHILD_STATUS") else None,
                                            status, census.jobs[child].defect_origin_team, tuple(reasons)))
+
+    # --------------------------------------------- in-progress successors keep incomplete predecessors
+    for job_id in sorted(out.job_preds):
+        if census.status_class.get(job_id) != "IN_PROGRESS":
+            continue
+        job = census.jobs[job_id]
+        for pred in sorted(out.job_preds[job_id]):
+            if pred in census.verified_complete:
+                continue
+            types = job_edge_types.get((pred, job_id), set())
+            started_at = job.actual_start.isoformat() if job.actual_start else "an unrecorded time"
+            if types & {EdgeType.FS, EdgeType.SS}:
+                out.diagnostics.append(("SEQUENCE_VIOLATION", census.label(job_id),
+                                        f"started at {started_at} while hard predecessor {census.label(pred)} was incomplete "
+                                        f"({'/'.join(sorted(t.value for t in types))}); recorded, never legalized", "INFO"))
+                out.diagnostics.append(("IN_PROGRESS_CONTINUATION_HOLD", census.label(job_id),
+                                        f"remaining work waits for {census.label(pred)}; actual history kept; no sourced safety disposition", "INFO"))
+            elif types & {EdgeType.FF, EdgeType.SF}:
+                out.diagnostics.append(("IN_PROGRESS_CLOSURE_HOLD", census.label(job_id),
+                                        f"closure waits for {census.label(pred)}; continuation of unrelated safe work is not prohibited", "INFO"))
 
     # ---------------------------------------------------------------- parts
     for rel in parts.releases:
@@ -412,3 +465,31 @@ def _topological(nodes: Iterable[str], adj: Mapping[str, set[str]]) -> list[str]
     # cycle members never reach indegree 0; append them for completeness (already quarantined)
     remaining = sorted(n for n in nodes if n not in set(out))
     return out + remaining
+
+
+def precedence_violations(edges: Iterable[Edge], placed: Mapping[str, tuple[int, int]], satisfied: Iterable[str]) -> list[tuple[str, str]]:
+    """Check every hard typed edge against a candidate placement (integer UTC minutes).
+
+    ``placed`` maps phase/milestone ids to (start, end); ``satisfied`` holds verified-complete
+    anchors. A placed successor whose incomplete predecessor is missing from the candidate is a
+    violation: absence never satisfies a prerequisite. Equations keep the signed lag:
+    FS pred.end+lag<=succ.start, SS pred.start+lag<=succ.start, FF pred.end+lag<=succ.end,
+    SF pred.start+lag<=succ.end. CONCURRENT/NONCONCURRENT modes are checked by their policy owner.
+    """
+    done = set(satisfied)
+    out: list[tuple[str, str]] = []
+    for e in edges:
+        if not e.hard or e.type in (EdgeType.CONCURRENT, EdgeType.NONCONCURRENT):
+            continue
+        succ = placed.get(e.succ_phase)
+        if succ is None or e.pred_phase in done:
+            continue
+        pred = placed.get(e.pred_phase)
+        if pred is None:
+            out.append((e.id, f"PREDECESSOR_MISSING_FROM_CANDIDATE: {e.pred_phase} -> {e.succ_phase} ({e.basis})"))
+            continue
+        left = (pred[1] if e.type in (EdgeType.FS, EdgeType.FF) else pred[0]) + e.lag_minutes
+        right = succ[0] if e.type in (EdgeType.FS, EdgeType.SS) else succ[1]
+        if left > right:
+            out.append((e.id, f"PRECEDENCE_{e.type.value}: {e.pred_phase} -> {e.succ_phase} needs {left} <= {right} ({e.basis})"))
+    return out

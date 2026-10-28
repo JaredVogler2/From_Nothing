@@ -121,6 +121,13 @@ def phase_plan(*, work_minutes: int, performed: int, trigger: InspectionTrigger 
     max_seg = policy.int("duration.max_segment_minutes")
     problems: list[str] = []
     pieces: list[PhaseSpec] = []
+    if policy.bool("qa.standard_includes_inspection_minutes") and trigger:
+        # the standard already contains the QA minutes: carve them out once instead of adding a duplicate 45
+        embedded = (policy.int("qa.total_ip_minutes") if trigger.ip_required else 0) + (final_minutes if trigger.final_required else 0)
+        if work_minutes - embedded <= 0:
+            return [PhaseSpec("WORK", work_minutes, "work (QA reconciliation failed)")], [
+                f"QA_RECONCILIATION_INVALID: standard {work_minutes} cannot contain {embedded} embedded inspection minutes"]
+        work_minutes -= embedded
     total = performed + work_minutes
     cursor = performed
     holds = list(trigger.ip_holds) if (trigger and trigger.ip_required and trigger.ip_hold_status == "SOURCED") else []

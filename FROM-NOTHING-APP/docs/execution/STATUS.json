@@ -430,9 +430,46 @@
       "title": "Duration gauge, standards and SQL descriptive statistics"
     },
     "08": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A19",
+          "result": "pass"
+        },
+        {
+          "case": "A20",
+          "result": "pass"
+        },
+        {
+          "case": "A21",
+          "result": "pass"
+        },
+        {
+          "case": "A22",
+          "result": "pass"
+        },
+        {
+          "case": "A23",
+          "result": "pass"
+        },
+        {
+          "case": "A24",
+          "result": "pass"
+        }
+      ],
+      "changed_paths": [
+        "focus/data/cs_windows.py",
+        "focus/data/snapshot_builder.py",
+        "focus/data/qualifications.py",
+        "focus/calendar.py",
+        "queries/calendars/calendar_generations.sql",
+        "queries/calendars/cs_window_grain.sql",
+        "tests/unit/test_calendar.py",
+        "tests/integration/test_cs_lineage.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_calendar.py tests/integration/test_cs_lineage.py -q (15 passed)",
+        "python -m pytest tests -q (148 passed)"
+      ],
       "depends_on": [
         "04",
         "07"
@@ -440,17 +477,63 @@
       "evidence": [
         "evidence/08/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "ShiftPolicy/build_shift (independent local->UTC endpoints)",
+        "ShiftInstance.valid_start/advance/coord",
+        "admit_line_calendars",
+        "CalendarService.eligible/eligible_shifts/bounds",
+        "build_cs_facts (explicit conversion policy and source timezone)"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "live calendar generation/grain and CS date semantics (OD-05) unconfirmed",
+        "real labor-policy break/OT placement not sourced"
+      ],
+      "status": "fixture_verified",
       "title": "Per-line calendars, three shifts and CS windows"
     },
     "09": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A25",
+          "result": "pass"
+        },
+        {
+          "case": "A26",
+          "result": "pass"
+        },
+        {
+          "case": "A27",
+          "result": "pass"
+        },
+        {
+          "case": "A28",
+          "result": "pass"
+        },
+        {
+          "case": "A29",
+          "result": "pass"
+        },
+        {
+          "case": "A30",
+          "result": "pass"
+        }
+      ],
+      "changed_paths": [
+        "focus/data/graph.py",
+        "focus/data/parts.py",
+        "config/policies/rebuild-v1.json",
+        "queries/graph/template_edge_profile.sql",
+        "queries/graph/rework_linkage.sql",
+        "queries/parts/shortage_profile.sql",
+        "tests/unit/test_constraint_graph.py",
+        "tests/integration/test_parts_root.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_constraint_graph.py tests/integration/test_parts_root.py -q (13 passed)",
+        "python -m pytest tests -q (148 passed)"
+      ],
       "depends_on": [
         "04",
         "06",
@@ -460,17 +543,47 @@
       "evidence": [
         "evidence/09/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "build_graph (typed edges, rework holds, in-progress diagnostics)",
+        "precedence_violations(edges, placed, satisfied)",
+        "build_parts (ETA/RECEIVED/DELETED/REOPENED, precision floors)"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "no live rework classification, part ETA/receipt/reopen/deletion or safety-disposition producers",
+        "OD-07 concurrency semantics"
+      ],
+      "status": "fixture_verified",
       "title": "Precedence, rework and material-release graph"
     },
     "10": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A31",
+          "result": "pass"
+        },
+        {
+          "case": "A32",
+          "result": "pass"
+        },
+        {
+          "case": "A33",
+          "result": "pass (P10 part: qualified inspector role and pool; non-overlap and WAIT duty via the P11 ledger)"
+        }
+      ],
+      "changed_paths": [
+        "focus/data/inspections.py",
+        "focus/data/graph.py",
+        "config/policies/rebuild-v1.json",
+        "queries/quality/inspection_profile.sql",
+        "docs/execution/QA_POLICY.md",
+        "tests/unit/test_inspection_graph.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_inspection_graph.py -q (7 passed)",
+        "python -m pytest tests -q (148 passed)"
+      ],
       "depends_on": [
         "06",
         "07",
@@ -480,11 +593,19 @@
       "evidence": [
         "evidence/10/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "build_triggers",
+        "phase_plan (IP45 total, final45, parallel buyoffs, embedded reconciliation)",
+        "AND release edges"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "no live IP hold-location producer",
+        "buyoff void/reopen lifecycle events (P17)",
+        "inspector non-overlap/WAIT duty in the P11 ledger"
+      ],
+      "status": "fixture_verified",
       "title": "Quality holds, final buyoffs and phase conservation"
     },
     "11": {

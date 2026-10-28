@@ -170,6 +170,11 @@
       "authority": "fixture_default",
       "ref": "S10: retained crew WAIT also supported"
     },
+    "qa.standard_includes_inspection_minutes": {
+      "value": false,
+      "authority": "fixture_default",
+      "ref": "S10 reconcile standards that embed inspection minutes (no duplicate 45); fixture standards are production-only"
+    },
     "qa.inspector_team": {
       "value": "QA",
       "authority": "fixture_default",
@@ -346,6 +351,11 @@
       "value": "ACTUAL_CS_GATE",
       "authority": "fixture_default",
       "ref": "S09,S14"
+    },
+    "rework.started_root_hold": {
+      "value": "CONTINUATION",
+      "authority": "fixture_default",
+      "ref": "S10 started root: CONTINUATION holds remaining root work for the rework release; CLOSURE holds only the root release"
     },
     "parts.date_only_floor": {
       "value": "END_OF_LOCAL_DATE",

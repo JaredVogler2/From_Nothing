@@ -58,6 +58,11 @@ class SnapshotBuild:
     notes: list[str] = field(default_factory=list)
 
 
+def _zone(tzp: TimezonePolicy, dataset: str) -> ZoneInfo | None:
+    """The dataset's declared source timezone; None (never a guessed zone) when the policy is missing."""
+    return tzp.zone(dataset) if tzp.has(dataset) else None
+
+
 def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode: str, cutoff: datetime, created_at: datetime,
                    datasets: Mapping[str, tuple[Mapping[str, Any], ...]], dataset_status: Mapping[str, str],
                    dataset_ids: Mapping[str, str], dataset_lineage: Mapping[str, str], manifest_hash: str,
@@ -106,7 +111,7 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
     needed = {(job.line, job.station) for jid, job in census.jobs.items() if jid not in census.verified_complete}
     proxy_station = str(policy.optional("due.proxy_station", ""))
     needed |= {(line, proxy_station) for line in lines if proxy_station}
-    cs_facts = build_cs_facts(rows=cs_rows, run_id=run_id, needed=needed, calendars=calendars, policy=policy, tz=tz,
+    cs_facts = build_cs_facts(rows=cs_rows, run_id=run_id, needed=needed, calendars=calendars, policy=policy, tz=_zone(tzp, "cs_windows"),
                               dataset_id=dataset_ids.get("cs_windows", ""))
 
     # ---- requirements, holdings, durations ----
@@ -131,8 +136,8 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
                          cutoff=cutoff, horizon=horizon, dataset_ids=dataset_ids)
     for code, scope_name, detail, effect in wf.gaps:
         gaps.append(ReadinessGap(code, scope_name, detail, effect))
-    holdings_build = build_holdings(datasets.get("mechanic_certs", ()), datasets.get("holding_events", ()), wf.person_by_native, policy, tz,
-                                    dataset_ids.get("mechanic_certs", ""), run_id)
+    holdings_build = build_holdings(datasets.get("mechanic_certs", ()), datasets.get("holding_events", ()), wf.person_by_native, policy,
+                                    _zone(tzp, "mechanic_certs"), dataset_ids.get("mechanic_certs", ""), run_id)
     notes.extend(holdings_build.problems)
     matrix_rows = datasets.get("cert_eligibility_matrix", ())
     if matrix_rows:
@@ -175,7 +180,8 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
     # ---- parts and graph ----
     labels = {jid: job.key.label() for jid, job in census.jobs.items()}
     parts = build_parts(rows=datasets.get("etracs_active", ()), events=datasets.get("part_events", ()), job_index=job_index,
-                        parent_of=census.parent_of, labels=labels, tz=tz, dataset_ids=dataset_ids, run_id=run_id)
+                        parent_of=census.parent_of, labels=labels, tz=_zone(tzp, "etracs_active"), dataset_ids=dataset_ids, run_id=run_id,
+                        cutoff=cutoff, date_floor=policy.str("parts.date_only_floor"), timestamp_floor=policy.str("parts.timestamp_floor"))
     other_minutes = {str(r["INSPECTION_TYPE"]): int(r["DURATION_MINUTES"]) for r in datasets.get("inspection_standards", ())
                      if str(r.get("SCHEDULING_RELATIONSHIP")) == "PARALLEL_BRANCH"}
     graph = build_graph(census=census, durations=resolutions, requirements=requirements, policy=policy, mode=mode,
@@ -183,8 +189,11 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
                         classification_rows=datasets.get("rework_classification", ()), parts=parts, other_minutes=other_minutes,
                         dataset_ids=dataset_ids, run_id=run_id, cutoff=cutoff)
     notes.extend(graph.problems)
-    if graph.template_absent:
-        notes.append(f"{graph.template_absent} template edge instance(s) not applicable: endpoint SOI absent on that line")
+    if graph.template_absent or graph.template_pred_absent:
+        notes.append(f"template edges not instantiated: {graph.template_absent} with the successor and {graph.template_pred_absent} with the "
+                     "predecessor SOI absent from that line's full census (template not applicable to that aircraft; never treated as done)")
+    for code, scope_name, detail, effect in graph.diagnostics:
+        gaps.append(ReadinessGap(code, scope_name, detail, effect))
 
     # ---- economics ----
     cs_by_line = {line: cs_facts.get((line, proxy_station)) for line in lines}
