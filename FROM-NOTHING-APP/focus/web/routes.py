@@ -101,10 +101,17 @@ def register(app: Flask, services: Services) -> None:
 
     @bp.get("/dashboard")
     def dashboard_ios():  # type: ignore[no-untyped-def]
+        # In the public, synthetic demo, guide unsigned visitors to the
+        # existing persona login instead of stranding them on a blocked view.
+        # Live organizational sign-in and ALL API authorization remain intact.
+        if services.settings.identity_provider == "fixture" and not current_context().authenticated:
+            return redirect(url_for("focus.landing"))
         return render_template("workspace.html", layout="ios", page="workspace")
 
     @bp.get("/dashboard/classic")
     def dashboard_classic():  # type: ignore[no-untyped-def]
+        if services.settings.identity_provider == "fixture" and not current_context().authenticated:
+            return redirect(url_for("focus.landing"))
         return render_template("workspace.html", layout="classic", page="workspace")
 
     @bp.get("/api/docs")
