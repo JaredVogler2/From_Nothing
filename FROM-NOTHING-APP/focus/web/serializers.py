@@ -1307,7 +1307,7 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
     from ..domain import DomainError
     from ..performance.actuals import AMENDMENTS, ObservationStore, knowledge_time
     from ..performance.amendments import assess_addition
-    from ..publication.dispatch import assess_action
+    from ..publication.dispatch import ranked_actions
 
     require_team(ctx, team)
     missing = _need_snapshot(canon)
@@ -1323,18 +1323,12 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
     inp = validation_input(canon)
     phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
     actions = []
-    for a in plan.assignments:
+    for rank, (a, why) in enumerate(ranked_actions(services, plan, canon.snapshot, inp, team=team, shift_id=shift_id, now=now), 1):
         p = phases.get(a.phase)
-        if a.shift_id != shift_id or phase_team(p) != team:
-            continue
-        why = assess_action(services, a, canon.snapshot, inp, now)
         actions.append(_assignment_view(canon, ctx, a, phases, people, "EXECUTABLE") | {
             "line": a.line, "soi": jobs[a.job].key.native_id if a.job in jobs else None, "phase_label": p.label if p else a.phase,
             "requirement": bundle_text(p.role_demands[0].bundle) if p is not None and p.role_demands else None,
-            "dispatchable": not why, "reasons": [{"code": c, "detail": d} for c, d in dict.fromkeys(why)]})
-    actions.sort(key=lambda r: (not r["dispatchable"], not r["committed"], r["start"], r["assignment_id"]))
-    for i, r in enumerate(actions, 1):
-        r["rank"] = i
+            "dispatchable": not why, "reasons": [{"code": c, "detail": d} for c, d in dict.fromkeys(why)], "rank": rank})
     record = registry(services).record(team, shift_id)
     goal, proposals, proposal_reasons = None, [], []
     at = knowledge_time(services)
@@ -1764,3 +1758,49 @@ def scenarios_view(services: Any, ctx: RequestContext, scenario_id: str | None =
                                                                      "Queue one with POST /api/v1/scenarios.")]),
                       source_run_id=canon.source_run_id, purpose="SCENARIO")
 
+
+
+# ---------------------------------------------------------------------- Digital Twin (S16 TWIN, P21)
+
+def twin_view(canon: Canon, ctx: RequestContext, *, team: str | None, day: date | None, shift: int | None, line: int | None) -> Projection:
+    """Observed, planned, forecast and unknown layers of the current canonical revision, reconciled exactly (analytics.twin)."""
+    from ..analytics.twin import build_twin
+    from ..data.acquisition import load_snapshot
+
+    if team is not None:
+        require_team(ctx, team)                                                 # scope before fetch
+    missing = _need_snapshot(canon)
+    if missing:
+        return missing
+    if not ctx.scope.all_teams and not ctx.scope.teams:
+        return Projection("empty", None, list(canon.reasons) + [reason("AGGREGATES_ONLY", "Your scope has no team detail; the twin is per team.")],
+                          source_run_id=canon.source_run_id)
+    services = canon.services
+    repos = services.repositories
+    data = build_twin(services, canon, registry(services), visible=lambda t: team_allowed(ctx, t),
+                      load_snapshot=lambda sid: CACHE.get_or_load(("snapshot", sid), lambda: load_snapshot(repos, sid)),
+                      team=team, day=day, shift=shift, line=line)
+    reasons = list(canon.reasons) + [reason(code, message) for code, message in data.pop("reasons")]
+    status = canon.base_status() if data["cells"] or data["inventory"]["total"]["jobs"] else "empty"
+    if not data["reconciliation"]["ok"]:
+        status = "unknown"                                                      # totals that do not reconcile are never shown as ready
+    return Projection(status, data, reasons, None, canon.source_run_id, canon.plan_id("EXECUTABLE"))
+
+
+# ---------------------------------------------------------------------- explanations (S16, P21)
+
+def explanation_view(services: Any, ctx: RequestContext, explanation_id: str) -> Projection:
+    """A stored explanation for a reader of its team; one that carries cost facts also needs the economics grant."""
+    from ..explanations.pipeline import load, view
+
+    if not services.repositories.available:
+        return Projection("blocked", None, [reason("REPOSITORY_UNAVAILABLE", "No repository is configured.")])
+    r = load(services, explanation_id)
+    costed = r is not None and any(f.metric_key == "line_marginal_day_cost" for f in r.facts)
+    if r is None or r.scope != services.settings.scope_key or not team_allowed(ctx, r.team) or (costed and not can_see_economics(ctx)):
+        raise ApiError(404, "EXPLANATION_NOT_FOUND", "no explanation with that id in your scope")
+    reasons = [reason("EXPLANATION_ONLY", "An explanation restates grounded facts; it never changes ranks, crews, dates, qualifications or plans.")]
+    if r.outcome == "FALLBACK":
+        reasons.append(reason("PROVIDER_FALLBACK", f"The provider output was not used ({', '.join(r.fallback_codes)}); the complete "
+                                                   "deterministic explanation is shown in the same rank."))
+    return Projection("ready", view(r), reasons, plan_id=r.plan_id, purpose="EXECUTABLE")

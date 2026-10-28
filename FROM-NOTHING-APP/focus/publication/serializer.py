@@ -96,6 +96,11 @@ def _split(total: int, parts: list[int]) -> list[int]:
     return out
 
 
+def earning_phase(phase: Any, assignment: Any) -> bool:
+    """Whether an assignment carries earning effort: the one rule behind frozen B0 units and the twin's planned effort."""
+    return phase is not None and bool(assignment.shift_id) and bool(phase.role_demands) and phase.kind is not PhaseKind.RELEASE
+
+
 def freeze_goals(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan) -> tuple[FrozenGoal, ...]:
     phases = {p.key.id: p for p in snapshot.phases}
     jobs = {j.id: j for j in snapshot.jobs}
@@ -108,7 +113,7 @@ def freeze_goals(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan
     pool_of: dict[tuple[str, str], str] = {}
     for a in sorted(plan.assignments, key=lambda x: (x.start, x.id)):
         phase = phases.get(a.phase)
-        if phase is None or not a.shift_id or not phase.role_demands or phase.kind is PhaseKind.RELEASE:
+        if not earning_phase(phase, a):
             continue
         _, day, _ = parse_shift_id(a.shift_id)
         if day not in days:

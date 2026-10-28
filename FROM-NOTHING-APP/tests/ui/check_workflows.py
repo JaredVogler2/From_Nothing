@@ -36,7 +36,7 @@ if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
 
 VIEWS = ("team-lead", "management", "mechanic", "ie", "staffing", "supply", "scenario", "performance", "project", "budget", "gantt",
-         "development", "commitments", "economics", "shiftbook", "myday", "capacity", "quality", "arena", "turnover", "history")
+         "development", "commitments", "economics", "shiftbook", "myday", "capacity", "quality", "arena", "turnover", "history", "twin")
 LAYOUTS = ("/dashboard", "/dashboard/classic")
 WIDTHS = (375, 390, 820, 1280)
 SHOT_VIEWS = ("team-lead", "performance", "management", "myday", "gantt", "scenario")      # curated evidence screenshots
@@ -87,7 +87,7 @@ def open_view(page: Any, base: str, layout: str, view: str) -> None:
 
 
 def check_views(browser: Any, base: str, persona: str, *, widths: tuple[int, ...] = WIDTHS, layouts: tuple[str, ...] = LAYOUTS,
-                views: tuple[str, ...] = VIEWS, out: Path | None = None) -> list[dict[str, Any]]:
+                views: tuple[str, ...] = VIEWS, out: Path | None = None, shots: tuple[str, ...] = SHOT_VIEWS) -> list[dict[str, Any]]:
     """Visit every view; return one record per (layout, width, view) with any problems found."""
     results = []
     for width in widths:
@@ -111,7 +111,7 @@ def check_views(browser: Any, base: str, persona: str, *, widths: tuple[int, ...
                     problems.append(f"horizontal overflow {overflow}px")
                 if errors:
                     problems.append("console: " + "; ".join(errors[:3]))
-                if out is not None and view in SHOT_VIEWS:
+                if out is not None and view in shots:
                     out.mkdir(parents=True, exist_ok=True)
                     page.screenshot(path=str(out / f"{persona}-{view}-{layout.strip('/').replace('/', '-')}-{width}.jpg"), type="jpeg", quality=55)
                 results.append({"persona": persona, "layout": layout, "width": width, "view": view, "problems": problems})
@@ -135,6 +135,21 @@ def workflow_amendment(browser: Any, base: str) -> dict[str, Any]:
     status = _wait_run(page)
     open_view(page, base, "/dashboard/classic", "shiftbook?team=PROD-A&date=2026-10-26&shift=1")
     return {"workflow": "amendment", "run_status": status, "ok": status == "completed"}
+
+
+def workflow_explanation(browser: Any, base: str) -> dict[str, Any]:
+    """Team Lead (published runtime): explain the top ranked actions through a worker run; ranks stay the server's."""
+    page = browser.new_context(viewport={"width": 390, "height": 900}).new_page()
+    sign_in(page, base, "lead-prod-b")
+    open_view(page, base, "/dashboard", "team-lead?team=PROD-B&date=2026-10-26&shift=1")
+    ranked = page.locator("table[class*='data-table'] caption:has-text('Ranked actions')").count()
+    page.click("button:has-text('Explain the top')")
+    status = _wait_run(page)
+    page.wait_for_selector(".explanation[data-outcome]", timeout=30000)
+    outcome = page.get_attribute(".explanation", "data-outcome")
+    items = page.locator(".explanation-items > li").count()
+    return {"workflow": "explanation", "run_status": status, "outcome": outcome, "items": items,
+            "ok": status == "completed" and outcome in ("DETERMINISTIC", "VALIDATED") and items >= 1 and ranked == 1}
 
 
 def workflow_claim_and_decision(browser: Any, base: str) -> dict[str, Any]:
@@ -200,20 +215,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", default=None, help="write full-page screenshots here")
     parser.add_argument("--widths", default=",".join(map(str, WIDTHS)))
+    parser.add_argument("--shot-views", default=",".join(SHOT_VIEWS), help="views to screenshot (comma separated)")
     args = parser.parse_args(argv)
     out = Path(args.out) if args.out else None
     widths = tuple(int(w) for w in args.widths.split(","))
+    shots = tuple(v for v in args.shot_views.split(",") if v)
     report: dict[str, Any] = {}
     with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
         browser = p.chromium.launch()
         observed = build_runtime(Path(tmp) / "observed", observe=True)
         published = build_runtime(Path(tmp) / "published", observe=False)
         with serve(observed) as base:
-            report["views"] = check_views(browser, base, "manager", widths=widths, out=out)
+            report["views"] = check_views(browser, base, "manager", widths=widths, out=out, shots=shots)
             report["views"] += check_views(browser, base, "lead-prod-b", widths=(390,), out=None)
             report["workflows"] = [workflow_claim_and_decision(browser, base), workflow_what_if(browser, base), workflow_report_and_proposal(browser, base)]
         with serve(published) as base:
             report["workflows"].append(workflow_amendment(browser, base))
+            report["workflows"].append(workflow_explanation(browser, base))
         browser.close()
     failures = [v for v in report["views"] if v["problems"]] + [w for w in report["workflows"] if not w["ok"]]
     print(json.dumps({"views_checked": len(report["views"]), "workflows": report["workflows"], "failures": failures}, indent=2, default=str))

@@ -1,0 +1,506 @@
+{
+ "as_of_utc": "2026-10-26T10:00:00Z",
+ "coverage": {
+  "admitted": 0,
+  "blocked": 0,
+  "excluded": 0,
+  "quarantined": 0
+ },
+ "data": {
+  "cells": [
+   {
+    "forecast": {
+     "assignments": 5,
+     "basis": "CONDITIONAL_FORECAST",
+     "conditional_assignments": 0,
+     "duty_minutes": {
+      "OTHER": 0,
+      "TOOL": 0,
+      "TRAVEL": 0,
+      "WAIT": 0,
+      "WORK": 408
+     },
+     "ot_minutes": 0,
+     "standard_minutes": 408,
+     "virtual_duty_minutes": 0
+    },
+    "key": {
+     "evaluation_id": "EVL5664669f06ef9b6eb681",
+     "evaluation_revision": 2,
+     "forecast_plan_id": "PLAN3b0c9499b0580ad84e32",
+     "line": 1303,
+     "plan_id": "PLAN5692a4fd262d770216d9",
+     "policy_id": "rebuild-v1",
+     "shift_number": 1,
+     "shift_start_date": "2026-10-26",
+     "source_run_id": "SR-2da84888d7184741be4e",
+     "team": "PROD-B"
+    },
+    "observed": {
+     "basis": "CANONICAL_EVALUATION_EVIDENCE",
+     "earned_minutes": 240,
+     "earned_units": 3,
+     "goal_minutes": 408,
+     "goal_original_minutes": 408,
+     "missed_minutes": 168,
+     "offplan_effort_unknown": 0,
+     "offplan_minutes": 0,
+     "oos_charged_minutes": 80,
+     "pending_minutes": 0,
+     "relieved_minutes": 168,
+     "units": 6,
+     "unknown_minutes": 0
+    },
+    "planned": {
+     "assignments": 5,
+     "conditional_assignments": 0,
+     "duty_minutes": {
+      "OTHER": 0,
+      "TOOL": 0,
+      "TRAVEL": 0,
+      "WAIT": 0,
+      "WORK": 408
+     },
+     "ot_minutes": 0,
+     "standard_minutes": 408,
+     "virtual_duty_minutes": 0
+    }
+   }
+  ],
+  "cutoffs": {
+   "forecast": {
+    "accepted_at": "2026-10-26T10:00:00Z",
+    "current_source": true,
+    "plan_id": "PLAN3b0c9499b0580ad84e32",
+    "snapshot_id": "SNAP9d9613757445a05358ad994a",
+    "source_cutoff": "2026-10-26T10:00:00Z"
+   },
+   "knowledge_time": "2026-10-28T16:00:00Z",
+   "observed": {
+    "as_of": "2026-10-28T16:00:00Z",
+    "feeds": [
+     {
+      "complete": true,
+      "covered_through": "2026-10-28T16:00:00Z",
+      "feed": "lifecycle_events",
+      "status": "ROWS"
+     },
+     {
+      "complete": true,
+      "covered_through": "2026-10-28T16:00:00Z",
+      "feed": "actual_intervals",
+      "status": "ROWS"
+     },
+     {
+      "complete": true,
+      "covered_through": "2026-10-28T16:00:00Z",
+      "feed": "defect_evidence",
+      "status": "ROWS"
+     },
+     {
+      "complete": true,
+      "covered_through": "2026-10-28T16:00:00Z",
+      "feed": "goal_amendments",
+      "status": "ROWS"
+     },
+     {
+      "complete": true,
+      "covered_through": "2026-10-28T16:00:00Z",
+      "feed": "disruption_claims",
+      "status": "ROWS"
+     },
+     {
+      "complete": true,
+      "covered_through": "2026-10-28T16:00:00Z",
+      "feed": "excusal_decisions",
+      "status": "ROWS"
+     }
+    ],
+    "observation_run_id": "OBS2c50a376753716a94ea0",
+    "stale": false
+   },
+   "planned": {
+    "accepted_at": "2026-10-26T10:00:00Z",
+    "current_source": true,
+    "plan_id": "PLAN5692a4fd262d770216d9",
+    "snapshot_id": "SNAP9d9613757445a05358ad994a",
+    "source_cutoff": "2026-10-26T10:00:00Z"
+   },
+   "source": {
+    "cutoff": "2026-10-26T10:00:00Z",
+    "max_age_hours": 24,
+    "snapshot_id": "SNAP9d9613757445a05358ad994a",
+    "source_run_id": "SR-2da84888d7184741be4e",
+    "stale": false
+   }
+  },
+  "filters": {
+   "date": "2026-10-26",
+   "line": 1303,
+   "shift": 1,
+   "team": "PROD-B"
+  },
+  "forecast_conditions": {
+   "MATERIAL_SCOPE_UNRESOLVED": 3,
+   "PART_NOT_RECEIVED": 3,
+   "PREDECESSOR_NOT_EXECUTABLE": 4,
+   "SUPPORT_RESOURCE_UNAVAILABLE": 3
+  },
+  "inventory": {
+   "by_line": [
+    {
+     "forecast": {
+      "scheduled": 3
+     },
+     "jobs": 3,
+     "line": 1303,
+     "observed": {
+      "complete": 2,
+      "in_progress": 1
+     },
+     "planned": {
+      "scheduled": 3
+     },
+     "unknown": 0
+    }
+   ],
+   "by_team": [
+    {
+     "forecast": {
+      "scheduled": 3
+     },
+     "jobs": 3,
+     "observed": {
+      "complete": 2,
+      "in_progress": 1
+     },
+     "planned": {
+      "scheduled": 3
+     },
+     "team": "PROD-B",
+     "unknown": 0
+    }
+   ],
+   "total": {
+    "forecast": {
+     "scheduled": 3
+    },
+    "jobs": 3,
+    "observed": {
+     "complete": 2,
+     "in_progress": 1
+    },
+    "planned": {
+     "scheduled": 3
+    },
+    "unknown": 0
+   },
+   "unknown_jobs": []
+  },
+  "note": "observed = stored canonical evaluation evidence and verified lifecycle facts; planned = accepted EXECUTABLE plan; forecast = accepted FORECAST plan (conditional); unknown = what no layer can state",
+  "reconciliation": {
+   "checks": [
+    {
+     "check": "CELLS_SUM_TO_TOTALS",
+     "layer": "observed",
+     "mismatch": [],
+     "ok": true
+    },
+    {
+     "check": "CELLS_SUM_TO_TOTALS",
+     "layer": "planned",
+     "mismatch": [],
+     "ok": true
+    },
+    {
+     "check": "CELLS_SUM_TO_TOTALS",
+     "layer": "forecast",
+     "mismatch": [],
+     "ok": true
+    },
+    {
+     "check": "INVENTORY_PARTITIONS_CENSUS",
+     "level": "by_line",
+     "mismatch": [],
+     "ok": true
+    },
+    {
+     "check": "INVENTORY_PARTITIONS_CENSUS",
+     "level": "by_team",
+     "mismatch": [],
+     "ok": true
+    },
+    {
+     "check": "INVENTORY_LEVELS_AGREE",
+     "mismatch": [],
+     "ok": true
+    },
+    {
+     "check": "EVERY_CENSUS_JOB_HAS_AN_OUTCOME",
+     "mismatch": [],
+     "ok": true
+    },
+    {
+     "check": "PLANNED_EQUALS_FROZEN_B0",
+     "mismatch": {},
+     "ok": true,
+     "shift_id": "DEMO:2026-10-26:S1",
+     "team": "PROD-A"
+    },
+    {
+     "check": "PLANNED_EQUALS_FROZEN_B0",
+     "mismatch": {},
+     "ok": true,
+     "shift_id": "DEMO:2026-10-26:S1",
+     "team": "PROD-B"
+    },
+    {
+     "check": "PLANNED_EQUALS_FROZEN_B0",
+     "mismatch": {},
+     "ok": true,
+     "shift_id": "DEMO:2026-10-26:S1",
+     "team": "QA"
+    },
+    {
+     "check": "OBSERVED_EQUALS_EVALUATION",
+     "evaluation_id": "EVL5664669f06ef9b6eb681",
+     "mismatch": {},
+     "ok": true,
+     "shift_id": "DEMO:2026-10-26:S1",
+     "team": "PROD-B"
+    },
+    {
+     "check": "DUTY_EQUALS_LEDGER",
+     "layer": "EXECUTABLE",
+     "mismatch": {},
+     "ok": true
+    },
+    {
+     "check": "DUTY_EQUALS_LEDGER",
+     "layer": "FORECAST",
+     "mismatch": {},
+     "ok": true
+    }
+   ],
+   "ok": true
+  },
+  "revision": {
+   "forecast_plan_id": "PLAN3b0c9499b0580ad84e32",
+   "observation_run_id": "OBS2c50a376753716a94ea0",
+   "plan_id": "PLAN5692a4fd262d770216d9",
+   "policy_hash": "7da6ba5cc60315f6ad87ef6583d6b5916ea925b284905fde277912b9ac2984d7",
+   "policy_id": "rebuild-v1",
+   "snapshot_id": "SNAP9d9613757445a05358ad994a",
+   "source_run_id": "SR-2da84888d7184741be4e"
+  },
+  "totals": {
+   "forecast": {
+    "by_line": {
+     "1303": {
+      "assignments": 5,
+      "conditional_assignments": 0,
+      "duty_minutes": {
+       "OTHER": 0,
+       "TOOL": 0,
+       "TRAVEL": 0,
+       "WAIT": 0,
+       "WORK": 408
+      },
+      "ot_minutes": 0,
+      "standard_minutes": 408,
+      "virtual_duty_minutes": 0
+     }
+    },
+    "by_shift": {
+     "2026-10-26:S1": {
+      "assignments": 5,
+      "conditional_assignments": 0,
+      "duty_minutes": {
+       "OTHER": 0,
+       "TOOL": 0,
+       "TRAVEL": 0,
+       "WAIT": 0,
+       "WORK": 408
+      },
+      "ot_minutes": 0,
+      "standard_minutes": 408,
+      "virtual_duty_minutes": 0
+     }
+    },
+    "by_team": {
+     "PROD-B": {
+      "assignments": 5,
+      "conditional_assignments": 0,
+      "duty_minutes": {
+       "OTHER": 0,
+       "TOOL": 0,
+       "TRAVEL": 0,
+       "WAIT": 0,
+       "WORK": 408
+      },
+      "ot_minutes": 0,
+      "standard_minutes": 408,
+      "virtual_duty_minutes": 0
+     }
+    },
+    "grand": {
+     "assignments": 5,
+     "conditional_assignments": 0,
+     "duty_minutes": {
+      "OTHER": 0,
+      "TOOL": 0,
+      "TRAVEL": 0,
+      "WAIT": 0,
+      "WORK": 408
+     },
+     "ot_minutes": 0,
+     "standard_minutes": 408,
+     "virtual_duty_minutes": 0
+    }
+   },
+   "observed": {
+    "by_line": {
+     "1303": {
+      "earned_minutes": 240,
+      "earned_units": 3,
+      "goal_minutes": 408,
+      "goal_original_minutes": 408,
+      "missed_minutes": 168,
+      "offplan_effort_unknown": 0,
+      "offplan_minutes": 0,
+      "oos_charged_minutes": 80,
+      "pending_minutes": 0,
+      "relieved_minutes": 168,
+      "units": 6,
+      "unknown_minutes": 0
+     }
+    },
+    "by_shift": {
+     "2026-10-26:S1": {
+      "earned_minutes": 240,
+      "earned_units": 3,
+      "goal_minutes": 408,
+      "goal_original_minutes": 408,
+      "missed_minutes": 168,
+      "offplan_effort_unknown": 0,
+      "offplan_minutes": 0,
+      "oos_charged_minutes": 80,
+      "pending_minutes": 0,
+      "relieved_minutes": 168,
+      "units": 6,
+      "unknown_minutes": 0
+     }
+    },
+    "by_team": {
+     "PROD-B": {
+      "earned_minutes": 240,
+      "earned_units": 3,
+      "goal_minutes": 408,
+      "goal_original_minutes": 408,
+      "missed_minutes": 168,
+      "offplan_effort_unknown": 0,
+      "offplan_minutes": 0,
+      "oos_charged_minutes": 80,
+      "pending_minutes": 0,
+      "relieved_minutes": 168,
+      "units": 6,
+      "unknown_minutes": 0
+     }
+    },
+    "grand": {
+     "earned_minutes": 240,
+     "earned_units": 3,
+     "goal_minutes": 408,
+     "goal_original_minutes": 408,
+     "missed_minutes": 168,
+     "offplan_effort_unknown": 0,
+     "offplan_minutes": 0,
+     "oos_charged_minutes": 80,
+     "pending_minutes": 0,
+     "relieved_minutes": 168,
+     "units": 6,
+     "unknown_minutes": 0
+    }
+   },
+   "planned": {
+    "by_line": {
+     "1303": {
+      "assignments": 5,
+      "conditional_assignments": 0,
+      "duty_minutes": {
+       "OTHER": 0,
+       "TOOL": 0,
+       "TRAVEL": 0,
+       "WAIT": 0,
+       "WORK": 408
+      },
+      "ot_minutes": 0,
+      "standard_minutes": 408,
+      "virtual_duty_minutes": 0
+     }
+    },
+    "by_shift": {
+     "2026-10-26:S1": {
+      "assignments": 5,
+      "conditional_assignments": 0,
+      "duty_minutes": {
+       "OTHER": 0,
+       "TOOL": 0,
+       "TRAVEL": 0,
+       "WAIT": 0,
+       "WORK": 408
+      },
+      "ot_minutes": 0,
+      "standard_minutes": 408,
+      "virtual_duty_minutes": 0
+     }
+    },
+    "by_team": {
+     "PROD-B": {
+      "assignments": 5,
+      "conditional_assignments": 0,
+      "duty_minutes": {
+       "OTHER": 0,
+       "TOOL": 0,
+       "TRAVEL": 0,
+       "WAIT": 0,
+       "WORK": 408
+      },
+      "ot_minutes": 0,
+      "standard_minutes": 408,
+      "virtual_duty_minutes": 0
+     }
+    },
+    "grand": {
+     "assignments": 5,
+     "conditional_assignments": 0,
+     "duty_minutes": {
+      "OTHER": 0,
+      "TOOL": 0,
+      "TRAVEL": 0,
+      "WAIT": 0,
+      "WORK": 408
+     },
+     "ot_minutes": 0,
+     "standard_minutes": 408,
+     "virtual_duty_minutes": 0
+    }
+   }
+  },
+  "unknown": {
+   "attendance": [],
+   "evaluations": [],
+   "jobs": []
+  },
+  "version": "focus-twin-v1"
+ },
+ "evaluation_id": null,
+ "next_cursor": null,
+ "plan_id": "PLAN5692a4fd262d770216d9",
+ "policy_id": "rebuild-v1",
+ "purpose": null,
+ "reasons": [],
+ "schema_version": 1,
+ "source_run_id": "SR-2da84888d7184741be4e",
+ "status": "ready"
+}

@@ -170,6 +170,23 @@ def assess_action(services: Any, action: Any, facts: Any, inp: ValidationInput, 
     return reasons
 
 
+def ranked_actions(services: Any, plan: Any, facts: Any, inp: ValidationInput, *, team: str, shift_id: str,
+                   now: datetime) -> list[tuple[Any, list[tuple[str, str]]]]:
+    """One team-shift's accepted actions in the server's ranking, each with its current dispatch reasons.
+
+    This is the one ranking authority for the Team Lead view and for explanations: dispatchable first, then
+    committed, then planned start, then the stable assignment id. Pure: it writes nothing.
+    """
+    out = []
+    for a in plan.assignments:
+        phase = inp.phases.get(a.phase)
+        team_of = None if phase is None else (phase.role_demands[0].team if phase.role_demands else phase.team)
+        if a.shift_id == shift_id and team_of == team:
+            out.append((a, assess_action(services, a, facts, inp, now)))
+    out.sort(key=lambda item: (bool(item[1]), not item[0].committed, item[0].start, item[0].id))
+    return out
+
+
 def _plan_cutoff(services: Any, artifact: Any) -> datetime:
     from ..data.acquisition import load_snapshot
 

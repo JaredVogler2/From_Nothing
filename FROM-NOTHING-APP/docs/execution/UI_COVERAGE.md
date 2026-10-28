@@ -1,4 +1,4 @@
-# UI coverage: the 17 operational views and supplementary panels (S15, P19/P20)
+# UI coverage: the 17 operational views and supplementary panels (S15/S16, P19-P21)
 
 Both layouts (`/dashboard` for iOS, `/dashboard/classic`) share one template set and one set of view modules:
 
@@ -25,7 +25,7 @@ Each envelope's source, plan, purpose, policy, evaluation and as-of bindings are
 
 | # | View (hash) | API operations | Commands | Key content |
 | --- | --- | --- | --- | --- |
-| 1 | Team Lead (`team-lead`) | `GET /team-lead` | `POST /amendments` | Server-ranked actions (dispatchable first), exact crews, current dispatch reasons, commitment outcomes and feasible emergency-addition proposals with reasons. |
+| 1 | Team Lead (`team-lead`) | `GET /team-lead`, `GET /explanations/{id}` | `POST /amendments`, `POST /explanations` | Server-ranked actions (dispatchable first), exact crews, current dispatch reasons, commitment outcomes and feasible emergency-addition proposals with reasons. "Why this order?" explains the top five in the same rank: validated provider text or the deterministic explanation, with grounded facts and audit hashes. |
 | 2 | Management (`management`) | `GET /fleet`, `GET /capacity` | — | Fleet completion (known, conditional or unknown), CS gate, modeled cost (with an economics grant), burndown, capacity summary and readiness gaps. |
 | 3 | Mechanic (`mechanic`) | `GET /myday` | `POST /reported-observations` | Own scope, current duty, certificate readiness per duty and holdings. Reporting is a claim, never a check-off. |
 | 4 | Industrial Engineering (`ie`) | `GET /standards` | `POST /ie-reviews` | Review queue (weak durations, unknown requirements, team ties, data gaps), duration provenance, requirement bundles and team authority. |
@@ -46,7 +46,7 @@ Each envelope's source, plan, purpose, policy, evaluation and as-of bindings are
 | — | Arena & Recognition (`arena`) | `GET /arena` | — | Standings from stored evaluations pooled exactly, XP, badges and recent recognition with lineage. |
 | — | Turnover (`turnover`) | `GET /turnover` | — | Open frozen units (from evaluation evidence), unreviewed claims, open holds, the next shift's actions with blocked reasons, and carry-in. |
 | — | History (`history`) | `GET /history` | — | Accepted plans with head versions, evaluation revisions, corrections and delivery changes. |
-| — | Digital Twin (`twin`) | `GET /twin` (P21) | — | Observed, planned, forecast and unknown layers with reconciled totals. |
+| — | Digital Twin (`twin`) | `GET /twin` | — | Observed, planned, forecast and unknown layers keyed by source, plans, policy and evaluation revision. Totals by team, shift and line, inventory per layer, unknown jobs, evaluations and attendance, and the reconciliation checks. Drill down by team, date, shift and line. |
 
 ## Verification
 
@@ -56,20 +56,23 @@ Each envelope's source, plan, purpose, policy, evaluation and as-of bindings are
 
 - **Matrix:** every view in both layouts at 375, 390, 820 and 1280 px, plus scoped lead views at 390. It
   checks for a heading, `aria-busy=false`, no console or page error, no error card and no horizontal overflow
-  (210 checks, 0 failures).
+  (22 views since P21: 220 checks, 0 failures).
 - **Workflows:**
   - a claim, then a reviewer approval;
   - a +1 virtual what-if;
   - a mechanic report and an IE proposal;
-  - a Team Lead emergency addition.
+  - a Team Lead emergency addition;
+  - a Team Lead explanation of the top five actions (P21).
 
-Results are in `evidence/20/check_workflows.json`. Curated JPEG screenshots (six views × two layouts × four
-widths) are in `evidence/20/screenshots/`.
+Results are in `evidence/20/check_workflows.json` and `evidence/21/check_workflows.json`. Curated JPEG screenshots
+are in `evidence/20/screenshots/` (six views) and `evidence/21/screenshots/` (twin and Team Lead, × two layouts ×
+four widths).
 
 ### Pytest
 
-- `tests/ui/test_workflows.py` (5) runs the same checks.
+- `tests/ui/test_workflows.py` (6) runs the same checks.
 - `tests/ui/test_layout_parity.py` (8) covers iOS and Classic score parity, widths, reduced motion, the
   keyboard and no-data states.
-- `tests/integration/test_views_api.py` (11) and `tests/integration/test_api_scope.py` (13) cover the
-  projections behind every view.
+- `tests/integration/test_views_api.py` (11), `tests/integration/test_api_scope.py` (13),
+  `tests/integration/test_twin_scenarios.py` (8) and `tests/unit/test_explanations.py` (40) cover the projections
+  and commands behind every view.

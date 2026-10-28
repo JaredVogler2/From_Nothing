@@ -5,6 +5,7 @@ import "./views/performance.js";
 import "./views/operate.js";
 import "./views/plan.js";
 import "./views/panels.js";
+import "./views/twin.js";
 
 const host = document.querySelector(".view-host");
 const nav = document.getElementById("side-nav");

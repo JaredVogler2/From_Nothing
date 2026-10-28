@@ -13,11 +13,22 @@ Allowlisted changes:
 * ``duration_statistic``: select another sourced duration statistic (P50, P75 or P90) through the policy toggle.
 * ``daily_cost``: assume a daily delay cost for one aircraft (labeled SCENARIO_ASSUMED, never contractual).
 * ``calendar_day``: open or close one line calendar day.
+* ``travel_minutes``: assume another changed-aircraft travel time through the policy toggle. Tool capacity is a
+  sourced fact (``tools.reservation_policy`` NONE_UNLESS_SOURCED), so a scenario cannot invent tools.
+* ``task_priority``: rank up to 20 jobs first among ready work. The rank leads the dispatch key, so search moves
+  cannot undo it, but graph, parts, QA, crews and defended commitments still decide what may start.
 
 Anything else is refused as ``UNSUPPORTED_CHANGE``. Scenario candidates have purpose SCENARIO, which publication
 refuses, so a scenario never moves a source or plan head and never touches frozen goals, commitments, actuals,
 evaluations or recognition. A spoofed approval or mock flag in a change is rejected as an unknown field.
-Results are immutable records keyed by the worker run.
+
+**Namespace.** A snapshot rebuilt under a toggled policy is never written to the live snapshot collection; the
+changed copy is stored only in ``scenario_snapshots`` and results only in ``scenario_results``.
+
+**Bounds.** At most 20 changes; the budget is the worker run's, split between the baseline and the changed copy.
+A cancel request stops the run cooperatively (``RunCancelled``: the run ends cancelled and stores no result); a
+baseline that overruns the budget ends TIMED_OUT without scheduling the changed copy. Results are immutable records
+keyed by the worker run, so a retry of the same run returns the same result.
 """
 from __future__ import annotations
 
@@ -26,7 +37,7 @@ import time
 from dataclasses import dataclass, replace
 from datetime import date, datetime
 from fractions import Fraction
-from typing import Any
+from typing import Any, Callable
 
 from ..codec import content_hash, parse_utc, to_jsonable
 from ..contracts.planning import Availability, Person, PlanningSnapshot, Pool, seal_snapshot
@@ -42,7 +53,12 @@ FIELDS = {
     "duration_statistic": {"type", "statistic"},
     "daily_cost": {"type", "line", "daily_rate_cents"},
     "calendar_day": {"type", "line", "date", "status"},
+    "travel_minutes": {"type", "changed_aircraft_minutes"},
+    "task_priority": {"type", "job_id", "rank"},
 }
+SINGLETONS = ("duration_statistic", "travel_minutes")
+MAX_PRIORITY_RANK = 20
+MAX_TRAVEL_MINUTES = 240
 STATISTICS = ("P50", "P75", "P90")
 CALENDAR_STATUSES = ("WORKING", "NONWORKING")
 
@@ -98,6 +114,18 @@ def normalize_changes(raw: Any) -> tuple[dict[str, Any], ...]:
                 if ch["statistic"] not in STATISTICS:
                     raise ValueError(f"statistic is one of {STATISTICS}")
                 out.append({"type": kind, "statistic": ch["statistic"]})
+            elif kind == "travel_minutes":
+                minutes = ch["changed_aircraft_minutes"]
+                if not isinstance(minutes, int) or isinstance(minutes, bool) or not 0 <= minutes <= MAX_TRAVEL_MINUTES:
+                    raise ValueError(f"changed_aircraft_minutes is an integer 0..{MAX_TRAVEL_MINUTES}")
+                out.append({"type": kind, "changed_aircraft_minutes": minutes})
+            elif kind == "task_priority":
+                rank = ch["rank"]
+                if not isinstance(rank, int) or isinstance(rank, bool) or not 1 <= rank <= MAX_PRIORITY_RANK:
+                    raise ValueError(f"rank is an integer 1..{MAX_PRIORITY_RANK} (1 runs first)")
+                if not isinstance(ch["job_id"], str) or not 1 <= len(ch["job_id"]) <= 160:
+                    raise ValueError("job_id is a job id of the admitted snapshot")
+                out.append({"type": kind, "job_id": ch["job_id"], "rank": rank})
             elif kind == "daily_cost":
                 rate = ch["daily_rate_cents"]
                 if not isinstance(rate, int) or isinstance(rate, bool) or not 0 <= rate <= 10**12 or not isinstance(ch["line"], int):
@@ -109,17 +137,33 @@ def normalize_changes(raw: Any) -> tuple[dict[str, Any], ...]:
                 out.append({"type": kind, "line": ch["line"], "date": date.fromisoformat(ch["date"]).isoformat(), "status": ch["status"]})
         except (ValueError, TypeError) as exc:
             raise DomainError("BAD_CHANGE", f"change {i} ({kind}): {exc}") from None
-    if sum(1 for c in out if c["type"] == "duration_statistic") > 1:
-        raise DomainError("BAD_CHANGE", "one duration statistic per scenario")
+    for kind in SINGLETONS:
+        if sum(1 for c in out if c["type"] == kind) > 1:
+            raise DomainError("BAD_CHANGE", f"one {kind} change per scenario")
+    jobs = [c["job_id"] for c in out if c["type"] == "task_priority"]
+    if len(set(jobs)) != len(jobs):
+        raise DomainError("BAD_CHANGE", "one priority per job")
     return tuple(sorted(out, key=lambda c: content_hash(c)))
 
 
 def scenario_policy(policy: Any, changes: tuple[dict[str, Any], ...]) -> Any:
+    """The policy of the changed copy: the active policy with the scenario's toggles (a separately hashed policy)."""
+    overrides: dict[str, Any] = {}
     stat = next((c["statistic"] for c in changes if c["type"] == "duration_statistic"), None)
-    if stat is None or stat == policy.str("duration.default_statistic"):
+    if stat is not None and stat != policy.str("duration.default_statistic"):
+        overrides["duration.default_statistic"] = stat
+    travel = next((c["changed_aircraft_minutes"] for c in changes if c["type"] == "travel_minutes"), None)
+    if travel is not None and travel != policy.int("travel.changed_aircraft_minutes"):
+        overrides["travel.changed_aircraft_minutes"] = travel
+    if not overrides:
         return policy
-    return policy.with_overrides({"duration.default_statistic": stat}, new_id=f"{policy.id}-scenario-{stat.lower()}", authority="user_requirement",
-                                 reason=f"scenario duration statistic {stat}")
+    return policy.with_overrides(overrides, new_id=f"{policy.id}-scenario-{content_hash(overrides)[:10]}", authority="user_requirement",
+                                 reason="scenario " + ", ".join(f"{k}={v}" for k, v in sorted(overrides.items())))
+
+
+def priority_ranks(changes: tuple[dict[str, Any], ...]) -> dict[str, int]:
+    """Planned task priorities as leading dispatch keys: rank 1 -> -20 (first) ... rank 20 -> -1; other jobs 0."""
+    return {c["job_id"]: c["rank"] - MAX_PRIORITY_RANK - 1 for c in changes if c["type"] == "task_priority"}
 
 
 # ---------------------------------------------------------------------- the scenario copy
@@ -201,6 +245,13 @@ def apply_changes(base: PlanningSnapshot, changes: tuple[dict[str, Any], ...], p
             notes.append(f"line {ch['line']} {ch['date']}: {ch['status']} (scenario calendar)")
         elif kind == "duration_statistic":
             notes.append(f"duration statistic {ch['statistic']} (policy toggle)")
+        elif kind == "travel_minutes":
+            notes.append(f"changed-aircraft travel {ch['changed_aircraft_minutes']} min (policy toggle)")
+        elif kind == "task_priority":
+            job = next((j for j in base.jobs if j.id == ch["job_id"]), None)
+            if job is None:
+                raise DomainError("JOB_NOT_FOUND", f"no job {ch['job_id']} in the admitted snapshot")
+            notes.append(f"{job.key.line}/{job.key.native_id}: planned priority {ch['rank']} (first among ready work; readiness unchanged)")
     copy = replace(base, id=digest_id("SCN", base.id, list(changes), length=24), people=tuple(people), holdings=tuple(holdings),
                    availability=tuple(availability),
                    pools=tuple(sorted(pools.values(), key=lambda p: (p.key.start_date, p.key.shift_number, p.key.team))),
@@ -241,9 +292,14 @@ def compare(baseline: Any, scenario: Any, snapshot: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------- the run
 
 def run_scenario(services: Any, *, run_id: str, requested_by: str, source_run_id: str, changes: Any, budget_seconds: float,
-                 at: datetime) -> ScenarioResult:
+                 at: datetime, cancelled: Callable[[], bool] = lambda: False, timer: Callable[[], float] = time.monotonic) -> ScenarioResult:
     from ..data.acquisition import get_run, snapshot_for_run
     from ..engine.max.optimizer.orchestrator import schedule_snapshot
+    from ..workers import RunCancelled
+
+    def stop_if_cancelled(stage: str) -> None:
+        if cancelled():
+            raise RunCancelled(f"scenario cancelled {stage}; nothing live was changed and no result is stored")
 
     repos = services.repositories
     scope = services.settings.scope_key
@@ -255,22 +311,26 @@ def run_scenario(services: Any, *, run_id: str, requested_by: str, source_run_id
     found = get_run(repos, source_run_id)
     if found is None or found[0].scope != scope or found[0].status != "COMPLETE":
         raise DomainError("SOURCE_RUN_NOT_FOUND", "scenarios start from a complete admitted source run of this scope")
-    started = time.monotonic()
+    started = timer()
     budget = max(1.0, float(budget_seconds))
     policy = scenario_policy(services.policy, normalized)
-    base = snapshot_for_run(services, source_run_id, services.policy)                  # the unchanged admitted facts
-    toggled = base if policy is services.policy else snapshot_for_run(services, source_run_id, policy)
+    stop_if_cancelled("before start")
+    base = snapshot_for_run(services, source_run_id, services.policy, store=False)     # the unchanged admitted facts
+    toggled = base if policy is services.policy else snapshot_for_run(services, source_run_id, policy, store=False)
     copy, notes = apply_changes(toggled, normalized, policy)
     if repos.get_raw(SCENARIO_SNAPSHOTS, copy.id) is None:
         repos.put_record(SCENARIO_SNAPSHOTS, "PlanningSnapshot", copy.id, copy, source_run_id=source_run_id, policy_hash=policy.hash)
     half = budget / 2
-    baseline, brun = schedule_snapshot(services, base, purpose=Purpose.SCENARIO, policy=services.policy, budget_seconds=half)
+    baseline, brun = schedule_snapshot(services, base, purpose=Purpose.SCENARIO, policy=services.policy, budget_seconds=half, cancel=cancelled)
+    stop_if_cancelled("after the baseline")
     status, scenario, srun, comparison = "COMPLETED", None, None, {}
-    if time.monotonic() - started > budget * 1.5:
+    if timer() - started > budget * 1.5:
         status = "TIMED_OUT"
         notes.append("the baseline used the whole budget; the changed copy was not scheduled")
     else:
-        scenario, srun = schedule_snapshot(services, copy, purpose=Purpose.SCENARIO, policy=policy, budget_seconds=half)
+        scenario, srun = schedule_snapshot(services, copy, purpose=Purpose.SCENARIO, policy=policy, budget_seconds=half,
+                                           fixed_ranks=priority_ranks(normalized) or None, cancel=cancelled)
+        stop_if_cancelled("after the changed copy")
         comparison = to_jsonable(compare(baseline, scenario, copy))
     result = ScenarioResult(rid, scope, run_id, source_run_id, base.id, copy.id, normalized, requested_by, aware_utc(at, "at"), budget, status,
                             "SCENARIO_ONLY", baseline.id, None if scenario is None else scenario.id, brun.validation.valid,
@@ -289,10 +349,12 @@ def summary(r: ScenarioResult) -> dict[str, Any]:
 
 
 def worker_scenario(services: Any, run: Any) -> dict[str, Any]:
+    from ..workers import cancel_requested
+
     req = run.request
     result = run_scenario(services, run_id=run.id, requested_by=run.requested_by, source_run_id=str(req.get("source_run_id", "")),
                           changes=req.get("changes"), budget_seconds=min(float(req.get("budget_seconds", run.budget_seconds)), float(run.budget_seconds)),
-                          at=run.created_at)
+                          at=run.created_at, cancelled=lambda: cancel_requested(services, run.id))
     return {"status": result.status.lower(), "scenario_id": result.id, "capability": result.capability,
             "scenario_candidate_id": result.scenario_candidate_id, "baseline_candidate_id": result.baseline_candidate_id,
             "note": "scenario results never move a source or plan head and are never publishable"}
@@ -310,4 +372,5 @@ def cli_scenario(services: Any, args: argparse.Namespace) -> dict[str, Any]:
                               source_run_id=args.source_run, changes=changes, budget_seconds=args.budget_seconds, at=services.clock.now())
     except DomainError as exc:
         return {"status": "invalid", "error": {"code": exc.code, "message": exc.message}}
-    return {"status": "ok", **summary(result)}
+    view = summary(result)
+    return {**view, "status": "ok", "scenario_status": view["status"]}       # a bounded TIMED_OUT result is a valid outcome, not an error

@@ -42,6 +42,27 @@ credentials.
   acceptance objects (`sql/migrations/publication_draft.sql`) are installed by an authorized
   migration (P23). No live signature, acceptance or head move happens before that.
 
+## Explanation providers (P21)
+
+- `FOCUS_LLM_PROVIDER` is `none` by default. Explanations are then deterministic templates over grounded facts, and
+  nothing leaves the process.
+- `mock` and `recorded` are fixture-only providers. In live mode they are refused (`FIXTURE_ONLY`), and the
+  deterministic explanation is returned.
+- `bcai` needs all of the following; any missing piece returns the complete deterministic explanation
+  (`BCAI_NOT_CONFIGURED`, `BCAI_ENDPOINT_NOT_TLS`, `BCAI_CREDENTIAL_MISSING`, `PROVIDER_TIMEOUT`):
+  - `FOCUS_BCAI_ENDPOINT`: an approved `https://` URL. TLS is verified with the system trust store.
+  - `FOCUS_BCAI_CREDENTIAL_REF`: `env:NAME` (Connect content variable or Tanzu env) or `vcap:service/field` (a Tanzu
+    user-provided service). The credential is sent only as a bearer header, and is never logged or stored.
+  - Bounds from the policy: `explanations.timeout_seconds` per attempt, `explanations.max_retries` after a timeout,
+    and `explanations.max_candidates` per request.
+- What a provider receives: a POST body `{"schema", "prompt_version", "input"}`, where `input` is the data-only prompt.
+  The prompt holds authorized fact rows with no person names or ids.
+- What it must return: the `focus-explain-v1` JSON (`ExplainResponse`). Anything else, any ungrounded claim or narrative
+  word, or any extra field is discarded.
+- The audit record keeps hashes only (request, prompt, raw response, output, facts), never the raw text.
+- The approved endpoint, its response adapter and the credential are operator decisions. No endpoint is built into
+  the application.
+
 ## Posit Connect
 
 The content type is a Python API (WSGI/Flask), entrypoint `app:app`.
@@ -128,8 +149,10 @@ How the app behaves under Tanzu:
   MCP tools.
 - Commands (`POST /api/v1/schedule-runs`, `/amendments`,
   `/disruption-claims`, `/excusal-decisions`, `/ie-reviews`,
-  `/reported-observations`) need the `X-CSRF-Token` from `GET /api/v1/context`,
+  `/reported-observations`, `/scenarios`, `/explanations`) need the `X-CSRF-Token` from `GET /api/v1/context`,
   a same-origin request, an `idempotency_key` and, where state can race, an
   `expected_version`. They return `202` with a worker run id; poll
   `/api/v1/runs/<id>`. Run the worker as described above, or set
   `FOCUS_INPROCESS_WORKER=true` for a single-process demo.
+- `POST /api/v1/runs/<id>/cancel` cancels a queued run. For a running run it records a durable cancel request:
+  scenarios stop cooperatively and end `cancelled` with no result, and other handlers finish within their budget.

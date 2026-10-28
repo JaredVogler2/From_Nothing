@@ -136,4 +136,5 @@ def demo_run(services: Any, *, scenario: str = DEMO_SCENARIO, budget_seconds: fl
 def cli_demo_run(services: Any, args: Any) -> dict[str, Any]:
     if services.settings.mode != "fixture":
         return {"status": "invalid", "error": {"code": "FIXTURE_ONLY", "message": "demo-run runs in fixture mode only"}}
-    return demo_run(services, scenario=getattr(args, "scenario", None) or DEMO_SCENARIO, budget_seconds=getattr(args, "budget_seconds", None))
+    return demo_run(services, scenario=getattr(args, "scenario", None) or DEMO_SCENARIO, budget_seconds=getattr(args, "budget_seconds", None),
+                    max_moves=getattr(args, "max_moves", None))

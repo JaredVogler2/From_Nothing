@@ -1,0 +1,1228 @@
+{
+  "audit": {
+    "explain_version": "focus-explain-v1",
+    "facts_hash": "700894cd276550be9c3c803604d7dadd8942ac61d5fd1a6f957b63eb0e3a4135",
+    "output_hash": "78d7f75f65e65f4504e62a47ae9cea0bd30d8ee46eee0cde68350a321a4d6340",
+    "plan_hash": "083356c4661bf9fe24bbc5a95473a8d379620c4fb6aa5f9dc60c57063b470a44",
+    "policy_hash": "7da6ba5cc60315f6ad87ef6583d6b5916ea925b284905fde277912b9ac2984d7",
+    "privacy": {
+      "candidates": 5,
+      "fact_rows": 67,
+      "metrics_sent": [
+        "blocked_reason",
+        "commitment",
+        "crew_size",
+        "dispatch_status",
+        "duration_basis",
+        "duration_minutes",
+        "end",
+        "job",
+        "line_marginal_day_cost",
+        "rank",
+        "ready_after",
+        "shift",
+        "start",
+        "travel_minutes"
+      ],
+      "person_fields_sent": 0,
+      "scope": "all_teams+economics"
+    },
+    "prompt_sha256": "e1c80118e5e0bc4bdac48476c4e4e0184d6fa0ac5d56b7d6eafdb7357e79f2f7",
+    "prompt_version": "focus-explain-prompt-v1",
+    "recorded_input_hash": null,
+    "request_hash": "23062f3f33da9fb2f31178a8eb3a4b3646ea89d06e20a1e1f679e3adc1df4d79",
+    "response_sha256": "39b58d91abb88aad26357b6e012e7a4cd0e2dbeec11d227c1b98d79f025dc607",
+    "source_hash": "9fd352058dd6052d6fedd963a7fb416442a6f34ee5dc509d32267597ea6e7ba7",
+    "violations": []
+  },
+  "command": "explain",
+  "created_at": "2026-10-26T10:00:00Z",
+  "deterministic": [
+    {
+      "candidate_id": "ASGbe6add57999cf4433163",
+      "claims": [
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCT06b1cddab73b2c544ba1",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 1
+        },
+        {
+          "entity_id": "J5e5e25afd667e951df3f",
+          "evidence_id": "FCTcca862e9d27226c72ca4",
+          "label": "1303/NC3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/NC3"
+        },
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCT6adaf887bb8c53ddf45b",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "DISPATCHABLE"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTc6ec7e84f45614860b5f",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J5e5e25afd667e951df3f.WORK.0",
+          "evidence_id": "FCT580e971b10c79ed705e0",
+          "label": "1303/NC3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 52
+        },
+        {
+          "entity_id": "DURa54a506019df9d34d5b5",
+          "evidence_id": "FCTa01cd4ca54fffa5752d0",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "P75_ELAPSED_ACTIVE_EPISODES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT15c2bd8b04a6d47bb7a4",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCTecb9e421b99c0f27d046",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T10:15:00Z"
+        },
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCT5bb0829a06b7f60d9b49",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T11:07:00Z"
+        },
+        {
+          "entity_id": "J5e5e25afd667e951df3f",
+          "evidence_id": "FCTa3a652c70509375e0f85",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "KEPT"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCT835571022bb9758fd94f",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCT9b7fe74e03501a2422b6",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 1,
+      "reason_codes": [],
+      "summary": "Job 1303/NC3 is dispatchable now. It is ready after no open predecessors. It requires 2 people from pool Q0649d5a7b01901b5cf24, uses 52 min by P75_ELAPSED_ACTIVE_EPISODES, fits shift DEMO:2026-10-26:S1 from 2026-10-26T10:15:00Z to 2026-10-26T11:07:00Z, preserves its commitment (KEPT), changes modeled line cost by $0.00 per day of delay and reserves 0 min of travel. Unknown facts: none.",
+      "uncertainty": "LOW"
+    },
+    {
+      "candidate_id": "ASG338030981c019e34835d",
+      "claims": [
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCT9aa5651c3eaf6f1aed82",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 2
+        },
+        {
+          "entity_id": "J690c62091f2bdd7ab37d",
+          "evidence_id": "FCTb43648a6a8b52e9696d1",
+          "label": "1303/PU3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/PU3"
+        },
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCTf5422f83915618de43aa",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "DISPATCHABLE"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTa2408dce1a184925a66a",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J690c62091f2bdd7ab37d.WORK.0",
+          "evidence_id": "FCT86092d9ce75061842da7",
+          "label": "1303/PU3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 52
+        },
+        {
+          "entity_id": "DUR7f95cf5c8dde93944bca",
+          "evidence_id": "FCTe11750e264ac8d5e2b9c",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "P75_ELAPSED_ACTIVE_EPISODES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT7f27418be36b21dbf011",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCT8718e8527aa96457cec2",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T11:07:00Z"
+        },
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCTccbce14cf4a170680638",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T11:59:00Z"
+        },
+        {
+          "entity_id": "J690c62091f2bdd7ab37d",
+          "evidence_id": "FCT0fa4a5cfc7322b2833b8",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "NOT_COMMITTED"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCT17061282b28b8a949a31",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCT75f16671f7fe3e4d5f3a",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 2,
+      "reason_codes": [],
+      "summary": "Job 1303/PU3 is dispatchable now. It is ready after no open predecessors. It requires 2 people from pool Q0649d5a7b01901b5cf24, uses 52 min by P75_ELAPSED_ACTIVE_EPISODES, fits shift DEMO:2026-10-26:S1 from 2026-10-26T11:07:00Z to 2026-10-26T11:59:00Z, keeps commitment status NOT_COMMITTED, changes modeled line cost by $0.00 per day of delay and reserves 0 min of travel. Unknown facts: none.",
+      "uncertainty": "LOW"
+    },
+    {
+      "candidate_id": "ASG19f6dfc593d3eac8a015",
+      "claims": [
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCT306b2a229b46b6bf0b42",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 3
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCT1c36b32765aa0b8f58a2",
+          "label": "1303/ROOT3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/ROOT3"
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCTf2dd6d5cd50b7f21b062",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "BLOCKED"
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCT6f7d12f3d1bd98730015",
+          "label": "",
+          "metric_key": "blocked_reason",
+          "unit": "code",
+          "value": "PREDECESSOR_INCOMPLETE"
+        },
+        {
+          "entity_id": "J5e5e25afd667e951df3f.RELEASE.0",
+          "evidence_id": "FCTe6b22114fa157128f9b7",
+          "label": "1303/NC3_RELEASE__AND_",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "OPEN"
+        },
+        {
+          "entity_id": "J690c62091f2bdd7ab37d.RELEASE.0",
+          "evidence_id": "FCT85203b2fcfc03779e242",
+          "label": "1303/PU3_RELEASE__AND_",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "OPEN"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTc7a6f3608a78c24b79ed",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.WORK.0",
+          "evidence_id": "FCT2efa5a232d0ba8523335",
+          "label": "1303/ROOT3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 40
+        },
+        {
+          "entity_id": "DURf8e8a2adb8629349854d",
+          "evidence_id": "FCTa44b971974e2805a921a",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "FLOW_CRITICAL_MINUTES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT4eba16c14014104cf336",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCTf286b053d54f16f24bef",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T12:44:00Z"
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCT60b870792bc187fc8594",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T13:44:00Z"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCTe4a3669cb350eec7b76e",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "NOT_COMMITTED"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCTe7d5b3a43050e9ba1753",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCT0b67c341b1af0927a3ff",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 3,
+      "reason_codes": [
+        "PREDECESSOR_INCOMPLETE"
+      ],
+      "summary": "Job 1303/ROOT3 is blocked now by PREDECESSOR_INCOMPLETE. It is ready after J5e5e25afd667e951df3f.RELEASE.0 (OPEN), J690c62091f2bdd7ab37d.RELEASE.0 (OPEN). It requires 2 people from pool Q0649d5a7b01901b5cf24, uses 40 min by FLOW_CRITICAL_MINUTES, fits shift DEMO:2026-10-26:S1 from 2026-10-26T12:44:00Z to 2026-10-26T13:44:00Z, keeps commitment status NOT_COMMITTED, changes modeled line cost by $0.00 per day of delay and reserves 0 min of travel. Unknown facts: none.",
+      "uncertainty": "HIGH"
+    },
+    {
+      "candidate_id": "ASGab94bf468fd8559f3803",
+      "claims": [
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT6db2f2f8b8d88b38dcc3",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 4
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCTed5c83013bab301cbe0a",
+          "label": "1303/ROOT3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/ROOT3"
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT2e8f4ac5f833556ce449",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "BLOCKED"
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT608dc33229aec6d0830b",
+          "label": "",
+          "metric_key": "blocked_reason",
+          "unit": "code",
+          "value": "PREDECESSOR_INCOMPLETE"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.IP_QA.0",
+          "evidence_id": "FCTa4bde0abbcf27ca7abce",
+          "label": "1303/ROOT3_in-process_hold__40",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "OPEN"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTdfa56e328aec43a4ef73",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.WORK.1",
+          "evidence_id": "FCT26fc5cab367ec6337d9d",
+          "label": "1303/ROOT3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 40
+        },
+        {
+          "entity_id": "DURf8e8a2adb8629349854d",
+          "evidence_id": "FCT62d0f4e2f7d35db73a77",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "FLOW_CRITICAL_MINUTES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT4f07abfcd24ae34b3fbe",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT9bd609743f57b4cbf7c0",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T14:04:00Z"
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT34625a63f0817c0fb76b",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T14:44:00Z"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCTb366c5da56d4c28a9fb1",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "NOT_COMMITTED"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCT86c768c6a63984218cd4",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT755375b16a1a9c5e2e3b",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 4,
+      "reason_codes": [
+        "PREDECESSOR_INCOMPLETE"
+      ],
+      "summary": "Job 1303/ROOT3 is blocked now by PREDECESSOR_INCOMPLETE. It is ready after J85a269e7b1190beea998.IP_QA.0 (OPEN). It requires 2 people from pool Q0649d5a7b01901b5cf24, uses 40 min by FLOW_CRITICAL_MINUTES, fits shift DEMO:2026-10-26:S1 from 2026-10-26T14:04:00Z to 2026-10-26T14:44:00Z, keeps commitment status NOT_COMMITTED, changes modeled line cost by $0.00 per day of delay and reserves 0 min of travel. Unknown facts: none.",
+      "uncertainty": "HIGH"
+    },
+    {
+      "candidate_id": "ASG74e60795a0b881ab0b25",
+      "claims": [
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCT4cbc207504d9d1170756",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 5
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCT502826e56a68ed7c174a",
+          "label": "1303/ROOT3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/ROOT3"
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCT740f96f11d8aa61b22fd",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "BLOCKED"
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCT77ed7629c421821752e7",
+          "label": "",
+          "metric_key": "blocked_reason",
+          "unit": "code",
+          "value": "PREDECESSOR_INCOMPLETE"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.IP_QA.1",
+          "evidence_id": "FCT8c653f5b7fa5e9ff9ac5",
+          "label": "1303/ROOT3_in-process_hold__80",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "OPEN"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTbb52c7ad605a8f1ec957",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.WORK.2",
+          "evidence_id": "FCTe67e2de57165755aa404",
+          "label": "1303/ROOT3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 20
+        },
+        {
+          "entity_id": "DURf8e8a2adb8629349854d",
+          "evidence_id": "FCT4bb7505682f353081a81",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "FLOW_CRITICAL_MINUTES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCTb1e3fc86eccd10924eb8",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCTba2d0300cc8777375108",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T15:39:00Z"
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCT42b111cbf5a1453c7ef9",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T15:59:00Z"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCT666c5353ccdf57a7a3a4",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "NOT_COMMITTED"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCT91dd207692b2c00eb1c3",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCTdf425bcbd03a8be3116f",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 5,
+      "reason_codes": [
+        "PREDECESSOR_INCOMPLETE"
+      ],
+      "summary": "Job 1303/ROOT3 is blocked now by PREDECESSOR_INCOMPLETE. It is ready after J85a269e7b1190beea998.IP_QA.1 (OPEN). It requires 2 people from pool Q0649d5a7b01901b5cf24, uses 20 min by FLOW_CRITICAL_MINUTES, fits shift DEMO:2026-10-26:S1 from 2026-10-26T15:39:00Z to 2026-10-26T15:59:00Z, keeps commitment status NOT_COMMITTED, changes modeled line cost by $0.00 per day of delay and reserves 0 min of travel. Unknown facts: none.",
+      "uncertainty": "HIGH"
+    }
+  ],
+  "explanation_id": "EXPb9b40446be6e072f7395",
+  "fallback_codes": [],
+  "items": [
+    {
+      "candidate_id": "ASGbe6add57999cf4433163",
+      "claims": [
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCT06b1cddab73b2c544ba1",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 1
+        },
+        {
+          "entity_id": "J5e5e25afd667e951df3f",
+          "evidence_id": "FCTcca862e9d27226c72ca4",
+          "label": "1303/NC3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/NC3"
+        },
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCT6adaf887bb8c53ddf45b",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "DISPATCHABLE"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTc6ec7e84f45614860b5f",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J5e5e25afd667e951df3f.WORK.0",
+          "evidence_id": "FCT580e971b10c79ed705e0",
+          "label": "1303/NC3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 52
+        },
+        {
+          "entity_id": "DURa54a506019df9d34d5b5",
+          "evidence_id": "FCTa01cd4ca54fffa5752d0",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "P75_ELAPSED_ACTIVE_EPISODES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT15c2bd8b04a6d47bb7a4",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCTecb9e421b99c0f27d046",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T10:15:00Z"
+        },
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCT5bb0829a06b7f60d9b49",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T11:07:00Z"
+        },
+        {
+          "entity_id": "J5e5e25afd667e951df3f",
+          "evidence_id": "FCTa3a652c70509375e0f85",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "KEPT"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCT835571022bb9758fd94f",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASGbe6add57999cf4433163",
+          "evidence_id": "FCT9b7fe74e03501a2422b6",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 1,
+      "reason_codes": [],
+      "summary": "Rank 1: job 1303/NC3 is dispatchable. Crew 2 people from pool Q0649d5a7b01901b5cf24. Duration 52 min. Shift DEMO:2026-10-26:S1. Travel 0 min.",
+      "uncertainty": "LOW"
+    },
+    {
+      "candidate_id": "ASG338030981c019e34835d",
+      "claims": [
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCT9aa5651c3eaf6f1aed82",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 2
+        },
+        {
+          "entity_id": "J690c62091f2bdd7ab37d",
+          "evidence_id": "FCTb43648a6a8b52e9696d1",
+          "label": "1303/PU3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/PU3"
+        },
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCTf5422f83915618de43aa",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "DISPATCHABLE"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTa2408dce1a184925a66a",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J690c62091f2bdd7ab37d.WORK.0",
+          "evidence_id": "FCT86092d9ce75061842da7",
+          "label": "1303/PU3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 52
+        },
+        {
+          "entity_id": "DUR7f95cf5c8dde93944bca",
+          "evidence_id": "FCTe11750e264ac8d5e2b9c",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "P75_ELAPSED_ACTIVE_EPISODES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT7f27418be36b21dbf011",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCT8718e8527aa96457cec2",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T11:07:00Z"
+        },
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCTccbce14cf4a170680638",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T11:59:00Z"
+        },
+        {
+          "entity_id": "J690c62091f2bdd7ab37d",
+          "evidence_id": "FCT0fa4a5cfc7322b2833b8",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "NOT_COMMITTED"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCT17061282b28b8a949a31",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASG338030981c019e34835d",
+          "evidence_id": "FCT75f16671f7fe3e4d5f3a",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 2,
+      "reason_codes": [],
+      "summary": "Rank 2: job 1303/PU3 is dispatchable. Crew 2 people from pool Q0649d5a7b01901b5cf24. Duration 52 min. Shift DEMO:2026-10-26:S1. Travel 0 min.",
+      "uncertainty": "LOW"
+    },
+    {
+      "candidate_id": "ASG19f6dfc593d3eac8a015",
+      "claims": [
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCT306b2a229b46b6bf0b42",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 3
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCT1c36b32765aa0b8f58a2",
+          "label": "1303/ROOT3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/ROOT3"
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCTf2dd6d5cd50b7f21b062",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "BLOCKED"
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCT6f7d12f3d1bd98730015",
+          "label": "",
+          "metric_key": "blocked_reason",
+          "unit": "code",
+          "value": "PREDECESSOR_INCOMPLETE"
+        },
+        {
+          "entity_id": "J5e5e25afd667e951df3f.RELEASE.0",
+          "evidence_id": "FCTe6b22114fa157128f9b7",
+          "label": "1303/NC3_RELEASE__AND_",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "OPEN"
+        },
+        {
+          "entity_id": "J690c62091f2bdd7ab37d.RELEASE.0",
+          "evidence_id": "FCT85203b2fcfc03779e242",
+          "label": "1303/PU3_RELEASE__AND_",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "OPEN"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTc7a6f3608a78c24b79ed",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.WORK.0",
+          "evidence_id": "FCT2efa5a232d0ba8523335",
+          "label": "1303/ROOT3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 40
+        },
+        {
+          "entity_id": "DURf8e8a2adb8629349854d",
+          "evidence_id": "FCTa44b971974e2805a921a",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "FLOW_CRITICAL_MINUTES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT4eba16c14014104cf336",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCTf286b053d54f16f24bef",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T12:44:00Z"
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCT60b870792bc187fc8594",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T13:44:00Z"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCTe4a3669cb350eec7b76e",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "NOT_COMMITTED"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCTe7d5b3a43050e9ba1753",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASG19f6dfc593d3eac8a015",
+          "evidence_id": "FCT0b67c341b1af0927a3ff",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 3,
+      "reason_codes": [
+        "PREDECESSOR_INCOMPLETE"
+      ],
+      "summary": "Rank 3: job 1303/ROOT3 is blocked. Crew 2 people from pool Q0649d5a7b01901b5cf24. Duration 40 min. Shift DEMO:2026-10-26:S1. Travel 0 min.",
+      "uncertainty": "HIGH"
+    },
+    {
+      "candidate_id": "ASGab94bf468fd8559f3803",
+      "claims": [
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT6db2f2f8b8d88b38dcc3",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 4
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCTed5c83013bab301cbe0a",
+          "label": "1303/ROOT3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/ROOT3"
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT2e8f4ac5f833556ce449",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "BLOCKED"
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT608dc33229aec6d0830b",
+          "label": "",
+          "metric_key": "blocked_reason",
+          "unit": "code",
+          "value": "PREDECESSOR_INCOMPLETE"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.IP_QA.0",
+          "evidence_id": "FCTa4bde0abbcf27ca7abce",
+          "label": "1303/ROOT3_in-process_hold__40",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "OPEN"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTdfa56e328aec43a4ef73",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.WORK.1",
+          "evidence_id": "FCT26fc5cab367ec6337d9d",
+          "label": "1303/ROOT3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 40
+        },
+        {
+          "entity_id": "DURf8e8a2adb8629349854d",
+          "evidence_id": "FCT62d0f4e2f7d35db73a77",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "FLOW_CRITICAL_MINUTES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT4f07abfcd24ae34b3fbe",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT9bd609743f57b4cbf7c0",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T14:04:00Z"
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT34625a63f0817c0fb76b",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T14:44:00Z"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCTb366c5da56d4c28a9fb1",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "NOT_COMMITTED"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCT86c768c6a63984218cd4",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASGab94bf468fd8559f3803",
+          "evidence_id": "FCT755375b16a1a9c5e2e3b",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 4,
+      "reason_codes": [
+        "PREDECESSOR_INCOMPLETE"
+      ],
+      "summary": "Rank 4: job 1303/ROOT3 is blocked. Crew 2 people from pool Q0649d5a7b01901b5cf24. Duration 40 min. Shift DEMO:2026-10-26:S1. Travel 0 min.",
+      "uncertainty": "HIGH"
+    },
+    {
+      "candidate_id": "ASG74e60795a0b881ab0b25",
+      "claims": [
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCT4cbc207504d9d1170756",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 5
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCT502826e56a68ed7c174a",
+          "label": "1303/ROOT3",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1303/ROOT3"
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCT740f96f11d8aa61b22fd",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "BLOCKED"
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCT77ed7629c421821752e7",
+          "label": "",
+          "metric_key": "blocked_reason",
+          "unit": "code",
+          "value": "PREDECESSOR_INCOMPLETE"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.IP_QA.1",
+          "evidence_id": "FCT8c653f5b7fa5e9ff9ac5",
+          "label": "1303/ROOT3_in-process_hold__80",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "OPEN"
+        },
+        {
+          "entity_id": "Q0649d5a7b01901b5cf24",
+          "evidence_id": "FCTbb52c7ad605a8f1ec957",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998.WORK.2",
+          "evidence_id": "FCTe67e2de57165755aa404",
+          "label": "1303/ROOT3_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 20
+        },
+        {
+          "entity_id": "DURf8e8a2adb8629349854d",
+          "evidence_id": "FCT4bb7505682f353081a81",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "FLOW_CRITICAL_MINUTES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCTb1e3fc86eccd10924eb8",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCTba2d0300cc8777375108",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T15:39:00Z"
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCT42b111cbf5a1453c7ef9",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T15:59:00Z"
+        },
+        {
+          "entity_id": "J85a269e7b1190beea998",
+          "evidence_id": "FCT666c5353ccdf57a7a3a4",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "NOT_COMMITTED"
+        },
+        {
+          "entity_id": "1303",
+          "evidence_id": "FCT91dd207692b2c00eb1c3",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASG74e60795a0b881ab0b25",
+          "evidence_id": "FCTdf425bcbd03a8be3116f",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 5,
+      "reason_codes": [
+        "PREDECESSOR_INCOMPLETE"
+      ],
+      "summary": "Rank 5: job 1303/ROOT3 is blocked. Crew 2 people from pool Q0649d5a7b01901b5cf24. Duration 20 min. Shift DEMO:2026-10-26:S1. Travel 0 min.",
+      "uncertainty": "HIGH"
+    }
+  ],
+  "outcome": "VALIDATED",
+  "plan_id": "PLAN5692a4fd262d770216d9",
+  "provider": "mock",
+  "run_id": "cli-575e6d21427b61f9",
+  "schema_version": 1,
+  "shift_id": "DEMO:2026-10-26:S1",
+  "status": "ok",
+  "team": "PROD-B"
+}

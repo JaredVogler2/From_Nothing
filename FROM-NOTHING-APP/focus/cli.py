@@ -34,6 +34,7 @@ COMMANDS: dict[str, str] = {
     "collect-observations": "focus.performance.actuals:cli_collect_observations",
     "evaluate": "focus.performance.score:cli_evaluate",
     "scenario": "focus.analytics.scenarios:cli_scenario",
+    "explain": "focus.explanations.pipeline:cli_explain",
     "benchmark": "focus.engine.max.optimizer.solver:cli_benchmark",
     "migrate": "focus.migrations:cli_migrate",
     "worker": "focus.workers:cli_worker",
@@ -56,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("demo-run", help="run the complete fixture pipeline end to end, carrying returned IDs through every stage")
     p.add_argument("--scenario", default="manufacturing_demo")
     p.add_argument("--budget-seconds", type=float, default=None)
+    p.add_argument("--max-moves", type=int, default=None,
+                   help="also bound the neighborhood search by moves (default: optimizer.max_neighborhood_moves)")
 
     p = sub.add_parser("source-discover", help="read-only schema discovery and drift report")
     p.add_argument("--read-only", action="store_true", required=True)
@@ -107,6 +110,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--source-run", required=True)
     p.add_argument("--changes", required=True, help="JSON object of allowlisted typed changes")
     p.add_argument("--budget-seconds", type=float, default=30.0)
+
+    p = sub.add_parser("explain", help="grounded explanation of a team-shift's ranked actions (fixture providers)")
+    p.add_argument("--plan", required=True, help="the current accepted EXECUTABLE plan id")
+    p.add_argument("--team", required=True)
+    p.add_argument("--shift-id", required=True, help="shift id, e.g. DEMO:2026-10-26:S1")
+    p.add_argument("--candidates", default=None, help="comma-separated action ids (default: the top 5 of the ranking)")
+    p.add_argument("--provider", choices=["none", "mock", "recorded"], default="none")
+    p.add_argument("--record-dir", default=None, help="mock: also record the response here; recorded: replay from here")
 
     p = sub.add_parser("benchmark", help="complete-scope scale benchmark")
     p.add_argument("--complete-scope", action="store_true", required=True)

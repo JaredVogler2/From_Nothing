@@ -306,12 +306,14 @@ def load_snapshot(repos: Any, snapshot_id: str) -> PlanningSnapshot | None:
     return snap
 
 
-def snapshot_for_run(services: Any, run_id: str, policy: Any = None) -> PlanningSnapshot:
+def snapshot_for_run(services: Any, run_id: str, policy: Any = None, *, store: bool = True) -> PlanningSnapshot:
     """The snapshot of an admitted run for ``policy`` (default: active policy).
 
     The run's own snapshot is loaded when the policy matches. A different policy
     (e.g. a P90 toggle) rebuilds a new snapshot deterministically from the same
     immutable datasets and stores it under its own id; the original is unchanged.
+    ``store=False`` (isolated scenarios) rebuilds without writing anything: the
+    caller keeps the copy in its own namespace.
     """
     repos = services.repositories
     policy = policy or services.policy
@@ -333,6 +335,8 @@ def snapshot_for_run(services: Any, run_id: str, policy: Any = None) -> Planning
                            dataset_ids={d.name: d.dataset_id for d in run.datasets}, dataset_lineage=lineage, manifest_hash=manifest_sha,
                            tzp=tzp, policy=policy, dataset_queries={d.name: d.query_sha for d in run.datasets})
     snap = build.snapshot
+    if not store:
+        return snap
     if repos.get_raw(SNAPSHOTS, snap.id) is None:
         repos.put_record(SNAPSHOTS, "PlanningSnapshot", snap.id, snap, source_run_id=run.id, policy_hash=policy.hash)
     for stat in build.statistics:

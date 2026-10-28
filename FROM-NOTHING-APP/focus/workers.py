@@ -38,6 +38,33 @@ class HandlerUnavailable(RuntimeError):
     code = "HANDLER_UNAVAILABLE"
 
 
+class RunCancelled(RuntimeError):
+    """Raised by a handler that saw a cancel request; the run ends ``cancelled`` and stores no result."""
+
+    code = "CANCELLED"
+
+
+CANCEL_REQUESTS = "run_cancel_requests"
+
+
+def request_cancel(services: Any, run: WorkerRun, *, by: str, reason: str, at: Any) -> bool:
+    """Record a durable cancel request for a running run (idempotent). Returns False when one already existed.
+
+    The handler polls :func:`cancel_requested` and stops cooperatively; nothing it already wrote is changed, and a
+    handler that never polls simply finishes within its budget.
+    """
+    repos = services.repositories
+    if repos.get_raw(CANCEL_REQUESTS, run.id) is not None:
+        return False
+    repos.put_record(CANCEL_REQUESTS, "CancelRequest", run.id, {"run_id": run.id, "requested_by": by, "reason": reason[:200], "at": at},
+                     created_at=at)
+    return True
+
+
+def cancel_requested(services: Any, run_id: str) -> bool:
+    return services.repositories.get_raw(CANCEL_REQUESTS, run_id) is not None
+
+
 def _resolve(kind: str) -> Callable[[Any, WorkerRun], dict[str, Any]]:
     target = HANDLERS.get(kind)
     if target is None:
@@ -57,10 +84,12 @@ class WorkerService:
         self.lease_seconds = lease_seconds
 
     def run_once(self) -> WorkerRun | None:
+        run = self.services.repositories.claim_worker_run(self.owner, self.lease_seconds)
+        return None if run is None else self.execute(run)
+
+    def execute(self, run: WorkerRun) -> WorkerRun | None:
+        """Run the handler of a run this worker has claimed and store its terminal state."""
         repos = self.services.repositories
-        run = repos.claim_worker_run(self.owner, self.lease_seconds)
-        if run is None:
-            return None
         version = repos.worker_run_version(run.id)
         try:
             handler = _resolve(run.kind)
@@ -70,6 +99,12 @@ class WorkerService:
             receipt.setdefault("runtime_seconds", round(time.monotonic() - started, 3))
             return repos.update_worker_run(run, version, status="completed", result_receipt=receipt, error=None,
                                            lease_owner=None, lease_until=None)
+        except RunCancelled as exc:
+            try:
+                return repos.update_worker_run(run, version, status="cancelled", error={"code": "CANCELLED", "message": str(exc)[:2000]},
+                                               lease_owner=None, lease_until=None)
+            except (VersionConflict, StoreError):
+                return None
         except Exception as exc:  # noqa: BLE001 - every failure is recorded durably
             error = {
                 "code": getattr(exc, "code", type(exc).__name__),

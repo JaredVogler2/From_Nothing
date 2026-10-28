@@ -1,4 +1,4 @@
-"""P20 browser workflows (A59, A63, A68, A69): every view in both layouts, and the audited command workflows.
+"""P20/P21 browser workflows (A59, A63, A66, A68, A69): every view in both layouts, and the audited command workflows.
 
 Reuses ``tests/ui/check_workflows.py`` so the same checks run in pytest and as the evidence script.
 """
@@ -62,3 +62,8 @@ def test_reported_completion_is_a_claim_and_ie_proposal_is_listed(browser, obser
 def test_team_lead_emergency_addition_completes_as_a_worker_run(browser, published) -> None:
     result = cw.workflow_amendment(browser, published)
     assert result["ok"], result
+
+
+def test_a66_team_lead_explanation_is_a_grounded_worker_result(browser, published) -> None:
+    result = cw.workflow_explanation(browser, published)
+    assert result["ok"] and result["outcome"] == "DETERMINISTIC" and result["items"] == 5, result

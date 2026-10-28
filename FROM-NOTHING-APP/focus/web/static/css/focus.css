@@ -99,6 +99,7 @@ textarea { min-height: 72px; width: 100%; }
 .state-unknown { background: var(--info-bg); border-color: #c9dbfa; }
 .state-blocked { background: var(--warning-bg); border-color: #efd9b0; }
 .state-stale { background: var(--warning-bg); border-color: #efd9b0; }
+.state-reconciled { background: var(--success-bg); border-color: #bfe3cf; }
 .state-error { background: var(--error-bg); border-color: #f0c2ca; }
 .state-title { font-weight: 700; margin-bottom: 4px; }
 .skeleton { height: 14px; border-radius: 6px; background: linear-gradient(90deg, #eef2f8, #f7f9fc, #eef2f8); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; margin: 6px 0; }
@@ -235,3 +236,8 @@ label textarea { display: block; margin-top: 2px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Explanations (P21) */
+.explanation-items { padding-left: 20px; margin: 8px 0; }
+.explanation-items li { margin: 10px 0; overflow-wrap: anywhere; }
+.explanation-items details { margin-top: 4px; }
