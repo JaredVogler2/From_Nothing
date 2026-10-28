@@ -82,6 +82,18 @@ result and exits non-zero on error:
   read-only MCP JSON-RPC endpoint at `/mcp`, with the same identity and grants
   as the API. `python -m focus.cli mcp-stdio` serves it over stdio.
 
+## Transfer into an approved company environment (no live data shared)
+
+**Work-agent handoff:** [Workplace Porting Guide](docs/integration/WORKPLACE_PORTING_GUIDE.md) · [Source/Table/Query Crosswalk](docs/integration/SOURCE_REPLACEMENT_CROSSWALK.md) · [Rich MAX Scheduling Constraints](docs/integration/SCHEDULING_CONSTRAINTS.md).
+
+Generate an exact **reference-only** machine manifest for the internal agent:
+
+~~~bash
+python scripts/export_integration_contract.py --output docs/integration/contract_manifest.generated.json
+~~~
+
+The handoff inventories all canonical dataset contracts, currently checked-in SQL source/query files, supplemental feeds and gaps, objective/validation rules and rollout gates. **Do not commit actual internal table mappings, SQL results, employee/commercial data or credentials here.** Produce/complete private mappings solely inside approved company-controlled systems. A valid company schedule requires owner-approved source semantics and independent verification; the current demo is not proof of live readiness.
+
 ## Hosting
 
 Hosting is Posit Connect first, then VMware Tanzu. See
@@ -97,5 +109,5 @@ prefix. Posit Connect identity (`RStudio-Connect-Credentials`) and Tanzu
 - A conditional part ETA is never physical receipt.
 - Virtual MHE/PSC/TST support people are forecast-only.
 - Unknown is never rendered as zero.
-- Live readiness is a separate capability with precise gaps (`OD-01..OD-12`
+- Live readiness is a separate capability with precise gaps (`OD-01..OD-17`
   in the policy). See `docs/execution/SOURCE_READINESS.md` once P03 exists.
