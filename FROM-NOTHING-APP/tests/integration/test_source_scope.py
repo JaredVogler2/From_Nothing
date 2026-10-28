@@ -5,9 +5,6 @@ import copy
 import importlib.util
 from collections import Counter
 
-import pytest
-
-from focus.data.datasets import DATASETS
 from focus.data.discovery import CONTRACTS, catalog_rows_from_contracts, compare_catalog
 from focus.data.fixture_builder import build_scale_fixture
 from focus.data.fixture_reader import FixtureSourceReader

@@ -36,8 +36,10 @@ generated SQL in `queries/source_inputs/*.sql`, exported to
 | person_team_map, attendance_shift | FOCUS_PERSON_TEAM_MAP / FOCUS_ATTENDANCE_SHIFT | Empty live on 2026-10-27, so executable crews are unready |
 | econ_* | FOCUS_SOL_TESTING2_* (7 tables) | Exact decimal(19,4) to Fraction cents |
 
-`FOCUS_CERT_ELIGIBILITY` is deliberately not read. It is a convenience matrix
-with employee names, and its SUBST/percent labels grant nothing (S05, S07).
+`FOCUS_CERT_ELIGIBILITY` (dataset `cert_eligibility_matrix`, P06) is read only as a
+display projection. The projection excludes `MECHANIC` names, descriptions and missing-cert
+text. Its ELIGIBLE/PCT/SUBSTITUTION labels grant nothing: the snapshot reports each label next
+to the authoritative decision as a `CERT_MATRIX_PROJECTION_ONLY` note (S05, S07).
 
 ## Supplemental typed inputs (proposed FOCUS_FN producers or fixture-only)
 
@@ -50,3 +52,17 @@ with employee names, and its SUBST/percent labels grant nothing (S05, S07).
 
 Proposed `FOCUS_FN_*` output tables (S06) are **not installed**. See
 `sql/migrations/` (drafts, never executed by this build).
+
+## Drafted SQL authorities (written, not installed)
+
+| Artifact | Stage | Purpose |
+| --- | --- | --- |
+| `queries/workforce/infer_mechanic_teams.sql` | P05 | S07 plurality inference into FOCUS_FN_TeamInference (run-isolated, CAPTURING only) |
+| `sql/migrations/workforce_draft.sql` | P05 | TeamInference constraints, clock indexes, sealed-run trigger, head view, retention |
+| `queries/qualifications/requirement_census.sql`, `holding_validity_profile.sql` | P06 | Read-only readiness: unknown-requirement census, holding date-encoding/status profile |
+| `queries/durations/build_observations.sql` | P07 | Episode metrics (job/owner unions, cycle) into FOCUS_FN_DurationObservation |
+| `queries/durations/percentiles.sql` | P07 | PERCENTILE_CONT P50/P55/P75/P90 + mean into FOCUS_FN_DurationStatistics per policy |
+| `sql/migrations/durations_draft.sql` | P07 | Duration constraints, UX(RunId, GroupKeySha, PolicyId), indexes, sealed triggers, head view, retention |
+
+All of them are consolidated into the versioned migration set in P23. Installing any of them
+requires authorized migration tooling. None was executed against a server by this build.

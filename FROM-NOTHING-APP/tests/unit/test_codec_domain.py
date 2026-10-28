@@ -108,7 +108,9 @@ def test_key_validation_rejects_lossy_inputs() -> None:
     with pytest.raises(DomainError):
         RequirementBundle(groups=(("A", "A"),), role="mechanic", count=1, applicability="job")
     with pytest.raises(DomainError):
-        RequirementBundle(groups=(("A",),), role="mechanic", count=0, applicability="job")
+        RequirementBundle(groups=(("A",),), role="mechanic", count=-1, applicability="job")
+    # 0 records unavailable crew demand (blocked by the flow standard); it is never clamped to 1
+    assert RequirementBundle(groups=(("A",),), role="mechanic", count=0, applicability="job").count == 0
 
 
 def test_phase_and_person_keys_round_trip() -> None:

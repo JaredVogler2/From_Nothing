@@ -422,6 +422,7 @@ def build_manufacturing_demo(scenario: str = "manufacturing_demo") -> dict[str, 
 
     out: dict[str, Dataset] = {}
     empties = {"mech_team_inferred": "fixture people use non-numeric DEMO keys; legacy bigint inference evidence is certified empty",
+               "cert_eligibility_matrix": "fixture people use non-numeric DEMO keys; the bigint-keyed convenience matrix is certified empty",
                "econ_original_sale_basis": "no actual sale basis in the fixture (assumed planning terms only)",
                "econ_liability_checkpoint": "no accrued liability checkpoints in the fixture"}
     for name in DATASETS:
@@ -718,7 +719,7 @@ def build_scale_fixture(n_aircraft: int, scenario: str | None = None, seed: int 
                                 "Methodology": "Synthetic linear daily planning rate", "SourceReference": f"FIXTURE-SCALE-TERM-{line}",
                                 "OwnerSubject": "fixture-economics", "ApprovedBy": None, "TermVersion": 1, "CreatedAtUtc": "2026-10-20T12:00:00.000"})
     out: dict[str, Dataset] = {}
-    certified = {"mech_team_inferred", "econ_original_sale_basis", "econ_liability_checkpoint", "team_inference", "clock_observations",
+    certified = {"mech_team_inferred", "cert_eligibility_matrix", "econ_original_sale_basis", "econ_liability_checkpoint", "team_inference", "clock_observations",
                  "requirement_census", "requirement_alternatives", "holding_events", "inspection_holds", "work_progress",
                  "part_events", "carry_in", "availability_exceptions", "econ_contract_assignment", "etracs_history", "actual_labor",
                  "labor_shift", "cert_course_map", "dept_team_skill_ref", "inspection_counts", "rework_classification", "neo_graph_rework",

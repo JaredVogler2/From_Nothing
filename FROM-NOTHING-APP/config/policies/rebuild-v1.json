@@ -210,6 +210,16 @@
       "authority": "manual_specified",
       "ref": "S08,S09"
     },
+    "duration.confidence_level": {
+      "value": "0.90",
+      "authority": "fixture_default",
+      "ref": "S08 persist confidence: order-statistic interval coverage for the consumed P75"
+    },
+    "duration.stale_after_days": {
+      "value": 365,
+      "authority": "fixture_default",
+      "ref": "S08/P07 representative confidence/sample/staleness; older cohorts are unavailable, never a flat default"
+    },
     "duration.rework_classes": {
       "value": [
         "NC",
@@ -459,6 +469,11 @@
       "value": 30,
       "authority": "manual_specified",
       "ref": "S07"
+    },
+    "workforce.inference_stale_after_days": {
+      "value": 7,
+      "authority": "fixture_default",
+      "ref": "S07 stale evidence detection (P05); live value is an open calibration"
     },
     "workforce.inference_tie_break": {
       "value": "TEAM_NAME_ASCENDING",

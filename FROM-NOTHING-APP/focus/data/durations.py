@@ -37,11 +37,28 @@ def _opt_int(value: Any) -> int | None:
         return None
 
 
-def flow_index(rows: Iterable[Mapping[str, Any]]) -> dict[tuple[int, str], FlowBudget]:
-    out: dict[tuple[int, str], FlowBudget] = {}
+class FlowIndex(dict):
+    """Exact (LINE_NUMBER, JOB_NUMBER) -> FlowBudget; ``conflicts`` lists keys whose rows disagree.
+
+    The lookup is composite: the same JOB_NUMBER on two lines is two independent standards.
+    Repeated rows with identical values deduplicate (the latest LOAD_TIMESTAMP is kept); rows
+    that disagree on any standard field are excluded and reported, never "last row wins".
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.conflicts: dict[tuple[int, str], str] = {}
+
+
+_STANDARD_FIELDS = ("critical_flow_minutes", "total_mechanics", "primary_mechanic_count", "primary_mechanic_duration", "assist_count",
+                    "assist_labor_minutes", "total_labor_minutes", "duration_source")
+
+
+def flow_index(rows: Iterable[Mapping[str, Any]]) -> FlowIndex:
+    out = FlowIndex()
     for row in rows:
         key = (int(row["LINE_NUMBER"]), str(row["JOB_NUMBER"]))
-        out[key] = FlowBudget(
+        budget = FlowBudget(
             job_number=str(row["JOB_NUMBER"]),
             line=int(row["LINE_NUMBER"]),
             critical_flow_minutes=_opt_int(row.get("CRITICAL_FLOW_MINUTES")),
@@ -54,6 +71,17 @@ def flow_index(rows: Iterable[Mapping[str, Any]]) -> dict[tuple[int, str], FlowB
             duration_source=str(row["DURATION_SOURCE"]) if row.get("DURATION_SOURCE") is not None else None,
             load_timestamp=str(row["LOAD_TIMESTAMP"]) if row.get("LOAD_TIMESTAMP") is not None else None,
         )
+        if key in out.conflicts:
+            continue
+        held = out.get(key)
+        if held is None:
+            out[key] = budget
+        elif any(getattr(held, f) != getattr(budget, f) for f in _STANDARD_FIELDS):
+            diff = [f for f in _STANDARD_FIELDS if getattr(held, f) != getattr(budget, f)]
+            out.conflicts[key] = f"FLOW_CONFLICT: FOCUS_FLOW_BUDGET rows for {key[1]}@{key[0]} disagree on {', '.join(diff)}"
+            del out[key]
+        elif (budget.load_timestamp or "") > (held.load_timestamp or ""):
+            out[key] = budget
     return out
 
 
@@ -74,7 +102,7 @@ def crew_demand(budget: FlowBudget | None) -> tuple[int | None, str | None]:
 
 
 def resolve(job: Job, *, status_class: str, policy: Policy, mode: str, stats: Mapping[tuple[str, ...], DurationStatistics],
-            snapshot_key: str) -> DurationResolution:
+            snapshot_key: str, flow_problem: str | None = None) -> DurationResolution:
     statistic = policy.str("duration.default_statistic")
     rework_classes = set(policy.seq("duration.rework_classes"))
     fallback = tuple(policy.seq("duration.group_fallback"))
@@ -82,7 +110,9 @@ def resolve(job: Job, *, status_class: str, policy: Policy, mode: str, stats: Ma
     blocked: list[str] = []
     executable_only: list[str] = []
     crew, crew_problem = crew_demand(budget)
-    if crew_problem:
+    if flow_problem:
+        blocked.append(flow_problem)
+    elif crew_problem:
         blocked.append(crew_problem)
     semantics = policy.str("duration.total_mechanics_semantics")
     if semantics != "SIMULTANEOUS":
@@ -100,18 +130,21 @@ def resolve(job: Job, *, status_class: str, policy: Policy, mode: str, stats: Ma
         for level in fallback:
             key = (job.rework_class, job.team or "") if level == "CLASS_TEAM" else (job.rework_class,)
             candidate = stats.get(key)
-            if candidate is not None and candidate.sufficient:
+            if candidate is not None and candidate.usable:
                 chosen = candidate
                 break
         if chosen is None:
-            blocked.append(f"DURATION_UNAVAILABLE: no sufficient comparable {job.rework_class} cohort (no flat default)")
+            blocked.append(f"DURATION_UNAVAILABLE: no sufficient, current comparable {job.rework_class} cohort (no flat default)")
         else:
             precise = chosen.statistic(statistic)
             elapsed = scheduled_ticks(precise)
             basis = "ELAPSED_ACTIVE_EPISODES"
             stats_id = chosen.id
             method = f"{statistic} of {chosen.admitted_count} completed {'/'.join(chosen.group)} elapsed episodes"
-            uncertainty = f"n={chosen.admitted_count}; P50={chosen.p50} P75={chosen.p75} P90={chosen.p90}"
+            ci = (f"; P75 {chosen.confidence_level} interval [{chosen.p75_ci_low}, {chosen.p75_ci_high}]"
+                  if chosen.p75_ci_low is not None else "; P75 interval unavailable")
+            uncertainty = (f"n={chosen.admitted_count} window {chosen.sample_start:%Y-%m-%d}..{chosen.sample_end:%Y-%m-%d}; "
+                           f"P50={chosen.p50} P55={chosen.p55} mean={chosen.mean} P75={chosen.p75} P90={chosen.p90}{ci}")
     elif status_class == "IN_PROGRESS":
         if job.remaining_elapsed is None:
             blocked.append("REMAINING_UNKNOWN: in-progress job without sourced remaining elapsed work")

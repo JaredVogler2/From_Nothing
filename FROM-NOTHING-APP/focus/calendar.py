@@ -13,7 +13,6 @@ separately. Overtime never moves the cutoff.
 """
 from __future__ import annotations
 
-import bisect
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from functools import lru_cache
@@ -21,7 +20,7 @@ from typing import Iterable, Mapping
 from zoneinfo import ZoneInfo
 
 from .contracts.planning import CalendarDay, LineCalendar
-from .domain import DecisionStatus, Interval, RuleDecision, from_minute, minute_floor, to_minute
+from .domain import Interval, RuleDecision, from_minute, to_minute
 from .data.sourcetime import local_to_utc
 from .policy import Policy
 

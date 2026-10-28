@@ -1,0 +1,360 @@
+{
+  "schema_version": 1,
+  "type": "TeamInferenceContract",
+  "purpose": "SQL-compatible contract for queries/workforce/infer_mechanic_teams.sql. Expected rows are derived by hand from the S07 rules, not produced by the Python reference.",
+  "algorithm_version": "S07-plurality-v1",
+  "run_id": "CONTRACT-RUN-01",
+  "window_start_utc": "2026-09-26T00:00:00Z",
+  "window_end_utc": "2026-10-26T00:00:00Z",
+  "clock_rows": [
+    {
+      "SOURCE_EVENT_KEY": "E1",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P100",
+      "TEAM": "PROD-A",
+      "START_UTC": "2026-10-01T10:00:00Z",
+      "END_UTC": "2026-10-01T11:00:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E2",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P100",
+      "TEAM": "PROD-A",
+      "START_UTC": "2026-10-01T10:30:00Z",
+      "END_UTC": "2026-10-01T11:30:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E3",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P100",
+      "TEAM": "PROD-B",
+      "START_UTC": "2026-10-02T10:00:00Z",
+      "END_UTC": "2026-10-02T10:30:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E4",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P100",
+      "TEAM": "PROD-B",
+      "START_UTC": "2026-10-03T10:00:00Z",
+      "END_UTC": "2026-10-03T10:30:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E4",
+      "SOURCE_REVISION": "2",
+      "PERSON_KEY": "P100",
+      "TEAM": "PROD-B",
+      "START_UTC": "2026-10-03T10:00:00Z",
+      "END_UTC": "2026-10-03T10:30:00Z",
+      "IS_VOIDED": true
+    },
+    {
+      "SOURCE_EVENT_KEY": "E5",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P100",
+      "TEAM": "PROD-B",
+      "START_UTC": "2026-10-04T10:00:00Z",
+      "END_UTC": "2026-10-04T10:30:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E6",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P200",
+      "TEAM": "PROD-C",
+      "START_UTC": "2026-10-05T10:00:00Z",
+      "END_UTC": "2026-10-05T10:20:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E6",
+      "SOURCE_REVISION": "2",
+      "PERSON_KEY": "P200",
+      "TEAM": "PROD-D",
+      "START_UTC": "2026-10-05T10:00:00Z",
+      "END_UTC": "2026-10-05T10:20:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E7",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P200",
+      "TEAM": "PROD-C",
+      "START_UTC": "2026-10-06T10:00:00Z",
+      "END_UTC": "2026-10-06T10:20:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E8",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P200",
+      "TEAM": "PROD-D",
+      "START_UTC": "2026-10-07T10:00:00Z",
+      "END_UTC": "2026-10-07T10:20:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E9",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P200",
+      "TEAM": "PROD-D",
+      "START_UTC": "2026-10-08T10:00:00Z",
+      "END_UTC": "2026-10-08T10:20:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E10",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P300",
+      "TEAM": "PROD-A",
+      "START_UTC": "2026-09-26T00:00:00Z",
+      "END_UTC": "2026-09-26T00:30:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E11",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P300",
+      "TEAM": "PROD-B",
+      "START_UTC": "2026-10-26T00:00:00Z",
+      "END_UTC": "2026-10-26T00:30:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E12",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P300",
+      "TEAM": "PROD-B",
+      "START_UTC": "2026-09-25T23:59:59Z",
+      "END_UTC": "2026-09-26T00:29:59Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E13",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P400",
+      "TEAM": null,
+      "START_UTC": "2026-10-10T10:00:00Z",
+      "END_UTC": "2026-10-10T11:00:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E15",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P700",
+      "TEAM": "PROD-C",
+      "START_UTC": "2026-10-11T10:00:00Z",
+      "END_UTC": "2026-10-11T10:10:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E16",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P700",
+      "TEAM": "PROD-B",
+      "START_UTC": "2026-10-11T11:00:00Z",
+      "END_UTC": "2026-10-11T11:10:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E17",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P700",
+      "TEAM": "PROD-A",
+      "START_UTC": "2026-10-11T12:00:00Z",
+      "END_UTC": "2026-10-11T12:10:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E14",
+      "SOURCE_REVISION": "9",
+      "PERSON_KEY": "P800",
+      "TEAM": "PROD-A",
+      "START_UTC": "2026-10-12T10:00:00Z",
+      "END_UTC": "2026-10-12T10:45:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E14",
+      "SOURCE_REVISION": "10",
+      "PERSON_KEY": "P800",
+      "TEAM": "PROD-B",
+      "START_UTC": "2026-10-12T10:00:00Z",
+      "END_UTC": "2026-10-12T10:45:00Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E18",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P900",
+      "TEAM": "PROD-A",
+      "START_UTC": "2026-10-13T10:00:00Z",
+      "END_UTC": "2026-10-13T10:00:10Z",
+      "IS_VOIDED": false
+    },
+    {
+      "SOURCE_EVENT_KEY": "E19",
+      "SOURCE_REVISION": "1",
+      "PERSON_KEY": "P901",
+      "TEAM": "PROD-A",
+      "START_UTC": "2026-10-13T11:00:00Z",
+      "END_UTC": "2026-10-13T11:00:00.000030Z",
+      "IS_VOIDED": false
+    }
+  ],
+  "hr_departments": {
+    "P100": "D1",
+    "P400": "D9",
+    "P500": "QA1",
+    "P600": "D9"
+  },
+  "dept_team_skill_ref": {
+    "D1": "PROD-A",
+    "QA1": "QA",
+    "D9": null
+  },
+  "derivation": {
+    "P100": "E1 and E2 overlap: PROD-A n=2, union 10:00-11:30 = 90 min. E4 rev2 voids E4: PROD-B n=2 (E3, E5), 60 min. Tie 2-2 broken by team name: PROD-A.",
+    "P200": "E6 rev2 corrects E6 to PROD-D: PROD-D n=3 (60 min), PROD-C n=1. Share 3/4.",
+    "P300": "E10 starts exactly at window start (included); E11 starts exactly at window end and E12 one second before window start (both excluded).",
+    "P400": "Only team-less evidence and department D9 has no PRIMARY_TEAM: UNKNOWN, no team.",
+    "P500": "No evidence; department QA1 maps to QA: DEPT_FALLBACK.",
+    "P600": "No evidence and unmapped department: no row (no invented team).",
+    "P700": "Three teams one record each: share 1/3 = 0.33333333 at decimal(9,8); tie broken by name: PROD-A, runner-up PROD-B.",
+    "P800": "Revision 10 outranks 9 numerically (TRY_CONVERT bigint), so PROD-B; a text comparison would wrongly pick 9.",
+    "P900": "10 seconds = 0.1666666... minutes; decimal(19,6) after ROUND(...,6) half away from zero = 0.166667.",
+    "P901": "30 microseconds = 0.0000005 minutes exactly; half away from zero gives 0.000001 (half-even would give 0.000000)."
+  },
+  "expected": [
+    {
+      "PERSON_KEY": "P100",
+      "BASIS": "LABOR_PLURALITY",
+      "INFERRED_TEAM": "PROD-A",
+      "EVIDENCE_COUNT": 2,
+      "TOTAL_COUNT": 4,
+      "EFFORT_MINUTES": "90.000000",
+      "TOP_SHARE": "0.50000000",
+      "IS_TIE": true,
+      "RUNNER_UP_TEAM": "PROD-B",
+      "RUNNER_UP_COUNT": 2,
+      "FIRST_EVIDENCE_UTC": "2026-10-01T10:00:00Z",
+      "LAST_EVIDENCE_UTC": "2026-10-04T10:30:00Z"
+    },
+    {
+      "PERSON_KEY": "P200",
+      "BASIS": "LABOR_PLURALITY",
+      "INFERRED_TEAM": "PROD-D",
+      "EVIDENCE_COUNT": 3,
+      "TOTAL_COUNT": 4,
+      "EFFORT_MINUTES": "60.000000",
+      "TOP_SHARE": "0.75000000",
+      "IS_TIE": false,
+      "RUNNER_UP_TEAM": "PROD-C",
+      "RUNNER_UP_COUNT": 1,
+      "FIRST_EVIDENCE_UTC": "2026-10-05T10:00:00Z",
+      "LAST_EVIDENCE_UTC": "2026-10-08T10:20:00Z"
+    },
+    {
+      "PERSON_KEY": "P300",
+      "BASIS": "LABOR_PLURALITY",
+      "INFERRED_TEAM": "PROD-A",
+      "EVIDENCE_COUNT": 1,
+      "TOTAL_COUNT": 1,
+      "EFFORT_MINUTES": "30.000000",
+      "TOP_SHARE": "1.00000000",
+      "IS_TIE": false,
+      "RUNNER_UP_TEAM": null,
+      "RUNNER_UP_COUNT": null,
+      "FIRST_EVIDENCE_UTC": "2026-09-26T00:00:00Z",
+      "LAST_EVIDENCE_UTC": "2026-09-26T00:30:00Z"
+    },
+    {
+      "PERSON_KEY": "P400",
+      "BASIS": "UNKNOWN",
+      "INFERRED_TEAM": null,
+      "EVIDENCE_COUNT": 0,
+      "TOTAL_COUNT": 0,
+      "EFFORT_MINUTES": "0.000000",
+      "TOP_SHARE": null,
+      "IS_TIE": false,
+      "RUNNER_UP_TEAM": null,
+      "RUNNER_UP_COUNT": null,
+      "FIRST_EVIDENCE_UTC": null,
+      "LAST_EVIDENCE_UTC": null
+    },
+    {
+      "PERSON_KEY": "P500",
+      "BASIS": "DEPT_FALLBACK",
+      "INFERRED_TEAM": "QA",
+      "EVIDENCE_COUNT": 0,
+      "TOTAL_COUNT": 0,
+      "EFFORT_MINUTES": "0.000000",
+      "TOP_SHARE": null,
+      "IS_TIE": false,
+      "RUNNER_UP_TEAM": null,
+      "RUNNER_UP_COUNT": null,
+      "FIRST_EVIDENCE_UTC": null,
+      "LAST_EVIDENCE_UTC": null
+    },
+    {
+      "PERSON_KEY": "P700",
+      "BASIS": "LABOR_PLURALITY",
+      "INFERRED_TEAM": "PROD-A",
+      "EVIDENCE_COUNT": 1,
+      "TOTAL_COUNT": 3,
+      "EFFORT_MINUTES": "10.000000",
+      "TOP_SHARE": "0.33333333",
+      "IS_TIE": true,
+      "RUNNER_UP_TEAM": "PROD-B",
+      "RUNNER_UP_COUNT": 1,
+      "FIRST_EVIDENCE_UTC": "2026-10-11T10:00:00Z",
+      "LAST_EVIDENCE_UTC": "2026-10-11T12:10:00Z"
+    },
+    {
+      "PERSON_KEY": "P800",
+      "BASIS": "LABOR_PLURALITY",
+      "INFERRED_TEAM": "PROD-B",
+      "EVIDENCE_COUNT": 1,
+      "TOTAL_COUNT": 1,
+      "EFFORT_MINUTES": "45.000000",
+      "TOP_SHARE": "1.00000000",
+      "IS_TIE": false,
+      "RUNNER_UP_TEAM": null,
+      "RUNNER_UP_COUNT": null,
+      "FIRST_EVIDENCE_UTC": "2026-10-12T10:00:00Z",
+      "LAST_EVIDENCE_UTC": "2026-10-12T10:45:00Z"
+    },
+    {
+      "PERSON_KEY": "P900",
+      "BASIS": "LABOR_PLURALITY",
+      "INFERRED_TEAM": "PROD-A",
+      "EVIDENCE_COUNT": 1,
+      "TOTAL_COUNT": 1,
+      "EFFORT_MINUTES": "0.166667",
+      "TOP_SHARE": "1.00000000",
+      "IS_TIE": false,
+      "RUNNER_UP_TEAM": null,
+      "RUNNER_UP_COUNT": null,
+      "FIRST_EVIDENCE_UTC": "2026-10-13T10:00:00Z",
+      "LAST_EVIDENCE_UTC": "2026-10-13T10:00:10Z"
+    },
+    {
+      "PERSON_KEY": "P901",
+      "BASIS": "LABOR_PLURALITY",
+      "INFERRED_TEAM": "PROD-A",
+      "EVIDENCE_COUNT": 1,
+      "TOTAL_COUNT": 1,
+      "EFFORT_MINUTES": "0.000001",
+      "TOP_SHARE": "1.00000000",
+      "IS_TIE": false,
+      "RUNNER_UP_TEAM": null,
+      "RUNNER_UP_COUNT": null,
+      "FIRST_EVIDENCE_UTC": "2026-10-13T11:00:00Z",
+      "LAST_EVIDENCE_UTC": "2026-10-13T11:00:00.000030Z"
+    }
+  ]
+}

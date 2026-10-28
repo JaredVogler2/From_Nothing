@@ -10,10 +10,10 @@ from __future__ import annotations
 import uuid
 from dataclasses import replace
 from datetime import datetime, timedelta
-from typing import Any, Callable, Iterable, TypeVar
+from typing import Any, Iterable, TypeVar
 
 from ..clock import Clock
-from ..codec import CodecError, Envelope, canonical_dumps, content_hash, from_jsonable, open_envelope, seal, to_jsonable
+from ..codec import Envelope, canonical_dumps, content_hash, from_jsonable, open_envelope, seal
 from ..contracts.runs import WorkerRun
 from .store import Head, Store, StoreError, VersionConflict
 

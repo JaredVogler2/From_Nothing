@@ -147,7 +147,8 @@ def build_graph(*, census: CensusBuild, durations: Mapping[str, DurationResoluti
         res = durations.get(job_id)
         est = res.estimate if res else None
         req = requirements.get(job_id)
-        crew = est.crew_size if est else (job.raw_budget.total_mechanics if job.raw_budget and (job.raw_budget.total_mechanics or 0) > 0 else 1)
+        # blocked jobs keep their sourced TOTAL_MECHANICS when valid; otherwise 0 = demand unavailable (never 1)
+        crew = est.crew_size if est else (job.raw_budget.total_mechanics if job.raw_budget and (job.raw_budget.total_mechanics or 0) > 0 else 0)
         groups = req.bundle.groups if (req and req.bundle) else ()
         bundle = RequirementBundle(groups, "mechanic", crew, "exact SOI/line requirement bundle; every member holds every AND group")
         work_demand = RoleDemand(bundle, job.team or "UNASSIGNED", req.status if req else RequirementStatus.UNKNOWN,

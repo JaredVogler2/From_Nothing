@@ -16,14 +16,14 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Mapping
 from zoneinfo import ZoneInfo
 
-from ..codec import CodecError, canonical_dumps, content_hash, parse_utc, sha256_hex, strict_loads
+from ..codec import CodecError, content_hash, parse_utc, sha256_hex, strict_loads
 from .datasets import DATASETS, DatasetSpec
 from .discovery import CONTRACTS
 

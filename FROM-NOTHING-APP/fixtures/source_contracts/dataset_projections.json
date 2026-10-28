@@ -141,6 +141,29 @@
    "required_for_run": false,
    "source_object": "WEB_APP.NEO_CERT_COURSE_MAP"
   },
+  "cert_eligibility_matrix": {
+   "capabilities": [
+    "projection"
+   ],
+   "columns": [
+    "TEAM",
+    "JOB_SOI",
+    "LINE_NUMBER",
+    "BEMS_ID",
+    "SHIFT",
+    "ELIGIBLE",
+    "PCT_CERTS_HELD",
+    "CERTS_REQUIRED",
+    "CERTS_HELD",
+    "SUBSTITUTION",
+    "LOAD_TIMESTAMP"
+   ],
+   "cutoff_column": null,
+   "description": "Convenience matrix, display projection only: ELIGIBLE/PCT/SUBSTITUTION grant no authorization; MECHANIC names are never extracted.",
+   "kind": "SOURCE",
+   "required_for_run": false,
+   "source_object": "WEB_APP.FOCUS_CERT_ELIGIBILITY"
+  },
   "clock_observations": {
    "capabilities": [
     "duration"

@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
-from typing import Any, Iterable, Mapping
+from datetime import date, datetime, timezone
+from fractions import Fraction
+from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
 from ..calendar import ShiftPolicy, admit_line_calendars, horizon_dates, shifts_between
@@ -24,7 +25,8 @@ from ..contracts.planning import (
     ReadinessGap,
     seal_snapshot,
 )
-from ..domain import Disposition, RequirementStatus, digest_id
+from ..domain import Disposition, RequirementStatus, digest_id, minute_floor
+from ..eligibility import Eligibility
 from ..economics.repository import build_economics
 from ..policy import Policy
 from ..simulation.pools import build_virtual_support, merge_virtual_pools
@@ -34,7 +36,7 @@ from .durations import DurationResolution, flow_index, resolve
 from .graph import build_graph
 from .inspections import build_triggers
 from .parts import build_parts
-from .qualifications import build_holdings, build_requirements
+from .qualifications import build_holdings, build_requirements, matrix_label_notes
 from .scope import build_census, index_master, scope_config
 from .sourcetime import SourceTimeError, TimezonePolicy
 from .workforce import build_workforce
@@ -59,7 +61,8 @@ class SnapshotBuild:
 def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode: str, cutoff: datetime, created_at: datetime,
                    datasets: Mapping[str, tuple[Mapping[str, Any], ...]], dataset_status: Mapping[str, str],
                    dataset_ids: Mapping[str, str], dataset_lineage: Mapping[str, str], manifest_hash: str,
-                   tzp: TimezonePolicy, policy: Policy, incumbent_id: str | None = None) -> SnapshotBuild:
+                   tzp: TimezonePolicy, policy: Policy, incumbent_id: str | None = None,
+                   dataset_queries: Mapping[str, str] | None = None) -> SnapshotBuild:
     notes: list[str] = []
     gaps: list[ReadinessGap] = []
     shift_policy = ShiftPolicy.from_policy(policy)
@@ -108,14 +111,17 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
 
     # ---- requirements, holdings, durations ----
     stats = compute_statistics(datasets.get("duration_episodes", ()), run_id=run_id, policy_id=policy.id,
-                               minimum_sample=policy.int("duration.minimum_fixture_sample"))
+                               minimum_sample=policy.int("duration.minimum_fixture_sample"), as_of=cutoff,
+                               stale_after_days=policy.int("duration.stale_after_days"),
+                               query_sha=(dataset_queries or {}).get("duration_episodes", ""),
+                               confidence_level=Fraction(policy.str("duration.confidence_level")))
     stats_by_group = {s.group: s for s in stats}
     resolutions: dict[str, DurationResolution] = {}
     for jid, job in census.jobs.items():
         if jid in census.verified_complete:
             continue
         resolutions[jid] = resolve(job, status_class=census.status_class.get(jid, "UNKNOWN"), policy=policy, mode=mode,
-                                   stats=stats_by_group, snapshot_key=run_id)
+                                   stats=stats_by_group, snapshot_key=run_id, flow_problem=flows.conflicts.get((job.line, job.key.native_id)))
     crew_sizes = {jid: (r.estimate.crew_size if r.estimate else None) for jid, r in resolutions.items()}
     requirements = build_requirements(job_index, datasets.get("soi_cert_requirements", ()), datasets.get("requirement_alternatives", ()),
                                       datasets.get("requirement_census", ()), crew_sizes, {}, dataset_ids.get("soi_cert_requirements", ""), run_id)
@@ -128,6 +134,11 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
     holdings_build = build_holdings(datasets.get("mechanic_certs", ()), datasets.get("holding_events", ()), wf.person_by_native, policy, tz,
                                     dataset_ids.get("mechanic_certs", ""), run_id)
     notes.extend(holdings_build.problems)
+    matrix_rows = datasets.get("cert_eligibility_matrix", ())
+    if matrix_rows:
+        authority = Eligibility(holdings_build.holdings, requirements, source_run_id=run_id, policy_hash=policy.hash)
+        for code, scope_name, detail, effect in matrix_label_notes(matrix_rows, authority, wf.person_by_native, job_index, minute_floor(cutoff)):
+            gaps.append(ReadinessGap(code, scope_name, detail, effect))
     virtual = build_virtual_support(policy=policy, job_teams={jid: j.team for jid, j in census.jobs.items()}, requirements=requirements,
                                     horizon=horizon, shift_policy=shift_policy, site=scope.site, run_id=run_id)
     pools = merge_virtual_pools(wf.pools, virtual, policy)

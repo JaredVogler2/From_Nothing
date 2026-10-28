@@ -7,7 +7,7 @@ from decimal import Decimal
 from fractions import Fraction
 from typing import Any
 
-from ..codec import content_hash, to_jsonable
+from ..codec import content_hash
 from ..domain import (
     AvailabilityBasis,
     DomainError,
@@ -292,6 +292,7 @@ class TeamInferenceRecord:
     algorithm_version: str
     effective_team: str | None
     effective_basis: str
+    stale: bool = False
 
 
 @dataclass(frozen=True, slots=True)

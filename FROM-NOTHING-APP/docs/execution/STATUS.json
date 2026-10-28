@@ -239,9 +239,39 @@
       "title": "Atomic source runs and immutable planning snapshots"
     },
     "05": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A08",
+          "result": "pass"
+        },
+        {
+          "case": "A09",
+          "result": "pass"
+        },
+        {
+          "case": "A10",
+          "result": "pass (P05 part; primary P06)"
+        },
+        {
+          "case": "A11",
+          "result": "pass (P05 part; primary P06)"
+        }
+      ],
+      "changed_paths": [
+        "queries/workforce/infer_mechanic_teams.sql",
+        "sql/migrations/workforce_draft.sql",
+        "focus/data/workforce.py",
+        "focus/contracts/planning.py",
+        "config/policies/rebuild-v1.json",
+        "fixtures/workforce/team_inference_contract.json",
+        "docs/execution/TEAM_AUTHORITY.md",
+        "tests/integration/test_team_inference.py"
+      ],
+      "commands": [
+        "python -m pytest tests/integration/test_team_inference.py -q (13 passed)",
+        "python -m pytest tests -q (113 passed)",
+        "python tools/check_imports.py"
+      ],
       "depends_on": [
         "03",
         "04"
@@ -249,17 +279,67 @@
       "evidence": [
         "evidence/05/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "queries/workforce/infer_mechanic_teams.sql (SQL authority, S07-plurality-v1)",
+        "reference_inference (contract verification only)",
+        "build_workforce (assignment > roster > nominal inference; shift-start membership)",
+        "TeamInferenceRecord.stale"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "SQL inference/procedure/constraints not installed (needs write authority; P23)",
+        "live clock, HR department, assignment and attendance producers not probed; ATTENDANCE_SHIFT/PERSON_TEAM_MAP observed empty",
+        "stale threshold 7 days and 30-day window await live calibration"
+      ],
+      "status": "fixture_verified",
       "title": "SQL-owned mechanic team inference and assignment"
     },
     "06": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A10",
+          "result": "pass"
+        },
+        {
+          "case": "A11",
+          "result": "pass"
+        },
+        {
+          "case": "A12",
+          "result": "pass"
+        },
+        {
+          "case": "A13",
+          "result": "pass"
+        },
+        {
+          "case": "A14",
+          "result": "pass"
+        },
+        {
+          "case": "A64",
+          "result": "pass (P06 part; UI labelling in P21)"
+        }
+      ],
+      "changed_paths": [
+        "focus/eligibility.py",
+        "focus/data/qualifications.py",
+        "focus/domain.py",
+        "focus/data/graph.py",
+        "focus/simulation/pools.py",
+        "focus/data/datasets.py",
+        "queries/source_inputs/cert_eligibility_matrix.sql",
+        "focus/data/snapshot_builder.py",
+        "queries/qualifications/requirement_census.sql",
+        "queries/qualifications/holding_validity_profile.sql",
+        "tests/unit/test_eligibility.py",
+        "tests/integration/test_pools.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_eligibility.py tests/integration/test_pools.py -q (26 passed)",
+        "python -m pytest tests -q (113 passed)"
+      ],
       "depends_on": [
         "04",
         "05"
@@ -267,17 +347,61 @@
       "evidence": [
         "evidence/06/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "Eligibility.check / scarcity (fingerprinted cache)",
+        "RoleSlot, match_crew (bounded deterministic role matching)",
+        "admit_executable_crew (origin evidence, pure pool)",
+        "matrix_label_notes (projection only)",
+        "activation_cap"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "no live producer for approved OR alternatives, affirmative no-cert census or revocation events",
+        "live date encodings/status vocabularies to profile before admission"
+      ],
+      "status": "fixture_verified",
       "title": "Certification applicability and pure named workforce"
     },
     "07": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A15",
+          "result": "pass"
+        },
+        {
+          "case": "A16",
+          "result": "pass"
+        },
+        {
+          "case": "A17",
+          "result": "pass"
+        },
+        {
+          "case": "A18",
+          "result": "pass"
+        }
+      ],
+      "changed_paths": [
+        "focus/data/durations.py",
+        "focus/data/duration_gauge.py",
+        "focus/data/acquisition.py",
+        "focus/data/snapshot_builder.py",
+        "config/policies/rebuild-v1.json",
+        "queries/durations/build_observations.sql",
+        "queries/durations/percentiles.sql",
+        "sql/migrations/durations_draft.sql",
+        "tools/build_duration_stats.py",
+        "docs/execution/DURATION_METHOD.md",
+        "tests/unit/test_duration_gauge.py",
+        "tests/integration/test_duration_policy.py"
+      ],
+      "commands": [
+        "python -m pytest tests/unit/test_duration_gauge.py tests/integration/test_duration_policy.py -q (18 passed)",
+        "python tools/acquire_sources.py --mode fixture --scenario manufacturing_demo",
+        "python tools/build_duration_stats.py",
+        "python -m pytest tests -q (113 passed)"
+      ],
       "depends_on": [
         "03",
         "04",
@@ -286,11 +410,23 @@
       "evidence": [
         "evidence/07/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "flow_index -> FlowIndex(conflicts)",
+        "resolve(..., flow_problem)",
+        "episode_metrics (revision-aware, exact us)",
+        "compute_statistics (policy-bound ids, provenance hashes, P75 interval)",
+        "quantile_interval",
+        "snapshot_for_run(policy=...)"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "no live raw clock/episode producer (FOCUS_ACTUAL_LABOR is aggregate effort only)",
+        "cohort calibration (minimum sample, staleness, grouping, OD-01) open",
+        "no engineered-estimate source",
+        "duration SQL not installed (P23)"
+      ],
+      "status": "fixture_verified",
       "title": "Duration gauge, standards and SQL descriptive statistics"
     },
     "08": {

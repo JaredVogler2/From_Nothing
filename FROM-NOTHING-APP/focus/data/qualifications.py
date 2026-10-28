@@ -55,6 +55,9 @@ class DateParse:
 
 
 def parse_cert_date(raw: Any, accepted_forms: Iterable[str], sentinel: str | None) -> DateParse:
+    """Strict parse in the declared forms; the sentinel is compared by date value, so every
+    approved encoding of it (``9999/12/31``, ``9999-12-31``, ``99991231``) agrees."""
+    forms = tuple(accepted_forms)
     if raw is None:
         return DateParse(None, "BLANK", None)
     text = str(raw)
@@ -62,9 +65,8 @@ def parse_cert_date(raw: Any, accepted_forms: Iterable[str], sentinel: str | Non
         return DateParse(None, "BLANK", None)
     if text != text.strip():
         return DateParse(None, "MALFORMED", None)
-    if sentinel is not None and text == sentinel:
-        return DateParse(None, None, "SENTINEL", True)
-    for form in accepted_forms:
+    sentinel_day = parse_cert_date(sentinel, forms, None).value if sentinel else None
+    for form in forms:
         pattern = _FORMS.get(form)
         if pattern is None:
             continue
@@ -72,9 +74,12 @@ def parse_cert_date(raw: Any, accepted_forms: Iterable[str], sentinel: str | Non
         if found:
             y, m, d = (int(x) for x in found.groups())
             try:
-                return DateParse(date(y, m, d), None, form)
+                value = date(y, m, d)
             except ValueError:
                 return DateParse(None, "OUT_OF_RANGE", form)
+            if sentinel_day is not None and value == sentinel_day:
+                return DateParse(None, None, form, True)
+            return DateParse(value, None, form)
     return DateParse(None, "MALFORMED", None)
 
 
@@ -130,9 +135,13 @@ def build_holdings(cert_rows: Iterable[Mapping[str, Any]], events: Iterable[Mapp
         if expiry.sentinel:
             validity = "PERPETUAL"
         elif expiry.value is not None:
-            end_day = expiry.value + timedelta(days=1) if inclusive else expiry.value
-            valid_to = local_midnight_utc(end_day, tz)
-            validity = "BOUNDED"
+            try:
+                end_day = expiry.value + timedelta(days=1) if inclusive else expiry.value
+                valid_to = local_midnight_utc(end_day, tz)
+                validity = "BOUNDED"
+            except (OverflowError, ValueError):
+                # no year-10000 arithmetic: without an explicit sentinel policy the expiry stays unknown
+                problems.append(f"HOLDING_EXPIRY_UNREPRESENTABLE:{native}:{cert}")
         if start.value is None:
             # an unknown start date cannot prove validity at any instant
             validity = "UNKNOWN"
@@ -208,7 +217,7 @@ def build_requirements(job_index: Mapping[tuple[int, str], str], rows: Iterable[
             if code not in grouped:
                 groups.append((code,))
         crew = crew_sizes.get(job)
-        count = crew if isinstance(crew, int) and crew > 0 else 1
+        count = crew if isinstance(crew, int) and not isinstance(crew, bool) and crew > 0 else 0   # unavailable, never 1
         role = role_for_job.get(job, "mechanic")
         if groups:
             bundle = RequirementBundle(tuple(groups), role, count, "exact SOI/line")
@@ -219,3 +228,35 @@ def build_requirements(job_index: Mapping[tuple[int, str], str], rows: Iterable[
         else:
             out[job] = JobRequirement(job, RequirementStatus.UNKNOWN, None, "no positive rows and no affirmative census", ())
     return out
+
+
+def matrix_label_notes(rows: Iterable[Mapping[str, Any]], eligibility: Any, person_ids: Mapping[str, str],
+                       job_index: Mapping[tuple[int, str], str], at_minute: int, max_examples: int = 5) -> list[tuple[str, str, str, str]]:
+    """Compare the convenience matrix (FOCUS_CERT_ELIGIBILITY) with authoritative decisions.
+
+    ELIGIBLE, PCT_CERTS_HELD and SUBSTITUTION are display projections, never permission. They
+    are summarized next to the authoritative decision and change nothing. Notes are bounded:
+    one per (labels, decision) with a count and a few examples, so a large matrix cannot flood
+    the snapshot. MECHANIC names are not part of the projection.
+    """
+    counts: dict[tuple[str, str, str, str], int] = {}
+    examples: dict[tuple[str, str, str, str], list[str]] = {}
+    for row in rows:
+        native = str(row.get("BEMS_ID") or "")
+        person = person_ids.get(native)
+        line = row.get("LINE_NUMBER")
+        job = job_index.get((int(line), str(row.get("JOB_SOI")))) if line is not None and row.get("JOB_SOI") else None
+        labels = f"ELIGIBLE={row.get('ELIGIBLE')!s} SUBSTITUTION={row.get('SUBSTITUTION')!s}"
+        if person is None or job is None:
+            key = ("CERT_MATRIX_UNMATCHED", labels, "no admitted person/job", "ignored")
+        else:
+            decision = eligibility.check(person, None, job, at_minute, at_minute + 1)
+            key = ("CERT_MATRIX_PROJECTION_ONLY", labels, decision.status.value, decision.code)
+        counts[key] = counts.get(key, 0) + 1
+        sample = examples.setdefault(key, [])
+        if len(sample) < max_examples:
+            sample.append(f"{native or '?'} {row.get('JOB_SOI')}@{line} PCT={row.get('PCT_CERTS_HELD')!s}")
+    return [(code, "FOCUS_CERT_ELIGIBILITY",
+             f"{counts[(code, labels, status, why)]} row(s) {labels}: authoritative {status} {why}; e.g. {'; '.join(examples[(code, labels, status, why)])}",
+             "INFO")
+            for code, labels, status, why in sorted(counts)]

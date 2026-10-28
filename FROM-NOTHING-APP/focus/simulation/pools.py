@@ -15,9 +15,10 @@ from datetime import date, timedelta
 from typing import Iterable, Mapping
 from zoneinfo import ZoneInfo
 
-from ..calendar import ShiftPolicy, build_shift
+from ..calendar import SHIFT_NUMBERS, ShiftPolicy, build_shift
 from ..contracts.planning import Availability, JobRequirement, Person, Pool
-from ..domain import AvailabilityBasis, EvidenceRef, Holding, Interval, PersonKey, PersonOrigin, PoolKey, RequirementStatus, digest_id, from_minute
+from ..domain import (AvailabilityBasis, EvidenceRef, Holding, Interval, PersonKey, PersonOrigin, PoolKey, RequirementStatus, RuleDecision,
+                      digest_id, from_minute)
 from ..policy import Policy
 from ..data.sourcetime import local_midnight_utc
 from ..data.workforce import activation_cap
@@ -59,7 +60,7 @@ def build_virtual_support(*, policy: Policy, job_teams: Mapping[str, str | None]
             if job_team == team and req is not None and req.status is RequirementStatus.REQUIRED and req.bundle is not None:
                 certs |= set(req.bundle.all_codes)
         out.union_certs[team] = tuple(sorted(certs))
-        for n in (1, 2, 3):
+        for n in SHIFT_NUMBERS:
             ids = []
             for i in range(1, per + 1):
                 key = PersonKey(f"VIRTUAL-{team}-S{n}-{i:02d}", VIRTUAL_NAMESPACE)
@@ -117,3 +118,31 @@ def merge_virtual_pools(pools: Iterable[Pool], virtual: VirtualSupport, policy: 
                                   n_forecast=len(fore), cap_forecast=activation_cap(len(fore), num, den),
                                   basis=existing.basis + "+SYNTHETIC_VIRTUAL_SUPPORT", excluded=existing.excluded)
     return [by_id[k] for k in sorted(by_id, key=lambda pid: (by_id[pid].key.start_date, by_id[pid].key.shift_number, by_id[pid].key.team))]
+
+
+def admit_executable_crew(crew: Iterable[str], pool: Pool, people: Mapping[str, Person],
+                          claims: Mapping[str, object] | None = None) -> RuleDecision:
+    """Executable crew admission: stored origin evidence and pure-pool membership decide.
+
+    ``claims`` (payload flags such as ``mock_data``, ``synthetic`` or ``purpose``) are recorded
+    in the reason and never trusted: a virtual person stays forecast-only whatever a request
+    says. Every member must be a distinct, admitted, non-synthetic executable member of this
+    exact pool (no borrowing from another team or shift).
+    """
+    members = list(crew)
+    if not members:
+        return RuleDecision.deny("CREW_EMPTY", "an executable crew needs at least one person")
+    if len(set(members)) != len(members):
+        return RuleDecision.deny("CREW_DUPLICATE_PERSON", "one person cannot fill two simultaneous seats")
+    ignored = f" (payload claims ignored: {sorted(claims)})" if claims else ""
+    if pool.synthetic and not pool.executable_members:
+        return RuleDecision.deny("POOL_SYNTHETIC_ONLY", f"pool {pool.id} has no admitted executable people{ignored}")
+    for pid in members:
+        person = people.get(pid)
+        if person is None:
+            return RuleDecision.deny("PERSON_NOT_ADMITTED", f"{pid} is not an admitted person of this snapshot{ignored}")
+        if is_synthetic_person(person):
+            return RuleDecision.deny("SYNTHETIC_NOT_EXECUTABLE", f"{pid} has synthetic origin {person.origin.value}; forecast only{ignored}")
+        if pid not in pool.executable_members:
+            return RuleDecision.deny("NOT_EXECUTABLE_POOL_MEMBER", f"{pid} is not an executable member of {pool.id}{ignored}")
+    return RuleDecision.allow("CREW_ADMITTED", f"{len(members)} distinct admitted executable members of {pool.id}")

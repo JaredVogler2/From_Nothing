@@ -1,0 +1,27 @@
+{
+ "columns": [
+  "TEAM",
+  "JOB_SOI",
+  "LINE_NUMBER",
+  "BEMS_ID",
+  "SHIFT",
+  "ELIGIBLE",
+  "PCT_CERTS_HELD",
+  "CERTS_REQUIRED",
+  "CERTS_HELD",
+  "SUBSTITUTION",
+  "LOAD_TIMESTAMP"
+ ],
+ "dataset": "cert_eligibility_matrix",
+ "receipt": {
+  "certified_empty": true,
+  "complete": true,
+  "note": "fixture people use non-numeric DEMO keys; the bigint-keyed convenience matrix is certified empty",
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [],
+ "schema_version": 1
+}

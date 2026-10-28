@@ -360,7 +360,11 @@ class RuleDecision:
 
 @dataclass(frozen=True, slots=True)
 class RequirementBundle:
-    """AND across groups, OR within a group (approved alternatives)."""
+    """AND across groups, OR within a group (approved alternatives).
+
+    ``count`` is the sourced crew demand for the role; 0 means the demand is unavailable
+    (blocked elsewhere by the flow standard). It is never defaulted or clamped to 1.
+    """
 
     groups: tuple[tuple[str, ...], ...]
     role: str
@@ -369,7 +373,7 @@ class RequirementBundle:
 
     def __post_init__(self) -> None:
         _require_text(self.role, "role")
-        _require_int(self.count, "role count", 1)
+        _require_int(self.count, "role count", 0)
         for group in self.groups:
             if not group:
                 raise DomainError("EMPTY_GROUP", "requirement group must offer at least one certificate")

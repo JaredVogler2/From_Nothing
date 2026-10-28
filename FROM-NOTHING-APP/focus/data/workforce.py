@@ -18,14 +18,15 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Iterable, Mapping
 
-from ..calendar import ShiftPolicy, build_shift
+from ..calendar import SHIFT_NUMBERS, ShiftPolicy, build_shift
 from ..codec import parse_utc
 from ..contracts.planning import Availability, CarryIn, Person, Pool, TeamInferenceRecord
 from ..domain import AvailabilityBasis, DutyKind, EvidenceRef, Interval, PersonKey, PersonOrigin, PoolKey, digest_id, from_minute
 from ..policy import Policy
+from .duration_gauge import admit_latest_revisions, interval_union, to_micros
 from .sourcetime import TimezonePolicy
 
 UTC = timezone.utc
@@ -51,40 +52,84 @@ def activation_cap(n: int, numerator: int = 85, denominator: int = 100) -> int:
     return (numerator * n) // denominator
 
 
-def reference_inference(clock_rows: Iterable[Mapping[str, Any]], run_id: str, window_start: datetime, window_end: datetime) -> dict[str, dict[str, Any]]:
-    """Python reference of the S07 SQL plurality query (fixture contract verification only).
+INFERENCE_ALGORITHM = "S07-plurality-v1"
 
-    Per person: count admitted, non-voided clock records with StartUtc in [window_start,
-    window_end) by team; plurality by count, deterministic tie-break by team name
-    ascending; effort minutes kept separately; top share = n/total_n; tie flag when the
-    runner-up count equals the top count.
+
+def reference_inference(clock_rows: Iterable[Mapping[str, Any]], run_id: str, window_start: datetime, window_end: datetime, *,
+                        departments: Mapping[str, str] | None = None,
+                        dept_team: Mapping[str, str | None] | None = None) -> dict[str, dict[str, Any]]:
+    """Python reference of ``queries/workforce/infer_mechanic_teams.sql`` (fixture contract verification only).
+
+    Mirrors the SQL step for step: the latest revision of each source event is admitted
+    (a voided correction removes the event instead of counting it twice); it must be
+    unvoided, carry a team and start in [window_start, window_end). Per person the
+    transaction count ranks teams (n DESC, team name ascending by code point); effort
+    minutes are the per-(person, team) running-max interval union, kept separately and
+    rounded half away from zero to 6 dp like decimal(19,6); top share = n/total_n at
+    decimal(9,8); tie when the runner-up count equals the top count. ``departments`` is
+    the active HR person -> accounting department population and ``dept_team`` the
+    FOCUS_DEPT_TEAM_SKILL_REF mapping: a person with no admitted team evidence gets an
+    explicit DEPT_FALLBACK row only through a mapped PRIMARY_TEAM; one with team-less
+    evidence and no mapping stays UNKNOWN. No team is invented.
     """
-    counts: dict[str, dict[str, list[Decimal]]] = defaultdict(lambda: defaultdict(lambda: [Decimal(0), Decimal(0)]))
-    for row in clock_rows:
-        if row.get("IS_VOIDED") or row.get("TEAM") in (None, ""):
+    admitted, _ = admit_latest_revisions(clock_rows)
+    by_team: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
+    teamless: set[str] = set()
+    span: dict[str, tuple[datetime, datetime]] = {}
+    for row in admitted:
+        if row.get("IS_VOIDED"):
             continue
         start = parse_utc(str(row["START_UTC"]))
         end = parse_utc(str(row["END_UTC"]))
         if not (window_start <= start < window_end):
             continue
-        bucket = counts[str(row["PERSON_KEY"])][str(row["TEAM"])]
-        bucket[0] += 1
-        bucket[1] += Decimal((end - start).total_seconds()) / Decimal(60)
+        person = str(row["PERSON_KEY"])
+        team = str(row.get("TEAM") or "").strip(" ")
+        if not team:
+            teamless.add(person)
+            continue
+        by_team[person][team].append((to_micros(start), to_micros(end)))
+        first, last = span.get(person, (start, end))
+        span[person] = (min(first, start), max(last, end))
+    six, eight = Decimal("0.000001"), Decimal("0.00000001")
     out: dict[str, dict[str, Any]] = {}
-    for person, teams in counts.items():
-        ranked = sorted(teams.items(), key=lambda kv: (-kv[1][0], kv[0]))
-        total = sum(v[0] for v in teams.values())
-        top_team, (n, effort) = ranked[0]
-        second_n = ranked[1][1][0] if len(ranked) > 1 else None
+    for person, teams in by_team.items():
+        ranked = sorted(teams.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+        total = sum(len(v) for v in teams.values())
+        top_team, intervals = ranked[0]
+        n = len(intervals)
+        second_n = len(ranked[1][1]) if len(ranked) > 1 else None
+        effort_us = sum(e - s for s, e in interval_union(intervals))
         out[person] = {
             "team": top_team,
-            "n": int(n),
-            "effort": effort,
-            "top_share": (n / total).quantize(Decimal("0.00000001")),
+            "basis": "LABOR_PLURALITY",
+            "n": n,
+            "total_n": total,
+            "effort": (Decimal(effort_us) / Decimal(60_000_000)).quantize(six, rounding=ROUND_HALF_UP),
+            "top_share": (Decimal(n) / Decimal(total)).quantize(eight, rounding=ROUND_HALF_UP),
             "is_tie": second_n is not None and second_n == n,
             "runner_up_team": ranked[1][0] if len(ranked) > 1 else None,
-            "runner_up_count": int(second_n) if second_n is not None else None,
+            "runner_up_count": second_n,
+            "first_evidence_utc": span[person][0],
+            "last_evidence_utc": span[person][1],
+            "window_start_utc": window_start,
+            "window_end_utc": window_end,
+            "algorithm_version": INFERENCE_ALGORITHM,
             "run_id": run_id,
+        }
+    departments = departments or {}
+    dept_team = dept_team or {}
+    for person in sorted((set(departments) | teamless) - set(out)):
+        mapped = dept_team.get(departments.get(person, ""))
+        if not mapped and person not in teamless:
+            continue
+        out[person] = {
+            "team": mapped or None,
+            "basis": "DEPT_FALLBACK" if mapped else "UNKNOWN",
+            "n": 0, "total_n": 0, "effort": Decimal(0).quantize(six), "top_share": None, "is_tie": False,
+            "runner_up_team": None, "runner_up_count": None, "first_evidence_utc": None, "last_evidence_utc": None,
+            "window_start_utc": window_start, "window_end_utc": window_end,
+            "algorithm_version": INFERENCE_ALGORITHM, "run_id": run_id,
         }
     return out
 
@@ -95,6 +140,10 @@ def _local_dt(text: str | None, tzp: TimezonePolicy, dataset: str) -> datetime |
 
 def _within(day: date, start: date | None, end: date | None) -> bool:
     return (start is None or start <= day) and (end is None or day < end)
+
+
+def _active(instant: datetime, start: datetime | None, end: datetime | None) -> bool:
+    return (start is None or start <= instant) and (end is None or instant < end)
 
 
 def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mode: str, policy: Policy, shift_policy: ShiftPolicy,
@@ -126,14 +175,14 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
         out.people.append(person)
         out.person_by_native[native] = person.id
 
-    # ---- effective assignments (dedupe true repeats, conflicts on overlap) ----
-    assignments: dict[str, list[tuple[date | None, date | None, str, str]]] = defaultdict(list)
+    # ---- effective assignments (exact UTC instants; dedupe true repeats, conflicts on overlap) ----
+    assignments: dict[str, list[tuple[datetime | None, datetime | None, str, str]]] = defaultdict(list)
     for r in assign_rows:
         if not r.get("IN_SCOPE"):
             continue
         start_dt = _local_dt(r.get("EFFECTIVE_FROM"), tzp, "person_team_map")
         end_dt = _local_dt(r.get("EFFECTIVE_TO"), tzp, "person_team_map")
-        spec = (start_dt.date() if start_dt else None, end_dt.date() if end_dt else None, str(r.get("TEAM") or ""), str(r.get("ROLE") or ""))
+        spec = (start_dt, end_dt, str(r.get("TEAM") or ""), str(r.get("ROLE") or ""))
         if spec not in assignments[str(r["BEMS_ID"])]:
             assignments[str(r["BEMS_ID"])].append(spec)
     for native, specs in assignments.items():
@@ -159,19 +208,46 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
                 if overlap and (a[2], a[3]) != (b[2], b[3]):
                     out.conflicts.setdefault(native, []).append(f"ROSTER_CONFLICT: overlapping {a[2]} S{a[3]} and {b[2]} S{b[3]}")
 
+    # ---- roster/assignment agreement at every rostered shift start (before any pool exists) ----
+    undefined_shift: set[tuple[str, int]] = set()
+    if horizon is not None:
+        day = horizon[0]
+        while day <= horizon[1]:
+            for native, specs in sorted(rosters.items()):
+                for spec in specs:
+                    if not _within(day, spec[0], spec[1]):
+                        continue
+                    if spec[3] not in SHIFT_NUMBERS:
+                        undefined_shift.add((native, spec[3]))
+                        continue
+                    start = from_minute(build_shift(day, spec[3], shift_policy, site).start)
+                    for a in assignments.get(native, []):
+                        if _active(start, a[0], a[1]) and a[2] != spec[2]:
+                            out.conflicts.setdefault(native, []).append(
+                                f"ROSTER_ASSIGNMENT_MISMATCH: roster {spec[2]} vs assignment {a[2]} at {day.isoformat()} S{spec[3]}")
+            day += timedelta(days=1)
+    for native, number in sorted(undefined_shift):
+        out.gaps.append(("ROSTER_SHIFT_UNDEFINED", native, f"roster shift {number} is not a configured shift; no pool membership", "BLOCKS_EXECUTABLE"))
+
     # ---- SQL-owned inference records ----
+    stale_days = policy.int("workforce.inference_stale_after_days")
     inferred: dict[str, Mapping[str, Any]] = {str(r["PERSON_KEY"]): r for r in inference_rows}
+    stale_people: list[str] = []
     for native, r in sorted(inferred.items()):
         person = out.person_by_native.get(native)
         if person is None:
             continue
+        window_end = parse_utc(str(r["WINDOW_END_UTC"])) if r.get("WINDOW_END_UTC") else None
+        stale = window_end is None or (cutoff - window_end) > timedelta(days=stale_days)
+        if stale:
+            stale_people.append(native)
         effective = None
         basis = "INFERRED_NOMINAL"
-        current = [s for s in assignments.get(native, []) if _within(cutoff.date(), s[0], s[1])]
+        current = [s for s in assignments.get(native, []) if _active(cutoff, s[0], s[1])]
         if current and native not in out.conflicts:
             effective = current[0][2]
             basis = "EFFECTIVE_ASSIGNMENT"
-        elif r.get("INFERRED_TEAM"):
+        elif r.get("INFERRED_TEAM") and not stale:
             effective = str(r["INFERRED_TEAM"])
         out.inference.append(TeamInferenceRecord(
             person=person,
@@ -188,7 +264,12 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
             algorithm_version=str(r.get("ALGORITHM_VERSION") or ""),
             effective_team=effective,
             effective_basis=basis,
+            stale=stale,
         ))
+    if stale_people:
+        out.gaps.append(("TEAM_INFERENCE_STALE", "workforce",
+                         f"{len(stale_people)} inference rows end more than {stale_days} days before the cutoff; labelled stale, never a home team",
+                         "INFO"))
 
     if not assign_rows:
         out.gaps.append(("ASSIGNMENT_FEED_EMPTY", "workforce", "FOCUS_PERSON_TEAM_MAP returned no rows; inference is nominal forecast evidence only", "BLOCKS_EXECUTABLE"))
@@ -244,38 +325,35 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
     num = policy.int("activation.fraction_numerator")
     den = policy.int("activation.fraction_denominator")
 
-    # resolve each person's (team, shift) per date
-    def membership(native: str, d: date) -> tuple[str, int, str] | None:
+    # resolve each person's (team, how) for one shift; membership is decided at the shift start instant
+    def membership(native: str, d: date, n: int, shift_start: datetime) -> tuple[str, str] | None:
         if native in out.conflicts:
             return None
-        roster = [s for s in rosters.get(native, []) if _within(d, s[0], s[1])]
+        roster = [s for s in rosters.get(native, []) if _within(d, s[0], s[1]) and s[3] == n]
         if not roster:
             return None
-        team, n = roster[0][2], roster[0][3]
-        current = [s for s in assignments.get(native, []) if _within(d, s[0], s[1])]
-        if current:
-            if current[0][2] != team:
-                out.conflicts.setdefault(native, []).append(f"ROSTER_ASSIGNMENT_MISMATCH: roster {team} vs assignment {current[0][2]}")
-                return None
-            return team, n, "ASSIGNED"
-        inferred_team = inferred.get(native, {}).get("INFERRED_TEAM") if native in inferred else None
-        if inferred_team and inferred_team == team:
-            return team, n, "INFERRED"
-        return team, n, "ROSTER_ONLY"
+        team = roster[0][2]
+        if any(_active(shift_start, a[0], a[1]) for a in assignments.get(native, [])):
+            return team, "ASSIGNED"          # agreement with the roster was verified before pools were built
+        record = inferred.get(native)
+        if record and record.get("INFERRED_TEAM") == team and native not in stale_people:
+            return team, "INFERRED"
+        return team, "ROSTER_ONLY"
 
     teams: set[str] = {s[2] for specs in rosters.values() for s in specs}
     lo, hi = horizon
     d = lo
     while d <= hi:
-        for n in (1, 2, 3):
+        for n in SHIFT_NUMBERS:
             shift = build_shift(d, n, shift_policy, site)
             members_by_team: dict[str, list[tuple[str, AvailabilityBasis, bool]]] = defaultdict(list)
             excluded_by_team: dict[str, list[str]] = defaultdict(list)
+            shift_start = from_minute(shift.start)
             for native in sorted(rosters):
-                m = membership(native, d)
-                if m is None or m[1] != n:
+                m = membership(native, d, n, shift_start)
+                if m is None:
                     continue
-                team, _, how = m
+                team, how = m
                 person = out.person_by_native[native]
                 if (native, d, n) in leave:
                     excluded_by_team[team].append(f"{person}:LEAVE")

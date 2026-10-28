@@ -20,16 +20,16 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import Any, Callable, Mapping
+from typing import Any, Callable
 
 from ..codec import CodecError, content_hash, from_jsonable, open_envelope, parse_utc, strict_loads
 from ..contracts.planning import PlanningSnapshot
 from ..domain import aware_utc
-from .datasets import DATASETS, DatasetSpec
+from .datasets import DATASETS
 from .fixture_reader import Capture, CaptureError, FixtureSourceReader, LiveSourceReader
 from .snapshot_builder import AdmissionError, build_snapshot
-from .sourcetime import TimezonePolicy, policy_from_receipts
-from .store import StoreError, VersionConflict
+from .sourcetime import policy_from_receipts
+from .store import StoreError
 
 UTC = timezone.utc
 RUNS = "source_runs"
@@ -210,7 +210,8 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
             build = build_snapshot(run_id=run.id, scope_key=scope, site=settings.site, program=settings.program, mode=settings.mode,
                                    cutoff=run.cutoff, created_at=_now(services), datasets=datasets, dataset_status=statuses,
                                    dataset_ids={d.name: d.dataset_id for d in run.datasets}, dataset_lineage=lineage,
-                                   manifest_hash=manifest_sha, tzp=tzp, policy=policy)
+                                   manifest_hash=manifest_sha, tzp=tzp, policy=policy,
+                                   dataset_queries={d.name: d.query_sha for d in run.datasets})
         except AdmissionError as exc:
             run = replace(run, status="REJECTED", capture_end=_now(services), rejection={"code": exc.code, "detail": exc.message})
             _save_run(repos, run, version)
@@ -330,10 +331,13 @@ def snapshot_for_run(services: Any, run_id: str, policy: Any = None) -> Planning
     build = build_snapshot(run_id=run.id, scope_key=run.scope, site=services.settings.site, program=services.settings.program, mode=run.mode,
                            cutoff=run.cutoff, created_at=run.capture_end or run.cutoff, datasets=datasets, dataset_status=statuses,
                            dataset_ids={d.name: d.dataset_id for d in run.datasets}, dataset_lineage=lineage, manifest_hash=manifest_sha,
-                           tzp=tzp, policy=policy)
+                           tzp=tzp, policy=policy, dataset_queries={d.name: d.query_sha for d in run.datasets})
     snap = build.snapshot
     if repos.get_raw(SNAPSHOTS, snap.id) is None:
         repos.put_record(SNAPSHOTS, "PlanningSnapshot", snap.id, snap, source_run_id=run.id, policy_hash=policy.hash)
+    for stat in build.statistics:
+        if repos.get_raw("statistics", stat.id) is None:
+            repos.put_record("statistics", "DurationStatistics", stat.id, stat, source_run_id=run.id, policy_hash=policy.hash)
     return snap
 
 

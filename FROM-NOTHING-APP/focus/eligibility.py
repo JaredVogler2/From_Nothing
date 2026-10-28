@@ -11,8 +11,9 @@ allows. Percent-held and SUBST labels grant nothing.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Mapping
+from typing import Callable, Iterable, Mapping, Sequence
 
+from .codec import content_hash, to_jsonable
 from .contracts.planning import JobRequirement
 from .domain import EvidenceRef, Holding, RequirementBundle, RequirementStatus, RuleDecision, minute_floor
 
@@ -113,12 +114,25 @@ class HoldingIndex:
 
 
 class Eligibility:
-    """``Eligibility.check(person, role, job, interval, snapshot) -> RuleDecision`` (S03 SERVICES)."""
+    """``Eligibility.check(person, role, job, interval, snapshot) -> RuleDecision`` (S03 SERVICES).
 
-    def __init__(self, holdings: Iterable[Holding], requirements: Mapping[str, JobRequirement]):
-        self.index = HoldingIndex(holdings)
+    Every cached decision is keyed by :attr:`fingerprint` (holdings and requirement content plus
+    the source run and policy hash), the bundle content and the exact interval. A new source
+    qualification or assignment revision, or a new policy, gives a new fingerprint, so no
+    decision cached under an older revision is ever reused.
+    """
+
+    def __init__(self, holdings: Iterable[Holding], requirements: Mapping[str, JobRequirement], *,
+                 source_run_id: str = "", policy_hash: str = ""):
+        held = tuple(holdings)
+        self.index = HoldingIndex(held)
         self.requirements = dict(requirements)
-        self._cache: dict[tuple[str, str, int, int, int], RuleDecision] = {}
+        self.fingerprint = content_hash({
+            "source_run": source_run_id, "policy": policy_hash,
+            "holdings": sorted(content_hash(to_jsonable(h)) for h in held),
+            "requirements": sorted(content_hash(to_jsonable(r)) for r in self.requirements.values()),
+        })
+        self._cache: dict[tuple[str, str, str, tuple, int, int], RuleDecision] = {}
 
     def requirement_status(self, job: str) -> RequirementStatus:
         req = self.requirements.get(job)
@@ -133,9 +147,100 @@ class Eligibility:
         effective = bundle if bundle is not None else req.bundle
         if effective is None or not effective.groups:
             return RuleDecision.allow("NO_GROUPS", "role bundle has no certificate groups")
-        key = (person, job, start, end, id(effective))
+        key = (self.fingerprint, person, job, effective.groups, start, end)
         cached = self._cache.get(key)
         if cached is None:
             cached = self.index.check_bundle(person, effective, start, end)
             self._cache[key] = cached
         return cached
+
+    def scarcity(self, person: str, job: str, start: int, end: int) -> int:
+        """Usable applicable certificates over the interval: raw, expired or irrelevant extras never count."""
+        req = self.requirements.get(job)
+        if req is None or req.bundle is None:
+            return 0
+        return len(self.index.usable_certs(person, start, end, req.bundle.all_codes))
+
+
+# ---------------------------------------------------------------------------- role matching
+
+@dataclass(frozen=True, slots=True)
+class RoleSlot:
+    """One demanded seat: every slot needs its own distinct, individually qualified person."""
+
+    slot_id: str
+    role: str
+    bundle: RequirementBundle | None
+
+
+@dataclass(frozen=True, slots=True)
+class CrewMatch:
+    status: str                                  # MATCHED | INFEASIBLE | UNKNOWN
+    assignment: tuple[tuple[str, str], ...]      # (slot_id, person) in slot order
+    reason: str
+    nodes: int
+    candidates: tuple[tuple[str, int], ...] = ()  # (slot_id, eligible candidate count)
+
+    @property
+    def people(self) -> tuple[str, ...]:
+        return tuple(p for _, p in self.assignment)
+
+
+def match_crew(slots: Sequence[RoleSlot], people: Iterable[str], qualifies: Callable[[str, RoleSlot], RuleDecision], *,
+               preference: Callable[[str], tuple] | None = None, feasible: Callable[[tuple[str, ...]], bool] | None = None,
+               max_nodes: int = 20_000) -> CrewMatch:
+    """Deterministic bounded role-slot matching (S07 ROLE MATCHING BLUEPRINT).
+
+    1. Eligible candidates per slot come from ``qualifies``; each person meets the slot's full
+       bundle alone, and certificates are never pooled across people.
+    2. Slots are ordered most constrained first (fewest candidates, then slot id).
+    3. Depth-first search with distinct used people. Candidates are tried in ``preference``
+       order (then person id); ``feasible`` can veto a complete crew (activation or duty).
+    4. A search that exceeds ``max_nodes`` returns UNKNOWN instead of relaxing roles.
+    """
+    pool = sorted(set(people))
+    rank = preference or (lambda person: ())
+    eligible: dict[str, list[str]] = {}
+    for slot in slots:
+        ok = [p for p in pool if qualifies(p, slot).allowed]
+        eligible[slot.slot_id] = sorted(ok, key=lambda p: (rank(p), p))
+    counts = tuple((slot.slot_id, len(eligible[slot.slot_id])) for slot in slots)
+    for slot in slots:
+        if not eligible[slot.slot_id]:
+            return CrewMatch("INFEASIBLE", (), f"SLOT_NO_ELIGIBLE_PERSON: {slot.slot_id} ({slot.role})", 0, counts)
+    if len({p for ps in eligible.values() for p in ps}) < len(slots):
+        return CrewMatch("INFEASIBLE", (), f"CREW_CARDINALITY: {len(slots)} distinct people needed", 0, counts)
+    order = sorted(slots, key=lambda s: (len(eligible[s.slot_id]), s.slot_id))
+    chosen: list[str] = []
+    used: set[str] = set()
+    nodes = 0
+    exhausted = False
+
+    def search(depth: int) -> bool:
+        nonlocal nodes, exhausted
+        if depth == len(order):
+            return feasible is None or feasible(tuple(chosen))
+        for person in eligible[order[depth].slot_id]:
+            if person in used:
+                continue
+            nodes += 1
+            if nodes > max_nodes:
+                exhausted = True
+                return False
+            used.add(person)
+            chosen.append(person)
+            if search(depth + 1):
+                return True
+            chosen.pop()
+            used.discard(person)
+            if exhausted:
+                return False
+        return False
+
+    if search(0):
+        by_slot = dict(zip((s.slot_id for s in order), chosen))
+        return CrewMatch("MATCHED", tuple((s.slot_id, by_slot[s.slot_id]) for s in slots), "every slot has a distinct qualified person",
+                         nodes, counts)
+    if exhausted:
+        return CrewMatch("UNKNOWN", (), f"SEARCH_BOUND: more than {max_nodes} nodes; no crew asserted", nodes, counts)
+    return CrewMatch("INFEASIBLE", (), "NO_DISTINCT_FEASIBLE_CREW", nodes, counts)
