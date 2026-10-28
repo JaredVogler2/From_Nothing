@@ -1,0 +1,9 @@
+{
+  "command": "scenario",
+  "error": {
+    "code": "JOB_NOT_FOUND",
+    "message": "no job J-not-a-job in the admitted snapshot"
+  },
+  "schema_version": 1,
+  "status": "invalid"
+}

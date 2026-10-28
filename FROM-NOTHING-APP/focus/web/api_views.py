@@ -440,3 +440,41 @@ def list_scenarios(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
 )
 def get_scenario(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     return _read(lambda services: S.scenarios_view(services, ctx, args["scenario_id"]))
+
+
+# ---------------------------------------------------------------------- digital twin (S16, P21)
+
+LINE = {"type": "integer", "minimum": 1, "maximum": 999999, "description": "Aircraft line number."}
+
+
+@REGISTRY.operation(
+    "get_twin", "GET", "/api/v1/twin",
+    summary="Digital twin: observed, planned, forecast and unknown layers with exact team/shift/line reconciliation",
+    description="Cells keyed by source run, accepted plans, policy and evaluation revision plus team, shift start date, shift number and "
+                "line. Observed effort is the stored canonical evaluation evidence; planned is the accepted EXECUTABLE plan; forecast is the "
+                "accepted FORECAST plan (conditional); unknown is what no layer can state. Every layer reconciles exactly by team, shift, "
+                "line and in total, and the reconciliation checks are returned. Drill down with team, date, shift and line.",
+    grants=ALL_READERS, read_only=True, query=_query(team=TEAM, date=DAY, shift=SHIFT_NUMBER, line=LINE), tags=("plan",),
+    mcp_resource="focus://twin",
+)
+def get_twin(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    team = args.get("team")
+    if team is not None:
+        S.require_team(ctx, team)                                               # scope before fetch
+    day = S.parse_day(args.get("date"))
+    shift = int(args["shift"]) if "shift" in args else None
+    line = int(args["line"]) if "line" in args else None
+    return _read(lambda services: S.twin_view(_canon(services), ctx, team=team, day=day, shift=shift, line=line))
+
+
+@REGISTRY.operation(
+    "get_explanation", "GET", "/api/v1/explanations/{explanation_id}",
+    summary="One stored explanation: validated provider text or the deterministic fallback, with grounded claims and audit hashes",
+    description="Items follow the deterministic rank. The outcome is DETERMINISTIC (no provider), VALIDATED (every claim and the "
+                "narrative grounded) or FALLBACK (with the codes that rejected the provider output). Audit hashes cover the request, "
+                "prompt, raw response, recorded input, output and facts; no raw prompt, response or secret is stored.",
+    grants=ALL_READERS, read_only=True, path_params={"explanation_id": {"type": "string", "pattern": ID_PATTERN}}, tags=("operate",),
+    mcp_resource="focus://explanations/{explanation_id}",
+)
+def get_explanation(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    return _read(lambda services: S.explanation_view(services, ctx, args["explanation_id"]))

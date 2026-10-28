@@ -1,0 +1,778 @@
+{
+  "collections": [
+    {
+      "as_of": "2026-10-26T19:30:00Z",
+      "evaluations": [
+        {
+          "B": "240",
+          "B0": "240",
+          "Cp": "240",
+          "D": "240",
+          "E": "0",
+          "O": "0",
+          "U": "420",
+          "adherence": "4/11",
+          "attainment": "1",
+          "base": "890/11",
+          "cutoff": "2026-10-26T19:30:00+00:00",
+          "evaluation_id": "EVL2cde0265a434818d5628",
+          "evidence_hash": "d7a7e68e1ce219aea80466cffb9ad1525d9db46d3f0d3affc04ad921168edb6b",
+          "final": "890/11",
+          "goal_ids": [
+            "GOAL503685395d2682331c09"
+          ],
+          "grade": "B",
+          "kind": "GOAL",
+          "label": "PROD-A DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [],
+          "revision": 1,
+          "score": "80.9",
+          "status": "demonstration",
+          "supersedes": null
+        },
+        {
+          "B": "512",
+          "B0": "408",
+          "Cp": "344",
+          "D": "512",
+          "E": "0",
+          "O": "8",
+          "U": "0",
+          "adherence": "1",
+          "attainment": "43/64",
+          "base": "2465/32",
+          "cutoff": "2026-10-26T19:30:00+00:00",
+          "evaluation_id": "EVLb5787a8a9c3d632f1aa2",
+          "evidence_hash": "78eb72191a48b7c7099bbca071a9cedaf953d2398a84c92e6900c6a070c7fad4",
+          "final": "2415/32",
+          "goal_ids": [
+            "GOAL970800c05e330df3d024"
+          ],
+          "grade": "C",
+          "kind": "GOAL",
+          "label": "PROD-B DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [
+            "CLAIMS_PENDING_REVIEW: 5"
+          ],
+          "revision": 1,
+          "score": "75.5",
+          "status": "demonstration",
+          "supersedes": null
+        },
+        {
+          "B": "200",
+          "B0": "200",
+          "Cp": "45",
+          "D": "200",
+          "E": "0",
+          "O": "0",
+          "U": "0",
+          "adherence": "1",
+          "attainment": "9/40",
+          "base": "183/4",
+          "cutoff": "2026-10-26T19:30:00+00:00",
+          "evaluation_id": "EVL98c2b6bf80127635cac3",
+          "evidence_hash": "aad3edb392cc9b0de28d5395018e6a3f336c7753cc242d8ed5bac4c39febca13",
+          "final": "183/4",
+          "goal_ids": [
+            "GOAL4e590fd9f2e4765bcc9d"
+          ],
+          "grade": "F",
+          "kind": "GOAL",
+          "label": "QA DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [
+            "CLAIMS_PENDING_REVIEW: 2"
+          ],
+          "revision": 1,
+          "score": "45.8",
+          "status": "demonstration",
+          "supersedes": null
+        }
+      ],
+      "factory": [
+        {
+          "B": "952",
+          "B0": "848",
+          "Cp": "629",
+          "D": "952",
+          "E": "0",
+          "O": "8",
+          "U": "420",
+          "adherence": "629/1049",
+          "attainment": "37/56",
+          "base": "269545/4196",
+          "cutoff": "2026-10-26T19:30:00+00:00",
+          "evaluation_id": "EVLedf5f5625fe8953a82db",
+          "evidence_hash": "69e9b810ee580509874861d85ea1ee84c02c52a6167cfff6770f45c37481ab95",
+          "final": "31656255/499324",
+          "goal_ids": [
+            "GOAL4e590fd9f2e4765bcc9d",
+            "GOAL503685395d2682331c09",
+            "GOAL970800c05e330df3d024"
+          ],
+          "grade": "D",
+          "kind": "AGGREGATE",
+          "label": "FACTORY DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [],
+          "revision": 1,
+          "score": "63.4",
+          "status": "demonstration",
+          "supersedes": null
+        }
+      ],
+      "observation": {
+        "as_of": "2026-10-26T19:30:00+00:00",
+        "feeds": [
+          {
+            "admitted": 21,
+            "complete": true,
+            "covered_through": "2026-10-26T19:30:00+00:00",
+            "duplicates": 1,
+            "feed": "lifecycle_events",
+            "quarantined": 4,
+            "reason": "",
+            "rows": 26,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 9,
+            "complete": true,
+            "covered_through": "2026-10-26T19:30:00+00:00",
+            "duplicates": 0,
+            "feed": "actual_intervals",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 9,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 1,
+            "complete": true,
+            "covered_through": "2026-10-26T19:30:00+00:00",
+            "duplicates": 0,
+            "feed": "defect_evidence",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 1,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 1,
+            "complete": true,
+            "covered_through": "2026-10-26T19:30:00+00:00",
+            "duplicates": 0,
+            "feed": "goal_amendments",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 1,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 4,
+            "complete": true,
+            "covered_through": "2026-10-26T19:30:00+00:00",
+            "duplicates": 0,
+            "feed": "disruption_claims",
+            "quarantined": 2,
+            "reason": "",
+            "rows": 6,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-26T19:30:00+00:00",
+            "duplicates": 0,
+            "feed": "excusal_decisions",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 0,
+            "status": "CERTIFIED_EMPTY"
+          }
+        ],
+        "graph_snapshot_id": "SNAP9d9613757445a05358ad994a",
+        "mode": "fixture",
+        "observation_run_id": "OBS34c418ca8ec229b20119",
+        "quarantine": [
+          {
+            "code": "NOTES_REQUIRED",
+            "detail": "DURATION_OVERRUN claims need substantive notes for review",
+            "feed": "disruption_claims",
+            "key": "CLM-B-04"
+          },
+          {
+            "code": "ORIGIN_TEAM_UNEVIDENCED",
+            "detail": "a rework origin team must come from explicit defect-origin evidence cited by the claim",
+            "feed": "disruption_claims",
+            "key": "CLM-B-05"
+          },
+          {
+            "code": "REVISION_CONTENT_CONFLICT",
+            "detail": "EVT98a68a252f3bf3a32383 was first ingested with different content; the first ingestion stands",
+            "feed": "lifecycle_events",
+            "key": "EV-A1-DONE"
+          },
+          {
+            "code": "DERIVED_ONLY",
+            "detail": "disappearance is derived from the census, never accepted from a feed",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-DISAPPEARED"
+          },
+          {
+            "code": "BAD_EVENT_KIND",
+            "detail": "unknown lifecycle kind 'FINISHED'",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-KIND"
+          },
+          {
+            "code": "REPORTED_NOT_VERIFIED",
+            "detail": "a reported observation is a claim, not verified completion",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-VERIFIED-REPORT"
+          }
+        ],
+        "records": {
+          "actual_intervals": 9,
+          "defect_evidence": 1,
+          "disruption_claims": 11,
+          "goal_amendments": 1,
+          "lifecycle_events": 21,
+          "sequence_violations": 3
+        }
+      }
+    },
+    {
+      "as_of": "2026-10-27T16:00:00Z",
+      "evaluations": [
+        {
+          "B": "240",
+          "B0": "240",
+          "Cp": "240",
+          "D": "240",
+          "E": "0",
+          "O": "0",
+          "U": "420",
+          "adherence": "4/11",
+          "attainment": "1",
+          "base": "890/11",
+          "cutoff": "2026-10-26T19:30:00+00:00",
+          "evaluation_id": "EVL2cde0265a434818d5628",
+          "evidence_hash": "d7a7e68e1ce219aea80466cffb9ad1525d9db46d3f0d3affc04ad921168edb6b",
+          "final": "890/11",
+          "goal_ids": [
+            "GOAL503685395d2682331c09"
+          ],
+          "grade": "B",
+          "kind": "GOAL",
+          "label": "PROD-A DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [],
+          "revision": 1,
+          "score": "80.9",
+          "status": "demonstration",
+          "supersedes": null
+        },
+        {
+          "B": "512",
+          "B0": "408",
+          "Cp": "344",
+          "D": "344",
+          "E": "168",
+          "O": "8",
+          "U": "0",
+          "adherence": "1",
+          "attainment": "1",
+          "base": "100",
+          "cutoff": "2026-10-27T16:00:00+00:00",
+          "evaluation_id": "EVL5664669f06ef9b6eb681",
+          "evidence_hash": "b34ea45e4afa2c08be5273befad2f015f1076a1667bd2fedace73a66db01ec49",
+          "final": "4200/43",
+          "goal_ids": [
+            "GOAL970800c05e330df3d024"
+          ],
+          "grade": "A",
+          "kind": "GOAL",
+          "label": "PROD-B DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [
+            "CLAIMS_PENDING_REVIEW: 1"
+          ],
+          "revision": 2,
+          "score": "97.7",
+          "status": "demonstration",
+          "supersedes": "EVLb5787a8a9c3d632f1aa2"
+        },
+        {
+          "B": "200",
+          "B0": "200",
+          "Cp": "90",
+          "D": "200",
+          "E": "0",
+          "O": "0",
+          "U": "0",
+          "adherence": "1",
+          "attainment": "9/20",
+          "base": "123/2",
+          "cutoff": "2026-10-27T16:00:00+00:00",
+          "evaluation_id": "EVLc1e594a7bf9c33f473b7",
+          "evidence_hash": "ba16f24a35b53f094d6d57d3daccb460bed73c85f06fddf9fb97c18d0ea6f8e9",
+          "final": "123/2",
+          "goal_ids": [
+            "GOAL4e590fd9f2e4765bcc9d"
+          ],
+          "grade": "D",
+          "kind": "GOAL",
+          "label": "QA DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [
+            "CLAIMS_PENDING_REVIEW: 2"
+          ],
+          "revision": 2,
+          "score": "61.5",
+          "status": "demonstration",
+          "supersedes": "EVL98c2b6bf80127635cac3"
+        }
+      ],
+      "factory": [
+        {
+          "B": "952",
+          "B0": "848",
+          "Cp": "674",
+          "D": "784",
+          "E": "168",
+          "O": "8",
+          "U": "420",
+          "adherence": "337/547",
+          "attainment": "337/392",
+          "base": "1204775/15316",
+          "cutoff": "2026-10-27T16:00:00+00:00",
+          "evaluation_id": "EVLafae1cc74d2456ee7185",
+          "evidence_hash": "474f99659446076fc88583587438719a87c1a9e524cb8afbcbc3a3446f3fc4e8",
+          "final": "8324025/107212",
+          "goal_ids": [
+            "GOAL4e590fd9f2e4765bcc9d",
+            "GOAL503685395d2682331c09",
+            "GOAL970800c05e330df3d024"
+          ],
+          "grade": "C",
+          "kind": "AGGREGATE",
+          "label": "FACTORY DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [],
+          "revision": 2,
+          "score": "77.6",
+          "status": "demonstration",
+          "supersedes": "EVLedf5f5625fe8953a82db"
+        }
+      ],
+      "observation": {
+        "as_of": "2026-10-27T16:00:00+00:00",
+        "feeds": [
+          {
+            "admitted": 1,
+            "complete": true,
+            "covered_through": "2026-10-27T16:00:00+00:00",
+            "duplicates": 22,
+            "feed": "lifecycle_events",
+            "quarantined": 4,
+            "reason": "",
+            "rows": 27,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-27T16:00:00+00:00",
+            "duplicates": 9,
+            "feed": "actual_intervals",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 9,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-27T16:00:00+00:00",
+            "duplicates": 1,
+            "feed": "defect_evidence",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 1,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-27T16:00:00+00:00",
+            "duplicates": 1,
+            "feed": "goal_amendments",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 1,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-27T16:00:00+00:00",
+            "duplicates": 4,
+            "feed": "disruption_claims",
+            "quarantined": 2,
+            "reason": "",
+            "rows": 6,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 3,
+            "complete": true,
+            "covered_through": "2026-10-27T16:00:00+00:00",
+            "duplicates": 0,
+            "feed": "excusal_decisions",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 3,
+            "status": "ROWS"
+          }
+        ],
+        "graph_snapshot_id": "SNAP9d9613757445a05358ad994a",
+        "mode": "fixture",
+        "observation_run_id": "OBS211d06544d6c15c306c8",
+        "quarantine": [
+          {
+            "code": "NOTES_REQUIRED",
+            "detail": "DURATION_OVERRUN claims need substantive notes for review",
+            "feed": "disruption_claims",
+            "key": "CLM-B-04"
+          },
+          {
+            "code": "ORIGIN_TEAM_UNEVIDENCED",
+            "detail": "a rework origin team must come from explicit defect-origin evidence cited by the claim",
+            "feed": "disruption_claims",
+            "key": "CLM-B-05"
+          },
+          {
+            "code": "REVISION_CONTENT_CONFLICT",
+            "detail": "EVT98a68a252f3bf3a32383 was first ingested with different content; the first ingestion stands",
+            "feed": "lifecycle_events",
+            "key": "EV-A1-DONE"
+          },
+          {
+            "code": "DERIVED_ONLY",
+            "detail": "disappearance is derived from the census, never accepted from a feed",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-DISAPPEARED"
+          },
+          {
+            "code": "BAD_EVENT_KIND",
+            "detail": "unknown lifecycle kind 'FINISHED'",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-KIND"
+          },
+          {
+            "code": "REPORTED_NOT_VERIFIED",
+            "detail": "a reported observation is a claim, not verified completion",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-VERIFIED-REPORT"
+          }
+        ],
+        "records": {
+          "actual_intervals": 9,
+          "defect_evidence": 1,
+          "disruption_claims": 5,
+          "excusal_decisions": 3,
+          "goal_amendments": 1,
+          "lifecycle_events": 22,
+          "sequence_violations": 3
+        }
+      }
+    },
+    {
+      "as_of": "2026-10-28T16:00:00Z",
+      "evaluations": [
+        {
+          "B": "240",
+          "B0": "240",
+          "Cp": "240",
+          "D": "240",
+          "E": "0",
+          "O": "0",
+          "U": "420",
+          "adherence": "4/11",
+          "attainment": "1",
+          "base": "890/11",
+          "cutoff": "2026-10-26T19:30:00+00:00",
+          "evaluation_id": "EVL2cde0265a434818d5628",
+          "evidence_hash": "d7a7e68e1ce219aea80466cffb9ad1525d9db46d3f0d3affc04ad921168edb6b",
+          "final": "890/11",
+          "goal_ids": [
+            "GOAL503685395d2682331c09"
+          ],
+          "grade": "B",
+          "kind": "GOAL",
+          "label": "PROD-A DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [],
+          "revision": 1,
+          "score": "80.9",
+          "status": "demonstration",
+          "supersedes": null
+        },
+        {
+          "B": "512",
+          "B0": "408",
+          "Cp": "344",
+          "D": "344",
+          "E": "168",
+          "O": "8",
+          "U": "0",
+          "adherence": "1",
+          "attainment": "1",
+          "base": "100",
+          "cutoff": "2026-10-27T16:00:00+00:00",
+          "evaluation_id": "EVL5664669f06ef9b6eb681",
+          "evidence_hash": "b34ea45e4afa2c08be5273befad2f015f1076a1667bd2fedace73a66db01ec49",
+          "final": "4200/43",
+          "goal_ids": [
+            "GOAL970800c05e330df3d024"
+          ],
+          "grade": "A",
+          "kind": "GOAL",
+          "label": "PROD-B DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [
+            "CLAIMS_PENDING_REVIEW: 1"
+          ],
+          "revision": 2,
+          "score": "97.7",
+          "status": "demonstration",
+          "supersedes": "EVLb5787a8a9c3d632f1aa2"
+        },
+        {
+          "B": "200",
+          "B0": "200",
+          "Cp": "90",
+          "D": "200",
+          "E": "0",
+          "O": "0",
+          "U": "0",
+          "adherence": "1",
+          "attainment": "9/20",
+          "base": "123/2",
+          "cutoff": "2026-10-27T16:00:00+00:00",
+          "evaluation_id": "EVLc1e594a7bf9c33f473b7",
+          "evidence_hash": "ba16f24a35b53f094d6d57d3daccb460bed73c85f06fddf9fb97c18d0ea6f8e9",
+          "final": "123/2",
+          "goal_ids": [
+            "GOAL4e590fd9f2e4765bcc9d"
+          ],
+          "grade": "D",
+          "kind": "GOAL",
+          "label": "QA DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [
+            "CLAIMS_PENDING_REVIEW: 2"
+          ],
+          "revision": 2,
+          "score": "61.5",
+          "status": "demonstration",
+          "supersedes": "EVL98c2b6bf80127635cac3"
+        }
+      ],
+      "factory": [
+        {
+          "B": "952",
+          "B0": "848",
+          "Cp": "674",
+          "D": "784",
+          "E": "168",
+          "O": "8",
+          "U": "420",
+          "adherence": "337/547",
+          "attainment": "337/392",
+          "base": "1204775/15316",
+          "cutoff": "2026-10-27T16:00:00+00:00",
+          "evaluation_id": "EVLafae1cc74d2456ee7185",
+          "evidence_hash": "474f99659446076fc88583587438719a87c1a9e524cb8afbcbc3a3446f3fc4e8",
+          "final": "8324025/107212",
+          "goal_ids": [
+            "GOAL4e590fd9f2e4765bcc9d",
+            "GOAL503685395d2682331c09",
+            "GOAL970800c05e330df3d024"
+          ],
+          "grade": "C",
+          "kind": "AGGREGATE",
+          "label": "FACTORY DEMO:2026-10-26:S1",
+          "policy_id": "rebuild-v1",
+          "policy_status": "DEMONSTRATION",
+          "reasons": [],
+          "revision": 2,
+          "score": "77.6",
+          "status": "demonstration",
+          "supersedes": "EVLedf5f5625fe8953a82db"
+        }
+      ],
+      "observation": {
+        "as_of": "2026-10-28T16:00:00+00:00",
+        "feeds": [
+          {
+            "admitted": 1,
+            "complete": true,
+            "covered_through": "2026-10-28T16:00:00+00:00",
+            "duplicates": 23,
+            "feed": "lifecycle_events",
+            "quarantined": 4,
+            "reason": "",
+            "rows": 28,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-28T16:00:00+00:00",
+            "duplicates": 9,
+            "feed": "actual_intervals",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 9,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-28T16:00:00+00:00",
+            "duplicates": 1,
+            "feed": "defect_evidence",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 1,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-28T16:00:00+00:00",
+            "duplicates": 1,
+            "feed": "goal_amendments",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 1,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 0,
+            "complete": true,
+            "covered_through": "2026-10-28T16:00:00+00:00",
+            "duplicates": 4,
+            "feed": "disruption_claims",
+            "quarantined": 2,
+            "reason": "",
+            "rows": 6,
+            "status": "ROWS"
+          },
+          {
+            "admitted": 1,
+            "complete": true,
+            "covered_through": "2026-10-28T16:00:00+00:00",
+            "duplicates": 3,
+            "feed": "excusal_decisions",
+            "quarantined": 0,
+            "reason": "",
+            "rows": 4,
+            "status": "ROWS"
+          }
+        ],
+        "graph_snapshot_id": "SNAP9d9613757445a05358ad994a",
+        "mode": "fixture",
+        "observation_run_id": "OBS2c50a376753716a94ea0",
+        "quarantine": [
+          {
+            "code": "NOTES_REQUIRED",
+            "detail": "DURATION_OVERRUN claims need substantive notes for review",
+            "feed": "disruption_claims",
+            "key": "CLM-B-04"
+          },
+          {
+            "code": "ORIGIN_TEAM_UNEVIDENCED",
+            "detail": "a rework origin team must come from explicit defect-origin evidence cited by the claim",
+            "feed": "disruption_claims",
+            "key": "CLM-B-05"
+          },
+          {
+            "code": "REVISION_CONTENT_CONFLICT",
+            "detail": "EVT98a68a252f3bf3a32383 was first ingested with different content; the first ingestion stands",
+            "feed": "lifecycle_events",
+            "key": "EV-A1-DONE"
+          },
+          {
+            "code": "DERIVED_ONLY",
+            "detail": "disappearance is derived from the census, never accepted from a feed",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-DISAPPEARED"
+          },
+          {
+            "code": "BAD_EVENT_KIND",
+            "detail": "unknown lifecycle kind 'FINISHED'",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-KIND"
+          },
+          {
+            "code": "REPORTED_NOT_VERIFIED",
+            "detail": "a reported observation is a claim, not verified completion",
+            "feed": "lifecycle_events",
+            "key": "EV-BAD-VERIFIED-REPORT"
+          }
+        ],
+        "records": {
+          "actual_intervals": 9,
+          "defect_evidence": 1,
+          "disruption_claims": 4,
+          "excusal_decisions": 4,
+          "goal_amendments": 1,
+          "lifecycle_events": 23,
+          "sequence_violations": 3
+        }
+      }
+    }
+  ],
+  "command": "demo-run",
+  "note": "fixture demonstration: invented data, TEST signing key, demonstration score policy",
+  "plans": {
+    "EXECUTABLE": {
+      "candidate_id": "CAND757abd8248c70a759108",
+      "plan_id": "PLAN5692a4fd262d770216d9",
+      "reasons": [],
+      "status": "ACCEPTED"
+    },
+    "FORECAST": {
+      "candidate_id": "CAND746a9f14cdc8b9ce6f7f",
+      "plan_id": "PLAN3b0c9499b0580ad84e32",
+      "reasons": [],
+      "status": "ACCEPTED"
+    }
+  },
+  "recognition": {
+    "appended": 14,
+    "badges": 3
+  },
+  "scenario": "manufacturing_demo",
+  "schema_version": 1,
+  "snapshot_id": "SNAP9d9613757445a05358ad994a",
+  "source_run_id": "SR-2da84888d7184741be4e",
+  "status": "ok"
+}

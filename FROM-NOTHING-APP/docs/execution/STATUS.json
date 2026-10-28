@@ -1326,17 +1326,72 @@
       ],
       "live_verified": false,
       "remaining_gaps": [
-        "Digital twin, explanations and POST /explanations arrive in P21 (the twin panel shows its explicit unknown state)",
-        "only queued runs can be cancelled; a running scenario is bounded by its budget",
+        "resolved in P21: Digital twin, explanations and POST /explanations arrive in P21 (the twin panel shows its explicit unknown state)",
+        "resolved in P21: only queued runs can be cancelled; a running scenario is bounded by its budget",
         "SQL store adapter for API/worker reads (P23); live identity, grants and a separate worker process not exercised"
       ],
       "status": "fixture_verified",
       "title": "Complete operational dashboards and audited workflows"
     },
     "21": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A64",
+          "result": "pass (exactly 10 distinct SYNTHETIC_VIRTUAL FORECAST_ONLY people per MHE/PSC/TST pool and shift holding exactly the team's union of REQUIRED certs; forecast assignments labeled SUPPORT_RESOURCE_UNAVAILABLE; the FORECAST candidate relabeled EXECUTABLE fails V5 SYNTHETIC_IN_EXECUTABLE; crew admission ignores spoofed mock_data/purpose/synthetic claims; scenario mock_data -> 422; scenario candidate PURPOSE_NOT_PUBLISHABLE)"
+        },
+        {
+          "case": "A65",
+          "result": "pass (team/line/shift drilldowns sum to the same totals with the same revisions; planned = frozen B0 from the signed artifact, observed = stored evaluations, duty = ledger, census partitioned per layer; +1 virtual, queued cancel, running cancel (durable request, cooperative stop), TIMED_OUT and retry leave heads/goals/plans/commitments/actuals/evaluations/recognition byte-identical and the twin identical; an evaluation correction appends revision r+1)"
+        },
+        {
+          "case": "A66",
+          "result": "pass (mock and recorded explanations with actual ASG/J ids and native SOI labels validate; recordings replay only for their request hash and are re-validated (tampered -> rejected); 18 forgeries incl. candidate/numeric/money/entity/unit/metric/evidence/narrative each return the complete deterministic explanation in the unchanged rank; tolerance only by explicit policy, never for money)"
+        },
+        {
+          "case": "A67",
+          "result": "pass (injected source text is a sanitized data token inside DATA only; an obedient provider that flips a blocked action or adds tool_calls is rejected; NaN/Infinity/1e999/floats/bools/duplicate keys/extra fields/oversize/non-JSON fall back; timeouts bounded to retries+1 attempts; missing/non-TLS/unsupported/missing-credential BCAI falls back; the secret travels only in the Authorization header; the worker writes only its record and the ranking is unchanged; no person id reaches a provider)"
+        }
+      ],
+      "changed_paths": [
+        "focus/analytics/twin.py",
+        "focus/analytics/scenarios.py",
+        "focus/explanations/provider.py",
+        "focus/explanations/pipeline.py",
+        "focus/explanations/validators.py",
+        "focus/publication/dispatch.py",
+        "focus/publication/serializer.py",
+        "focus/publication/signing.py",
+        "focus/data/acquisition.py",
+        "focus/engine/max/optimizer/orchestrator.py",
+        "focus/workers.py",
+        "focus/pipeline.py",
+        "focus/cli.py",
+        "focus/web/api.py",
+        "focus/web/api_views.py",
+        "focus/web/serializers.py",
+        "focus/web/static/js/views/twin.js",
+        "focus/web/static/js/views/operate.js",
+        "focus/web/static/js/workspace.js",
+        "focus/web/static/css/focus.css",
+        "config/policies/rebuild-v1.json",
+        "docs/execution/DECISIONS.md",
+        "docs/execution/DEPLOYMENT.md",
+        "docs/execution/UI_COVERAGE.md",
+        "tests/integration/test_twin_scenarios.py",
+        "tests/unit/test_explanations.py",
+        "tests/integration/test_api_scope.py",
+        "tests/ui/check_workflows.py",
+        "tests/ui/test_workflows.py",
+        "evidence/21/"
+      ],
+      "commands": [
+        "python -m pytest tests -q (409 passed in 9:32)",
+        "python -m pytest tests/integration/test_twin_scenarios.py tests/unit/test_explanations.py tests/integration/test_api_scope.py tests/integration/test_views_api.py -q (73 passed, after the final fixes)",
+        "python -m pytest tests/ui -q (14 passed; Chromium 153)",
+        "python tests/ui/check_workflows.py --out evidence/21/screenshots --shot-views twin,team-lead (220 view checks, 0 failures; 5/5 workflows)",
+        "python -m focus.cli explain --plan <id> --team PROD-B --shift-id DEMO:2026-10-26:S1 --provider none|mock|recorded (DETERMINISTIC / VALIDATED / VALIDATED replay)",
+        "python -m focus.cli scenario --source-run <id> --changes '[{\"type\":\"travel_minutes\",\"changed_aircraft_minutes\":60}]' (status ok, scenario COMPLETED, valid)"
+      ],
       "depends_on": [
         "16",
         "18",
@@ -1345,11 +1400,24 @@
       "evidence": [
         "evidence/21/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "analytics.twin.build_twin + GET /api/v1/twin (team/date/shift/line drilldowns; reconciliation checks returned)",
+        "publication.serializer.earning_phase (one rule for frozen B0 units and twin planned effort)",
+        "publication.dispatch.ranked_actions (one ranking for Team Lead and explanations)",
+        "analytics.scenarios: travel_minutes and task_priority changes; run_scenario(cancelled=..., timer=...); snapshot_for_run(store=False)",
+        "workers.RunCancelled / request_cancel / cancel_requested / WorkerService.execute; POST /runs/{id}/cancel for running runs",
+        "explanations.provider (ExplainRequest/ExplainResponse, Mock/Recorded/BCAI providers, provider_for), explanations.validators (parse_response, validate), explanations.pipeline (candidate_set, explain, worker_explanation, cli_explain)",
+        "POST /api/v1/explanations (202 worker run) and GET /api/v1/explanations/{id}; python -m focus.cli explain"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "OD-18: no approved BCAI endpoint, credential or response adapter; live explanations stay deterministic (FOCUS_LLM_PROVIDER=none)",
+        "tool what-ifs: tool capacity is a sourced fact (tools.reservation_policy NONE_UNLESS_SOURCED) with no tool source yet",
+        "recordings are per runtime: source run ids are unique, so no cross-runtime recorded fixture is committed",
+        "SQL store adapter for twin/explanation reads (P23); live identity and a separate worker process not exercised"
+      ],
+      "status": "fixture_verified",
       "title": "Digital twin, isolated scenarios and grounded explanations"
     },
     "22": {

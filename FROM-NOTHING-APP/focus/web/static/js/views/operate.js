@@ -1,6 +1,6 @@
 // Operate views: Team Lead, Mechanic, My Day, Shift Book, Worker Gantt and Turnover (S15 views 1, 3, 11, 15, 16 + turnover panel).
 // Every fact is a canonical API projection; actions are commands that return worker runs (never a browser assignment).
-import { dispositionPill, fmtDateTime, fmtMinutes, fmtTime, h, metric, pill, stateCard, table } from "../core.js";
+import { api, dispositionPill, fmtDateTime, fmtMinutes, fmtTime, h, metric, mount, pill, stateCard, table } from "../core.js";
 import { card, crewList, csvButton, dateControl, defaultDate, defaultTeam, frame, hashParams, legend, query, reasonList, selectControl,
   setHashParams, submitCommand, teamOptions, timeline, toolbar } from "./common.js";
 import { register } from "./registry.js";
@@ -47,6 +47,7 @@ async function renderTeamLead(host, context) {
     { key: "reasons", label: "Reasons", render: (r) => reasonList(r.reasons) },
     { key: "commitment_outcome", label: "Commitment", render: (r) => (r.committed ? pill(r.commitment_outcome || "committed", "info") : "—") },
   ], d.actions, { caption: "Ranked actions" })));
+  if (d.actions.length) host.appendChild(explainCard(env.plan_id, d.actions));
   const status = h("div", { class: "command-status" });
   const reason = h("textarea", { id: "amend-reason", maxlength: "2000", placeholder: "Why this work must be added to the shift (required, at least 10 characters)" });
   const canAmend = d.goal && context.identity.grants.some((g) => g === "team_lead" || g === "manager");
@@ -63,6 +64,46 @@ async function renderTeamLead(host, context) {
     status);
   host.appendChild(proposals);
   host.appendChild(h("p", { class: "muted" }, d.note));
+}
+
+// Grounded explanations (S16): the worker ranks and grounds; a provider's text is shown only after strict validation.
+const OUTCOME_KIND = { DETERMINISTIC: "info", VALIDATED: "ok", FALLBACK: "warn" };
+const UNCERTAINTY_KIND = { LOW: "ok", MEDIUM: "info", HIGH: "warn" };
+
+function explainCard(planId, actions) {
+  const top = actions.slice(0, 5);
+  const status = h("div", { class: "command-status" });
+  const result = h("div", { class: "explanation-result" });
+  const button = h("button", { class: "btn btn-secondary", type: "button" }, `Explain the top ${top.length}`);
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    await submitCommand("/api/v1/explanations", { plan_id: planId, candidate_ids: top.map((a) => a.assignment_id) }, status, {
+      prefix: "explain",
+      onDone: async (run) => {
+        const env = await api(`/api/v1/explanations/${encodeURIComponent(run.result_receipt.explanation_id)}`);
+        mount(result, explanationView(env.data));
+      },
+    });
+    button.disabled = false;
+  });
+  return card("Why this order?", h("p", { class: "muted" },
+    "Grounded explanations restate the facts behind the ranking. They never change ranks, crews, dates, qualifications or the plan."),
+  button, status, result);
+}
+
+function explanationView(x) {
+  return h("div", { class: "explanation", "data-outcome": x.outcome },
+    h("p", {}, pill(x.outcome.toLowerCase(), OUTCOME_KIND[x.outcome] || "muted"), " ", pill(`provider ${x.provider}`, "muted"),
+      x.fallback_codes.length ? [" ", reasonList(x.fallback_codes)] : null),
+    h("ol", { class: "explanation-items" }, x.items.map((it) => h("li", { "data-candidate": it.candidate_id },
+      h("p", {}, it.summary),
+      h("p", { class: "muted" }, pill(`uncertainty ${it.uncertainty.toLowerCase()}`, UNCERTAINTY_KIND[it.uncertainty] || "muted"), " ",
+        it.reason_codes.map((c) => [h("code", {}, c), " "])),
+      h("details", {}, h("summary", {}, `${it.claims.length} grounded facts`), table([
+        { key: "metric_key", label: "Fact" }, { key: "entity_id", label: "About", render: (c) => h("code", {}, c.label || c.entity_id) },
+        { key: "value", label: "Value", render: (c) => String(c.value) }, { key: "unit", label: "Unit" }], it.claims, { caption: "Grounded facts" }))))),
+    h("p", { class: "muted bindings" }, `request ${x.audit.request_hash.slice(0, 12)} · output ${x.audit.output_hash.slice(0, 12)} · `
+      + `${x.audit.privacy.fact_rows} fact rows, ${x.audit.privacy.person_fields_sent} person fields sent`));
 }
 
 function addButton(row, d, status, reasonInput) {

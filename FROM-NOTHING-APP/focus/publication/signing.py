@@ -85,16 +85,26 @@ def _vcap_field(environ: Mapping[str, str], ref: str) -> str | None:
     return None
 
 
+def secret_from_ref(ref: str, environ: Mapping[str, str] | None = None) -> tuple[str | None, bool]:
+    """(material, supported) for a protected reference ``env:NAME`` or ``vcap:service/field``.
+
+    The material is for the caller's own use only: never logged, returned to a client or stored.
+    """
+    environ = os.environ if environ is None else environ
+    if ref.startswith("env:"):
+        return environ.get(ref[4:]) or None, True
+    if ref.startswith("vcap:"):
+        return _vcap_field(environ, ref[5:]), True
+    return None, False
+
+
 def resolve_signer(settings: Any, environ: Mapping[str, str] | None = None) -> tuple[Signer | None, str]:
     """(signer, reason). Live mode never falls back to the TEST key."""
     environ = os.environ if environ is None else environ
     ref = getattr(settings, "sign_key_ref", None)
     if ref:
-        if ref.startswith("env:"):
-            material = environ.get(ref[4:])
-        elif ref.startswith("vcap:"):
-            material = _vcap_field(environ, ref[5:])
-        else:
+        material, supported = secret_from_ref(ref, environ)
+        if not supported:
             return None, "SIGN_KEY_REF_UNSUPPORTED: use env:NAME or vcap:service/field"
         key = _decode_key(material) if material else None
         if key is None:

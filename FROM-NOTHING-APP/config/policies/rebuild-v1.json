@@ -625,6 +625,21 @@
       "authority": "user_requirement",
       "ref": "S09"
     },
+    "explanations.timeout_seconds": {
+      "value": 10,
+      "authority": "fixture_default",
+      "ref": "S16 BCAIProvider bounded timeout per attempt; live value is an operational setting"
+    },
+    "explanations.max_retries": {
+      "value": 1,
+      "authority": "fixture_default",
+      "ref": "S16 BCAIProvider bounded retries after a timeout"
+    },
+    "explanations.max_candidates": {
+      "value": 20,
+      "authority": "fixture_default",
+      "ref": "S16 bounded explanation request (candidates per request)"
+    },
     "api.page_default": {
       "value": 100,
       "authority": "manual_specified",

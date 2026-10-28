@@ -92,20 +92,30 @@ class MaxRun:
     validation: Any = None               # final ValidationReceipt (schedule)
 
 
-def make_priority(ctx: EngineContext, state: PriorityState, weights: Mapping[int, Fraction] | None) -> Callable[[str], tuple]:
-    """Order within a dispatch class; the decoder puts ready commitments and their prerequisites first."""
+def make_priority(ctx: EngineContext, state: PriorityState, weights: Mapping[int, Fraction] | None,
+                  fixed: Mapping[str, int] | None = None) -> Callable[[str], tuple]:
+    """Order within a dispatch class; the decoder puts ready commitments and their prerequisites first.
+
+    ``fixed`` holds planned task priorities of an isolated scenario (job -> negative rank). They lead the key, so
+    search moves cannot reorder them, and they act only among ready phases: graph, parts, QA, crews and defended
+    commitments still decide what may start.
+    """
+    fixed = fixed or {}
+
     def key(pid: str) -> tuple:
         phase = ctx.phases[pid]
         weight = (weights or {}).get(phase.line, Fraction(0))
-        return (state.ranks.get(phase.job, 0.0), -weight, -ctx.tails.get(pid, 0), pid)
+        return (fixed.get(phase.job, 0), state.ranks.get(phase.job, 0.0), -weight, -ctx.tails.get(pid, 0), pid)
     return key
 
 
 class MaxOptimizer:
     def __init__(self, ctx: EngineContext, *, defended: Mapping[str, DefendedTask] | None = None, budget_seconds: float | None = None,
                  seed: int | None = None, max_moves: int | None = None, cancel: Callable[[], bool] | None = None,
-                 clock: Callable[[], float] = time.monotonic, gate: bool = True, incumbent_id: str | None = None):
+                 clock: Callable[[], float] = time.monotonic, gate: bool = True, incumbent_id: str | None = None,
+                 fixed_ranks: Mapping[str, int] | None = None):
         self.ctx = ctx
+        self.fixed_ranks = dict(fixed_ranks or {})
         self.gate = gate
         self.incumbent_id = incumbent_id
         self._vinp = None
@@ -132,7 +142,7 @@ class MaxOptimizer:
 
     # ------------------------------------------------------------------ evaluation
     def decode(self, state: PriorityState, weights: Mapping[int, Fraction] | None) -> DecodeResult:
-        return Decoder(self.ctx, make_priority(self.ctx, state, weights), defended=self.defended).run()
+        return Decoder(self.ctx, make_priority(self.ctx, state, weights, self.fixed_ranks), defended=self.defended).run()
 
     def evaluate(self, decode: DecodeResult) -> Evaluation:
         ctx = self.ctx
@@ -406,14 +416,22 @@ def schedule(services: Any, *, source_run: str, purpose: Purpose, budget_seconds
 
 
 def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy: Any = None, budget_seconds: float | None = None,
-                      max_moves: int | None = None) -> tuple[CandidatePlan, MaxRun]:
-    """Rich MAX over one sealed snapshot (admitted or an isolated scenario copy), then FINAL validation; persists the candidate."""
-    from ...commitments import defended_tasks
+                      max_moves: int | None = None, fixed_ranks: Mapping[str, int] | None = None,
+                      cancel: Callable[[], bool] | None = None) -> tuple[CandidatePlan, MaxRun]:
+    """Rich MAX over one sealed snapshot (admitted or an isolated scenario copy), then FINAL validation; persists the candidate.
 
+    ``fixed_ranks`` (scenario planned task priorities) and ``cancel`` (a cooperative stop) are for SCENARIO runs only.
+    """
+    from ...commitments import defended_tasks
+    from ....domain import DomainError
+
+    if fixed_ranks and purpose is not Purpose.SCENARIO:
+        raise DomainError("PRIORITY_SCENARIO_ONLY", "planned task priorities are scenario inputs, never executable or forecast settings")
     policy = policy or services.policy
     ctx = EngineContext(snapshot, policy, purpose)
     defense = defended_tasks(services, ctx)
-    optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves, incumbent_id=defense.incumbent_id)
+    optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves, incumbent_id=defense.incumbent_id,
+                             fixed_ranks=fixed_ranks, cancel=cancel)
     run = optimizer.run()
     plan = build_candidate(ctx, run, created_at=services.clock.now(), incumbent_id=defense.incumbent_id, extra_commitments=defense.other_results,
                            incumbent=defense.receipt())

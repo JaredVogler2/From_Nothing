@@ -493,7 +493,8 @@ SCENARIO_CHANGE = {
     "type": "object",
     "required": ["type"],
     "properties": {
-        "type": {"type": "string", "enum": ["virtual_staffing", "eta_forecast", "duration_statistic", "daily_cost", "calendar_day"]},
+        "type": {"type": "string", "enum": ["virtual_staffing", "eta_forecast", "duration_statistic", "daily_cost", "calendar_day",
+                                            "travel_minutes", "task_priority"]},
         "team": {"type": "string", "pattern": r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$"},
         "date": {"type": "string", "format": "date"},
         "shift": {"type": "integer", "minimum": 1, "maximum": 3},
@@ -504,6 +505,9 @@ SCENARIO_CHANGE = {
         "line": {"type": "integer", "minimum": 1, "maximum": 999999},
         "daily_rate_cents": {"type": "integer", "minimum": 0, "maximum": 1000000000000},
         "status": {"type": "string", "enum": ["WORKING", "NONWORKING"]},
+        "changed_aircraft_minutes": {"type": "integer", "minimum": 0, "maximum": 240},
+        "job_id": {"type": "string", "pattern": ID_PATTERN},
+        "rank": {"type": "integer", "minimum": 1, "maximum": 20},
     },
     "additionalProperties": False,
 }
@@ -512,9 +516,10 @@ SCENARIO_CHANGE = {
 @REGISTRY.operation(
     "create_scenario", "POST", "/api/v1/scenarios",
     summary="Queue an isolated what-if scenario on a copy of an admitted snapshot",
-    description="Typed, allowlisted changes (virtual staffing, ETA forecast, duration statistic, assumed daily cost, calendar day) run with "
-                "the same optimizer and validator against a same-settings baseline under one bounded budget. Results are SCENARIO_ONLY: never "
-                "publishable, and no source/plan head, frozen goal, commitment, actual or evaluation changes.",
+    description="Typed, allowlisted changes (virtual staffing, ETA forecast, duration statistic, assumed daily cost, calendar day, "
+                "changed-aircraft travel minutes, planned task priority) run with the same optimizer and validator against a same-settings "
+                "baseline under one bounded budget. Results are SCENARIO_ONLY: never publishable, and no source/plan head, frozen goal, "
+                "commitment, actual or evaluation changes. A running scenario can be cancelled cooperatively.",
     grants=("scenario_planner", "manager"),
     read_only=False,
     body={
@@ -550,10 +555,66 @@ def create_scenario(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
 
 
 @REGISTRY.operation(
+    "create_explanation", "POST", "/api/v1/explanations",
+    summary="Queue a grounded explanation of ranked actions of one team-shift",
+    description="Candidates are actions of the current accepted EXECUTABLE plan in your scope, all of one team-shift. The worker ranks "
+                "them with the dispatch rule, builds privacy-minimized fact rows, asks the configured provider (default none) and validates "
+                "its complete schema, every claim and the narrative; anything invalid returns the complete deterministic explanation in "
+                "the same rank. Explanations never change ranks, crews, dates, qualifications or plans.",
+    grants=ALL_READERS,
+    read_only=False,
+    body={
+        "type": "object",
+        "required": ["plan_id", "candidate_ids", "idempotency_key"],
+        "properties": {
+            "plan_id": {"type": "string", "pattern": ID_PATTERN},
+            "candidate_ids": {"type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": True, "items": {"type": "string", "pattern": ID_PATTERN}},
+            "locale": {"type": "string", "enum": ["en-US"]},
+            "idempotency_key": IDEMPOTENCY,
+        },
+        "additionalProperties": False,
+    },
+    data_schema=RUN_SCHEMA,
+    tags=("commands",),
+    mcp_tool=False,
+    success_status=202,
+)
+def create_explanation(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from ..domain import DomainError
+    from ..explanations.pipeline import current_inputs
+    from .serializers import can_see_economics
+
+    services = svc()
+    if len(args["candidate_ids"]) > services.policy.int("explanations.max_candidates"):
+        raise ApiError(422, "TOO_MANY_CANDIDATES", f"at most {services.policy.int('explanations.max_candidates')} candidates per request")
+    try:
+        snapshot, current = current_inputs(services, args["plan_id"])
+    except DomainError as exc:
+        raise ApiError(409, exc.code, exc.message) from None
+    phases = {p.key.id: p for p in snapshot.phases}
+    actions = {a.id: a for a in current.artifact.candidate.assignments}
+    team_shifts = set()
+    for cid in args["candidate_ids"]:
+        a = actions.get(cid)
+        p = phases.get(a.phase) if a is not None else None
+        team = None if p is None else (p.role_demands[0].team if p.role_demands else p.team)
+        if a is None or team is None or not ctx.scope.allows_team(team):
+            raise ApiError(404, "CANDIDATE_NOT_FOUND", "no action with that id in your scope")      # outside the scope is "not found"
+        team_shifts.add((team, a.shift_id))
+    if len(team_shifts) != 1:
+        raise ApiError(422, "MIXED_TEAM_SHIFT", "explain the actions of one team-shift per request (they share one ranking)")
+    (team, shift_id), = team_shifts
+    economics = can_see_economics(ctx)
+    privacy = ("all_teams" if ctx.scope.all_teams else "team") + ("+economics" if economics else "")
+    return enqueue(ctx, "explanation", args, None, server={"team": team, "shift_id": shift_id, "economics": economics, "privacy_scope": privacy})
+
+
+@REGISTRY.operation(
     "cancel_run", "POST", "/api/v1/runs/{run_id}/cancel",
-    summary="Cancel a queued worker run (requester or manager)",
-    description="A queued run becomes cancelled and is never executed; a running or finished run is not changed (409). Cancelling is "
-                "idempotent and never touches accepted plans, goals, commitments or evaluations.",
+    summary="Cancel a queued or running worker run (requester or manager)",
+    description="A queued run becomes cancelled and is never executed. A running run gets a durable cancel request: handlers that stop "
+                "cooperatively (scenarios) end it as cancelled without a result; others finish within their budget. A finished run is not "
+                "changed (409). Cancelling is idempotent and never touches accepted plans, goals, commitments, actuals or evaluations.",
     grants=ALL_READERS,
     read_only=False,
     path_params={"run_id": {"type": "string", "pattern": ID_PATTERN}},
@@ -572,8 +633,14 @@ def cancel_run(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
         raise ApiError(404, "RUN_NOT_FOUND", "no worker run with that id in your scope")
     if run.status == "cancelled":
         return ApiResult(status="ready", data=_run_view(run) | {"replayed": True})
+    if run.status == "running":
+        from ..workers import request_cancel
+
+        fresh = request_cancel(services, run, by=ctx.subject or "unknown", reason=args.get("reason") or "cancelled by request",
+                               at=services.clock.now())
+        return ApiResult(status="ready", data=_run_view(run) | {"cancel_requested": True, "replayed": not fresh})
     if run.status != "queued":
-        raise ApiError(409, "RUN_NOT_CANCELLABLE", f"the run is {run.status}; only queued runs are cancelled")
+        raise ApiError(409, "RUN_NOT_CANCELLABLE", f"the run is {run.status}; only queued or running runs are cancelled")
     try:
         done = repos.update_worker_run(run, repos.worker_run_version(run.id), status="cancelled",
                                        error={"code": "CANCELLED", "message": (args.get("reason") or "cancelled by request")[:200]})

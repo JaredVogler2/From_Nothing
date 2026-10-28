@@ -72,6 +72,28 @@ attendance. A conditional ETA is never physical receipt.
   - **`demo-run`** (`pipeline.demo_run`) runs the whole fixture pipeline idempotently: a rerun leaves the runtime byte-identical.
   - **Incumbent heads only move forward in acceptance time.** Re-bootstrapping a runtime that already published a newer plan no longer regresses the head to the fixture's previous plan.
   - **Views render into detached containers.** Only the latest navigation is swapped into the host, so overlapping hash changes never interleave content.
+- **D-19 Twin, scenario completion and grounded explanations (P21).**
+  - **Twin** (`analytics/twin.py`, `GET /twin`). Cells are keyed by source run, accepted plans, policy and evaluation revision, plus team, shift start date, shift number and line. The layers stay separate:
+    - observed: the stored canonical evaluation evidence and verified lifecycle facts, never recomputed;
+    - planned: the accepted EXECUTABLE plan, with effort under the frozen-goal rule `publication.serializer.earning_phase` and duty from the ledger;
+    - forecast: the accepted FORECAST plan, labeled conditional, with virtual duty;
+    - unknown: what no layer can state.
+  - **Twin reconciliation.** The checks are returned with every response; a failed check makes the twin `unknown`, never `ready`.
+    - Cells sum exactly to team, shift, line and grand totals.
+    - Job states partition the census in every layer.
+    - Planned effort equals the frozen B0 of the plan of record.
+    - Observed effort equals each stored evaluation.
+    - Duty equals the ledger.
+  - **Scenario changes.** Two typed changes are added:
+    - `travel_minutes`, a policy toggle. Tool capacity stays a sourced fact.
+    - `task_priority`. A fixed rank leads the dispatch key, so search cannot undo it, but readiness, parts, QA, crews and defended commitments still decide. It is refused for EXECUTABLE and FORECAST.
+  - **Scenario namespace and cancellation.** Rebuilt snapshots are never written to the live namespace (`snapshot_for_run(store=False)`). A running scenario stops cooperatively on a durable cancel request (`workers.RunCancelled`, run status `cancelled`, no result).
+  - **One ranking.** `publication.dispatch.ranked_actions` is the one ranking, shared by Team Lead and explanations.
+  - **Explanations** (`explanations/`).
+    - Pipeline: deterministic candidates, then privacy-minimized fact rows (no person ids), then a data-only versioned prompt, then the provider (none, mock, recorded or BCAI), then strict validation, then an immutable record with audit hashes.
+    - Validation covers the complete schema, every claim against its fact (exact; tolerance only by explicit policy and never for money) and every narrative word: grounded ids, labels and values, or a small approved vocabulary.
+    - Any failure returns the complete deterministic explanation in the unchanged rank.
+    - The default provider is none. BCAI is optional, https-only, uses a referenced credential, and has bounded timeouts and retries.
 
 ## Semantic gaps (live), each a precise readiness effect
 
@@ -100,6 +122,9 @@ capability until the owner admits the semantic:
   grade needs the owner's approval receipt; personal grades need their own policy (both disabled).
 - OD-17 excusal reviewer identity: decisions require the server-granted `excusal_decider` role (`disruption.reviewer_roles`)
   and never self-review; the live mapping of reviewer subjects to that grant is the operator's.
+- OD-18 explanation provider: no BCAI endpoint, credential or response adapter is approved. Live explanations stay deterministic
+  (`FOCUS_LLM_PROVIDER=none`) until an approved https endpoint returns the `focus-explain-v1` contract. Its outputs are validated like
+  any provider's.
 
 ## Confirmation (P01 detailed requirement)
 
