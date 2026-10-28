@@ -1,0 +1,62 @@
+{
+ "columns": [
+  "INSPECTION_TYPE",
+  "DURATION_MINUTES",
+  "SCHEDULING_RELATIONSHIP",
+  "DESCRIPTION"
+ ],
+ "dataset": "inspection_standards",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "DESCRIPTION": "Final quality inspection before successors",
+   "DURATION_MINUTES": 45,
+   "INSPECTION_TYPE": "FINAL_QUALITY",
+   "SCHEDULING_RELATIONSHIP": "AFTER_WORK_FS"
+  },
+  {
+   "DESCRIPTION": "Total in-process inspection across sourced holds",
+   "DURATION_MINUTES": 45,
+   "INSPECTION_TYPE": "IN_PROCESS_QUALITY",
+   "SCHEDULING_RELATIONSHIP": "TOTAL_ACROSS_HOLDS"
+  },
+  {
+   "DESCRIPTION": "ODA unit member buyoff",
+   "DURATION_MINUTES": 20,
+   "INSPECTION_TYPE": "ODAUNITMEMBER",
+   "SCHEDULING_RELATIONSHIP": "PARALLEL_BRANCH"
+  },
+  {
+   "DESCRIPTION": "Manufacturing buyoff",
+   "DURATION_MINUTES": 15,
+   "INSPECTION_TYPE": "MANUFACTURING",
+   "SCHEDULING_RELATIONSHIP": "PARALLEL_BRANCH"
+  },
+  {
+   "DESCRIPTION": "Quality buyoff",
+   "DURATION_MINUTES": 30,
+   "INSPECTION_TYPE": "QUALITY",
+   "SCHEDULING_RELATIONSHIP": "PARALLEL_BRANCH"
+  },
+  {
+   "DESCRIPTION": "Customer contract buyoff",
+   "DURATION_MINUTES": 20,
+   "INSPECTION_TYPE": "CC",
+   "SCHEDULING_RELATIONSHIP": "PARALLEL_BRANCH"
+  },
+  {
+   "DESCRIPTION": "Partner QT buyoff",
+   "DURATION_MINUTES": 20,
+   "INSPECTION_TYPE": "PARTNER_QT",
+   "SCHEDULING_RELATIONSHIP": "PARALLEL_BRANCH"
+  }
+ ],
+ "schema_version": 1
+}

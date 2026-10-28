@@ -1,0 +1,32 @@
+{
+ "columns": [
+  "PERSON_KEY",
+  "KIND",
+  "START_UTC",
+  "END_UTC",
+  "LINE_NUMBER",
+  "SOI",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "carry_in",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "END_UTC": "2026-10-26T11:15:00Z",
+   "EVIDENCE_REF": "FIXTURE-TRAINING-B102",
+   "KIND": "OTHER",
+   "LINE_NUMBER": null,
+   "PERSON_KEY": "DEMO-B1-02",
+   "SOI": null,
+   "START_UTC": "2026-10-26T10:15:00Z"
+  }
+ ],
+ "schema_version": 1
+}

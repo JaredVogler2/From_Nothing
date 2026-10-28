@@ -1,0 +1,401 @@
+{
+ "columns": [
+  "PRODUCTION_DAY",
+  "SHIFT_NUMBER",
+  "BEMS_ID",
+  "PRESENT",
+  "HOURS",
+  "SOURCE",
+  "LOAD_TIMESTAMP"
+ ],
+ "dataset": "attendance_shift",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "BEMS_ID": "DEMO-A1-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-03",
+   "HOURS": "0.00",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": false,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-04",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-05",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-06",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-07",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A1-08",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-03",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-04",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-05",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-06",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-07",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A2-08",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-03",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-A3-04",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-03",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B1-04",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-03",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B2-04",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-03",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-B3-04",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q1-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q1-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q1-03",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q1-04",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 1,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q2-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q2-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q2-03",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q2-04",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 2,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q3-01",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  },
+  {
+   "BEMS_ID": "DEMO-Q3-02",
+   "HOURS": "8.50",
+   "LOAD_TIMESTAMP": "2026-10-26T05:45:00.000",
+   "PRESENT": true,
+   "PRODUCTION_DAY": "2026-10-26",
+   "SHIFT_NUMBER": 3,
+   "SOURCE": "FIXTURE_BADGE"
+  }
+ ],
+ "schema_version": 1
+}

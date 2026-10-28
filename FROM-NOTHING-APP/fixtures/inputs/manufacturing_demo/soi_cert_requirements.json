@@ -1,0 +1,194 @@
+{
+ "columns": [
+  "SOI_ID",
+  "LINE_NUMBER",
+  "CRITICAL_PROCESS_NAME",
+  "CERT_CODE",
+  "CERT_TYPE",
+  "REQ_CERT",
+  "SNAPSHOT_TS"
+ ],
+ "dataset": "soi_cert_requirements",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "LINE_NUMBER": 1301,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "A0"
+  },
+  {
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "LINE_NUMBER": 1301,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "A1"
+  },
+  {
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "LINE_NUMBER": 1301,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "A2"
+  },
+  {
+   "CERT_CODE": "B",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS B",
+   "LINE_NUMBER": 1301,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "A2"
+  },
+  {
+   "CERT_CODE": "QA",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS QA",
+   "LINE_NUMBER": 1301,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "FGI"
+  },
+  {
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "LINE_NUMBER": 1302,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "B1"
+  },
+  {
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "LINE_NUMBER": 1302,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "B2"
+  },
+  {
+   "CERT_CODE": "B",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS B",
+   "LINE_NUMBER": 1302,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "B2"
+  },
+  {
+   "CERT_CODE": "QA",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS QA",
+   "LINE_NUMBER": 1302,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "FGI"
+  },
+  {
+   "CERT_CODE": "B",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS B",
+   "LINE_NUMBER": 1303,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "ROOT3"
+  },
+  {
+   "CERT_CODE": "B",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS B",
+   "LINE_NUMBER": 1303,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "NC3"
+  },
+  {
+   "CERT_CODE": "B",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS B",
+   "LINE_NUMBER": 1303,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "PU3"
+  },
+  {
+   "CERT_CODE": "B",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS B",
+   "LINE_NUMBER": 1304,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "ROOT4"
+  },
+  {
+   "CERT_CODE": "B",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS B",
+   "LINE_NUMBER": 1304,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "PRE4"
+  },
+  {
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "LINE_NUMBER": 1305,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "CHILD5"
+  },
+  {
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "LINE_NUMBER": 1305,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "ROOT5"
+  },
+  {
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "LINE_NUMBER": 1305,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "NEXT5"
+  },
+  {
+   "CERT_CODE": "MHE-OP",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS MHE-OP",
+   "LINE_NUMBER": 1306,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "MHE6"
+  },
+  {
+   "CERT_CODE": "TST-1",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS TST-1",
+   "LINE_NUMBER": 1306,
+   "REQ_CERT": "Y",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00",
+   "SOI_ID": "TST6"
+  }
+ ],
+ "schema_version": 1
+}

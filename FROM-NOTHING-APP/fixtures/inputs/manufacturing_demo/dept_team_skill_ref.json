@@ -1,0 +1,42 @@
+{
+ "columns": [
+  "ACCTG_DEPT_CD",
+  "PRIMARY_TEAM",
+  "DOMINANT_SKILL",
+  "LABOR_RECORDS",
+  "LOAD_TIMESTAMP"
+ ],
+ "dataset": "dept_team_skill_ref",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "ACCTG_DEPT_CD": "D100",
+   "DOMINANT_SKILL": "MECH",
+   "LABOR_RECORDS": 1200,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "PRIMARY_TEAM": "PROD-A"
+  },
+  {
+   "ACCTG_DEPT_CD": "D200",
+   "DOMINANT_SKILL": "MECH",
+   "LABOR_RECORDS": 640,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "PRIMARY_TEAM": "PROD-B"
+  },
+  {
+   "ACCTG_DEPT_CD": "D900",
+   "DOMINANT_SKILL": "QA",
+   "LABOR_RECORDS": 300,
+   "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000",
+   "PRIMARY_TEAM": "QA"
+  }
+ ],
+ "schema_version": 1
+}

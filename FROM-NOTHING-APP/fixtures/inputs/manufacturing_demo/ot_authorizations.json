@@ -1,0 +1,77 @@
+{
+ "columns": [
+  "TEAM",
+  "SHIFT_NUMBER",
+  "DATE_FROM",
+  "DATE_TO",
+  "MINUTES",
+  "AUTHORITY",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "ot_authorizations",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "AUTHORITY": "FIXTURE-OT-APPROVAL",
+   "DATE_FROM": "2026-10-26",
+   "DATE_TO": "2026-11-13",
+   "EVIDENCE_REF": "FIXTURE-OT-2026-10",
+   "MINUTES": 60,
+   "SHIFT_NUMBER": 1,
+   "TEAM": "PROD-A"
+  },
+  {
+   "AUTHORITY": "FIXTURE-OT-APPROVAL",
+   "DATE_FROM": "2026-10-26",
+   "DATE_TO": "2026-11-13",
+   "EVIDENCE_REF": "FIXTURE-OT-2026-10",
+   "MINUTES": 60,
+   "SHIFT_NUMBER": 2,
+   "TEAM": "PROD-A"
+  },
+  {
+   "AUTHORITY": "FIXTURE-OT-APPROVAL",
+   "DATE_FROM": "2026-10-26",
+   "DATE_TO": "2026-11-13",
+   "EVIDENCE_REF": "FIXTURE-OT-2026-10",
+   "MINUTES": 60,
+   "SHIFT_NUMBER": 1,
+   "TEAM": "PROD-B"
+  },
+  {
+   "AUTHORITY": "FIXTURE-OT-APPROVAL",
+   "DATE_FROM": "2026-10-26",
+   "DATE_TO": "2026-11-13",
+   "EVIDENCE_REF": "FIXTURE-OT-2026-10",
+   "MINUTES": 60,
+   "SHIFT_NUMBER": 2,
+   "TEAM": "PROD-B"
+  },
+  {
+   "AUTHORITY": "FIXTURE-OT-APPROVAL",
+   "DATE_FROM": "2026-10-26",
+   "DATE_TO": "2026-11-13",
+   "EVIDENCE_REF": "FIXTURE-OT-2026-10",
+   "MINUTES": 60,
+   "SHIFT_NUMBER": 1,
+   "TEAM": "QA"
+  },
+  {
+   "AUTHORITY": "FIXTURE-OT-APPROVAL",
+   "DATE_FROM": "2026-10-26",
+   "DATE_TO": "2026-11-13",
+   "EVIDENCE_REF": "FIXTURE-OT-2026-10",
+   "MINUTES": 60,
+   "SHIFT_NUMBER": 2,
+   "TEAM": "QA"
+  }
+ ],
+ "schema_version": 1
+}

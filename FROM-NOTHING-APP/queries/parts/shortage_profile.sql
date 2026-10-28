@@ -1,0 +1,16 @@
+-- P09 readiness: every active shortage per line, with unknown ECD and blank USED_ON kept (read-only).
+-- USED_ON resolves only by exact (LINE_NUMBER, SOI); unresolved rows expose line scope and are never dropped.
+SELECT e.LINE_NUMBER,
+       COUNT_BIG(*) AS ACTIVE_SHORTAGES,
+       SUM(CASE WHEN e.ETRAC_ECD IS NULL THEN 1 ELSE 0 END) AS NULL_ECD,
+       SUM(CASE WHEN e.USED_ON IS NULL OR LTRIM(RTRIM(e.USED_ON)) = '' THEN 1 ELSE 0 END) AS BLANK_USED_ON,
+       SUM(CASE WHEN e.USED_ON IS NOT NULL AND LTRIM(RTRIM(e.USED_ON)) <> '' AND m.SHOP_ORDER_IDENTIFIER IS NULL THEN 1 ELSE 0 END)
+           AS USED_ON_NOT_IN_LINE_CENSUS,
+       -- relative to the server date; a past ECD is never receipt (receipt/reopen evidence is a separate feed)
+       SUM(CASE WHEN e.ETRAC_ECD < CONVERT(date, SYSDATETIME()) THEN 1 ELSE 0 END) AS PAST_ECD_ROWS,
+       MAX(e.LOAD_TIMESTAMP) AS LATEST_LOAD
+FROM WEB_APP.FOCUS_ETRACS_ACTIVE e
+LEFT JOIN (SELECT DISTINCT LINE_NUMBER, SHOP_ORDER_IDENTIFIER FROM WEB_APP.FOCUS_MASTER_TASK_LIST) m
+       ON m.LINE_NUMBER = e.LINE_NUMBER AND m.SHOP_ORDER_IDENTIFIER = LTRIM(RTRIM(e.USED_ON))
+GROUP BY e.LINE_NUMBER
+ORDER BY e.LINE_NUMBER;

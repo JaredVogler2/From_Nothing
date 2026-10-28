@@ -1,0 +1,34 @@
+{
+ "columns": [
+  "PERSON_KEY",
+  "PRODUCTION_DAY",
+  "SHIFT_NUMBER",
+  "KIND",
+  "START_LOCAL",
+  "END_LOCAL",
+  "OBSERVED_AT_UTC",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "availability_exceptions",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "END_LOCAL": null,
+   "EVIDENCE_REF": "FIXTURE-LEAVE-A106",
+   "KIND": "LEAVE",
+   "OBSERVED_AT_UTC": "2026-10-26T08:00:00Z",
+   "PERSON_KEY": "DEMO-A1-06",
+   "PRODUCTION_DAY": "2026-10-28",
+   "SHIFT_NUMBER": 1,
+   "START_LOCAL": null
+  }
+ ],
+ "schema_version": 1
+}

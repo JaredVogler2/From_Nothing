@@ -1,0 +1,27 @@
+{
+ "columns": [
+  "CheckpointId",
+  "OriginalBasisId",
+  "SequenceNumber",
+  "AsOfUtc",
+  "ElapsedLateDays",
+  "AssessedAmount",
+  "CumulativeAccounted",
+  "AssessmentCoverage",
+  "AssessmentReference",
+  "CheckpointKind",
+  "CreatedAtUtc"
+ ],
+ "dataset": "econ_liability_checkpoint",
+ "receipt": {
+  "certified_empty": true,
+  "complete": true,
+  "note": "no accrued liability checkpoints in the fixture",
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [],
+ "schema_version": 1
+}

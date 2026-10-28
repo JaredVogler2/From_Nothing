@@ -1,0 +1,36 @@
+{
+ "columns": [
+  "MappingRevisionId",
+  "SourceName",
+  "SourcePredicate",
+  "QuerySha256",
+  "ContentSha256",
+  "RowCount",
+  "ImportedAtUtc",
+  "CoverageJson",
+  "IsCurrent"
+ ],
+ "dataset": "econ_mapping_revision",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "ContentSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+   "CoverageJson": "{\"lines\": [1301, 1302, 1303, 1304, 1305, 1306]}",
+   "ImportedAtUtc": "2026-10-20T12:00:00.000",
+   "IsCurrent": true,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "QuerySha256": "0000000000000000000000000000000000000000000000000000000000000000",
+   "RowCount": 6,
+   "SourceName": "fixture-aircraft-mapping",
+   "SourcePredicate": "SITE='DEMO'"
+  }
+ ],
+ "schema_version": 1
+}

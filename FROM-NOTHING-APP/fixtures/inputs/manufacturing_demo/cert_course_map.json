@@ -1,0 +1,70 @@
+{
+ "columns": [
+  "CRITICAL_PROCESS_NAME",
+  "CERT_CODE",
+  "CERT_TYPE",
+  "BAC_SPEC",
+  "BAC_VERB",
+  "SNAPSHOT_TS"
+ ],
+ "dataset": "cert_course_map",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "BAC_SPEC": "DEMO-SPEC",
+   "BAC_VERB": "PERFORM",
+   "CERT_CODE": "A",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS A",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00"
+  },
+  {
+   "BAC_SPEC": "DEMO-SPEC",
+   "BAC_VERB": "PERFORM",
+   "CERT_CODE": "B",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS B",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00"
+  },
+  {
+   "BAC_SPEC": "DEMO-SPEC",
+   "BAC_VERB": "PERFORM",
+   "CERT_CODE": "C",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS C",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00"
+  },
+  {
+   "BAC_SPEC": "DEMO-SPEC",
+   "BAC_VERB": "PERFORM",
+   "CERT_CODE": "QA",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS QA",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00"
+  },
+  {
+   "BAC_SPEC": "DEMO-SPEC",
+   "BAC_VERB": "PERFORM",
+   "CERT_CODE": "MHE-OP",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS MHE-OP",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00"
+  },
+  {
+   "BAC_SPEC": "DEMO-SPEC",
+   "BAC_VERB": "PERFORM",
+   "CERT_CODE": "TST-1",
+   "CERT_TYPE": "CERT",
+   "CRITICAL_PROCESS_NAME": "DEMO PROCESS TST-1",
+   "SNAPSHOT_TS": "2026-10-25T05:00:00"
+  }
+ ],
+ "schema_version": 1
+}

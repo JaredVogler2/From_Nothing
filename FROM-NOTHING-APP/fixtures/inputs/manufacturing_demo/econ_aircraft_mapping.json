@@ -1,0 +1,92 @@
+{
+ "columns": [
+  "MappingRevisionId",
+  "LineNumber",
+  "CustomerCode",
+  "MinorModel",
+  "SourceStart",
+  "SourceEnd",
+  "RevisionDate",
+  "ShopCompleteDate",
+  "AssemblyLocation",
+  "SourceContentSha256",
+  "ImportedAtUtc"
+ ],
+ "dataset": "econ_aircraft_mapping",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "AssemblyLocation": "D",
+   "CustomerCode": "DEMO",
+   "ImportedAtUtc": "2026-10-20T12:00:00.000",
+   "LineNumber": 1301,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "MinorModel": 9,
+   "RevisionDate": "2026-10-20",
+   "ShopCompleteDate": null,
+   "SourceContentSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "SourceEnd": null,
+   "SourceStart": null
+  },
+  {
+   "AssemblyLocation": "D",
+   "CustomerCode": "DEMO",
+   "ImportedAtUtc": "2026-10-20T12:00:00.000",
+   "LineNumber": 1302,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "MinorModel": 9,
+   "RevisionDate": "2026-10-20",
+   "ShopCompleteDate": null,
+   "SourceContentSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "SourceEnd": null,
+   "SourceStart": null
+  },
+  {
+   "AssemblyLocation": "D",
+   "CustomerCode": "DEMO",
+   "ImportedAtUtc": "2026-10-20T12:00:00.000",
+   "LineNumber": 1303,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "MinorModel": 9,
+   "RevisionDate": "2026-10-20",
+   "ShopCompleteDate": null,
+   "SourceContentSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "SourceEnd": null,
+   "SourceStart": null
+  },
+  {
+   "AssemblyLocation": "D",
+   "CustomerCode": "DEMO",
+   "ImportedAtUtc": "2026-10-20T12:00:00.000",
+   "LineNumber": 1304,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "MinorModel": 9,
+   "RevisionDate": "2026-10-20",
+   "ShopCompleteDate": null,
+   "SourceContentSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "SourceEnd": null,
+   "SourceStart": null
+  },
+  {
+   "AssemblyLocation": "D",
+   "CustomerCode": "DEMO",
+   "ImportedAtUtc": "2026-10-20T12:00:00.000",
+   "LineNumber": 1305,
+   "MappingRevisionId": "e68acfb9-3c5d-53df-a426-db45822d0785",
+   "MinorModel": 9,
+   "RevisionDate": "2026-10-20",
+   "ShopCompleteDate": null,
+   "SourceContentSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "SourceEnd": null,
+   "SourceStart": null
+  }
+ ],
+ "schema_version": 1
+}

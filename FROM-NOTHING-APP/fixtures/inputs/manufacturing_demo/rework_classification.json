@@ -1,0 +1,38 @@
+{
+ "columns": [
+  "LINE_NUMBER",
+  "CHILD_SOI",
+  "REWORK_CLASS",
+  "ROOT_SOI",
+  "DEFECT_ORIGIN_TEAM",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "rework_classification",
+ "receipt": {
+  "certified_empty": false,
+  "complete": true,
+  "producer": "fixture:manufacturing_demo",
+  "source_clock": "2026-10-26T05:55:00",
+  "source_timezone": "America/New_York",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [
+  {
+   "CHILD_SOI": "NC3",
+   "DEFECT_ORIGIN_TEAM": "PROD-A",
+   "EVIDENCE_REF": "FIXTURE-NCR-301",
+   "LINE_NUMBER": 1303,
+   "REWORK_CLASS": "NC",
+   "ROOT_SOI": "ROOT3"
+  },
+  {
+   "CHILD_SOI": "PU3",
+   "DEFECT_ORIGIN_TEAM": "SUPPLIER-DEMO",
+   "EVIDENCE_REF": "FIXTURE-PU-302",
+   "LINE_NUMBER": 1303,
+   "REWORK_CLASS": "PU",
+   "ROOT_SOI": "ROOT3"
+  }
+ ],
+ "schema_version": 1
+}
