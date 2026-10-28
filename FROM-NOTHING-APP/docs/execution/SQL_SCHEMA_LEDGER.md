@@ -66,6 +66,7 @@ Proposed `FOCUS_FN_*` output tables (S06) are **not installed**. See
 | `queries/calendars/*.sql`, `queries/graph/*.sql`, `queries/parts/shortage_profile.sql`, `queries/quality/inspection_profile.sql` | P08-P10 | Read-only readiness: calendar generations and CS grain, template edges and rework linkage, shortages, inspection counts |
 | `queries/economics/effective_terms.sql`, `liability_floor.sql` | P12 | Read-only mirror of the term resolution (one current mapping, one active scenario, one assignment, selector precedence, version conflicts, authority) and the latest checkpoint floor |
 | `sql/migrations/commitments_draft.sql` | P14 | FOCUS_FN_Commitment checks; CommitmentObservation (replay key per accepted plan), DeliveryReceipt, CommitmentResult projection; immutability triggers; IncumbentAtHead view; one-transaction RecordDeliveryObservation with an optimistic version check; state readback view |
+| `sql/migrations/publication_draft.sql` | P16 | PlanStage/Validation/PublishedPlan/PlanHead checks; append-only triggers (stages, validations, published plans, frozen goals); StagePlan (idempotent, sha-checked), ReadPlanStage, RecordValidation; AcceptPlan (applock, exact staged bytes, clean READBACK receipt, goals, head LAST with expected version); CurrentPlan view |
 
 All of them are consolidated into the versioned migration set in P23. Installing any of them
 requires authorized migration tooling. None was executed against a server by this build.

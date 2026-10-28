@@ -11,12 +11,15 @@ person's duty from:
 From these it checks:
 
 * **V6 non-overlap.** No person is in two places at once across all shift and day labels.
-* **Transfer feasibility.** Between consecutive located duties in a shift, a contiguous open slot of
-  the required transfer minutes fits; A -> B -> A counts two transfers.
+* **V7 transfers.** Between consecutive located duties in a shift, a contiguous open slot of the
+  required transfer minutes must fit; A -> B -> A counts two transfers. An omitted transfer is
+  ``TRANSFER_MISSING``.
 * **V7 duty budget.** WORK + TRAVEL + WAIT + OTHER inside regular windows is at most the regular
   cap, and inside authorized OT windows at most the OT cap; duty outside admitted windows is a
   violation.
-* **V8 activation.** The union of people with duty in each pool is at most ``floor(85*N/100)``.
+* **V8 activation.** The union of people with duty in each pool is at most ``floor(85*N/100)`` on
+  the distinct admitted denominator, recomputed here (``ValidationInput.activation_cap``); the
+  pool's stored cap is never trusted.
 
 This module deliberately does not import ``focus.engine``; it shares only the calendar/policy
 authority, as S13 requires.
@@ -28,8 +31,9 @@ from dataclasses import dataclass, field
 from typing import Iterable
 
 from ..contracts.planning import CandidatePlan, PlanningSnapshot, Violation
-from ..domain import DutyKind, Purpose, to_minute
+from ..domain import DutyKind, to_minute
 from ..policy import Policy
+from .input import ValidationInput
 
 
 @dataclass(frozen=True)
@@ -55,20 +59,20 @@ def _overlap(a: int, b: int, windows: Iterable[tuple[int, int]]) -> int:
     return sum(max(0, min(b, y) - max(a, x)) for x, y in windows)
 
 
-def reconstruct(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan) -> DutyReconstruction:
+def reconstruct(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan, inp: ValidationInput | None = None) -> DutyReconstruction:
     out = DutyReconstruction()
+    inp = inp or ValidationInput.build(snapshot, policy, plan.purpose)
     same = policy.int("travel.same_aircraft_minutes")
     changed = policy.int("travel.changed_aircraft_minutes")
     unknown = policy.optional("travel.unknown_origin_minutes")
-    pools = {p.id: p for p in snapshot.pools}
-    executable = plan.purpose is Purpose.EXECUTABLE
+    pools = inp.pools
+    members_of = {pid: inp.admitted_members(pool) for pid, pool in pools.items()}
     windows: dict[tuple[str, str], tuple[tuple[tuple[int, int], ...], tuple[tuple[int, int], ...], int, int, str]] = {}
     for av in snapshot.availability:
         pool = pools.get(av.pool)
         if pool is None:
             continue
-        members = pool.executable_members if executable else pool.forecast_members
-        if av.person not in members:
+        if av.person not in members_of[av.pool]:
             continue
         sid = f"{pool.key.site}:{pool.key.start_date.isoformat()}:S{pool.key.shift_number}"
         windows[(av.person, sid)] = (tuple(i.as_minutes() for i in av.intervals), tuple(i.as_minutes() for i in av.ot_intervals),
@@ -114,7 +118,7 @@ def reconstruct(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan)
             else:
                 minutes = same if prev.line == nxt.line else changed
             if minutes is None:
-                out.violations.append(Violation("V6", "TRAVEL_ORIGIN_UNKNOWN", person, f"{prev.source} -> {nxt.source}: no bounded policy"))
+                out.violations.append(Violation("V7", "TRAVEL_ORIGIN_UNKNOWN", person, f"{prev.source} -> {nxt.source}: no bounded policy"))
                 continue
             if minutes == 0:
                 continue
@@ -125,7 +129,7 @@ def reconstruct(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan)
                     slot = (s, s + minutes)
                     break
             if slot is None:
-                out.violations.append(Violation("V6", "TRANSFER_MISSING", person,
+                out.violations.append(Violation("V7", "TRANSFER_MISSING", person,
                                                 f"{minutes} min transfer from line {prev.line} to {nxt.line} does not fit between {prev.end} and {nxt.start}"))
                 continue
             t = ReconstructedDuty(person, sid, slot[0], slot[1], "TRAVEL", nxt.line, "derived")
@@ -175,8 +179,7 @@ def reconstruct(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan)
         if w is not None and duties:
             active[w[4]].add(person)
     for pool_id, people in active.items():
-        pool = pools[pool_id]
-        cap = pool.cap_executable if executable else pool.cap_forecast
+        cap = inp.activation_cap(pools[pool_id])
         out.checks["V8"] += 1
         if len(people) > cap:
             out.violations.append(Violation("V8", "ACTIVATION_CAP", pool_id, f"{len(people)} activated > cap {cap}"))

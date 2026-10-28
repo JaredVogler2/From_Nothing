@@ -99,6 +99,16 @@
       "authority": "open_decision",
       "ref": "S12 delivery hysteresis; OD-14 (accepted FORECAST plans feed the per-aircraft committed date; EXECUTABLE plans drive dispatch)"
     },
+    "goals.obligation_days": {
+      "value": 1,
+      "authority": "manual_specified",
+      "ref": "S13 GOAL FREEZE: the full-horizon plan stays separate from today's obligation set (shifts starting on the cutoff's local date)"
+    },
+    "dispatch.max_source_age_hours": {
+      "value": 24,
+      "authority": "fixture_default",
+      "ref": "S13 DISPATCH source freshness: older current facts cannot release an action"
+    },
     "activation.fraction_numerator": {
       "value": 85,
       "authority": "user_requirement",
