@@ -1,0 +1,8 @@
+# Prompt 01 — Repository and Paper Audit
+ROLE: senior aerospace operations-research engineer and software architect.
+1. Read root master specification and current FROM-NOTHING-APP implementation. Map actual modules, interfaces, data contracts, tests, SQL adapters, graph engines, optimization backend, economic objective, UI and deployment. Cite paths and symbols; distinguish implemented from planned.
+2. Enumerate ALL PDF files at project root. Match each to title, authors, version/date, formulation, decision variables, assumptions, objective, benchmark, baselines, reported runtime, source pages, limitations and reproducibility assets. Extract the actual PDF rather than trusting filename or prior briefings. Verify CoRS, GSEM, SAT; if Benders/CNC PDFs absent, label NOT PROVIDED and defer paper-specific claims.
+3. Build applicability matrix with columns method, FOCUS/NEO/both, exact insertion point, data dependencies, semantic mismatch, expected benefit hypothesis, worst-case failure, engineering effort, priority, proof obligation, and go/no-go threshold.
+4. Create dependency diagram and interface map without changing runtime behavior. Flag conflicts with immutable snapshot policy, qualification constraints, calendars, precedence, material release, QA holds, duty ledger, dispatch, economics and independent validation.
+5. Produce docs/research-evaluation/01_AUDIT.md, PAPER_REGISTER.md and MACHINE_READABLE_METHOD_MATRIX.json. Every research claim includes paper filename/page or a clear UNVERIFIED tag.
+GATE: no implementation until existing behavior and research provenance are mapped.
