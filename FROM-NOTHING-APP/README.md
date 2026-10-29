@@ -94,6 +94,10 @@ python scripts/export_integration_contract.py --output docs/integration/contract
 
 The handoff inventories all canonical dataset contracts, currently checked-in SQL source/query files, supplemental feeds and gaps, objective/validation rules and rollout gates. **Do not commit actual internal table mappings, SQL results, employee/commercial data or credentials here.** Produce/complete private mappings solely inside approved company-controlled systems. A valid company schedule requires owner-approved source semantics and independent verification; the current demo is not proof of live readiness.
 
+## Optional FOCUS Gridiron football module (design and staged build prompts)
+
+[Gridiron architectural handoff](docs/gridiron/README.md) · [12 ordered coding prompts](docs/gridiron/prompts/README.md) · [proposed SQL Server schema](docs/gridiron/SQL_SERVER_SCHEMA.md) · [private-source mapping guide](docs/gridiron/SOURCE_MAPPING_AND_GOVERNANCE.md). These are design artifacts; football code, live employee mappings and SQL migrations have **not** been deployed. The existing scheduler and all work-sensitive readiness gates remain authoritative.
+
 ## Hosting
 
 Hosting is Posit Connect first, then VMware Tanzu. See
