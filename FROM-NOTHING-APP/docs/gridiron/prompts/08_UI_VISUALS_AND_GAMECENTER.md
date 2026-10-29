@@ -1,0 +1,14 @@
+# Prompt 08 — beautiful football UI embedded in current FOCUS (no framework migration)
+
+```text
+Implement a polished, intuitive mobile-first Gridiron workspace with the same existing Flask/Jinja/ES module architecture. Read focus/web/views.py, templates/partials/{side_nav,view_selector,bottom_nav}.html, focus/web/static/js/{workspace.js,core.js,views/registry.js,views/performance.js,views/panels.js,views/twin.js}, relevant CSS and docs/gridiron. Add a 'Gridiron' supplementary navigation item in BOTH iOS and Classic modes; preserve all other views, URL base path and accessibility. Avoid introducing React or replacing the UI framework. Use design tokens and existing DOM helpers where practical, with premium graphics for the sport.
+
+Layout (at minimum):
+1. League Home: strong hero game-of-the-week matchup, two football team crests, scoreboards, week selector, league W/L standings, next game, top safe highlights.
+2. My Player: personal player card with alias, chosen/best position, OVR, attributes, sample confidence, weekly trend, approved highlights and missing evidence indicator; own metrics only.
+3. Team Locker Room: actual production team's 11-player OFFENSE starters and 11-player DEFENSE starters, explicitly selected top performers by positional fit, with position depth chart and optional two-way badges. Team lists NEVER include another production team's mechanics. Display a safe explanation 'Best available fit for this position' without personal private comparisons. Nonstarters can be recognized by bench/substitutions and opt-in awards.
+4. Game Center: scenic 2D SVG/Canvas football field (yard stripes, endzones, team-colored kits, yardline, score, possession, play clock) with animated snap/run/pass/catch/tackle/punt/field-goal highlights from persisted play trace. Replay controls for play/pause, speed, step, reduced motion, mobile portrait and landscape.
+5. Season: bracket/playoffs, archive, achievements and fair-use disclosures.
+
+Make the game visually satisfying while instant-loading, responsive at 375px and touch-friendly, no animation during reduced-motion, keyboard/screenreader accessible and legible on iOS. A graceful text-only replay works if canvas unavailable. At game-end show box score and explain player contribution; DO NOT fabricate a correlation between specific rework discovery and a specific football interception. Load canonical JSON only; browser never computes or edits player ratings, roster selection or outcomes. Show synthetic DEMO banner for public mock. Show ROSTER_INCOMPLETE clearly in live and no forced match. No direct source query or external resource required. Write Playwright tests with mobile screenshots, keyboard paths, no PII leak, visual regression where test infrastructure supports it, and route test for both layouts / Posit prefix.
+```
