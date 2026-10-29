@@ -1,7 +1,7 @@
 # FOCUS Gridiron — architecture, gameplay, scoring and acceptance
 
 ## 1. Product definition
-FOCUS Gridiron is an optional, integrated, mobile-friendly football league. **Every opted-in mechanic may have a football avatar.** Real production teams may field fantasy football squads; teams with fewer opted-in players receive explicitly labeled neutral fictional fill-ins, never synthetic workers masquerading as real people. Avoid workplace participation pressure. Weekly games can be watched in minutes with optional full play-by-play and box scores. Default to automated games, not an interactive sports game requiring employees to act during work.
+FOCUS Gridiron is an optional, integrated, mobile-friendly football league. **Every opted-in mechanic may have a football avatar.** Real production teams compete using exclusively their own opted-in eligible teammates. In a live 11v11 game, fewer than 11 eligible teammates blocks the match as ROSTER_INCOMPLETE; no mixed fantasy teams or invented live people. Fully fictional same-team teammates are used only in the synthetic public demo. Avoid workplace participation pressure. Weekly games can be watched in minutes with optional full play-by-play and box scores. Default to automated games, not an interactive sports game requiring employees to act during work.
 
 Suggested UI flows:
 - My Player: alias, preferred position, 0–100 overall/position ratings, confidence, week-over-week movement, five attribute cards, explanations and privacy controls.
