@@ -42,3 +42,7 @@ Deliver an optional football league inside the existing FOCUS Flask/JavaScript a
 
 ## Recommended first command for coding agent
 Read `docs/gridiron/prompts/00_GOAL_AND_RECONNAISSANCE.md` and execute it; then advance to 01 only after satisfying its gates.
+
+
+## Definitive production-team starting-lineup rule (2026-10-29)
+Every franchise represents one **actual production team**, never an arbitrary mixed roster or fantasy draft. Each weekly starter must be an opted-in, eligible member of that production team at the week-freeze cutoff. Select the **best eligible positional starting lineup for that team's teammates**, not merely the top 11 raw overall scores. Rank/assign by a deterministic constrained maximum-weight matching using overall and position-fit scores, with reproducible tie-breaks. Position specialization is allowed. Bench, substitute and special-teams roles may recognize more teammates, but must never supplant that week's published starters without a versioned revision. When fewer than 11 team members meet eligibility, mark the fixture as `ROSTER_INCOMPLETE` and don't present made-up or cross-team players as live starters. Fictional game rosters remain allowed in explicitly synthetic demo mode only. See architecture, schema and prompt 04.
