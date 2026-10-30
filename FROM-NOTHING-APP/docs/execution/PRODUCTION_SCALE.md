@@ -33,7 +33,32 @@ one process.
   building one plan.
 - **Memory:** peak 0.5 GB for 1 aircraft and 1.7 GB for 5 aircraft.
 
-## What changed in this work
+## Engine v2 (October 31, 2026)
+
+`python tools/benchmark_production.py --sizes 1,5 --purposes FORECAST --engines native,python --max-moves 0`; receipts in
+`evidence/production-scale/engine-v2/`. Both cores scheduled the same snapshot and produced identical plans at both sizes.
+
+| Aircraft | Native core before | Native core now | Python core now | Load before | Load now |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 25.5 s | **10.2 s** | 47.7 s | 33 s | 19 s |
+| 5 | 239 s | **55.9 s** | 1,141 s | 178 s | 103 s |
+
+What made the difference:
+- **The whole time-slot search for a phase runs in one Rust call**, and every opening is tried (the 48-start limit per
+  shift is gone in both cores).
+- **Exact start skipping.** Before a crew attempt, the search counts the people who could be booked alone (no conflict,
+  inside their open windows, a transfer slot into and out of the work, hours within caps) and are qualified, allowing at
+  most cap - active new heads. A start without enough of them is skipped. At 5 aircraft, crew attempts fell from 1.28
+  million to one per phase.
+- **No quadratic setup.** The search no longer lists every job's competitors (quadratic in fleet size).
+- **Faster records.** A faster canonical codec with identical bytes; datetime conversions cached by value; a snapshot
+  verified once per process; record hashes streamed item by item (same digest, about 1 MB instead of hundreds).
+
+Also in this version: cost-of-delay priority (the aircraft's daily penalty decayed by the phase's slack), half of the
+search moves aimed at the longest waits, and repeatability (stop on the move bound; a decision digest in every receipt;
+the same decisions across processes with different hash seeds).
+
+## What changed in the native-core trial
 
 - **Native core** (`native/`, `docs/execution/NATIVE_CORE.md`): the duty ledger and crew selection in Rust, with
   byte-identical plans. A crew choice now costs about 17-36 µs in Rust.
