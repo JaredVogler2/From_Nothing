@@ -6,11 +6,14 @@
    locked in the ledger.
 3. Build a named neutral seed over all aircraft sharing pool capacity (``greedy.Decoder``,
    CPM tails as urgency).
-4. Project aircraft completions and derive marginal priority weights through
-   ``EconomicsRegistry``, then redispatch economically.
+4. Redispatch economically by the cost of delaying each phase (``urgency.cost_of_delay``: the
+   aircraft's daily penalty, decayed by the phase's slack in the seed). The marginal weights of
+   ``EconomicsRegistry`` are still recorded in the receipt.
 5. Run bounded delay repair for resource-deferred jobs.
-6. Search seeded neighbourhoods (swap, boost, aircraft advance), stopping at the move bound,
-   the wall-clock budget or cancellation.
+6. Search seeded neighbourhoods (swap, boost, aircraft advance; half of the moves boost the
+   jobs with the longest waits when there are any), stopping at the move bound, the wall-clock
+   budget or cancellation. Only the move bound keeps a run repeatable: the receipt's
+   ``stop_reason`` says which one ended the search.
 7. Keep a candidate only when it is strictly better under the exact lexicographic comparison
    (S12), with no monetary tolerance, and it keeps every commitment the current best keeps
    (a later move can never silently undo a feasible defended task). The independent validator
@@ -42,7 +45,6 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from fractions import Fraction
 from typing import Any, Callable, Mapping
 
 from ....codec import to_jsonable
@@ -57,6 +59,7 @@ from .continuity import continuity_breaks
 from .greedy import DecodeResult, Decoder, DefendedTask
 from .neighborhoods import Move, PriorityState, generate
 from .repair import repairable_jobs
+from .urgency import cost_of_delay, long_waits, urgency_summary
 
 ALGORITHM = "FOCUS-rich-MAX"
 VERSION = "1.0"
@@ -99,22 +102,25 @@ class MaxRun:
     validation: Any = None               # final ValidationReceipt (schedule)
     solver: dict[str, Any] = field(default_factory=dict)   # optional CP-SAT stage receipt (P22); DISABLED by default
     native: dict[str, Any] = field(default_factory=dict)   # which ledger/crew core ran; never part of the candidate
+    urgency: dict[str, int] = field(default_factory=dict)  # phase -> cost of delay used by the economic passes
+    stop_reason: str = "move_bound"                        # move_bound | no_moves (repeatable) or deadline | cancelled
 
 
-def make_priority(ctx: EngineContext, state: PriorityState, weights: Mapping[int, Fraction] | None,
+def make_priority(ctx: EngineContext, state: PriorityState, urgency: Mapping[str, int] | None,
                   fixed: Mapping[str, int] | None = None) -> Callable[[str], tuple]:
     """Order within a dispatch class; the decoder puts ready commitments and their prerequisites first.
 
-    ``fixed`` holds planned task priorities of an isolated scenario (job -> negative rank). They lead the key, so
-    search moves cannot reorder them, and they act only among ready phases: graph, parts, QA, crews and defended
-    commitments still decide what may start.
+    ``urgency`` is the cost of delaying each phase (``urgency.cost_of_delay``; None in the neutral seed, which orders by
+    CPM tail alone). ``fixed`` holds planned task priorities of an isolated scenario (job -> negative rank). They lead
+    the key, so search moves cannot reorder them, and they act only among ready phases: graph, parts, QA, crews and
+    defended commitments still decide what may start.
     """
     fixed = fixed or {}
+    urgency = urgency or {}
 
     def key(pid: str) -> tuple:
         phase = ctx.phases[pid]
-        weight = (weights or {}).get(phase.line, Fraction(0))
-        return (fixed.get(phase.job, 0), state.ranks.get(phase.job, 0.0), -weight, -ctx.tails.get(pid, 0), pid)
+        return (fixed.get(phase.job, 0), state.ranks.get(phase.job, 0.0), -urgency.get(pid, 0), -ctx.tails.get(pid, 0), pid)
     return key
 
 
@@ -150,8 +156,8 @@ class MaxOptimizer:
         self.peers = {job: sorted({o for jobs in self.team_jobs.values() if job in jobs for o in jobs if o != job}) for job in placeable}
 
     # ------------------------------------------------------------------ evaluation
-    def decode(self, state: PriorityState, weights: Mapping[int, Fraction] | None) -> DecodeResult:
-        return Decoder(self.ctx, make_priority(self.ctx, state, weights, self.fixed_ranks), defended=self.defended).run()
+    def decode(self, state: PriorityState, urgency: Mapping[str, int] | None) -> DecodeResult:
+        return Decoder(self.ctx, make_priority(self.ctx, state, urgency, self.fixed_ranks), defended=self.defended).run()
 
     def evaluate(self, decode: DecodeResult) -> Evaluation:
         ctx = self.ctx
@@ -228,22 +234,23 @@ class MaxOptimizer:
         best, best_state, best_valid = baseline, neutral, seed_valid
         t = self.clock()
         weight_records = self.registry.derive_priority_weights(completion_minutes(baseline.completions))
-        weights = {line: w.normalized for line, w in weight_records.items()}
-        econ = self.evaluate(self.decode(neutral, weights))
+        urgency = cost_of_delay(self.ctx, self.registry, baseline.decode)
+        econ = self.evaluate(self.decode(neutral, urgency))
         accepted = self._admit(econ, best, best_valid, "economic_redispatch")
         if accepted:
             best, best_valid = econ, True
-        stages.append(stage("economic_redispatch", t, 1, int(accepted), "registry marginal weights; exact complete-candidate comparison"))
-        run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages, seed_valid=seed_valid)
+        stages.append(stage("economic_redispatch", t, 1, int(accepted), f"{urgency_summary(urgency)}; exact complete-candidate comparison"))
+        run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages, seed_valid=seed_valid, urgency=urgency)
         t = self.clock()
         phase_job = {pid: p.job for pid, p in self.ctx.phases.items()}
         repaired = 0
         for job in repairable_jobs(best.decode.deferred, phase_job)[:20]:
             if self._out_of_time(start):
                 run.deadline_reached = True
+                run.stop_reason = "cancelled" if self.cancel() else "deadline"
                 break
             state = best_state.apply(Move("boost", (job,), "repair"), self.peers)
-            cand = self.evaluate(self.decode(state, weights))
+            cand = self.evaluate(self.decode(state, urgency))
             if self._admit(cand, best, best_valid, "delay_repair"):
                 best, best_state, best_valid = cand, state, True
                 repaired += 1
@@ -252,21 +259,25 @@ class MaxOptimizer:
         t = self.clock()
         rng = random.Random(self.seed)
         moves = accepted_n = 0
+        waits = long_waits(best.decode)
         while moves < self.max_moves:
             if self._out_of_time(start):
                 run.deadline_reached = True
+                run.stop_reason = "cancelled" if self.cancel() else "deadline"
                 break
             focus = repairable_jobs(best.decode.deferred, phase_job) + sorted(j for j, n in continuity_breaks(best.decode.placements).items() if n)
-            move = generate(rng, team_jobs=self.team_jobs, line_jobs=self.line_jobs, focus_jobs=focus)
+            move = generate(rng, team_jobs=self.team_jobs, line_jobs=self.line_jobs, focus_jobs=focus, wait_jobs=waits)
             if move is None:
+                run.stop_reason = "no_moves"
                 break
             moves += 1
             state = best_state.apply(move, self.peers)
-            cand = self.evaluate(self.decode(state, weights))
+            cand = self.evaluate(self.decode(state, urgency))
             if self._admit(cand, best, best_valid, f"neighborhoods:{move.kind}"):
                 best, best_state, best_valid = cand, state, True
                 accepted_n += 1
                 run.accepted_moves.append(f"{move.kind} {','.join(move.jobs)}")
+                waits = long_waits(best.decode)
         stages.append(stage("neighborhoods", t, moves, accepted_n, f"seed {self.seed}; bound {self.max_moves} moves, {self.budget}s; "
                                                                   f"{self._gate_count} candidates independently validated, "
                                                                   f"{len(self._gate_log)} rolled back"))
@@ -381,6 +392,8 @@ def build_candidate(ctx: EngineContext, run: MaxRun, *, created_at: datetime, in
             "baseline_deferred_phases": len(run.baseline.decode.deferred), "final_deferred_phases": len(decode.deferred),
             "final_travel_minutes": best.travel_minutes, "final_wait_minutes": best.wait_minutes, "final_ot_minutes": best.ot_minutes,
             "moves": run.moves, "accepted_moves": run.accepted_moves, "complete_fleet_cost": fin.complete,
+            "stop_reason": run.stop_reason, "repeatable": run.stop_reason in ("move_bound", "no_moves"),
+            "long_wait_jobs": len(long_waits(best.decode)), "cost_of_delay_phases": len(run.urgency),
             "solver": run.solver or None,
         }),
         paths_used=tuple(sorted(decode.paths_used | {"economics_registry", "exact_evaluator", "neighborhoods", "delay_repair"}
@@ -401,12 +414,35 @@ def build_candidate(ctx: EngineContext, run: MaxRun, *, created_at: datetime, in
     return seal_candidate(plan)
 
 
+RUN_REFERENCES = frozenset({"availability_id", "pool_key", "duration_estimate_id", "evidence", "source_run_id", "snapshot_id"})
+
+
+def decision_digest(plan: CandidatePlan) -> str:
+    """Hash of what the plan decides, without references to the source run it was read from.
+
+    Assignments (phase, start, end, segments, shift, people, conditions, commitment outcome), duties, job dispositions
+    with reasons, aircraft completions, costs and commitment results. Ids that every acquisition mints afresh
+    (availability, pool and duration-estimate references, evidence, source run and snapshot ids) and the run's stage
+    timings are left out, so the same constraints and open work give the same digest in every run (repeatability).
+    """
+    def strip(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: strip(v) for k, v in value.items() if k not in RUN_REFERENCES}
+        if isinstance(value, list):
+            return [strip(v) for v in value]
+        return value
+    body = to_jsonable({"assignments": plan.assignments, "duties": plan.duties, "dispositions": plan.job_dispositions,
+                        "completions": plan.aircraft_completion, "costs": plan.costs, "commitments": plan.commitment_results})
+    return digest_id("DEC", strip(body), length=64)
+
+
 def receipt(plan: CandidatePlan) -> dict[str, Any]:
     census: dict[str, int] = defaultdict(int)
     for o in plan.job_dispositions:
         census[o.disposition.value] += 1
     return to_jsonable({
-        "candidate_id": plan.id, "candidate_hash": plan.hash, "snapshot_id": plan.snapshot_id, "source_run_id": plan.source_run_id,
+        "candidate_id": plan.id, "candidate_hash": plan.hash, "decision_digest": decision_digest(plan), "snapshot_id": plan.snapshot_id,
+        "source_run_id": plan.source_run_id,
         "policy_hash": plan.policy_hash, "purpose": plan.purpose.value, "assignments": len(plan.assignments), "duties": len(plan.duties),
         "disposition_census": dict(sorted(census.items())), "jobs_total": len(plan.job_dispositions),
         "costs": {"known_cents": plan.costs.known_total_cents, "conditional_cents": plan.costs.conditional_total_cents,

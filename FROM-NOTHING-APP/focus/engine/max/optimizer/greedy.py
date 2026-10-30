@@ -8,9 +8,11 @@ economic redispatch or a neighbourhood perturbation). For each phase it does the
   the same-run CS earliest, every hard typed predecessor (FS/SS on the start, FF/SF on the
   end, signed lag kept) and every part-release floor allowed for the purpose.
 * **Shift scan.** Only the line's eligible shifts within admitted calendar bounds are
-  scanned (no extension). Candidate starts are the floor and the instants when pool members
-  finish a duty, plus or minus a transfer. Each start must be a valid start (no-start cutoff
-  with equality). Regular-only placement is tried before overtime.
+  scanned (no extension). Candidate starts are the floor and every instant when a pool member
+  finishes a duty, with and without a transfer; every opening is tried, in time order. Each
+  start must be a valid start (no-start cutoff with equality). Regular-only placement is tried
+  before overtime. The native core makes the same search in Rust and skips, without a full
+  crew attempt, a start where fewer qualified people are free than the crew needs.
 * **Crew.** Exactly the demanded full crew is booked through the ledger (transfers, budget,
   windows, activation, tools). A phase that cannot be placed waits with a verified cause;
   its successors wait too ("PREDECESSOR_UNPLACED"). There is no fallback crew, cap
@@ -37,7 +39,6 @@ from ...crew_selection import choose_crew
 from ...ledger import DutyLedger, LedgerError
 from ...model import EngineContext
 
-MAX_STARTS_PER_SHIFT = 48
 LEAD_DEFENDED, LEAD_CONE, LEAD_OTHER = 0, 1, 2       # dispatch classes ahead of the caller's priority key
 REQUEUE = "DEFENSE_FAILED_REQUEUED"
 
@@ -83,6 +84,7 @@ class DecodeResult:
     ledger: DutyLedger | None = None
     paths_used: set[str] = field(default_factory=set)
     attempts: int = 0
+    waits: dict[str, int] = field(default_factory=dict)              # ordinary placed phase -> minutes past its earliest start
 
 
 def _times(result: DecodeResult, node: str) -> tuple[int, int] | None:
@@ -125,16 +127,15 @@ def _floors(ctx: EngineContext, result: DecodeResult, phase: Phase) -> tuple[int
 
 
 def _candidate_starts(ctx: EngineContext, ledger: DutyLedger, shift, pool_id: str, first: int) -> list[int]:
+    """Every opening in the shift: the first valid start, the no-start cutoff and each pool member's duty end, with and
+    without a transfer."""
     travel = ctx.travel.changed_aircraft_minutes
-    if getattr(ledger, "native", False):
-        return ledger.candidate_starts(pool_id, shift.id, first, shift.cutoff_instant, travel, MAX_STARTS_PER_SHIFT)
     points = {first, shift.cutoff_instant}
     for m in ctx.pool_members(pool_id):
         for x in ledger.free_points(m, shift.id):
             points.add(x)
             points.add(x + travel)
-    out = sorted(t for t in points if first <= t <= shift.cutoff_instant)
-    return out[:MAX_STARTS_PER_SHIFT]
+    return sorted(t for t in points if first <= t <= shift.cutoff_instant)
 
 
 class Decoder:
@@ -259,7 +260,10 @@ class Decoder:
             return None, "ROLE_DEMAND_MISSING"
         defended = self.defended.get(phase.key.id)
         if defended is None:
-            return self._search(phase, start_floor, end_floor, conditional, result)
+            placement, reason = self._search(phase, start_floor, end_floor, conditional, result)
+            if placement is not None:
+                result.waits[phase.key.id] = placement.start - start_floor
+            return placement, reason
         if phase.key.id not in self._requeued:
             placement = self._defend(phase, defended, start_floor, end_floor, conditional, result)
             if placement is not None:
@@ -281,6 +285,8 @@ class Decoder:
         job = ctx.jobs[phase.job]
         demand = phase.role_demands[0]
         floor = max(start_floor, not_before or start_floor)
+        if getattr(ledger, "native", False):
+            return self._search_native(phase, job, demand, floor, end_floor, conditional, result)
         last_reason = "NO_ELIGIBLE_SHIFT: no eligible shift within admitted calendar bounds after the floor"
         for shift in ctx.line_shifts(job.line):
             if shift.end <= floor or shift.cutoff_instant < floor:
@@ -309,6 +315,22 @@ class Decoder:
                     last_reason = reason
                     break
         return None, f"NO_FEASIBLE_PLACEMENT: {last_reason}"
+
+    def _search_native(self, phase: Phase, job, demand, floor: int, end_floor: int, conditional: bool,
+                       result: DecodeResult) -> tuple[PhasePlacement | None, str]:
+        """``_search`` and ``_book`` in one Rust call (the same shifts, starts, crews, WAIT duty and reasons)."""
+        ctx = self.ctx
+        wait_crew = self._wait_crew(phase, result) if phase.kind is PhaseKind.IP_QA and ctx.crew_during_ip == "WAIT" else None
+        wait = None if wait_crew is None else (list(wait_crew[1]), wait_crew[0].shift_id, wait_crew[0].pool_id, wait_crew[0].end)
+        found, reason, _, _ = result.ledger.search(phase_id=phase.key.id, line=job.line, team=demand.team, count=demand.bundle.count,
+                                                   bundle=demand.bundle, work_minutes=phase.work_minutes, floor=floor, end_floor=end_floor,
+                                                   tools=ctx.tool_requirements.get(phase.key.id, ()), wait=wait)
+        if found is None:
+            return None, reason
+        start, end, segments, shift_id, pool_id, crew, aid = found
+        result.paths_used.add("wait_duty" if wait_crew is not None else "release_crew")
+        return PhasePlacement(phase.key.id, phase.job, job.line, phase.kind, start, end, tuple(tuple(s) for s in segments), shift_id,
+                              pool_id, tuple(crew), aid, conditional, False, None), reason
 
     def _book(self, phase: Phase, shift, pool_id: str, segments, conditional: bool, result: DecodeResult,
               exact_crew=None, committed: bool = False, outcome: str | None = None) -> tuple[PhasePlacement | None, str]:

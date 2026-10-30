@@ -1,6 +1,8 @@
 """Planning contracts: snapshot, phases, candidate plans, receipts, publications (S03)."""
 from __future__ import annotations
 
+import weakref
+
 from dataclasses import dataclass, fields, replace
 from datetime import date, datetime
 from decimal import Decimal
@@ -449,7 +451,7 @@ class AircraftCensus:
     reasons: tuple[str, ...]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, weakref_slot=True)
 class PlanningSnapshot:
     id: str
     source_run_id: str
@@ -496,8 +498,19 @@ class PlanningSnapshot:
         return record_hash(self)
 
     def verify(self) -> None:
+        """Recompute the content hash against the sealed one. A frozen snapshot object verified once in this process is
+        not re-hashed: the memo holds a weak reference, so it never keeps a snapshot alive or matches a new object."""
+        seen = _VERIFIED.get(id(self))
+        if seen is not None and seen[0]() is self and seen[1] == self.hash:
+            return
         if self.computed_hash() != self.hash:
             raise DomainError("SNAPSHOT_HASH_MISMATCH", f"snapshot {self.id} content hash mismatch")
+        _VERIFIED[id(self)] = (weakref.ref(self), self.hash)
+        for key in [k for k, (ref, _) in _VERIFIED.items() if ref() is None]:
+            del _VERIFIED[key]
+
+
+_VERIFIED: dict[int, tuple[Any, str]] = {}          # id -> (weak reference, verified hash): snapshots verified in this process
 
 
 def seal_snapshot(snapshot: PlanningSnapshot) -> PlanningSnapshot:

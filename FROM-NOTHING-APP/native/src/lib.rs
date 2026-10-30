@@ -10,9 +10,14 @@
 //!   members, holdings, team certificates, travel policy) plus the exact qualification memo.
 //! * `Ledger`: one decode's mutable state. Transactions use an undo log, so a rollback restores
 //!   exactly the previous state in O(changes).
+//! * `Ledger.search`: the decoder's whole time-slot search for one phase (`greedy._search` and `_book`): every eligible
+//!   shift, every candidate start, the calendar advance, the crew choice and the booking. A start where fewer qualified
+//!   people are free than the crew needs is skipped without a full crew attempt; that attempt would fail anyway, and the
+//!   failure reason the decoder reports is recomputed exactly when it is owed.
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
@@ -216,6 +221,142 @@ struct Shared {
     data: Static,
     bundles: Mutex<(Vec<Vec<Vec<Arc<str>>>>, HashMap<Vec<Vec<String>>, usize>)>,
     memo: Mutex<HashMap<(u32, usize, i64, i64), bool>>,
+    calendar: Mutex<Option<Arc<Calendar>>>,
+}
+
+// ------------------------------------------------------------------------------------------ calendar
+
+/// One shift instance (`calendar.ShiftInstance`): the coordinates the time-slot search needs, plus the pool of every
+/// team staffed in it (`EngineContext.pool_for`).
+struct ShiftRec {
+    id: Arc<str>,
+    label: String,
+    start: i64,
+    end: i64,
+    regular: Vec<(i64, i64)>,
+    cutoff_coord: i64,
+    cutoff_instant: i64,
+    ot_window: Option<(i64, i64)>,
+    pools: HashMap<String, Arc<str>>,
+}
+
+impl ShiftRec {
+    /// Open regular minutes in [start, t).
+    fn coord(&self, t: i64) -> i64 {
+        let mut total = 0;
+        for &(ws, we) in &self.regular {
+            if t <= ws {
+                break;
+            }
+            total += t.min(we) - ws;
+        }
+        total
+    }
+
+    fn in_regular(&self, t: i64) -> bool {
+        self.regular.iter().any(|&(ws, we)| ws <= t && t < we)
+    }
+
+    fn next_open(&self, t: i64) -> Option<i64> {
+        self.regular.iter().find(|&&(_, we)| t < we).map(|&(ws, _)| t.max(ws))
+    }
+
+    fn valid_start(&self, t: i64) -> bool {
+        self.in_regular(t) && self.coord(t) <= self.cutoff_coord
+    }
+
+    /// `ShiftInstance.advance`, step for step.
+    fn advance(&self, start: i64, minutes: i64, ot_allowed: i64) -> Option<(i64, Vec<(i64, i64, bool)>)> {
+        if minutes <= 0 {
+            return None;
+        }
+        let mut remaining = minutes;
+        let mut segments: Vec<(i64, i64, bool)> = Vec::new();
+        let mut t = start;
+        for &(ws, we) in &self.regular {
+            if remaining == 0 {
+                break;
+            }
+            if we <= t {
+                continue;
+            }
+            let s = t.max(ws);
+            let take = (we - s).min(remaining);
+            if take > 0 {
+                segments.push((s, s + take, false));
+                remaining -= take;
+                t = s + take;
+            }
+        }
+        if remaining > 0 {
+            let (os, oe) = match self.ot_window {
+                Some(w) if ot_allowed > 0 && remaining <= ot_allowed => w,
+                _ => return None,
+            };
+            let s = t.max(os);
+            if s + remaining > oe {
+                return None;
+            }
+            segments.push((s, s + remaining, true));
+        }
+        if segments.is_empty() {
+            return None;
+        }
+        let mut merged: Vec<(i64, i64, bool)> = Vec::with_capacity(segments.len());
+        for seg in segments {
+            match merged.last_mut() {
+                Some(last) if last.1 == seg.0 && last.2 == seg.2 => last.1 = seg.1,
+                _ => merged.push(seg),
+            }
+        }
+        Some((merged[merged.len() - 1].1, merged))
+    }
+}
+
+/// The calendar of one engine context: each line's eligible shifts in order, the overtime the decoder may try and the
+/// purpose that enters assignment ids.
+struct Calendar {
+    ot_minutes: i64,
+    purpose: String,
+    lines: HashMap<i64, Vec<Arc<ShiftRec>>>,
+}
+
+/// Python `json.dumps(s, ensure_ascii=False)` for a string.
+fn json_str(out: &mut String, s: &str) {
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\u{08}' => out.push_str("\\b"),
+            '\u{0c}' => out.push_str("\\f"),
+            c if (c as u32) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", c as u32);
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+}
+
+/// `digest_id("ASG", phase_id, start, purpose)`: "ASG" + the first 20 hex digits of SHA-256 over the canonical JSON list.
+fn assignment_id(phase_id: &str, start: i64, purpose: &str) -> String {
+    let mut payload = String::with_capacity(phase_id.len() + purpose.len() + 24);
+    payload.push('[');
+    json_str(&mut payload, phase_id);
+    let _ = write!(payload, ",{start},");
+    json_str(&mut payload, purpose);
+    payload.push(']');
+    let digest = Sha256::digest(payload.as_bytes());
+    let mut out = String::with_capacity(23);
+    out.push_str("ASG");
+    for byte in digest.iter().take(10) {
+        let _ = write!(out, "{byte:02x}");
+    }
+    out
 }
 
 impl Shared {
@@ -367,8 +508,51 @@ impl Context {
             team_certs: teams,
         };
         Ok(Context {
-            shared: Arc::new(Shared { data, bundles: Mutex::new((Vec::new(), HashMap::new())), memo: Mutex::new(HashMap::new()) }),
+            shared: Arc::new(Shared {
+                data,
+                bundles: Mutex::new((Vec::new(), HashMap::new())),
+                memo: Mutex::new(HashMap::new()),
+                calendar: Mutex::new(None),
+            }),
         })
+    }
+
+    /// Register the calendar the time-slot search reads: every shift instance (id, label, start, end, regular windows,
+    /// no-start cutoff in coordinates and as an instant, OT window, (team, pool) pairs) and each line's eligible shift
+    /// ids in calendar order. Registering again replaces it.
+    #[allow(clippy::type_complexity)]
+    fn register_calendar(
+        &self,
+        ot_minutes: i64,
+        purpose: String,
+        shifts: Vec<(String, String, i64, i64, Vec<(i64, i64)>, i64, i64, Option<(i64, i64)>, Vec<(String, String)>)>,
+        lines: Vec<(i64, Vec<String>)>,
+    ) -> PyResult<()> {
+        let mut by_id: HashMap<String, Arc<ShiftRec>> = HashMap::with_capacity(shifts.len());
+        for (id, label, start, end, regular, cutoff_coord, cutoff_instant, ot_window, pools) in shifts {
+            let rec = ShiftRec {
+                id: Arc::from(id.as_str()),
+                label,
+                start,
+                end,
+                regular,
+                cutoff_coord,
+                cutoff_instant,
+                ot_window,
+                pools: pools.into_iter().map(|(team, pool)| (team, Arc::from(pool.as_str()))).collect(),
+            };
+            by_id.insert(id, Arc::new(rec));
+        }
+        let mut by_line = HashMap::with_capacity(lines.len());
+        for (line, ids) in lines {
+            let mut list = Vec::with_capacity(ids.len());
+            for id in ids {
+                list.push(by_id.get(&id).cloned().ok_or_else(|| PyValueError::new_err(format!("line {line}: unregistered shift {id}")))?);
+            }
+            by_line.insert(line, list);
+        }
+        *self.shared.calendar.lock().unwrap() = Some(Arc::new(Calendar { ot_minutes, purpose, lines: by_line }));
+        Ok(())
     }
 
     /// Register a requirement bundle (AND groups of OR alternatives); equal content returns the same id.
@@ -826,7 +1010,231 @@ impl Ledger {
     fn intern_tools(tools: Vec<String>) -> Vec<Arc<str>> {
         tools.iter().map(|t| Arc::from(t.as_str())).collect()
     }
+
+    fn bundle_groups(&self, bundle: usize) -> PyResult<Vec<Vec<Arc<str>>>> {
+        let reg = self.shared.bundles.lock().unwrap();
+        reg.0.get(bundle).cloned().ok_or_else(|| PyValueError::new_err(format!("unregistered bundle {bundle}")))
+    }
+
+    /// `crew_selection.choose_crew` without an exact crew. The planned booking is returned, not stored.
+    #[allow(clippy::too_many_arguments, unused_assignments)]
+    fn choose_inner(
+        &self,
+        aid: &str,
+        line: i64,
+        team: &str,
+        s: u32,
+        q: u32,
+        count: i64,
+        bundle: usize,
+        groups: &[Vec<Arc<str>>],
+        window: Option<(i64, i64)>,
+        segments: &[(i64, i64, bool)],
+        k: u8,
+        tools: &[Arc<str>],
+    ) -> Result<Chosen, ChooseFail> {
+        if count <= 0 {
+            let reason = "CREW_DEMAND_UNAVAILABLE: no sourced positive crew demand (never clamped to 1)".to_string();
+            return Err(ChooseFail { reason, tried: 0, qualified: 0 });
+        }
+        let need = count as usize;
+        let (start, end) = (segments[0].0, segments[segments.len() - 1].1);
+        let members: &[u32] = self.data().members.get(&q).map_or(&[], |v| v.as_slice());
+        let qualified: Vec<u32> = members.iter().copied().filter(|&m| self.shared.qualifies(m, bundle, groups, window, start, end)).collect();
+        if qualified.len() < need {
+            let reason = format!("CREW_UNQUALIFIED: {} qualified of {} demanded in {}", qualified.len(), count, self.poolname(q));
+            return Err(ChooseFail { reason, tried: 0, qualified: qualified.len() });
+        }
+        let active = self.active_set(q);
+        let mut feasible: Vec<u32> = Vec::new();
+        let mut last_problem = String::new();
+        for &person in &qualified {
+            if let Some(e) = self.person_conflict_inner(person, s, q, segments) {
+                last_problem = format!("{}: {}", e.code, e.detail);
+                continue;
+            }
+            let probe = format!("{}?{}", aid, self.pname(person));
+            match self.plan_inner(&probe, &[person], line, s, q, segments, k, tools, Some(&active)) {
+                Ok(_) => feasible.push(person),
+                Err(e) => {
+                    if e.code != "ACTIVATION_CAP" {
+                        last_problem = format!("{}: {}", e.code, e.detail);
+                        continue;
+                    }
+                    feasible.push(person);
+                }
+            }
+        }
+        if feasible.len() < need {
+            let mut reason = format!("CREW_UNAVAILABLE: {} of {} people free over the interval", feasible.len(), count);
+            if !last_problem.is_empty() {
+                let _ = write!(reason, " ({last_problem})");
+            }
+            return Err(ChooseFail { reason, tried: 0, qualified: qualified.len() });
+        }
+        let mut keyed: Vec<(PrefKey, u32)> = feasible.iter().map(|&p| (self.pref_key(p, team, line, s, start, end), p)).collect();
+        keyed.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut ordered: Vec<u32> = keyed.iter().map(|(_, p)| *p).collect();
+        let room = self.data().pool_caps.get(&q).copied().unwrap_or(0) - active.len() as i64;
+        if room < count {
+            let (first, second): (Vec<u32>, Vec<u32>) = ordered.iter().copied().partition(|p| active.contains(p));
+            ordered = first.into_iter().chain(second).collect();
+        }
+        let n = ordered.len();
+        let mut idx: Vec<usize> = (0..need).collect();
+        let mut tried = 0usize;
+        let mut last_cap = String::new();
+        loop {
+            tried += 1;
+            if tried > MAX_COMBINATIONS {
+                let reason = format!("CREW_SEARCH_BOUND: more than {MAX_COMBINATIONS} combinations; no crew asserted");
+                return Err(ChooseFail { reason, tried, qualified: qualified.len() });
+            }
+            let crew: Vec<u32> = idx.iter().map(|&i| ordered[i]).collect();
+            if let Some(e) = self.cap_problem_inner(q, &crew, k, Some(&active)) {
+                last_cap = format!("{}: {}", e.code, e.detail);
+            } else {
+                match self.plan_inner(aid, &crew, line, s, q, segments, k, tools, None) {
+                    Ok(planned) => return Ok(Chosen { crew, planned, tried, qualified: qualified.len(), keyed }),
+                    Err(e) => last_cap = format!("{}: {}", e.code, e.detail),
+                }
+            }
+            // next combination in itertools.combinations order
+            let mut i = need;
+            loop {
+                if i == 0 {
+                    let reason = if last_cap.is_empty() { "NO_FEASIBLE_CREW".to_string() } else { last_cap };
+                    return Err(ChooseFail { reason, tried, qualified: qualified.len() });
+                }
+                i -= 1;
+                if idx[i] != i + n - need {
+                    break;
+                }
+            }
+            idx[i] += 1;
+            for j in i + 1..need {
+                idx[j] = idx[j - 1] + 1;
+            }
+        }
+    }
+
+    /// True exactly when `person_conflict_inner` finds nothing (no message is built).
+    fn conflict_free(&self, person: u32, shift: u32, pool: u32, segs: &[(i64, i64, bool)]) -> bool {
+        match self.data().windows.get(&(person, shift)) {
+            Some(w) if w.pool == pool => {}
+            _ => return false,
+        }
+        if let Some(rows) = self.rows.get(&person) {
+            for &(start, end, _) in segs {
+                let mut idx = bisect_right_end(rows, start);
+                while idx < rows.len() && rows[idx].0 < end {
+                    if rows[idx].3 != shift {
+                        return false;
+                    }
+                    idx += 1;
+                }
+            }
+        }
+        !self.items_of(person, shift).iter().any(|i| i.kind != TRAVEL && segs.iter().any(|&(a, b, _)| i.start < b && a < i.end))
+    }
+
+    /// At least `need` pool members are qualified and free over the segments. A crew can only come from such people,
+    /// so when this is false the full crew attempt is certain to fail and is skipped.
+    #[allow(clippy::too_many_arguments)]
+    fn enough_free(&self, s: u32, q: u32, need: usize, bundle: usize, groups: &[Vec<Arc<str>>], window: Option<(i64, i64)>, segs: &[(i64, i64, bool)]) -> bool {
+        if need == 0 {
+            return true;
+        }
+        let (start, end) = (segs[0].0, segs[segs.len() - 1].1);
+        let Some(members) = self.data().members.get(&q) else { return false };
+        let mut n = 0usize;
+        for &m in members {
+            if self.conflict_free(m, s, q, segs) && self.shared.qualifies(m, bundle, groups, window, start, end) {
+                n += 1;
+                if n >= need {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// `greedy._candidate_starts`: the first valid start, the no-start cutoff and every pool member's duty end, with and
+    /// without a transfer, inside [first, cutoff], sorted and unique. Every opening is kept.
+    fn candidates(&self, s: u32, q: u32, first: i64, cutoff: i64, travel: i64) -> Vec<i64> {
+        let mut points: Vec<i64> = vec![first, cutoff];
+        if let Some(members) = self.data().members.get(&q) {
+            for &m in members {
+                for i in self.items_of(m, s) {
+                    if i.kind != TRAVEL {
+                        points.push(i.end);
+                        points.push(i.end + travel);
+                    }
+                }
+            }
+        }
+        points.retain(|&t| first <= t && t <= cutoff);
+        points.sort_unstable();
+        points.dedup();
+        points
+    }
+
+    /// `greedy.Decoder._book` for one start: the assignment id, the crew choice and, in one transaction, the booking and
+    /// the production crew's WAIT duty through an in-process inspection.
+    #[allow(clippy::too_many_arguments)]
+    fn book_attempt(
+        &mut self,
+        phase_id: &str,
+        purpose: &str,
+        line: i64,
+        team: &str,
+        s: u32,
+        q: u32,
+        count: i64,
+        bundle: usize,
+        groups: &[Vec<Arc<str>>],
+        window: Option<(i64, i64)>,
+        segs: &[(i64, i64, bool)],
+        tools: &[Arc<str>],
+        wait: &Option<(Vec<u32>, u32, u32, i64)>,
+    ) -> Result<(Vec<u32>, String), String> {
+        let aid = assignment_id(phase_id, segs[0].0, purpose);
+        let chosen = self.choose_inner(&aid, line, team, s, q, count, bundle, groups, window, segs, WORK, tools).map_err(|f| f.reason)?;
+        let crew = chosen.crew.clone();
+        self.begin();
+        self.commit_planned(chosen.planned);
+        if let Some((wcrew, ws, wq, wend)) = wait {
+            let waid = format!("{aid}:WAIT");
+            let wsegs = [(*wend, segs[segs.len() - 1].1, false)];
+            match self.plan_inner(&waid, wcrew, line, *ws, *wq, &wsegs, WAIT, &[], None) {
+                Ok(planned) => self.commit_planned(planned),
+                Err(e) => {
+                    self.rollback();
+                    return Err(format!("WAIT_DUTY_INFEASIBLE: {}: {}", e.code, e.detail));
+                }
+            }
+        }
+        self.end();
+        Ok((crew, aid))
+    }
 }
+
+struct Chosen {
+    crew: Vec<u32>,
+    planned: Planned,
+    tried: usize,
+    qualified: usize,
+    keyed: Vec<(PrefKey, u32)>,
+}
+
+struct ChooseFail {
+    reason: String,
+    tried: usize,
+    qualified: usize,
+}
+
+type Placement = (i64, i64, Vec<(i64, i64, bool)>, String, String, Vec<String>, String);
+type SearchTuple = (Option<Placement>, String, u64, u64);
 
 #[pymethods]
 impl Ledger {
@@ -887,23 +1295,9 @@ impl Ledger {
     }
 
     /// `greedy._candidate_starts`: the floor, the no-start cutoff and every pool member's duty end (plus a transfer).
-    fn candidate_starts(&mut self, pool: &str, shift: &str, first: i64, cutoff: i64, travel: i64, max_starts: usize) -> Vec<i64> {
+    fn candidate_starts(&mut self, pool: &str, shift: &str, first: i64, cutoff: i64, travel: i64) -> Vec<i64> {
         let (pid, s) = (self.pools.intern(pool), self.shifts.intern(shift));
-        let mut points: HashSet<i64> = HashSet::from([first, cutoff]);
-        if let Some(members) = self.data().members.get(&pid) {
-            for &m in members {
-                for i in self.items_of(m, s) {
-                    if i.kind != TRAVEL {
-                        points.insert(i.end);
-                        points.insert(i.end + travel);
-                    }
-                }
-            }
-        }
-        let mut out: Vec<i64> = points.into_iter().filter(|&t| first <= t && t <= cutoff).collect();
-        out.sort_unstable();
-        out.truncate(max_starts);
-        out
+        self.candidates(s, pid, first, cutoff, travel)
     }
 
     fn problems(&self) -> Vec<String> {
@@ -1086,7 +1480,7 @@ impl Ledger {
     /// `choose_crew` without an exact crew: qualification, per-person screening and full planning, preference order,
     /// cap-driven reuse and bounded combinations, all exactly as the Python reference.
     #[pyo3(signature = (aid, line, team, shift, pool, count, bundle, window, segments, kind, tools))]
-    #[allow(clippy::too_many_arguments, unused_assignments)]
+    #[allow(clippy::too_many_arguments)]
     fn choose_crew(
         &mut self,
         aid: &str,
@@ -1105,94 +1499,111 @@ impl Ledger {
         if count <= 0 {
             return Ok((None, None, 0, 0, Vec::new(), "CREW_DEMAND_UNAVAILABLE: no sourced positive crew demand (never clamped to 1)".to_string()));
         }
-        let need = count as usize;
         let (s, q) = (self.shifts.intern(shift), self.pools.intern(pool));
         let tools = Self::intern_tools(tools);
-        let (start, end) = (segments[0].0, segments[segments.len() - 1].1);
-        let groups = {
-            let reg = self.shared.bundles.lock().unwrap();
-            reg.0.get(bundle).cloned().ok_or_else(|| PyValueError::new_err(format!("unregistered bundle {bundle}")))?
-        };
-        let members: Vec<u32> = self.data().members.get(&q).cloned().unwrap_or_default();
-        let qualified: Vec<u32> = members.into_iter().filter(|&m| self.shared.qualifies(m, bundle, &groups, window, start, end)).collect();
-        if qualified.len() < need {
-            return Ok((None, None, 0, qualified.len(), Vec::new(), format!("CREW_UNQUALIFIED: {} qualified of {} demanded in {}", qualified.len(), count, pool)));
+        let groups = self.bundle_groups(bundle)?;
+        match self.choose_inner(aid, line, team, s, q, count, bundle, &groups, window, &segments, k, &tools) {
+            Ok(c) => {
+                let names = c.crew.iter().map(|&p| self.pname(p).to_string()).collect();
+                let preference: Vec<(String, PrefKey)> = c.keyed.iter().map(|(key, p)| (self.pname(*p).to_string(), key.clone())).collect();
+                let (tried, qualified) = (c.tried, c.qualified);
+                let handle = self.store(c.planned);
+                Ok((Some(names), Some(handle), tried, qualified, preference, "SELECTED".to_string()))
+            }
+            Err(f) => Ok((None, None, f.tried, f.qualified, Vec::new(), f.reason)),
         }
-        let active = self.active_set(q);
-        let mut feasible: Vec<u32> = Vec::new();
-        let mut last_problem = String::new();
-        for &person in &qualified {
-            if let Some(e) = self.person_conflict_inner(person, s, q, &segments) {
-                last_problem = format!("{}: {}", e.code, e.detail);
+    }
+
+    /// The decoder's whole time-slot search for one phase (`greedy.Decoder._search` and `_book`): every eligible shift of
+    /// the line from the floor on, every candidate start, regular time before overtime, the crew choice and the booking
+    /// (with the WAIT duty of `wait`, when given). Returns (placement, reason, crew attempts, starts skipped).
+    ///
+    /// A start where fewer qualified people are free than the crew needs is skipped: the crew attempt there is certain to
+    /// fail. When the search fails and the last failure the reference would report came from a skipped start, that
+    /// attempt is made in full at the end to recover its exact reason; the ledger has not changed in between.
+    #[pyo3(signature = (phase_id, line, team, count, bundle, work_minutes, floor, end_floor, tools, wait))]
+    #[allow(clippy::too_many_arguments)]
+    fn search(
+        &mut self,
+        phase_id: &str,
+        line: i64,
+        team: &str,
+        count: i64,
+        bundle: usize,
+        work_minutes: i64,
+        floor: i64,
+        end_floor: i64,
+        tools: Vec<String>,
+        wait: Option<(Vec<String>, String, String, i64)>,
+    ) -> PyResult<SearchTuple> {
+        let cal = self.shared.calendar.lock().unwrap().clone().ok_or_else(|| PyValueError::new_err("calendar not registered"))?;
+        let groups = self.bundle_groups(bundle)?;
+        let tools = Self::intern_tools(tools);
+        let wait = wait.map(|(crew, shift, pool, end)| {
+            let ids: Vec<u32> = crew.iter().map(|p| self.persons.intern(p)).collect();
+            (ids, self.shifts.intern(&shift), self.pools.intern(&pool), end)
+        });
+        let travel = self.data().travel_changed;
+        let need = count.max(0) as usize;
+        let mut last_reason = String::from("NO_ELIGIBLE_SHIFT: no eligible shift within admitted calendar bounds after the floor");
+        let mut owed: Option<(u32, u32, Option<(i64, i64)>, Vec<(i64, i64, bool)>)> = None;
+        let (mut attempts, mut skipped) = (0u64, 0u64);
+        let none: Vec<Arc<ShiftRec>> = Vec::new();
+        for shift in cal.lines.get(&line).unwrap_or(&none) {
+            if shift.end <= floor || shift.cutoff_instant < floor {
                 continue;
             }
-            let probe = format!("{}?{}", aid, self.pname(person));
-            match self.plan_inner(&probe, &[person], line, s, q, &segments, k, &tools, Some(&active)) {
-                Ok(_) => feasible.push(person),
-                Err(e) => {
-                    if e.code != "ACTIVATION_CAP" {
-                        last_problem = format!("{}: {}", e.code, e.detail);
-                        continue;
+            let Some(pool_name) = shift.pools.get(team) else {
+                last_reason = format!("POOL_MISSING: no {} pool for {}", team, shift.label);
+                owed = None;
+                continue;
+            };
+            let first = match shift.next_open(floor.max(shift.start)) {
+                Some(t) if shift.valid_start(t) => t,
+                _ => continue,
+            };
+            let s = self.shifts.intern(&shift.id);
+            let q = self.pools.intern(pool_name);
+            let window = Some((shift.start, shift.end.max(shift.ot_window.map_or(shift.end, |w| w.1))));
+            for t in self.candidates(s, q, first, shift.cutoff_instant, travel) {
+                let Some(t2) = shift.next_open(t) else { continue };
+                if !shift.valid_start(t2) {
+                    continue;
+                }
+                for ot_allowed in [0, cal.ot_minutes] {
+                    let Some((end, segs)) = shift.advance(t2, work_minutes, ot_allowed) else { continue };
+                    if end < end_floor {
+                        break;
                     }
-                    feasible.push(person);
-                }
-            }
-        }
-        if feasible.len() < need {
-            let mut reason = format!("CREW_UNAVAILABLE: {} of {} people free over the interval", feasible.len(), count);
-            if !last_problem.is_empty() {
-                let _ = write!(reason, " ({last_problem})");
-            }
-            return Ok((None, None, 0, qualified.len(), Vec::new(), reason));
-        }
-        let mut keyed: Vec<(PrefKey, u32)> = feasible.iter().map(|&p| (self.pref_key(p, team, line, s, start, end), p)).collect();
-        keyed.sort_by(|a, b| a.0.cmp(&b.0));
-        let mut ordered: Vec<u32> = keyed.iter().map(|(_, p)| *p).collect();
-        let room = self.data().pool_caps.get(&q).copied().unwrap_or(0) - active.len() as i64;
-        if room < count {
-            let (first, second): (Vec<u32>, Vec<u32>) = ordered.iter().copied().partition(|p| active.contains(p));
-            ordered = first.into_iter().chain(second).collect();
-        }
-        let preference: Vec<(String, PrefKey)> = keyed.iter().map(|(key, p)| (self.pname(*p).to_string(), key.clone())).collect();
-        let n = ordered.len();
-        let mut idx: Vec<usize> = (0..need).collect();
-        let mut tried = 0usize;
-        let mut last_cap = String::new();
-        loop {
-            tried += 1;
-            if tried > MAX_COMBINATIONS {
-                return Ok((None, None, tried, qualified.len(), Vec::new(), format!("CREW_SEARCH_BOUND: more than {MAX_COMBINATIONS} combinations; no crew asserted")));
-            }
-            let crew: Vec<u32> = idx.iter().map(|&i| ordered[i]).collect();
-            if let Some(e) = self.cap_problem_inner(q, &crew, k, Some(&active)) {
-                last_cap = format!("{}: {}", e.code, e.detail);
-            } else {
-                match self.plan_inner(aid, &crew, line, s, q, &segments, k, &tools, None) {
-                    Ok(planned) => {
-                        let names = crew.iter().map(|&p| self.pname(p).to_string()).collect();
-                        let handle = self.store(planned);
-                        return Ok((Some(names), Some(handle), tried, qualified.len(), preference, "SELECTED".to_string()));
+                    if !self.enough_free(s, q, need, bundle, &groups, window, &segs) {
+                        skipped += 1;
+                        owed = Some((s, q, window, segs));
+                        break;
                     }
-                    Err(e) => last_cap = format!("{}: {}", e.code, e.detail),
-                }
-            }
-            // next combination in itertools.combinations order
-            let mut i = need;
-            loop {
-                if i == 0 {
-                    let reason = if last_cap.is_empty() { "NO_FEASIBLE_CREW".to_string() } else { last_cap };
-                    return Ok((None, None, tried, qualified.len(), Vec::new(), reason));
-                }
-                i -= 1;
-                if idx[i] != i + n - need {
+                    attempts += 1;
+                    match self.book_attempt(phase_id, &cal.purpose, line, team, s, q, count, bundle, &groups, window, &segs, &tools, &wait) {
+                        Ok((crew, aid)) => {
+                            let names = crew.iter().map(|&p| self.pname(p).to_string()).collect();
+                            let placed = (segs[0].0, end, segs, shift.id.to_string(), pool_name.to_string(), names, aid);
+                            return Ok((Some(placed), "SELECTED".to_string(), attempts, skipped));
+                        }
+                        Err(reason) => {
+                            last_reason = reason;
+                            owed = None;
+                        }
+                    }
                     break;
                 }
             }
-            idx[i] += 1;
-            for j in i + 1..need {
-                idx[j] = idx[j - 1] + 1;
-            }
         }
+        if let Some((s, q, window, segs)) = owed {
+            let aid = assignment_id(phase_id, segs[0].0, &cal.purpose);
+            last_reason = match self.choose_inner(&aid, line, team, s, q, count, bundle, &groups, window, &segs, WORK, &tools) {
+                Err(f) => f.reason,
+                Ok(_) => return Err(PyValueError::new_err(format!("{phase_id}: a skipped start at {} was feasible", segs[0].0))),
+            };
+        }
+        Ok((None, format!("NO_FEASIBLE_PLACEMENT: {last_reason}"), attempts, skipped))
     }
 }
 

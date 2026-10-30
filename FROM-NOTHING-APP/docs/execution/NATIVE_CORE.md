@@ -14,7 +14,14 @@ and Tanzu.
 | `Ledger` | `focus/engine/ledger.py` (`DutyLedger`) | Per-person duty items, transfers re-derived around every change, windows, regular and overtime budgets, the activation cap, tools, cross-shift overlap. Transactions use an undo log. |
 | `Ledger.choose_crew` | `focus/engine/crew_selection.py` | Qualification, per-person screening, preference order, cap-driven reuse and the bounded combination search. |
 | `Context` | `focus/eligibility.py` (`HoldingIndex`) | The boolean holding checks over the whole interval, plus the exact whole-window qualification memo. |
-| `Ledger.candidate_starts` | `greedy._candidate_starts` | Candidate start instants from pool members' duty ends. |
+| `Ledger.candidate_starts` | `greedy._candidate_starts` | Candidate start instants from pool members' duty ends. Every opening is kept; there is no per-shift cap. |
+| `Ledger.search` | `greedy.Decoder._search` and `_book` | The whole time-slot search for one phase: each eligible shift, each candidate start, the calendar advance (regular before overtime), the assignment id, the crew choice, the booking and the WAIT duty through an in-process inspection. One call per phase. |
+
+**Skipping starts that cannot work.** Before a full crew attempt at a start, `search` counts the pool members who are
+qualified and free over the whole interval. A crew can only come from those people, so when there are fewer than the crew
+needs, the attempt is certain to fail and is skipped. If the phase is not placed and the last failure the Python
+reference would report came from a skipped start, that one attempt is made in full at the end to recover the exact
+reason. Plans and reasons are therefore identical to the reference.
 
 The Python code stays the rule authority. The decoder, the orchestrator, the economics, the search and the
 independent validator are unchanged, and the validator re-checks every plan from source whichever core built it.

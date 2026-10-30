@@ -9,6 +9,9 @@ dispatch order:
   or one with a crew-continuity break;
 * ``line``: move every job of one aircraft ahead (coupled descendant cone).
 
+When the incumbent has long waits (phases that waited more than a shift past their earliest start), half of the moves
+boost one of those jobs ahead of the jobs it competes with, longest waits first in the draw.
+
 Moves come from a seeded ``random.Random``, so a run is reproducible.
 """
 from __future__ import annotations
@@ -43,8 +46,13 @@ class PriorityState:
         return PriorityState(ranks)
 
 
-def generate(rng: random.Random, *, team_jobs: dict[str, list[str]], line_jobs: dict[int, list[str]], focus_jobs: list[str]) -> Move | None:
-    """One deterministic random move; ``focus_jobs`` (deferred or continuity breaks) are preferred for boosts."""
+def generate(rng: random.Random, *, team_jobs: dict[str, list[str]], line_jobs: dict[int, list[str]], focus_jobs: list[str],
+             wait_jobs: list[str] | None = None) -> Move | None:
+    """One deterministic random move; ``focus_jobs`` (deferred or continuity breaks) are preferred for boosts and
+    ``wait_jobs`` (longest waits first) get half of the moves when there are any."""
+    if wait_jobs and rng.random() < 0.5:
+        job = wait_jobs[min(rng.randrange(len(wait_jobs)), rng.randrange(len(wait_jobs)))]     # leans to the longest waits
+        return Move("boost", (job,), "boost a job that waited long for its team")
     choices = []
     if focus_jobs:
         choices.append("boost")
