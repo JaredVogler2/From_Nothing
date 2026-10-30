@@ -34,6 +34,21 @@ HANDLERS: dict[str, str] = {
 }
 
 
+# kind -> role: a worker started with --role processes only its role's kinds (separate principals per role, S17)
+KIND_ROLES: dict[str, str] = {
+    "schedule": "app", "scenario": "app", "explanation": "app",
+    "amendment": "evaluator", "ie_review": "evaluator", "disruption_claim": "evaluator", "excusal_decision": "evaluator",
+    "reported_observation": "evaluator",
+}
+
+
+def kinds_for(role: str) -> tuple[str, ...] | None:
+    """The run kinds a worker of ``role`` may claim (None: every kind, for a single-process demo)."""
+    if role == "all":
+        return None
+    return tuple(sorted(k for k, r in KIND_ROLES.items() if r == role))
+
+
 class HandlerUnavailable(RuntimeError):
     code = "HANDLER_UNAVAILABLE"
 
@@ -78,13 +93,14 @@ def _resolve(kind: str) -> Callable[[Any, WorkerRun], dict[str, Any]]:
 
 
 class WorkerService:
-    def __init__(self, services: Any, owner: str | None = None, lease_seconds: float = 900.0):
+    def __init__(self, services: Any, owner: str | None = None, lease_seconds: float = 900.0, role: str = "all"):
         self.services = services
-        self.owner = owner or f"worker-{os.getpid()}-{uuid.uuid4().hex[:6]}"
+        self.role = role
+        self.owner = owner or f"worker-{role}-{os.getpid()}-{uuid.uuid4().hex[:6]}"
         self.lease_seconds = lease_seconds
 
     def run_once(self) -> WorkerRun | None:
-        run = self.services.repositories.claim_worker_run(self.owner, self.lease_seconds)
+        run = self.services.repositories.claim_worker_run(self.owner, self.lease_seconds, kinds=kinds_for(self.role))
         return None if run is None else self.execute(run)
 
     def execute(self, run: WorkerRun) -> WorkerRun | None:
@@ -161,7 +177,7 @@ def maybe_start_inprocess_worker(services: Any) -> InprocessWorker | None:
 
 
 def cli_worker(services: Any, args: Any) -> dict[str, Any]:
-    service = WorkerService(services)
+    service = WorkerService(services, role=getattr(args, "role", "all") or "all")
     processed: list[WorkerRun] = []
     if getattr(args, "loop", False):
         interval = max(0.5, float(getattr(args, "interval_seconds", 5.0)))
@@ -174,6 +190,6 @@ def cli_worker(services: Any, args: Any) -> dict[str, Any]:
     else:
         processed = service.run_until_idle(1 if args.once else args.max_runs)
     return {
-        "status": "ok",
+        "status": "ok", "role": service.role,
         "processed": [{"run_id": r.id, "kind": r.kind, "status": r.status, "error": r.error} for r in processed],
     }

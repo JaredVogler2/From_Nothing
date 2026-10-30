@@ -72,15 +72,10 @@ def demo_run(services: Any, *, scenario: str = DEMO_SCENARIO, budget_seconds: fl
     """
     from types import SimpleNamespace
 
-    from .analytics.progression import project
     from .clock import FIXTURE_CUTOFF
     from .data.acquisition import acquire, make_reader
     from .domain import Purpose
     from .engine.max.optimizer.orchestrator import schedule
-    from .performance.actuals import RUNS as OBSERVATION_RUNS
-    from .performance.actuals import ObservationStore, collect_observations, manifest_points, observation_head, run_summary
-    from .performance.lifecycle import GoalRegistry
-    from .performance.score import aggregate, evaluate_all, summary
     from .publication.service import current_plan, publish
 
     boot = cli_demo_bootstrap(services, SimpleNamespace(scenario=scenario, reset=False))
@@ -106,13 +101,30 @@ def demo_run(services: Any, *, scenario: str = DEMO_SCENARIO, budget_seconds: fl
     if plans["EXECUTABLE"].get("plan_id") is None:
         return {"status": "error", "error": {"code": "NO_EXECUTABLE_PLAN", "message": "the executable plan was not accepted"},
                 "source_run_id": outcome.run_id, "plans": plans}
-    collections = []
-    points = manifest_points(services, scenario) if observe else []
+    collections, recognition = observe_and_evaluate(services, scenario) if observe else ([], None)
+    return {"status": "ok", "scenario": scenario, "source_run_id": outcome.run_id, "snapshot_id": outcome.snapshot_id, "plans": plans,
+            "collections": collections, "recognition": recognition,
+            "note": "fixture demonstration: invented data, TEST signing key, demonstration score policy"}
+
+
+def observe_and_evaluate(services: Any, scenario: str = DEMO_SCENARIO) -> tuple[list[dict[str, Any]], dict[str, int] | None]:
+    """At every fixture observation point not yet collected: collect, then evaluate every goal closed by that point (plus
+    each shift's stored factory aggregate); then project recognition. One authority for ``demo-run`` and the pipeline's
+    evaluator step. Replays skip collected points (older points would regress history) and append nothing twice."""
+    from .analytics.progression import project
+    from .performance.actuals import RUNS as OBSERVATION_RUNS
+    from .performance.actuals import ObservationStore, collect_observations, manifest_points, observation_head, run_summary
+    from .performance.lifecycle import GoalRegistry
+    from .performance.score import aggregate, evaluate_all, summary
+
+    scope = services.settings.scope_key
+    collections: list[dict[str, Any]] = []
+    points = manifest_points(services, scenario)
     head = services.repositories.head(observation_head(scope))
     latest = None if head is None else ObservationStore(services.repositories, scope).get(OBSERVATION_RUNS, head.record_id)
     for at in points:
         if latest is not None and at <= latest.as_of:
-            collections.append({"as_of": at, "skipped": "ALREADY_COLLECTED"})     # replaying older points would regress history
+            collections.append({"as_of": at, "skipped": "ALREADY_COLLECTED"})
             continue
         observed = collect_observations(services, as_of=at)
         evaluations = evaluate_all(services, as_of=at)
@@ -127,10 +139,7 @@ def demo_run(services: Any, *, scenario: str = DEMO_SCENARIO, budget_seconds: fl
         collections.append({"as_of": at, "observation": run_summary(observed), "evaluations": [summary(e) for e in evaluations],
                             "factory": factories})
     projection = project(services, as_of=points[-1]) if points else None
-    return {"status": "ok", "scenario": scenario, "source_run_id": outcome.run_id, "snapshot_id": outcome.snapshot_id, "plans": plans,
-            "collections": collections,
-            "recognition": None if projection is None else {"appended": len(projection.appended), "badges": len(projection.badges)},
-            "note": "fixture demonstration: invented data, TEST signing key, demonstration score policy"}
+    return collections, None if projection is None else {"appended": len(projection.appended), "badges": len(projection.badges)}
 
 
 def cli_demo_run(services: Any, args: Any) -> dict[str, Any]:

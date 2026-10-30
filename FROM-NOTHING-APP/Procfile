@@ -1,2 +1,2 @@
 web: python app.py
-worker: python -m focus.cli worker --loop
+worker: python -m focus.cli worker --loop --role app

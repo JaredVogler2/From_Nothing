@@ -39,7 +39,7 @@ credentials.
   Receipts are labelled `fixture_readback`. A TEST key, or any key other than the configured
   one, is refused (`TEST_KEY_NOT_LIVE`, `UNAUTHORIZED_SIGNER`).
 - Live publication stays `UNAVAILABLE` until the proposed `FOCUS_FN` stage, readback and
-  acceptance objects (`sql/migrations/publication_draft.sql`) are installed by an authorized
+  acceptance objects (`sql/migrations/007_publication.sql`) are installed by an authorized
   migration (P23). No live signature, acceptance or head move happens before that.
 
 ## Explanation providers (P21)
@@ -113,6 +113,16 @@ Connect content settings ("Vars"):
 | `FOCUS_SOURCE_TIMEZONE_MAP_JSON` | source datetime2 timezone policy |
 | `FOCUS_MCP_ENABLED` | `false` until MCP access is approved |
 
+Before publishing, run `python -m focus.cli preflight --role web` with the content's variables. It checks:
+
+- CPython 3.12;
+- trusted identity;
+- the session secret;
+- SQL by presence;
+- the policy;
+- `create_app`;
+- migrations.
+
 How the app behaves under Connect:
 
 - Connect serves the content under `/content/<guid>/`. Every generated URL
@@ -156,9 +166,12 @@ How the app behaves under Tanzu:
   `X-Forwarded-User` (configurable with `FOCUS_TRUSTED_USER_HEADER`). Never
   expose the app route without that proxy in front of it in live mode.
 - The health check is `http` on `/health/live`.
-- Workers run as a separate process type
-  (`python -m focus.cli worker --loop`) or as a task
-  (`cf run-task focus-scheduling --command "python -m focus.cli worker --once"`).
+- Workers run as a separate process type (`python -m focus.cli worker --loop --role app`) or as a task
+  (`cf run-task focus-scheduling --command "python -m focus.cli worker --once --role app"`).
+- Evaluator-role runs and the pipeline's other roles (source, stager, signer, evaluator) run in separate apps bound to
+  their own user-provided services. Each process then holds only its own role's credentials
+  (`docs/execution/INSTALL_AND_PIPELINE.md`).
+- Run `python -m focus.cli preflight --role web` (or `worker`, `signer`) before a process serves or works.
 - The filesystem is ephemeral. Live mode persists everything in SQL Server
   (`FOCUS_FN_*`). Fixture mode on Tanzu is for demos only.
 

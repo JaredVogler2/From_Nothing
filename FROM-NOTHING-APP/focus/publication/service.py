@@ -19,6 +19,11 @@
     * the new accepted incumbent for task defense (P14);
     * delivery commitments (``projections.record_accepted``).
 
+**Role split (P23).** ``publish(..., until="readback")`` stops after step 6 with status ``STAGED``: the stager role
+writes and independently re-validates the unsigned stage without ever resolving signing material. The signer role then
+runs ``publish`` again: the same deterministic bytes and ids reuse that stage, the readback is re-read and
+re-validated, and only then are the bytes signed and accepted. Signing therefore never precedes a clean readback.
+
 **Recovery.** Every step is deterministic for a given candidate, so a retry after a crash at any
 point recomputes the same bytes, stage and plan ids. If a receipt already exists, the retry
 compares exact content and reconciles the head once. Nothing is reported accepted before the
@@ -49,7 +54,7 @@ from .signing import Signer, resolve_signer
 
 @dataclass
 class PublishResult:
-    status: str                            # ACCEPTED | ALREADY_ACCEPTED | RECOVERED | REJECTED | UNAVAILABLE | NOT_CURRENT
+    status: str                            # ACCEPTED | ALREADY_ACCEPTED | RECOVERED | STAGED | REJECTED | UNAVAILABLE | NOT_CURRENT
     candidate_id: str
     plan_id: str | None = None
     reasons: tuple[str, ...] = ()
@@ -105,8 +110,12 @@ def _post_acceptance(services: Any, snapshot: PlanningSnapshot, published: Publi
 
 
 def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, fault: Callable[[str], None] | None = None,
-            repository: Any = None) -> PublishResult:
+            repository: Any = None, until: str | None = None) -> PublishResult:
+    """Run the acceptance order; ``until="readback"`` stops after the readback validation (stager role, never signs)."""
     from ..data.acquisition import load_snapshot
+
+    if until not in (None, "readback"):
+        raise ValueError(f"until must be None or 'readback', not {until!r}")
 
     fault = fault or (lambda step: None)
     repos = services.repositories
@@ -190,6 +199,9 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
         return result
     result.steps.append("readback_validation")
     fault("after_readback")
+    if until == "readback":
+        result.status = "STAGED"                 # unsigned, unaccepted; the previous head is untouched
+        return result
     # 7-8. sign exactly the readback-validated bytes with the trusted key, then verify
     trusted, why = resolve_signer(services.settings)
     if trusted is None:

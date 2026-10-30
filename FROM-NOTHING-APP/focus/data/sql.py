@@ -41,7 +41,7 @@ FN_OBJECTS = frozenset({
     "WEB_APP.FOCUS_FN_Commitment", "WEB_APP.FOCUS_FN_Event", "WEB_APP.FOCUS_FN_ExcusalDecision",
     "WEB_APP.FOCUS_FN_Evaluation", "WEB_APP.FOCUS_FN_WorkerRun", "WEB_APP.FOCUS_FN_Artifact",
     "WEB_APP.FOCUS_FN_State",
-    # P17 observation landing tables and receipts (sql/migrations/lifecycle_draft.sql, proposed, not installed)
+    # P17 observation landing tables and receipts (sql/migrations/008_lifecycle.sql, proposed, not installed)
     "WEB_APP.FOCUS_FN_ObservationProducerReceipt", "WEB_APP.FOCUS_FN_LifecycleSource", "WEB_APP.FOCUS_FN_ActualIntervalSource",
     "WEB_APP.FOCUS_FN_DefectEvidenceSource", "WEB_APP.FOCUS_FN_GoalAmendmentSource", "WEB_APP.FOCUS_FN_DisruptionClaimSource",
     "WEB_APP.FOCUS_FN_ExcusalDecisionSource",

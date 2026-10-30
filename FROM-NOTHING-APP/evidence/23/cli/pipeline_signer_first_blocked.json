@@ -1,0 +1,91 @@
+{
+  "command": "pipeline",
+  "failed": [],
+  "key": "evidence-23",
+  "outbox": [],
+  "pipeline_id": "PIPEb993d74b4124222ff726",
+  "ran": [
+    {
+      "detail": "needs not completed: stage_readback",
+      "outcome": "BLOCKED",
+      "step": "sign_accept"
+    }
+  ],
+  "schema_version": 1,
+  "scope": "DEMO-787",
+  "state": "in_progress",
+  "status": "blocked",
+  "steps": [
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "acquire",
+      "output_sha": null,
+      "owner": null,
+      "role": "source",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "admit",
+      "output_sha": null,
+      "owner": null,
+      "role": "source",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "schedule",
+      "output_sha": null,
+      "owner": null,
+      "role": "app",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "validate",
+      "output_sha": null,
+      "owner": null,
+      "role": "app",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "stage_readback",
+      "output_sha": null,
+      "owner": null,
+      "role": "stager",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "sign_accept",
+      "output_sha": null,
+      "owner": null,
+      "role": "signer",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "observe_evaluate",
+      "output_sha": null,
+      "owner": null,
+      "role": "evaluator",
+      "status": "pending"
+    }
+  ],
+  "version": 1
+}

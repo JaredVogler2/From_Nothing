@@ -1,6 +1,6 @@
 """Publication repository: private stage, exact readback, immutable acceptance and the head (S06, S13, P16).
 
-The proposed SQL storage (``sql/migrations/publication_draft.sql``: PlanStage, Validation,
+The proposed SQL storage (``sql/migrations/007_publication.sql``: PlanStage, Validation,
 PublishedPlan, FrozenGoal and PlanHead plus the acceptance procedure) is **not installed**.
 ``FixturePublicationRepository`` runs the same protocol on the persistent fixture store:
 

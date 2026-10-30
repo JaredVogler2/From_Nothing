@@ -106,7 +106,7 @@ or P90.
 The production SQL is written but has never been installed or run against a live database:
 
 - `queries/durations/build_observations.sql`, `queries/durations/percentiles.sql` and
-  `sql/migrations/durations_draft.sql` are drafted but **not installed**.
+  `sql/migrations/005_duration_statistics.sql` are drafted but **not installed**.
 - No live clock or completion source was read. `FOCUS_ACTUAL_LABOR` holds only aggregate person
   effort with no raw intervals, so it cannot calibrate elapsed episodes.
 - Real cohort calibration of the minimum sample, staleness, comparable grouping and the

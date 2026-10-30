@@ -1,5 +1,8 @@
--- Draft (P04): transactional source-run admission and head promotion for the proposed FOCUS_FN tables.
--- NOT executed by this build. Consolidated into the versioned migration set in P23 (003_source_promotion.sql).
+-- Migration 003 (P23): transactional source-run admission and head promotion.
+-- Consolidated from the reviewed P04 draft; its statements are unchanged. PROPOSED storage, NOT executed by this
+-- build. `python -m focus.cli migrate --apply` runs it only in an authorized installer session, in one transaction
+-- under sp_getapplock('FOCUS_FN_MIGRATIONS'), and records this file's SHA-256 in WEB_APP.FOCUS_FN_SchemaVersion only
+-- after every declared object is verified (docs/execution/INSTALL_AND_PIPELINE.md).
 -- Enforces S06 TRANSACTIONAL PROMOTION RULES in the database, not by an unverified caller flag:
 --   * SourceHead can reference only a COMPLETE run;
 --   * the head moves only forward in cutoff time, under an application lock and an optimistic version;

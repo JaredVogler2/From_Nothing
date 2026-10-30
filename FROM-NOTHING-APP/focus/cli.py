@@ -37,6 +37,9 @@ COMMANDS: dict[str, str] = {
     "explain": "focus.explanations.pipeline:cli_explain",
     "benchmark": "focus.engine.max.optimizer.solver:cli_benchmark",
     "migrate": "focus.migrations:cli_migrate",
+    "preflight": "focus.preflight:cli_preflight",
+    "pipeline": "focus.orchestration:cli_pipeline",
+    "retain-history": "focus.retention:cli_retain_history",
     "worker": "focus.workers:cli_worker",
     "serve": "focus.cli:cli_serve",
     "status": "focus.cli:cli_status",
@@ -127,12 +130,37 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-moves", type=int, default=None, help="neighbourhood move bound (default: policy optimizer.max_neighborhood_moves)")
     p.add_argument("--solver-budget-seconds", type=float, default=None, help="CP-SAT relaxation wall-clock limit (default: policy solver.budget_seconds)")
 
-    p = sub.add_parser("migrate", help="SQL migration preflight/dry-run (never applied implicitly)")
-    p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--apply", action="store_true", help="apply with an authorized installer principal")
-    p.add_argument("--emit-dir", default=None)
+    p = sub.add_parser("migrate", help="versioned FOCUS_FN migrations: lint, dry-run, apply, rollback, bundle (never implicit)")
+    p.add_argument("--dry-run", action="store_true", help="lint and plan against the catalog (the default action)")
+    p.add_argument("--apply", action="store_true", help="apply pending versions (fixture catalog; live only in an authorized installer session)")
+    p.add_argument("--rollback", type=int, default=None, help="roll back the latest applied version, which must be this number")
+    p.add_argument("--catalog", default=None, help="fixture (default in fixture mode), live, or a path to a fixture catalog JSON")
+    p.add_argument("--installer", default=None, help="installer subject recorded in the version ledger")
+    p.add_argument("--confirm-manifest", default=None, help="live only: the SHA-256 of the manifest the installer reviewed")
+    p.add_argument("--emit-dir", default=None, help="write a reviewable bundle: scripts, rollbacks, grants and a checksum manifest")
+    p.add_argument("--write-generated", action="store_true", help="regenerate rollback scripts and the grants script from their authorities")
+
+    p = sub.add_parser("preflight", help="host preflight: Python 3.12, settings, identity, secrets by presence, storage, app, migrations")
+    p.add_argument("--role", choices=["web", "worker", "signer", "installer"], default="web")
+    p.add_argument("--probe-sql", action="store_true", help="read the installed migration ledger with the configured principal (read-only)")
+
+    p = sub.add_parser("pipeline", help="durable role-separated pipeline: acquire, admit, schedule, validate, stage/readback, sign/accept, evaluate")
+    p.add_argument("--key", default="default", help="pipeline idempotency key (one pipeline per key and scope)")
+    p.add_argument("--role", choices=["all", "source", "app", "stager", "signer", "evaluator"], default="all")
+    p.add_argument("--step", default=None, help="run one step only")
+    p.add_argument("--status", action="store_true", help="show the pipeline state without running anything")
+    p.add_argument("--scenario", default=None)
+    p.add_argument("--budget-seconds", type=float, default=None)
+    p.add_argument("--max-moves", type=int, default=None)
+    p.add_argument("--lease-seconds", type=float, default=900.0)
+
+    p = sub.add_parser("retain-history", help="non-destructive retention plan; --apply archives eligible fixture records (never deletes)")
+    p.add_argument("--keep-days", type=int, required=True, help="operator-chosen retention period in days (no default is assumed)")
+    p.add_argument("--legal-hold", default=None, help="JSON file listing held record ids or source run ids")
+    p.add_argument("--apply", action="store_true")
 
     p = sub.add_parser("worker", help="process queued worker runs")
+    p.add_argument("--role", choices=["all", "app", "evaluator"], default="all", help="process only this role's run kinds")
     p.add_argument("--once", action="store_true")
     p.add_argument("--loop", action="store_true", help="keep polling for queued runs (separate worker process)")
     p.add_argument("--interval-seconds", type=float, default=5.0)

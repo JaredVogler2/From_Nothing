@@ -1508,9 +1508,75 @@
       "title": "Complete-scope scaling and optional named solver"
     },
     "23": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A05",
+          "result": "pass (mandatory dataset fails midway in the pipeline: acquire FAILED, old source head unchanged, downstream BLOCKED, replay stays rejected until EXHAUSTED; certified-empty vs unavailable stays covered by P04 tests)"
+        },
+        {
+          "case": "A07",
+          "result": "pass (killed after acquisition before the step was recorded: lease takeover replays the same key; one source run, head on it, no duplicate facts)"
+        },
+        {
+          "case": "A50",
+          "result": "pass (killed after acceptance before the step was recorded: takeover publish reconciles; delivery commitment state and published plans byte-identical)"
+        },
+        {
+          "case": "A51",
+          "result": "pass (killed after signing before acceptance: step FAILED, nothing published, old head kept; retry accepts once; the stager never signs)"
+        },
+        {
+          "case": "A71",
+          "result": "pass (source failure blocks promotion; LEASED competitor, takeover after expiry, stale LEASE_LOST; migration replay no-op; checksum mismatch/collision/mid-version failure record nothing; rollback latest-only and data-free; signer before readback BLOCKED with non-zero exit; CI chains roles with needs and a manual protected signer)"
+        }
+      ],
+      "changed_paths": [
+        "sql/migrations/002_worker_pipeline.sql",
+        "sql/migrations/003_source_promotion.sql",
+        "sql/migrations/004_workforce_inference.sql",
+        "sql/migrations/005_duration_statistics.sql",
+        "sql/migrations/006_commitments.sql",
+        "sql/migrations/007_publication.sql",
+        "sql/migrations/008_lifecycle.sql",
+        "sql/migrations/009_evaluation.sql",
+        "sql/migrations/rollback/",
+        "sql/grants/focus_fn_roles.sql",
+        "focus/migrations.py",
+        "focus/preflight.py",
+        "focus/data/sql_store.py",
+        "focus/orchestration.py",
+        "focus/retention.py",
+        "focus/publication/service.py",
+        "focus/pipeline.py",
+        "focus/workers.py",
+        "focus/cli.py",
+        "tools/migrate.py",
+        "tools/runtime_preflight.py",
+        "tools/retain_history.py",
+        ".gitlab-ci.yml",
+        "manifest.yml",
+        "Procfile",
+        "focus/publication/repository.py",
+        "focus/data/sql.py",
+        "queries/actuals/",
+        "config/policies/rebuild-v1.json (OD-15 text only; hash unchanged)",
+        "docs/execution/INSTALL_AND_PIPELINE.md",
+        "docs/execution/SQL_SCHEMA_LEDGER.md",
+        "docs/execution/DEPLOYMENT.md",
+        "docs/execution/DECISIONS.md",
+        "tests/integration/test_migration_pipeline.py",
+        "evidence/23/"
+      ],
+      "commands": [
+        "python -m pytest tests -q (471 passed, 3 skipped, 0 failed in 16:43)",
+        "python -m pytest tests/integration/test_migration_pipeline.py -q (22 passed)",
+        "python tools/check_imports.py (ok: 103 modules)",
+        "python -m focus.cli migrate --dry-run (ok, 9 versions, 0 findings); --emit-dir; --apply x2 on the fixture catalog (9 applied, then 0)",
+        "python -m focus.cli migrate --dry-run|--apply --catalog live (not_probed / refused INSTALLER_SESSION_REQUIRED: no credentials)",
+        "python -m focus.cli preflight (ok)",
+        "python -m focus.cli pipeline --key evidence-23 --role signer|source|app|stager|signer|evaluator, --status, --role all (blocked first; all steps completed; replay ALREADY_COMPLETED)",
+        "python -m focus.cli retain-history --keep-days 30 (ok)"
+      ],
       "depends_on": [
         "04",
         "05",
@@ -1524,11 +1590,23 @@
       "evidence": [
         "evidence/23/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "focus.migrations: discover/lint/lint_rollback/lint_grants/plan/apply_pending/rollback_latest/emit_bundle; FixtureCatalog, SqlCatalog; python -m focus.cli migrate",
+        "focus.orchestration: create/claim/run_step/run_role/status/reconcile_outbox; python -m focus.cli pipeline --key --role --step --status",
+        "focus.preflight.run; python -m focus.cli preflight --role --probe-sql",
+        "focus.retention.plan/apply/restore_archive; python -m focus.cli retain-history --keep-days --legal-hold --apply",
+        "publication.service.publish(until='readback'); workers.KIND_ROLES and worker --role"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "live repository adapter onto the FOCUS_FN tables not built: live hosts stay REPOSITORY_UNAVAILABLE until it exists and 001-009 are installed by an authorized installer",
+        "no SQL installed, no grant applied, no CI pushed or activated, no host deployed; SqlCatalog and the confirmed installer path are untested live",
+        "live observation producers (OD-15) not installed: the evaluator step refuses live",
+        "re-run queries/discovery/fn_collisions.sql against the target before any install",
+        "Posit Connect scheduling of pipeline roles depends on that server's configuration (external scheduler or permitted scheduled content)"
+      ],
+      "status": "fixture_verified",
       "title": "SQL migrations, worker orchestration and CI"
     },
     "24": {

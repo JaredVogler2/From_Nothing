@@ -1,7 +1,9 @@
--- Draft (P17): lifecycle actuals, sequence violations, disruption claims, reviewed excusals and observation runs.
--- NOT executed by this build: no live DDL or write authority exists, and S04 verified no actual-interval,
--- lifecycle-event or excusal feed. Consolidated into the versioned migration set in P23 behind the migration lock
--- and checksum ledger; 001 itself stays verbatim.
+-- Migration 008 (P23): lifecycle actuals, sequence violations, disruption claims, reviewed excusals and observation runs.
+-- Consolidated from the reviewed P17 draft; its statements are unchanged. PROPOSED storage, NOT executed by this
+-- build. `python -m focus.cli migrate --apply` runs it only in an authorized installer session, in one transaction
+-- under sp_getapplock('FOCUS_FN_MIGRATIONS'), and records this file's SHA-256 in WEB_APP.FOCUS_FN_SchemaVersion only
+-- after every declared object is verified (docs/execution/INSTALL_AND_PIPELINE.md).
+-- S04 verified no actual-interval, lifecycle-event or excusal feed: these are proposed producer landing tables.
 --
 -- Two layers, never merged:
 --   * Landing (producer-owned): one table per observation feed with exactly the feed columns that
