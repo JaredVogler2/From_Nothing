@@ -1,0 +1,4470 @@
+{
+ "collected": 496,
+ "exitstatus": 0,
+ "results": {
+  "tests/acceptance/test_release.py::test_a72_fresh_checkout_runs_the_documented_fixture_flow": {
+   "duration": 33.779458,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/acceptance/test_release.py::test_a72_live_gates_are_listed_precisely": {
+   "duration": 0.00067,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/acceptance/test_release.py::test_a72_new_review_preserves_history_and_binds_exact_hashes": {
+   "duration": 0.757692,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/acceptance/test_release.py::test_a72_review_refuses_stale_acceptance_and_reports_incomplete_builds": {
+   "duration": 1.303238,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/acceptance/test_traceability.py::test_path_receipts_reject_a_wrong_or_missing_call": {
+   "duration": 0.015078,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/acceptance/test_traceability.py::test_register_covers_every_case_and_requirement": {
+   "duration": 2.216938,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/acceptance/test_traceability.py::test_register_matches_the_manual": {
+   "duration": 0.004988,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_complete_scope.py::test_a03_every_aircraft_and_job_survives_to_the_plan": {
+   "duration": 34.081642,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_complete_scope.py::test_a47_a70_zero_violations_zero_required_skips_full_coverage": {
+   "duration": 0.000407,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_complete_scope.py::test_a70_optional_solver_at_scale_is_truthful": {
+   "duration": 32.08156,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_complete_scope.py::test_a70_scale_inventory_exercises_the_hard_rules": {
+   "duration": 0.00122,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_complete_scope.py::test_complete_scope_benchmark_size[100]": {
+   "duration": 0.000177,
+   "outcome": "skipped",
+   "phases": {
+    "setup": "skipped",
+    "teardown": "passed"
+   },
+   "reason": "Skipped: complete-scope benchmark sizes run only with --benchmark-sizes=100,150,300 (slow)"
+  },
+  "tests/benchmarks/test_complete_scope.py::test_complete_scope_benchmark_size[150]": {
+   "duration": 0.000117,
+   "outcome": "skipped",
+   "phases": {
+    "setup": "skipped",
+    "teardown": "passed"
+   },
+   "reason": "Skipped: complete-scope benchmark sizes run only with --benchmark-sizes=100,150,300 (slow)"
+  },
+  "tests/benchmarks/test_complete_scope.py::test_complete_scope_benchmark_size[300]": {
+   "duration": 0.036882,
+   "outcome": "skipped",
+   "phases": {
+    "setup": "skipped",
+    "teardown": "passed"
+   },
+   "reason": "Skipped: complete-scope benchmark sizes run only with --benchmark-sizes=100,150,300 (slow)"
+  },
+  "tests/benchmarks/test_solver_status.py::test_a45_improvement_is_exact_and_never_a_proof": {
+   "duration": 3.625123,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_a70_solver_probe_cannot_bypass_named_feasibility": {
+   "duration": 2.750279,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_adapter_error_keeps_the_baseline": {
+   "duration": 3.386981,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_budgets_come_from_the_policy_and_the_wall_limit_can_be_overridden": {
+   "duration": 0.003205,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_cancel_before_solving_keeps_the_baseline": {
+   "duration": 2.845385,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_cancel_during_the_solve_stops_cp_sat_promptly": {
+   "duration": 0.513698,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_deployment_setting_turns_the_stage_on": {
+   "duration": 3.449792,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_disabled_by_default_records_the_status_and_changes_nothing": {
+   "duration": 4.1055,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_infeasible_or_invalid_relaxation_keeps_the_baseline[_infeasible-INFEASIBLE]": {
+   "duration": 3.023075,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_infeasible_or_invalid_relaxation_keeps_the_baseline[_invalid-MODEL_INVALID]": {
+   "duration": 3.090363,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_invalid_baseline_publishes_nothing_from_the_solver": {
+   "duration": 2.977561,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_no_relaxation_solution_keeps_the_baseline[UNKNOWN-1e-09-TIMEOUT]": {
+   "duration": 3.985304,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_no_relaxation_solution_keeps_the_baseline[UNKNOWN-3600.0-UNKNOWN]": {
+   "duration": 4.244066,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_probe_budget_is_honoured": {
+   "duration": 2.914026,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_signature_only_difference_is_not_an_improvement": {
+   "duration": 0.000323,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_solver_stage_is_reproducible": {
+   "duration": 3.702645,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_switch_precedence_request_then_policy_then_setting": {
+   "duration": 0.000359,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/benchmarks/test_solver_status.py::test_unavailable_dependency_returns_the_same_input_baseline": {
+   "duration": 4.188253,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a01_every_read_is_typed_without_data_and_never_writes": {
+   "duration": 0.039307,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a57_a59_every_surface_reads_the_same_stored_evaluation": {
+   "duration": 0.06993,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a57_no_browser_side_formula_or_hardcoded_ready": {
+   "duration": 0.007126,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a68_amendment_is_versioned_feasible_and_never_changes_b0": {
+   "duration": 7.782222,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a68_claim_and_decision_commands_are_csrf_idempotent_versioned_and_honest": {
+   "duration": 1.021202,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a68_cursor_is_bound_to_scope_filters_and_revision": {
+   "duration": 2.052621,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a68_every_read_needs_a_trusted_identity_and_its_grants": {
+   "duration": 7.260618,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a68_get_never_writes_solves_or_grades": {
+   "duration": 1.342989,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a68_schedule_and_other_commands_report_honest_worker_status": {
+   "duration": 3.02345,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a68_scope_is_checked_before_any_fetch": {
+   "duration": 0.049091,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_a68_scoped_content_hides_other_teams_people_and_economics": {
+   "duration": 0.217555,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_every_read_operation_answers_identically_over_rest_and_mcp": {
+   "duration": 0.349136,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_live_identity_scope_comes_from_server_configuration": {
+   "duration": 0.024498,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_api_scope.py::test_mcp_read_tools_share_the_rest_envelope": {
+   "duration": 0.037687,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_cs_lineage.py::test_a23_demo_snapshot_separates_earliest_gate_and_due": {
+   "duration": 2.20827,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_cs_lineage.py::test_a23_exact_station_with_past_day0_gate_retained_and_due_distinct": {
+   "duration": 0.000593,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_cs_lineage.py::test_a24_conflicting_loads_and_rows_block_without_max": {
+   "duration": 0.000418,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_cs_lineage.py::test_a24_missing_date_conversion_or_timezone_blocks": {
+   "duration": 0.001826,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_cs_lineage.py::test_a24_policy_gap_blocks_jobs_in_the_snapshot": {
+   "duration": 3.460508,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_cs_lineage.py::test_a24_signed_offsets_preserved_and_offset_mode_uses_workdays": {
+   "duration": 0.002554,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_demo_vercel_access.py::test_demo_cookie_authenticates_across_independent_instances": {
+   "duration": 0.080573,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_demo_vercel_access.py::test_demo_dashboard_guides_unsigned_visitor_to_persona_form": {
+   "duration": 0.024452,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_demo_vercel_access.py::test_real_api_still_requires_identity": {
+   "duration": 0.025297,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_duration_policy.py::test_a15_composite_lookup_keeps_each_line_standard_and_all_fields": {
+   "duration": 0.000645,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_duration_policy.py::test_a15_flow_index_is_composite_and_reports_conflicts": {
+   "duration": 0.000387,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_duration_policy.py::test_a15_sequential_assignment_counts_require_role_phases": {
+   "duration": 3.312504,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_duration_policy.py::test_a15_zero_null_negative_and_conflicting_counts_are_unavailable": {
+   "duration": 2.159406,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_duration_policy.py::test_a17_rework_uses_p75_of_elapsed_cohort_not_effort_over_crew": {
+   "duration": 1.952836,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_duration_policy.py::test_a18_insufficient_or_stale_cohort_is_unavailable_never_flat_60": {
+   "duration": 3.89463,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_duration_policy.py::test_a18_p90_toggle_is_a_new_policy_and_snapshot_original_unchanged": {
+   "duration": 4.944433,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_economic_steering.py::test_a44_cli_schedule_reports_weights_complete_dispositions_and_costs": {
+   "duration": 5.527931,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_economic_steering.py::test_a44_economic_redispatch_improves_exact_fleet_cost": {
+   "duration": 2.494907,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_incumbent_defense.py::test_a42_both_attempts_fail_then_minimal_audited_move": {
+   "duration": 3.345901,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_incumbent_defense.py::test_a42_no_feasible_slot_defers_without_forcing": {
+   "duration": 0.0357,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_incumbent_defense.py::test_a42_ready_commitments_first_exact_then_alternate_crew_and_day3_free": {
+   "duration": 5.933211,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_incumbent_defense.py::test_a43_expired_cert_and_changed_calendar_override_the_exact_slot": {
+   "duration": 6.89481,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_incumbent_defense.py::test_a43_fresh_process_reloads_only_the_accepted_incumbent": {
+   "duration": 9.908645,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_incumbent_defense.py::test_a43_incompatible_or_missing_incumbent_is_reported_and_never_defended": {
+   "duration": 10.000667,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_incumbent_defense.py::test_a43_late_part_overrides_the_defense_immediately": {
+   "duration": 5.283675,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_incumbent_defense.py::test_accepted_forecast_plan_feeds_delivery_commitments_once": {
+   "duration": 4.936974,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a26_oos_record_survives_predecessor_completion_and_never_legalizes": {
+   "duration": 1.441671,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a54_all_eight_causes_duplicates_and_union_relief": {
+   "duration": 1.436635,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a54_feed_intake_quarantines_with_stable_reasons_and_replays_idempotently": {
+   "duration": 0.062752,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a54_review_authority_self_review_and_appeals": {
+   "duration": 1.057452,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a54_taxonomy_is_exact_and_policy_cannot_redefine_it": {
+   "duration": 0.000531,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a55_culpability_walks_past_blocked_neighbours": {
+   "duration": 0.025866,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a55_no_automatic_overrun_excuse_below_or_above_3x": {
+   "duration": 0.027255,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a55_rework_origin_comes_from_defect_evidence_not_executing_team": {
+   "duration": 1.085672,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a56_cancel_before_completion_earns_nothing_and_stays_in_b0": {
+   "duration": 0.025369,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a56_prior_verified_completion_follows_ordered_policy": {
+   "duration": 0.027415,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a56_reopen_revokes_and_late_void_appends_corrected_evaluation": {
+   "duration": 0.001952,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a56_reported_completion_is_a_claim_never_credit": {
+   "duration": 0.025504,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a56_revisions_voids_and_corrections_append": {
+   "duration": 0.000691,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_a56_terminal_status_and_disappearance_are_unknown_not_credit": {
+   "duration": 0.787593,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_canonical_outcomes_at_first_collection": {
+   "duration": 0.000442,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_commands_run_as_workers_with_receipts": {
+   "duration": 1.04905,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_goal_of_record_freezes_b0_and_amendment_adds_without_mutating": {
+   "duration": 6.664744,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_later_replan_goals_are_proposals_not_b0": {
+   "duration": 5.125385,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_missing_or_uncertified_feeds_withhold_the_result": {
+   "duration": 1.150064,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_open_window_and_live_reader_are_honest": {
+   "duration": 0.816126,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_lifecycle_excusals.py::test_planned_oos_charged_once_offplan_oos_not_double_charged": {
+   "duration": 0.036945,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_max_pipeline.py::test_a26_engine_keeps_in_progress_remaining_after_its_predecessor": {
+   "duration": 4.254163,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_max_pipeline.py::test_a70_deterministic_and_bounded": {
+   "duration": 4.578161,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_max_pipeline.py::test_cli_schedule_in_a_fresh_process": {
+   "duration": 4.952293,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_max_pipeline.py::test_complete_inventory_and_truthful_receipt": {
+   "duration": 4.381512,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_max_pipeline.py::test_final_candidate_passes_independent_duty_reconstruction": {
+   "duration": 4.562006,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_max_pipeline.py::test_forecast_labels_virtual_support_and_executable_excludes_it": {
+   "duration": 5.886975,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a05_failed_source_blocks_everything_downstream_and_keeps_the_old_head": {
+   "duration": 0.078424,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a07_crash_after_acquisition_replays_one_source_run": {
+   "duration": 1.16004,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a50_takeover_after_acceptance_does_not_duplicate_commitments": {
+   "duration": 18.544172,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a51_crash_inside_publication_never_reports_signed_but_uncommitted": {
+   "duration": 17.099543,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a71_checksum_mismatch_blocks_every_later_version": {
+   "duration": 0.260753,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a71_cli_role_that_only_waited_is_not_a_success": {
+   "duration": 2.493221,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a71_dry_run_apply_and_replay_are_idempotent": {
+   "duration": 0.199358,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a71_live_lease_blocks_a_competitor_and_an_expired_one_is_taken_over": {
+   "duration": 5.207031,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a71_roles_order_and_idempotent_replay": {
+   "duration": 16.806135,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_a71_unrecorded_object_is_a_collision": {
+   "duration": 0.137899,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_ci_draft_orders_roles_and_protects_signing": {
+   "duration": 0.000468,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_cli_bundle_and_live_install_needs_a_confirmed_installer": {
+   "duration": 0.410822,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_failure_mid_version_records_nothing_and_resumes_forward": {
+   "duration": 0.234906,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_grants_keep_separation_of_duties": {
+   "duration": 0.023453,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_lint_rejects_destructive_misnamed_or_unbound_sql": {
+   "duration": 0.002593,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_live_host_with_sql_credentials_starts_with_typed_unavailability": {
+   "duration": 0.023394,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_preflight_fixture_passes_and_live_gaps_fail": {
+   "duration": 0.584345,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_preflight_python_role_and_platform_rules": {
+   "duration": 0.577681,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_retention_archives_only_unreferenced_candidates_and_restores_them": {
+   "duration": 16.418258,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_rollback_only_the_latest_version_and_only_without_data": {
+   "duration": 0.204339,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_shipped_migrations_are_versioned_lint_clean_and_generated_files_fresh": {
+   "duration": 0.120767,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_migration_pipeline.py::test_versions_are_contiguous_and_unique": {
+   "duration": 0.001217,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_named_crew.py::test_a33_one_inspector_never_overlaps_and_wait_duty_is_booked": {
+   "duration": 3.368214,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_named_crew.py::test_a34_exact_full_crew_or_wait": {
+   "duration": 0.025994,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_named_crew.py::test_a38_every_path_rejects_a_cap_breach_and_v8_catches_forgery": {
+   "duration": 0.66698,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_named_crew.py::test_a41_scarce_specialists_are_preserved_and_affinity_wins_ties": {
+   "duration": 0.024065,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_parts_root.py::test_a29_same_soi_on_another_line_multiple_and_unknown_shortages": {
+   "duration": 2.188974,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_parts_root.py::test_a29_shortage_gates_used_on_job_root_and_descendants": {
+   "duration": 0.000439,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_parts_root.py::test_a30_date_only_ecd_floors_at_end_of_local_date": {
+   "duration": 0.000491,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_parts_root.py::test_a30_past_ecd_is_not_receipt_and_reopen_reblocks": {
+   "duration": 2.446676,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_parts_root.py::test_a30_timed_eta_is_exact_and_rounds_up_to_the_minute": {
+   "duration": 2.481871,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_a10_every_person_is_in_at_most_one_pool_per_shift": {
+   "duration": 0.001393,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_a10_pool_denominators_and_caps_from_admitted_people": {
+   "duration": 0.002049,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_a11_admission_rejects_cross_team_and_cross_shift_people": {
+   "duration": 0.000622,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_a11_target_pool_cannot_field_crew_and_nobody_is_borrowed": {
+   "duration": 0.00624,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_a64_exactly_ten_virtual_people_per_configured_team_shift": {
+   "duration": 0.001147,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_a64_spoofed_flags_cannot_make_virtual_people_executable": {
+   "duration": 0.000432,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_a64_virtual_people_hold_the_union_of_team_required_certs": {
+   "duration": 0.000636,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_activation_cap_is_exact_floor_without_minimum_one[0-0]": {
+   "duration": 0.000448,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_activation_cap_is_exact_floor_without_minimum_one[1-0]": {
+   "duration": 0.000319,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_activation_cap_is_exact_floor_without_minimum_one[10-8]": {
+   "duration": 0.000285,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_activation_cap_is_exact_floor_without_minimum_one[2-1]": {
+   "duration": 0.000298,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_activation_cap_is_exact_floor_without_minimum_one[20-17]": {
+   "duration": 0.000317,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_activation_cap_is_exact_floor_without_minimum_one[7-5]": {
+   "duration": 0.000281,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_pools.py::test_activation_cap_is_exact_floor_without_minimum_one[8-6]": {
+   "duration": 0.000327,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_production_shape.py::test_production_fixture_has_the_stated_shape": {
+   "duration": 0.152557,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_production_shape.py::test_production_shape_is_admitted_and_scheduled_validly": {
+   "duration": 32.464303,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_progression.py::test_a59_team_factory_history_surfaces_pool_the_same_units": {
+   "duration": 7.516569,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_progression.py::test_a62_frozen_value_earns_once_and_never_ages": {
+   "duration": 2.520108,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_progression.py::test_a62_source_correction_appends_reversal_and_keeps_history": {
+   "duration": 2.588238,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_progression.py::test_a63_replays_month_transition_and_named_lineage": {
+   "duration": 2.404408,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_progression.py::test_a63_xp_never_qualifies_and_levels_are_exact": {
+   "duration": 2.175527,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_progression.py::test_firebreak_counts_distinct_previously_blocked_jobs": {
+   "duration": 0.000591,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_progression.py::test_steady_shift_needs_three_consecutive_scored_shifts": {
+   "duration": 0.007353,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a48_corrupted_readback_is_rejected_before_signing[crew]": {
+   "duration": 3.027226,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a48_corrupted_readback_is_rejected_before_signing[offset]": {
+   "duration": 2.984909,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a48_corrupted_readback_is_rejected_before_signing[root-edge]": {
+   "duration": 2.87057,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a48_corrupted_readback_is_rejected_before_signing[source-hash]": {
+   "duration": 3.155187,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a48_corrupted_readback_is_rejected_before_signing[station-load]": {
+   "duration": 2.932438,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a48_corrupted_readback_is_rejected_before_signing[timezone]": {
+   "duration": 2.803242,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once[after_head:plan/DEMO-787/EXECUTABLE]": {
+   "duration": 5.396288,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once[after_post]": {
+   "duration": 5.596877,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once[after_put:published_plans]": {
+   "duration": 7.096879,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once[after_readback]": {
+   "duration": 6.694286,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once[after_sign]": {
+   "duration": 7.157499,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once[after_stage]": {
+   "duration": 6.49995,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once[before_head:plan/DEMO-787/EXECUTABLE]": {
+   "duration": 4.976692,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a52_forecast_publication_is_never_executable_dispatch": {
+   "duration": 5.809394,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a52_replayed_wrong_scope_and_unauthorized_never_accept": {
+   "duration": 9.734509,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a52_skipped_check_synthetic_capability_and_live_refusal": {
+   "duration": 7.898107,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a52_tampered_storage_never_becomes_current": {
+   "duration": 2.347529,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair[attendance-withdrawn-withdraw-names3-ATTENDANCE_WITHDRAWN]": {
+   "duration": 7.593595,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair[cert-revoked-revoke-names0-CERT_NOT_HELD]": {
+   "duration": 6.862912,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair[predecessor-incomplete-unfinish-names2-PREDECESSOR_INCOMPLETE]": {
+   "duration": 7.602239,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair[shortage-reopened-reopen-names1-PART_NOT_RECEIVED]": {
+   "duration": 7.444786,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_accepted_plan_is_signed_frozen_and_reloaded": {
+   "duration": 7.93006,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_publication_recovery.py::test_cli_publish_and_dispatch_in_fresh_processes": {
+   "duration": 10.25332,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_a05_certified_empty_differs_from_unavailable": {
+   "duration": 2.87865,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_a05_failed_mandatory_dataset_never_moves_head": {
+   "duration": 1.443156,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_a06_cs_dataset_from_another_run_fails_admission": {
+   "duration": 1.897547,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_a06_cs_generation_mismatch_rejected": {
+   "duration": 0.334703,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_a06_forged_hash_cannot_cure_mismatch": {
+   "duration": 0.233886,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_a07_crash_before_head_then_replay_reconciles_once": {
+   "duration": 1.497354,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_a07_crash_mid_capture_resumes_same_run": {
+   "duration": 1.606135,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_a48_source_part_snapshot_binds_same_run_cs_lineage": {
+   "duration": 2.361621,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_fixture_runs_survive_independent_processes": {
+   "duration": 1.62708,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_runs.py::test_head_only_moves_forward_in_cutoff": {
+   "duration": 2.936395,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_scope.py::test_a03_fifty_one_aircraft_all_reconciled_no_cap": {
+   "duration": 5.393993,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_scope.py::test_a04_same_soi_two_lines_lossless_through_graph_and_durations": {
+   "duration": 0.000631,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_scope.py::test_a15_flow_fields_preserved_and_total_drives_demand": {
+   "duration": 0.000319,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_scope.py::test_a46_assumed_terms_and_unknown_economics_are_labeled": {
+   "duration": 0.000307,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_scope.py::test_census_status_preserved_and_unknown_status_quarantined": {
+   "duration": 2.331486,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_scope.py::test_projections_are_explicit_and_queries_match_generator": {
+   "duration": 0.005243,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_scope.py::test_s04_contracts_embedded_exactly": {
+   "duration": 0.000429,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_source_scope.py::test_schema_drift_names_exact_object_and_column": {
+   "duration": 0.007594,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a08_persisted_sql_rows_consumed_with_tie_and_fallback_labels": {
+   "duration": 0.000353,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a08_sql_contract_fixture_matches_hand_derived_rows": {
+   "duration": 0.001065,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a08_sql_text_carries_contract_semantics": {
+   "duration": 0.000455,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a08_sql_text_is_the_authority": {
+   "duration": 0.000374,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a08_tie_broken_by_team_name_with_flags_and_window": {
+   "duration": 0.000413,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a09_assignment_moves_team_at_exact_instant_and_inference_is_nominal": {
+   "duration": 2.383809,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a09_assignment_overrides_inference": {
+   "duration": 0.000607,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a09_attendance_absent_is_not_capacity_even_with_inference": {
+   "duration": 0.002394,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a09_effective_instant_is_the_shift_start_boundary": {
+   "duration": 5.452484,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a10_duplicates_dedupe_and_conflicts_fail_admission": {
+   "duration": 2.191724,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_a11_no_cross_team_or_cross_shift_borrowing": {
+   "duration": 0.018058,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_p05_stale_inference_is_labelled_and_never_a_home_team": {
+   "duration": 2.384176,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_team_inference.py::test_p05_undefined_roster_shift_is_a_gap_not_a_pool": {
+   "duration": 2.683367,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_a64_ten_virtual_people_per_team_shift_union_certs_and_origin_rejection": {
+   "duration": 6.679629,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_a65_scenario_cancel_timeout_and_retry_never_change_the_twin_or_live_state": {
+   "duration": 10.306929,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_scenario_changes_are_typed_and_bounded": {
+   "duration": 0.000471,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_scenario_travel_toggle_and_priority_keep_every_rule": {
+   "duration": 24.842784,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_twin_cells_are_keyed_by_the_canonical_revision_and_layers_never_mix": {
+   "duration": 13.32627,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_twin_correction_appends_an_evaluation_revision_and_still_reconciles": {
+   "duration": 1.622996,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_twin_drilldowns_give_the_same_canonical_totals_and_revisions": {
+   "duration": 0.737917,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_twin_reconciles_exactly_with_frozen_goals_evaluations_ledger_and_census": {
+   "duration": 0.119782,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_twin_scenarios.py::test_twin_without_accepted_plans_is_honest_and_still_reconciles": {
+   "duration": 4.003373,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-capability-conditional]": {
+   "duration": 0.101055,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-commitment-misreported]": {
+   "duration": 0.078048,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-commitment-missing]": {
+   "duration": 0.071265,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-economics-completion]": {
+   "duration": 0.085041,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-economics-cost]": {
+   "duration": 0.071501,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-inventory-blocked]": {
+   "duration": 0.088622,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-inventory-missing]": {
+   "duration": 0.440438,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-lineage-hash]": {
+   "duration": 0.054869,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-lineage-policy]": {
+   "duration": 0.070467,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-lineage-proof]": {
+   "duration": 0.073966,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-lineage-snapshot]": {
+   "duration": 0.06169,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V1-identity]": {
+   "duration": 0.069056,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V1-restart-fiction]": {
+   "duration": 0.093255,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V1-unknown-phase]": {
+   "duration": 0.076069,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V1-work]": {
+   "duration": 0.138677,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-and-release]": {
+   "duration": 0.067477,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-in-progress-before-predecessor]": {
+   "duration": 0.090632,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-omitted-predecessor]": {
+   "duration": 0.073381,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V3-bounds]": {
+   "duration": 0.061323,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V3-s3-rule]": {
+   "duration": 0.061907,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V3-weekend]": {
+   "duration": 0.064059,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V4-backdate]": {
+   "duration": 0.092396,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V4-break]": {
+   "duration": 0.068348,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V4-no-start]": {
+   "duration": 0.063092,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V4-ot-misreported]": {
+   "duration": 0.071282,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-duplicate]": {
+   "duration": 0.060114,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-evidence]": {
+   "duration": 0.076491,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-loan]": {
+   "duration": 0.09721,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-pool-key]": {
+   "duration": 0.083048,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-qa-pool]": {
+   "duration": 0.073466,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-role]": {
+   "duration": 0.093791,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-roster]": {
+   "duration": 0.097827,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-short]": {
+   "duration": 0.05925,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-synthetic]": {
+   "duration": 0.099823,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-unqualified-forged-evidence]": {
+   "duration": 0.080556,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V6-carry-in]": {
+   "duration": 0.071824,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V6-overlap]": {
+   "duration": 0.068142,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V7-transfer]": {
+   "duration": 0.069464,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V8-cap]": {
+   "duration": 0.070081,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V9-part-executable]": {
+   "duration": 0.069581,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a47_every_required_check_has_a_catching_mutation": {
+   "duration": 0.000442,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a48_detached_bytes_with_forged_fields_are_rejected": {
+   "duration": 2.331057,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_a64_virtual_support_is_forecast_only_by_origin_evidence": {
+   "duration": 0.09397,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_cli_validate_in_fresh_processes": {
+   "duration": 6.936561,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_e_cs_forged_source_station_offset_is_caught_against_raw_rows": {
+   "duration": 0.699141,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_every_search_path_rolls_back_an_invalid_candidate": {
+   "duration": 0.849904,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_final_candidates_validate_clean_with_full_coverage[EXECUTABLE]": {
+   "duration": 7.510334,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_final_candidates_validate_clean_with_full_coverage[FORECAST]": {
+   "duration": 0.388496,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_v4_no_start_boundary_equality_is_allowed": {
+   "duration": 0.031673,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_v9_forecast_part_floor_and_label": {
+   "duration": 0.107311,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_validator_mutations.py::test_zero_violations_with_a_skipped_required_check_is_invalid": {
+   "duration": 0.041894,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_a59_arena_history_and_factory_pool_the_same_stored_evaluations": {
+   "duration": 1.223269,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_a60_oos_is_charged_once_in_o_and_never_reduces_xp": {
+   "duration": 0.040369,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_a63_projection_replay_appends_nothing_and_arena_shows_lineage": {
+   "duration": 0.141394,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_budget_gantt_and_capacity_reconcile_with_the_plan": {
+   "duration": 0.059113,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_demo_run_is_idempotent_byte_for_byte": {
+   "duration": 13.901644,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_new_reads_never_write": {
+   "duration": 0.497125,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_queued_runs_can_be_cancelled_and_never_execute": {
+   "duration": 0.108,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_scenario_is_isolated_and_never_publishable": {
+   "duration": 8.712407,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_supply_quality_standards_and_project_projections": {
+   "duration": 0.044205,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_team_lead_ranks_by_the_dispatch_rule_with_reasons": {
+   "duration": 0.038537,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_views_api.py::test_turnover_open_units_come_from_the_canonical_evidence": {
+   "duration": 0.034005,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_a01_no_credentials_no_source_pages_load_without_side_effects": {
+   "duration": 0.065647,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_a01_unavailable_repository_is_typed_blocked": {
+   "duration": 0.022123,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_a68_commands_require_csrf_json_schema_and_same_origin": {
+   "duration": 0.028941,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_a68_idempotent_command_returns_honest_queued_status": {
+   "duration": 1.618654,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_a68_unauthenticated_and_wrong_grant_rejected": {
+   "duration": 0.020803,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_app_module_import_is_side_effect_free": {
+   "duration": 0.340148,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_error_envelope_and_query_strictness": {
+   "duration": 0.025239,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_get_requests_never_mutate_runtime": {
+   "duration": 0.053428,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_mcp_disabled_by_default_and_read_only_when_enabled": {
+   "duration": 0.04317,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_openapi_generated_from_registry": {
+   "duration": 0.024456,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_pages_carrying_the_session_csrf_token_are_never_cached": {
+   "duration": 0.065093,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/integration/test_web_runtime.py::test_posit_connect_identity_header_and_prefix": {
+   "duration": 0.050526,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_layout_parity.py::test_ios_and_classic_show_the_same_stored_scores": {
+   "duration": 16.952361,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_layout_parity.py::test_keyboard_reaches_skip_link_and_views": {
+   "duration": 1.050365,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_layout_parity.py::test_layouts_fit_every_width_with_reduced_motion[1280]": {
+   "duration": 0.864315,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_layout_parity.py::test_layouts_fit_every_width_with_reduced_motion[375]": {
+   "duration": 0.835192,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_layout_parity.py::test_layouts_fit_every_width_with_reduced_motion[390]": {
+   "duration": 0.77619,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_layout_parity.py::test_layouts_fit_every_width_with_reduced_motion[820]": {
+   "duration": 0.773539,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_layout_parity.py::test_no_data_states_are_honest_in_both_layouts": {
+   "duration": 1.531125,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_layout_parity.py::test_team_lead_sees_only_their_goal_in_both_layouts": {
+   "duration": 0.876911,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_workflows.py::test_a66_team_lead_explanation_is_a_grounded_worker_result": {
+   "duration": 4.278741,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_workflows.py::test_a68_claim_then_reviewed_decision_through_worker_runs": {
+   "duration": 3.823485,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_workflows.py::test_a69_every_view_renders_in_both_layouts_at_phone_and_desktop": {
+   "duration": 20.308108,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_workflows.py::test_reported_completion_is_a_claim_and_ie_proposal_is_listed": {
+   "duration": 3.788523,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_workflows.py::test_team_lead_emergency_addition_completes_as_a_worker_run": {
+   "duration": 13.414518,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/ui/test_workflows.py::test_what_if_is_an_isolated_scenario_result": {
+   "duration": 15.860161,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_a19_conflicting_generations_block_without_max_guess": {
+   "duration": 0.001903,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_a19_per_line_calendar_wins_and_holes_or_outside_block": {
+   "duration": 0.00137,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_a20_exception_without_next_day_evidence_is_unknown": {
+   "duration": 0.000674,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_a20_s3_exception_needs_same_line_next_day_evidence": {
+   "duration": 0.000756,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_a21_dst_endpoints_are_built_independently": {
+   "duration": 0.001063,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_a21_working_day_s3_allowed_before_nonworking_day": {
+   "duration": 0.000625,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_a22_finish_fit_is_checked_separately_from_start": {
+   "duration": 0.000449,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_a22_no_start_cutoff_equality_and_ot_does_not_move_it": {
+   "duration": 0.000753,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_calendar.py::test_s1_fixture_protected_windows_and_budget": {
+   "duration": 0.000539,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_canonical_json_is_sorted_compact_and_utf8": {
+   "duration": 0.000304,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_envelope_hash_detects_tampering": {
+   "duration": 0.00077,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_interval_half_open_and_positive": {
+   "duration": 0.00047,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_key_validation_rejects_lossy_inputs": {
+   "duration": 0.000533,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_minute_helpers_exact_and_ceil": {
+   "duration": 0.000242,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_naive_datetime_rejected_everywhere": {
+   "duration": 0.00028,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_open_typed_decodes_payload_strictly": {
+   "duration": 0.000549,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_phase_and_person_keys_round_trip": {
+   "duration": 0.000688,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_same_soi_on_two_lines_and_revisions_never_collide": {
+   "duration": 0.000523,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_strict_loads_rejects_duplicate_keys_and_nonfinite": {
+   "duration": 0.000478,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_typed_decode_rejects_unknown_and_missing_fields": {
+   "duration": 0.000736,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_unknown_and_empty_are_distinguishable": {
+   "duration": 0.0039,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_codec_domain.py::test_utc_round_trip_preserves_precision": {
+   "duration": 0.000223,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_each_delta_on_first_and_repeated_accepted_run[-1-HOLD-HOLD-0]": {
+   "duration": 0.000656,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_each_delta_on_first_and_repeated_accepted_run[-3-PENDING-CONFIRMED--3]": {
+   "duration": 0.000631,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_each_delta_on_first_and_repeated_accepted_run[1-HOLD-HOLD-0]": {
+   "duration": 0.000884,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_each_delta_on_first_and_repeated_accepted_run[2-PENDING-CONFIRMED-2]": {
+   "duration": 0.001027,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_each_delta_on_first_and_repeated_accepted_run[6-PENDING-CONFIRMED-6]": {
+   "duration": 0.000733,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_each_delta_on_first_and_repeated_accepted_run[7-BAD_NEWS-HOLD-7]": {
+   "duration": 0.000707,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_large_improvement_and_tolerance_boundary": {
+   "duration": 0.000699,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_replayed_run_never_counts_and_unknown_never_fabricates": {
+   "duration": 0.000427,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a49_safety_alert_is_immediate_while_the_date_is_held": {
+   "duration": 0.000431,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a50_cohort_exit_and_reentry_keep_the_commitment": {
+   "duration": 0.036737,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a50_concurrent_writer_retries_and_the_lost_race_stays_invisible": {
+   "duration": 0.021994,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a50_crash_after_event_before_acknowledgment_recovers_once": {
+   "duration": 0.22143,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_a50_replay_and_rejection_add_no_streak_or_duplicate_change": {
+   "duration": 0.028345,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_later_search_cannot_silently_undo_a_kept_commitment": {
+   "duration": 0.000413,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_commitments.py::test_policy_constants_are_the_user_values": {
+   "duration": 0.000349,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_constraint_graph.py::test_a25_incomplete_predecessor_must_finish_and_absence_never_satisfies": {
+   "duration": 0.000387,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_constraint_graph.py::test_a25_self_edge_and_cycle_are_quarantined_without_deleting_edges": {
+   "duration": 2.626992,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_constraint_graph.py::test_a25_signed_lag_and_all_relationship_equations": {
+   "duration": 0.000331,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_constraint_graph.py::test_a26_in_progress_keeps_incomplete_predecessor_and_actual_history": {
+   "duration": 0.000781,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_constraint_graph.py::test_a27_each_rework_gate_injected_once_for_the_unstarted_root": {
+   "duration": 0.000444,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_constraint_graph.py::test_a27_started_root_uses_the_documented_hold": {
+   "duration": 6.41179,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_constraint_graph.py::test_a28_lifecycle_conflict_and_reopened_root_closure": {
+   "duration": 6.202043,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_constraint_graph.py::test_a28_reversed_rework_linkage_is_quarantined": {
+   "duration": 2.897067,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_a16_owner_unions_give_effort_independently_of_job_union": {
+   "duration": 0.000384,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_a16_running_max_union_preserves_gap_and_counts_nested_once": {
+   "duration": 0.000663,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_a17_s18_analytic_percentiles_and_tick": {
+   "duration": 0.00041,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_a17_statistics_persist_all_fields_on_elapsed_basis": {
+   "duration": 0.001449,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_exact_microsecond_minutes_and_labelled_display_quantization": {
+   "duration": 0.000248,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_no_cap_no_short_clock_removal_and_corrections_count_once": {
+   "duration": 0.000505,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_quantile_interval_coverage_and_small_samples": {
+   "duration": 0.000338,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_skewed_sample_mean_above_p75_is_not_reordered": {
+   "duration": 0.000299,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_source_hash_tracks_admitted_values_and_ids_bind_policy": {
+   "duration": 0.003928,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_statistics_flag_insufficient_and_stale_cohorts": {
+   "duration": 0.002501,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duration_gauge.py::test_union_uses_running_max_not_previous_raw_end": {
+   "duration": 0.000221,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a35_two_transfers_push_twenty_minutes_into_overtime": {
+   "duration": 0.000898,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a35_without_authorized_overtime_the_same_day_is_rejected": {
+   "duration": 0.000627,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a36_490_boundary_allowed_491_rejected": {
+   "duration": 0.00071,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a36_carry_in_overlap_is_checked_across_shift_labels": {
+   "duration": 0.000563,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a37_activation_cap_exact_with_reuse_free[1-0]": {
+   "duration": 0.0006,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a37_activation_cap_exact_with_reuse_free[10-8]": {
+   "duration": 0.001045,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a37_activation_cap_exact_with_reuse_free[2-1]": {
+   "duration": 0.020908,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a39_a_b_a_needs_two_transfers_for_every_member": {
+   "duration": 0.001187,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a40_insert_remove_swap_rederive_both_neighbours": {
+   "duration": 0.000809,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_duty_ledger.py::test_a40_travel_cannot_cross_a_break_and_busy_tools_block": {
+   "duration": 0.000647,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_economics.py::test_a23_economic_due_is_the_explicit_station_proxy_not_the_gate_or_earliest": {
+   "duration": 0.000473,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_economics.py::test_a45_exact_evaluator_beats_weighted_tardiness_and_keeps_unknowns": {
+   "duration": 0.000486,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_economics.py::test_a46_ambiguous_assignment_or_sale_basis_is_never_resolved_by_row_order": {
+   "duration": 2.386105,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_economics.py::test_a46_authority_labels_no_fabricated_rates_and_missing_due": {
+   "duration": 2.809429,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_economics.py::test_exact_linear_penalty_with_subcent_rates_and_caps": {
+   "duration": 0.000392,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_economics.py::test_known_zero_differs_from_unknown_and_unsupported": {
+   "duration": 0.000339,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_economics.py::test_weights_are_exact_marginals_normalized_without_rounding": {
+   "duration": 0.000318,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a12_approved_or_alternatives_are_checked_separately": {
+   "duration": 0.000873,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a12_only_an_individual_superset_qualifies": {
+   "duration": 0.001344,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a12_union_across_two_insufficient_people_is_rejected": {
+   "duration": 0.001236,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a13_equivalent_encodings_agree_and_expiry_is_inclusive": {
+   "duration": 0.000494,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a13_future_blank_malformed_and_unknown_status_reject": {
+   "duration": 0.000924,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a13_perpetual_only_under_explicit_sentinel_policy": {
+   "duration": 0.001299,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a13_revocation_wins_for_its_interval_and_reinstatement_restores": {
+   "duration": 0.000463,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a14_subst_matrix_label_grants_nothing": {
+   "duration": 0.000451,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_a14_unknown_requirements_block_and_affirmative_none_allows": {
+   "duration": 0.000446,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_cache_keys_change_with_source_or_policy_revision": {
+   "duration": 0.000853,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_role_matching_is_most_constrained_first_and_bounded": {
+   "duration": 0.001124,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_eligibility.py::test_scarcity_counts_usable_applicable_certs_only": {
+   "duration": 0.000512,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[duplicate_candidate]": {
+   "duration": 0.005965,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[entity]": {
+   "duration": 0.029927,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[evidence_of_other_candidate]": {
+   "duration": 0.006128,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[metric]": {
+   "duration": 0.005422,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[missing_candidate]": {
+   "duration": 0.005269,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[money_fraction]": {
+   "duration": 0.006057,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[money_off_by_one]": {
+   "duration": 0.005164,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[narrative_markup]": {
+   "duration": 0.00801,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[narrative_number]": {
+   "duration": 0.006188,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[narrative_unknown_id]": {
+   "duration": 0.006093,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[narrative_unsupported_claim]": {
+   "duration": 0.007265,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[numeric]": {
+   "duration": 0.005652,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[reason_code]": {
+   "duration": 0.005117,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[uncertainty_too_low]": {
+   "duration": 0.005592,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[unit]": {
+   "duration": 0.006549,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[unknown_candidate]": {
+   "duration": 0.005292,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[unknown_presented_as_known]": {
+   "duration": 0.006003,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation[version]": {
+   "duration": 0.005056,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_mock_and_recorded_explanations_use_actual_ids": {
+   "duration": 11.727518,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a66_tolerance_is_explicit_and_never_applies_to_money": {
+   "duration": 0.002781,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_extra_fields_and_wrong_types_fall_back[bool_value]": {
+   "duration": 0.002516,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_extra_fields_and_wrong_types_fall_back[claim]": {
+   "duration": 0.003215,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_extra_fields_and_wrong_types_fall_back[claims_not_list]": {
+   "duration": 0.002462,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_extra_fields_and_wrong_types_fall_back[float_value]": {
+   "duration": 0.002731,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_extra_fields_and_wrong_types_fall_back[item]": {
+   "duration": 0.003572,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_extra_fields_and_wrong_types_fall_back[too_many_codes]": {
+   "duration": 0.002632,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_extra_fields_and_wrong_types_fall_back[top]": {
+   "duration": 0.002802,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_malformed_or_nonfinite_output_falls_back[duplicate_key]": {
+   "duration": 0.00231,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_malformed_or_nonfinite_output_falls_back[empty]": {
+   "duration": 0.002526,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_malformed_or_nonfinite_output_falls_back[huge_number]": {
+   "duration": 0.002307,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_malformed_or_nonfinite_output_falls_back[infinity]": {
+   "duration": 0.002584,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_malformed_or_nonfinite_output_falls_back[nan]": {
+   "duration": 0.002762,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_malformed_or_nonfinite_output_falls_back[not_json]": {
+   "duration": 0.002706,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_malformed_or_nonfinite_output_falls_back[oversize]": {
+   "duration": 0.002366,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_prompt_injection_stays_data_and_cannot_change_rank_or_plan": {
+   "duration": 0.010259,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_timeouts_unavailable_bcai_and_errors_fall_back_without_leaking_secrets": {
+   "duration": 0.019597,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_a67_worker_explanations_write_only_their_record_and_keep_the_ranking": {
+   "duration": 5.652993,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_deterministic_explanation_is_complete_grounded_and_in_rank_order": {
+   "duration": 0.004759,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_explanation_command_checks_plan_scope_team_shift_and_economics": {
+   "duration": 6.103695,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_explanations.py::test_provider_selection_defaults_to_none_and_fixture_providers_stay_offline": {
+   "duration": 0.000827,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_hosting_files.py::test_default_requirements_never_pull_the_optional_solver": {
+   "duration": 0.000347,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_hosting_files.py::test_python_312_everywhere": {
+   "duration": 0.000596,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_hosting_files.py::test_solver_requirements_extend_the_base_with_identical_pins": {
+   "duration": 0.000861,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_imports.py::test_a02_all_modules_import_with_optional_packages_blocked": {
+   "duration": 0.600115,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_imports.py::test_a02_sql_driver_absence_is_typed": {
+   "duration": 0.000844,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_imports.py::test_reader_refuses_non_select_and_unlisted_objects": {
+   "duration": 0.000789,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_inspection_graph.py::test_a31_demo_root3_phases_conserve_elapsed_and_effort": {
+   "duration": 0.000665,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_inspection_graph.py::test_a31_in_progress_split_and_embedded_qa_reconciliation": {
+   "duration": 0.002444,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_inspection_graph.py::test_a31_phase_plan_allocates_45_total_across_sourced_holds": {
+   "duration": 0.000563,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_inspection_graph.py::test_a31_unknown_hold_location_never_invents_a_midpoint": {
+   "duration": 0.000815,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_inspection_graph.py::test_a31_unknown_or_mismatched_holds_block_root3": {
+   "duration": 4.828249,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_inspection_graph.py::test_a32_final_and_parallel_buyoff_feed_one_and_release_before_every_successor": {
+   "duration": 2.986825,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_inspection_graph.py::test_a33_inspector_demand_is_a_real_qualified_qa_role": {
+   "duration": 0.007288,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_integration_contract_export.py::test_contract_manifest_lists_every_source_without_live_inputs": {
+   "duration": 0.008073,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_integration_contract_export.py::test_every_sql_projection_is_cataloged_by_hash_and_path": {
+   "duration": 0.006321,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_integration_contract_export.py::test_machine_manifest_is_reference_only_json": {
+   "duration": 0.008004,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_demo_plans_are_identical_with_search_moves": {
+   "duration": 8.894663,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_ledger_operations_match_the_python_reference[1]": {
+   "duration": 0.132722,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_ledger_operations_match_the_python_reference[2]": {
+   "duration": 0.130924,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_ledger_operations_match_the_python_reference[3]": {
+   "duration": 0.147491,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_ledger_operations_match_the_python_reference[4]": {
+   "duration": 0.134751,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_native_core_setting_is_strict": {
+   "duration": 0.000691,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_production_shape_plans_are_identical": {
+   "duration": 72.35939,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_scale_template_plans_are_identical": {
+   "duration": 9.530176,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_native_core.py::test_setting_without_the_extension_uses_the_python_ledger": {
+   "duration": 0.000607,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_grants_json_is_strict": {
+   "duration": 0.000582,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_live_mode_refuses_demo_identity": {
+   "duration": 0.000543,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_policy_file_errors_are_typed": {
+   "duration": 0.001381,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_policy_loads_with_user_constants_and_authorities": {
+   "duration": 0.000409,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_policy_values_are_immutable": {
+   "duration": 0.000305,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_posit_connect_detection": {
+   "duration": 0.000373,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_secrets_never_render": {
+   "duration": 0.000543,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_settings_allowlist_ignores_unknown_focus_names": {
+   "duration": 0.000743,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_statistic_toggle_creates_new_policy_hash": {
+   "duration": 0.002326,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_tanzu_adapter_reads_port_and_vcap_services": {
+   "duration": 0.000539,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_policy_config.py::test_user_constants_cannot_be_overridden": {
+   "duration": 0.000598,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_query_files.py::test_economics_query_mirrors_the_policy_precedence": {
+   "duration": 0.012449,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_query_files.py::test_no_bound_placeholder_hides_in_a_comment": {
+   "duration": 0.007253,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_query_files.py::test_reader_queries_are_read_only_and_writers_are_declared": {
+   "duration": 0.009534,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_scale_exactness.py::test_cap_problem_equals_the_activation_rule_of_plan": {
+   "duration": 0.000781,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_scale_exactness.py::test_cross_shift_overlap_check_equals_brute_force": {
+   "duration": 0.028068,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_scale_exactness.py::test_failed_transaction_restores_every_container_including_in_place_ones": {
+   "duration": 0.00216,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_scale_exactness.py::test_memoized_snapshot_verification_still_rejects_tampering": {
+   "duration": 3.328755,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_scale_exactness.py::test_memoized_transport_ids_are_unchanged": {
+   "duration": 0.000658,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_scale_exactness.py::test_person_conflict_returns_exactly_what_plan_raises": {
+   "duration": 0.001268,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_scale_exactness.py::test_qualifies_within_equals_the_exact_interval_check": {
+   "duration": 0.019843,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_scale_exactness.py::test_successful_transaction_keeps_its_changes": {
+   "duration": 0.000631,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_a59_pooled_aggregate_is_72_not_average_82_5": {
+   "duration": 0.001051,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_a61_actual_gate_ages": {
+   "duration": 0.000424,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_a61_proxy_grace_once_future_absent_and_completion": {
+   "duration": 0.000416,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_a61_unit_values_use_the_frozen_context": {
+   "duration": 0.000308,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_all_excused_or_no_plan_is_neutral_null[0-0-0]": {
+   "duration": 0.00053,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_all_excused_or_no_plan_is_neutral_null[200-200-0]": {
+   "duration": 0.000678,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_missing_evidence_or_policy_is_unknown_null": {
+   "duration": 0.000962,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_official_status_needs_an_applicable_policy_receipt": {
+   "duration": 0.004721,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_oos_charge_is_separate_and_once": {
+   "duration": 0.001035,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_personal_grades_stay_disabled_without_their_own_policy": {
+   "duration": 0.0003,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_rounding_only_after_sums_and_bands": {
+   "duration": 0.000544,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_s14_numeric_examples[200-0-0-0-0-0.0]": {
+   "duration": 0.000895,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_s14_numeric_examples[200-0-100-0-0-65.0]": {
+   "duration": 0.000877,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_s14_numeric_examples[200-0-100-100-0-50.0]": {
+   "duration": 0.000928,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_s14_numeric_examples[200-0-200-0-0-100.0]": {
+   "duration": 0.001262,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_s14_numeric_examples[200-0-200-0-200-90.0]": {
+   "duration": 0.00088,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_s14_numeric_examples[200-100-100-0-0-100.0]": {
+   "duration": 0.000865,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_score_facts.py::test_zero_output_is_zero_not_thirty_and_h_is_zero": {
+   "duration": 0.000466,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_validator_v9_one_pass.py::test_one_pass_v9_equals_the_reference_behind_blocking_shortages": {
+   "duration": 21.235105,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  },
+  "tests/unit/test_validator_v9_one_pass.py::test_one_pass_v9_equals_the_reference_on_clean_and_corrupted_plans": {
+   "duration": 6.74292,
+   "outcome": "passed",
+   "phases": {
+    "call": "passed",
+    "setup": "passed",
+    "teardown": "passed"
+   }
+  }
+ }
+}

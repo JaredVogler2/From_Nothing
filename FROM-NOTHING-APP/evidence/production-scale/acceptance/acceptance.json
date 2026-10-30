@@ -1,0 +1,5987 @@
+{
+ "cases": {
+  "A01": {
+   "stage": "P02",
+   "status": "PASS",
+   "summary": "No credentials and no source run: imports and pages succeed with typed no-data states; nothing acquires, solves, writes or grades on import or GET",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_a01_no_credentials_no_source_pages_load_without_side_effects"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_a01_unavailable_repository_is_typed_blocked"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a01_every_read_is_typed_without_data_and_never_writes"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_app_module_import_is_side_effect_free"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_get_requests_never_mutate_runtime"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_layout_parity.py::test_no_data_states_are_honest_in_both_layouts"
+    }
+   ]
+  },
+  "A02": {
+   "stage": "P02",
+   "status": "PASS",
+   "summary": "Only the local focus package is imported; optional solver, LLM and SQL packages are lazy and the fixture path works without them",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_imports.py::test_a02_all_modules_import_with_optional_packages_blocked"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_imports.py::test_a02_sql_driver_absence_is_typed"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_solver_status.py::test_unavailable_dependency_returns_the_same_input_baseline"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_hosting_files.py::test_default_requirements_never_pull_the_optional_solver"
+    }
+   ]
+  },
+  "A03": {
+   "stage": "P03",
+   "status": "PASS",
+   "summary": "All 51 aircraft reconciled, including a fully blocked one and one missing standards; no eligibility or top-50 exclusion; reasons and inventory kept",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_scope.py::test_a03_fifty_one_aircraft_all_reconciled_no_cap"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a03_every_aircraft_and_job_survives_to_the_plan"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_max_pipeline.py::test_complete_inventory_and_truthful_receipt"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_scope.py::test_census_status_preserved_and_unknown_status_quarantined"
+    }
+   ]
+  },
+  "A04": {
+   "stage": "P03",
+   "status": "PASS",
+   "summary": "Same SOI on two lines and two revisions keep distinct lossless keys through graph, durations, parts, serialization and UI",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_scope.py::test_a04_same_soi_two_lines_lossless_through_graph_and_durations"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_codec_domain.py::test_same_soi_on_two_lines_and_revisions_never_collide"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_codec_domain.py::test_key_validation_rejects_lossy_inputs"
+    }
+   ]
+  },
+  "A05": {
+   "stage": "P04",
+   "status": "PASS",
+   "summary": "A failed mandatory dataset never becomes head; certified empty differs from unavailable; the old head stays",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a05_failed_mandatory_dataset_never_moves_head"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a05_certified_empty_differs_from_unavailable"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a05_failed_source_blocks_everything_downstream_and_keeps_the_old_head"
+    }
+   ]
+  },
+  "A06": {
+   "stage": "P04",
+   "status": "PASS",
+   "summary": "A CS dataset from another run or generation fails admission; a changed declared hash cannot cure the evidence mismatch",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a06_cs_dataset_from_another_run_fails_admission"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a06_cs_generation_mismatch_rejected"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a06_forged_hash_cannot_cure_mismatch"
+    }
+   ]
+  },
+  "A07": {
+   "stage": "P04",
+   "status": "PASS",
+   "summary": "A crash before the head update leaves no partial run; replaying the idempotency key gives one receipt and head, no duplicate facts",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a07_crash_before_head_then_replay_reconciles_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a07_crash_mid_capture_resumes_same_run"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a07_crash_after_acquisition_replays_one_source_run"
+    }
+   ]
+  },
+  "A08": {
+   "stage": "P05",
+   "status": "PASS",
+   "summary": "SQL team inference breaks ties deterministically with tie flag, count, window and confidence; department fallback is labeled and persisted",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a08_tie_broken_by_team_name_with_flags_and_window"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a08_persisted_sql_rows_consumed_with_tie_and_fallback_labels"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a08_sql_contract_fixture_matches_hand_derived_rows"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a08_sql_text_carries_contract_semantics"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a08_sql_text_is_the_authority"
+    }
+   ]
+  },
+  "A09": {
+   "stage": "P05",
+   "status": "PASS",
+   "summary": "An effective assignment overrides inference at the exact instant; inference never asserts present executable capacity",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a09_assignment_overrides_inference"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a09_assignment_moves_team_at_exact_instant_and_inference_is_nominal"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a09_attendance_absent_is_not_capacity_even_with_inference"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a09_effective_instant_is_the_shift_start_boundary"
+    }
+   ]
+  },
+  "A10": {
+   "stage": "P06",
+   "status": "PASS",
+   "summary": "True repeats dedupe; a conflicting overlapping assignment fails admission; no double headcount or double booking",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a10_duplicates_dedupe_and_conflicts_fail_admission"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a10_every_person_is_in_at_most_one_pool_per_shift"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a10_pool_denominators_and_caps_from_admitted_people"
+    }
+   ]
+  },
+  "A11": {
+   "stage": "P06",
+   "status": "PASS",
+   "summary": "A certified mechanic of the wrong team or shift is never borrowed; work waits with a reason; no phantom mechanic",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a11_admission_rejects_cross_team_and_cross_shift_people"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a11_target_pool_cannot_field_crew_and_nobody_is_borrowed"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_a11_no_cross_team_or_cross_shift_borrowing"
+    }
+   ]
+  },
+  "A12": {
+   "stage": "P06",
+   "status": "PASS",
+   "summary": "Only an individual superset of the required certs qualifies; a union across two people is rejected; approved OR alternatives are checked separately",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a12_only_an_individual_superset_qualifies"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a12_union_across_two_insufficient_people_is_rejected"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a12_approved_or_alternatives_are_checked_separately"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_role_matching_is_most_constrained_first_and_bounded"
+    }
+   ]
+  },
+  "A13": {
+   "stage": "P06",
+   "status": "PASS",
+   "summary": "Whole-interval eligibility rejects expiring, revoked, future, blank or malformed certs; equivalent date encodings agree; the sentinel policy is explicit",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a13_equivalent_encodings_agree_and_expiry_is_inclusive"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a13_future_blank_malformed_and_unknown_status_reject"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a13_perpetual_only_under_explicit_sentinel_policy"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a13_revocation_wins_for_its_interval_and_reinstatement_restores"
+    }
+   ]
+  },
+  "A14": {
+   "stage": "P06",
+   "status": "PASS",
+   "summary": "Unknown rework requirements block and are never cleared; an affirmative no-cert receipt may proceed; a SUBST label alone grants nothing",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a14_unknown_requirements_block_and_affirmative_none_allows"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_a14_subst_matrix_label_grants_nothing"
+    }
+   ]
+  },
+  "A15": {
+   "stage": "P07",
+   "status": "PASS",
+   "summary": "Composite flow lookup keeps each line's source fields; TOTAL drives demand; zero, null or negative counts are unavailable, never a default of 1",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_duration_policy.py::test_a15_composite_lookup_keeps_each_line_standard_and_all_fields"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_duration_policy.py::test_a15_flow_index_is_composite_and_reports_conflicts"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_duration_policy.py::test_a15_sequential_assignment_counts_require_role_phases"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_duration_policy.py::test_a15_zero_null_negative_and_conflicting_counts_are_unavailable"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_scope.py::test_a15_flow_fields_preserved_and_total_drives_demand"
+    }
+   ]
+  },
+  "A16": {
+   "stage": "P07",
+   "status": "PASS",
+   "summary": "Running-max union gives active elapsed 100 without bridging gaps or double-counting nested intervals; owner unions give effort independently",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_a16_running_max_union_preserves_gap_and_counts_nested_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_a16_owner_unions_give_effort_independently_of_job_union"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_union_uses_running_max_not_previous_raw_end"
+    }
+   ]
+  },
+  "A17": {
+   "stage": "P07",
+   "status": "PASS",
+   "summary": "P50/P55/mean/P75/P90 persist with n, window and units; scheduled rework P75 uses the elapsed cohort, not effort divided by crew",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_duration_policy.py::test_a17_rework_uses_p75_of_elapsed_cohort_not_effort_over_crew"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_a17_statistics_persist_all_fields_on_elapsed_basis"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_a17_s18_analytic_percentiles_and_tick"
+    }
+   ]
+  },
+  "A18": {
+   "stage": "P07",
+   "status": "PASS",
+   "summary": "Selecting P90 makes a new policy and plan only, prior goals unchanged; no false mean ordering; an unavailable cohort is never a flat 60",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_duration_policy.py::test_a18_p90_toggle_is_a_new_policy_and_snapshot_original_unchanged"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_duration_policy.py::test_a18_insufficient_or_stale_cohort_is_unavailable_never_flat_60"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_policy_config.py::test_statistic_toggle_creates_new_policy_hash"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_skewed_sample_mean_above_p75_is_not_reordered"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_statistics_flag_insufficient_and_stale_cohorts"
+    }
+   ]
+  },
+  "A19": {
+   "stage": "P08",
+   "status": "PASS",
+   "summary": "The per-line active calendar wins; holes and out-of-bounds dates block; no weekday arithmetic fallback or automatic extension",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_a19_per_line_calendar_wins_and_holes_or_outside_block"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_a19_conflicting_generations_block_without_max_guess"
+    }
+   ]
+  },
+  "A20": {
+   "stage": "P08",
+   "status": "PASS",
+   "summary": "S3 on a nonworking day needs same-line next-day working evidence; Saturday before a nonworking Sunday is denied; S1/S2 on nonworking days are denied",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_a20_s3_exception_needs_same_line_next_day_evidence"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_a20_exception_without_next_day_evidence_is_unknown"
+    }
+   ]
+  },
+  "A21": {
+   "stage": "P08",
+   "status": "PASS",
+   "summary": "A normal working-day S3 is allowed in its admitted window; UTC endpoints are built independently across DST",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_a21_working_day_s3_allowed_before_nonworking_day"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_a21_dst_endpoints_are_built_independently"
+    }
+   ]
+  },
+  "A22": {
+   "stage": "P08",
+   "status": "PASS",
+   "summary": "Starts at cutoff-1 and cutoff are allowed, cutoff+1 is rejected; OT never moves the cutoff; finish fit is checked separately",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_a22_no_start_cutoff_equality_and_ot_does_not_move_it"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_a22_finish_fit_is_checked_separately_from_start"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_v4_no_start_boundary_equality_is_allowed"
+    }
+   ]
+  },
+  "A23": {
+   "stage": "P08",
+   "status": "PASS",
+   "summary": "The exact station is chosen; earliest, gate and due stay distinct; past and day-0 gates are retained; no min/max widening",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_cs_lineage.py::test_a23_exact_station_with_past_day0_gate_retained_and_due_distinct"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_cs_lineage.py::test_a23_demo_snapshot_separates_earliest_gate_and_due"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_economics.py::test_a23_economic_due_is_the_explicit_station_proxy_not_the_gate_or_earliest"
+    }
+   ]
+  },
+  "A24": {
+   "stage": "P08",
+   "status": "PASS",
+   "summary": "Raw CS signs and lineage are preserved; conflicting loads or a missing date policy block; no guessed MAX(load), anchor or date convention",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_cs_lineage.py::test_a24_signed_offsets_preserved_and_offset_mode_uses_workdays"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_cs_lineage.py::test_a24_conflicting_loads_and_rows_block_without_max"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_cs_lineage.py::test_a24_missing_date_conversion_or_timezone_blocks"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_cs_lineage.py::test_a24_policy_gap_blocks_jobs_in_the_snapshot"
+    }
+   ]
+  },
+  "A25": {
+   "stage": "P09",
+   "status": "PASS",
+   "summary": "An incomplete predecessor must finish first; a missing prerequisite, self-edge or cycle is diagnosed and never satisfied by deletion",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a25_incomplete_predecessor_must_finish_and_absence_never_satisfies"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a25_self_edge_and_cycle_are_quarantined_without_deleting_edges"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a25_signed_lag_and_all_relationship_equations"
+    }
+   ]
+  },
+  "A26": {
+   "stage": "P09",
+   "status": "PASS",
+   "summary": "An in-progress job keeps its incoming edge and actual history; unsafe continuation is held; no backdating, restart fiction or OOS-only legalization",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a26_in_progress_keeps_incomplete_predecessor_and_actual_history"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_max_pipeline.py::test_a26_engine_keeps_in_progress_remaining_after_its_predecessor"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a26_oos_record_survives_predecessor_completion_and_never_legalizes"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-in-progress-before-predecessor]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V1-restart-fiction]"
+    }
+   ]
+  },
+  "A27": {
+   "stage": "P09",
+   "status": "PASS",
+   "summary": "Each rework gate is injected once; the unstarted root waits for rework and QA; a started root uses the documented hold",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a27_each_rework_gate_injected_once_for_the_unstarted_root"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a27_started_root_uses_the_documented_hold"
+    }
+   ]
+  },
+  "A28": {
+   "stage": "P09",
+   "status": "PASS",
+   "summary": "Reverse or cyclic rework is quarantined and closure blocked; verified lifecycle revisions decide release; no cycle-edge deletion",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a28_reversed_rework_linkage_is_quarantined"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a28_lifecycle_conflict_and_reopened_root_closure"
+    }
+   ]
+  },
+  "A29": {
+   "stage": "P09",
+   "status": "PASS",
+   "summary": "A shortage gates the correct line-A root and descendants by the latest release; the same SOI on line B is unaffected; unknown rows stay blocked or conditional",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_parts_root.py::test_a29_shortage_gates_used_on_job_root_and_descendants"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_parts_root.py::test_a29_same_soi_on_another_line_multiple_and_unknown_shortages"
+    }
+   ]
+  },
+  "A30": {
+   "stage": "P09",
+   "status": "PASS",
+   "summary": "A forecast never precedes its precision-aware floor; date-only ECD floors at end of day and is labeled; dispatch needs current ready evidence; reopen reblocks",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_parts_root.py::test_a30_timed_eta_is_exact_and_rounds_up_to_the_minute"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_parts_root.py::test_a30_date_only_ecd_floors_at_end_of_local_date"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_parts_root.py::test_a30_past_ecd_is_not_receipt_and_reopen_reblocks"
+    }
+   ]
+  },
+  "A31": {
+   "stage": "P10",
+   "status": "PASS",
+   "summary": "Production elapsed is conserved; in-process QA allocations sum to 45, not 90; no invented midpoint when hold points are unknown",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_inspection_graph.py::test_a31_phase_plan_allocates_45_total_across_sourced_holds"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_inspection_graph.py::test_a31_unknown_hold_location_never_invents_a_midpoint"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_inspection_graph.py::test_a31_unknown_or_mismatched_holds_block_root3"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_inspection_graph.py::test_a31_in_progress_split_and_embedded_qa_reconciliation"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_inspection_graph.py::test_a31_demo_root3_phases_conserve_elapsed_and_effort"
+    }
+   ]
+  },
+  "A32": {
+   "stage": "P10",
+   "status": "PASS",
+   "summary": "Separate 90 QA minutes when both apply; every successor is gated by all required releases; FS means >=",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_inspection_graph.py::test_a32_final_and_parallel_buyoff_feed_one_and_release_before_every_successor"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-and-release]"
+    }
+   ]
+  },
+  "A33": {
+   "stage": "P10",
+   "status": "PASS",
+   "summary": "One qualified inspector never overlaps; production hold and retained crew duty follow policy; no unlimited QA pool or empty-cert inspector",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_named_crew.py::test_a33_one_inspector_never_overlaps_and_wait_duty_is_booked"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_inspection_graph.py::test_a33_inspector_demand_is_a_real_qualified_qa_role"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-qa-pool]"
+    }
+   ]
+  },
+  "A34": {
+   "stage": "P11",
+   "status": "PASS",
+   "summary": "An exact full crew of distinct eligible people or wait; roles respect team, shift and individual certs; no demand clamp",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_named_crew.py::test_a34_exact_full_crew_or_wait"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-short]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-duplicate]"
+    }
+   ]
+  },
+  "A35": {
+   "stage": "P11",
+   "status": "PASS",
+   "summary": "Work 420 plus two 15-minute transfers is duty 450 with 20 OT; without OT it is rejected; transfers count once",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duty_ledger.py::test_a35_two_transfers_push_twenty_minutes_into_overtime"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duty_ledger.py::test_a35_without_authorized_overtime_the_same_day_is_rejected"
+    }
+   ]
+  },
+  "A36": {
+   "stage": "P11",
+   "status": "PASS",
+   "summary": "Duty 490 is allowed within authorized windows, 491 is rejected; carry-in occupancy is checked across shift labels",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duty_ledger.py::test_a36_490_boundary_allowed_491_rejected"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duty_ledger.py::test_a36_carry_in_overlap_is_checked_across_shift_labels"
+    }
+   ]
+  },
+  "A37": {
+   "stage": "P11",
+   "status": "PASS",
+   "summary": "Pure pools of 0, 1, 2 and 10 cap at exactly 0, 0, 1 and 8 on the deduplicated admitted denominator; no minimum of one or second derate",
+   "tests": [
+    {
+     "nodes": 3,
+     "outcomes": {
+      "passed": 3
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duty_ledger.py::test_a37_activation_cap_exact_with_reuse_free"
+    },
+    {
+     "nodes": 7,
+     "outcomes": {
+      "passed": 7
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_activation_cap_is_exact_floor_without_minimum_one"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a10_pool_denominators_and_caps_from_admitted_people"
+    }
+   ]
+  },
+  "A38": {
+   "stage": "P11",
+   "status": "PASS",
+   "summary": "Every binder, repair or continuity move that would activate a ninth of ten people is rejected or returns an explicit failed candidate; V8 catches a forged plan",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_named_crew.py::test_a38_every_path_rejects_a_cap_breach_and_v8_catches_forgery"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_every_search_path_rolls_back_an_invalid_candidate"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V8-cap]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_scale_exactness.py::test_cap_problem_equals_the_activation_rule_of_plan"
+    }
+   ]
+  },
+  "A39": {
+   "stage": "P11",
+   "status": "PASS",
+   "summary": "A-B-A switching costs a transition each way for every member; B starts at 75 with baseline 15; real reservations for the whole crew",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duty_ledger.py::test_a39_a_b_a_needs_two_transfers_for_every_member"
+    }
+   ]
+  },
+  "A40": {
+   "stage": "P11",
+   "status": "PASS",
+   "summary": "Insert, remove or swap recomputes both neighbor transitions atomically; travel across a protected break or a busy tool blocks",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duty_ledger.py::test_a40_insert_remove_swap_rederive_both_neighbours"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duty_ledger.py::test_a40_travel_cannot_cross_a_break_and_busy_tools_block"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V7-transfer]"
+    }
+   ]
+  },
+  "A41": {
+   "stage": "P11",
+   "status": "PASS",
+   "summary": "Prefer the feasible lower opportunity-cost person with fewer usable certs and aircraft affinity; overrides are explained with real travel",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_named_crew.py::test_a41_scarce_specialists_are_preserved_and_affinity_wins_ties"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_scarcity_counts_usable_applicable_certs_only"
+    }
+   ]
+  },
+  "A42": {
+   "stage": "P14",
+   "status": "PASS",
+   "summary": "Ready commitments first; attempt 1 is the exact slot and crew, attempt 2 the same time with an alternate full crew; day 3 is free; outcomes recorded",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_a42_ready_commitments_first_exact_then_alternate_crew_and_day3_free"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_a42_both_attempts_fail_then_minimal_audited_move"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_a42_no_feasible_slot_defers_without_forcing"
+    }
+   ]
+  },
+  "A43": {
+   "stage": "P14",
+   "status": "PASS",
+   "summary": "Only the accepted incumbent is reloaded; a late part, expired cert or changed calendar overrides the defense immediately with a reason",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_a43_fresh_process_reloads_only_the_accepted_incumbent"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_a43_late_part_overrides_the_defense_immediately"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_a43_expired_cert_and_changed_calendar_override_the_exact_slot"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_a43_incompatible_or_missing_incumbent_is_reported_and_never_defended"
+    }
+   ]
+  },
+  "A44": {
+   "stage": "P12",
+   "status": "PASS",
+   "summary": "The CLI rich MAX consumes registry weights and complete aircraft completion; economic steering improves exact fleet cost over the neutral seed",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_economic_steering.py::test_a44_economic_redispatch_improves_exact_fleet_cost"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_economic_steering.py::test_a44_cli_schedule_reports_weights_complete_dispositions_and_costs"
+    }
+   ]
+  },
+  "A45": {
+   "stage": "P12",
+   "status": "PASS",
+   "summary": "The exact full-candidate evaluator governs acceptance; no improvement claim from weights alone; unknown completion is never zero",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_economics.py::test_a45_exact_evaluator_beats_weighted_tardiness_and_keeps_unknowns"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_solver_status.py::test_a45_improvement_is_exact_and_never_a_proof"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_economics.py::test_exact_linear_penalty_with_subcent_rates_and_caps"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_solver_status.py::test_signature_only_difference_is_not_an_improvement"
+    }
+   ]
+  },
+  "A46": {
+   "stage": "P12",
+   "status": "PASS",
+   "summary": "Assumed and actual terms are labeled; no fabricated rate, liability or due; supported zero differs from unknown",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_economics.py::test_a46_authority_labels_no_fabricated_rates_and_missing_due"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_economics.py::test_a46_ambiguous_assignment_or_sale_basis_is_never_resolved_by_row_order"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_scope.py::test_a46_assumed_terms_and_unknown_economics_are_labeled"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_economics.py::test_known_zero_differs_from_unknown_and_unsupported"
+    }
+   ]
+  },
+  "A47": {
+   "stage": "P15",
+   "status": "PASS",
+   "summary": "Every V1-V9 and extended corruption is caught after each mutation; in-progress work is not skipped; coverage is nonzero; the plan cannot publish",
+   "tests": [
+    {
+     "nodes": 40,
+     "outcomes": {
+      "passed": 40
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_every_required_check_has_a_catching_mutation"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_zero_violations_with_a_skipped_required_check_is_invalid"
+    },
+    {
+     "nodes": 2,
+     "outcomes": {
+      "passed": 2
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_final_candidates_validate_clean_with_full_coverage"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a47_a70_zero_violations_zero_required_skips_full_coverage"
+    }
+   ]
+  },
+  "A48": {
+   "stage": "P16",
+   "status": "PASS",
+   "summary": "Detached and pre-sign readback each reject changed crew, root edge, timezone, station/load, offset or source hash; corrupted bytes are never signed or promoted",
+   "tests": [
+    {
+     "nodes": 6,
+     "outcomes": {
+      "passed": 6
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a48_corrupted_readback_is_rejected_before_signing"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a48_detached_bytes_with_forged_fields_are_rejected"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a48_source_part_snapshot_binds_same_run_cs_lineage"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_e_cs_forged_source_station_offset_is_caught_against_raw_rows"
+    }
+   ]
+  },
+  "A49": {
+   "stage": "P14",
+   "status": "PASS",
+   "summary": "Under 2 days holds; 7 or more days worse is immediate; other changes need two distinct confirmations; safety risk is immediately visible",
+   "tests": [
+    {
+     "nodes": 6,
+     "outcomes": {
+      "passed": 6
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a49_each_delta_on_first_and_repeated_accepted_run"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a49_large_improvement_and_tolerance_boundary"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a49_replayed_run_never_counts_and_unknown_never_fabricates"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a49_safety_alert_is_immediate_while_the_date_is_held"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_policy_constants_are_the_user_values"
+    }
+   ]
+  },
+  "A50": {
+   "stage": "P14",
+   "status": "PASS",
+   "summary": "Replays, rejections, cohort exit and re-entry, and a crash before acknowledgment add no streak or duplicate change and forget no commitment",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a50_replay_and_rejection_add_no_streak_or_duplicate_change"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a50_cohort_exit_and_reentry_keep_the_commitment"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a50_crash_after_event_before_acknowledgment_recovers_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a50_concurrent_writer_retries_and_the_lost_race_stays_invisible"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_later_search_cannot_silently_undo_a_kept_commitment"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a50_takeover_after_acceptance_does_not_duplicate_commitments"
+    }
+   ]
+  },
+  "A51": {
+   "stage": "P16",
+   "status": "PASS",
+   "summary": "A crash at stage, readback, signing, acceptance, pointer update or client timeout keeps the previous pointer until atomic acceptance; recovery reconciles exactly",
+   "tests": [
+    {
+     "nodes": 7,
+     "outcomes": {
+      "passed": 7
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a51_crash_inside_publication_never_reports_signed_but_uncommitted"
+    }
+   ]
+  },
+  "A52": {
+   "stage": "P16",
+   "status": "PASS",
+   "summary": "Tampered signature or hash, replayed artifact, wrong scope, skipped check, synthetic capability or unauthorized signer never accepts or dispatches",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a52_tampered_storage_never_becomes_current"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a52_replayed_wrong_scope_and_unauthorized_never_accept"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a52_skipped_check_synthetic_capability_and_live_refusal"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a52_forecast_publication_is_never_executable_dispatch"
+    }
+   ]
+  },
+  "A53": {
+   "stage": "P16",
+   "status": "PASS",
+   "summary": "A revoked cert, reopened shortage, incomplete predecessor or withdrawn attendance blocks current dispatch and requests repair; history stays immutable",
+   "tests": [
+    {
+     "nodes": 4,
+     "outcomes": {
+      "passed": 4
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_cli_publish_and_dispatch_in_fresh_processes"
+    }
+   ]
+  },
+  "A54": {
+   "stage": "P17",
+   "status": "PASS",
+   "summary": "All eight causes and duplicate claims: five nominal categories exact; evidence and decision separate; relief union bounded by frozen missed effort",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a54_all_eight_causes_duplicates_and_union_relief"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a54_taxonomy_is_exact_and_policy_cannot_redefine_it"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a54_review_authority_self_review_and_appeals"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a54_feed_intake_quarantines_with_stable_reasons_and_replays_idempotently"
+    }
+   ]
+  },
+  "A55": {
+   "stage": "P17",
+   "status": "PASS",
+   "summary": "Explicit defect-origin evidence decides culpability; no causation guess from DAG direction; no automatic 3x overrun excuse",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a55_rework_origin_comes_from_defect_evidence_not_executing_team"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a55_no_automatic_overrun_excuse_below_or_above_3x"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a55_culpability_walks_past_blocked_neighbours"
+    }
+   ]
+  },
+  "A56": {
+   "stage": "P17",
+   "status": "PASS",
+   "summary": "No credit for cancellation; prior verified work follows the ordered policy; original goals preserved; corrections append a new evaluation",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a56_cancel_before_completion_earns_nothing_and_stays_in_b0"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a56_prior_verified_completion_follows_ordered_policy"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a56_reopen_revokes_and_late_void_appends_corrected_evaluation"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a56_reported_completion_is_a_claim_never_credit"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a56_revisions_voids_and_corrections_append"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a56_terminal_status_and_disappearance_are_unknown_not_credit"
+    }
+   ]
+  },
+  "A57": {
+   "stage": "P18",
+   "status": "PASS",
+   "summary": "Demonstration scores 65, 50 and 0; no free 30 points, throughput substitute or UI formula drift",
+   "tests": [
+    {
+     "nodes": 6,
+     "outcomes": {
+      "passed": 6
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_s14_numeric_examples"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_zero_output_is_zero_not_thirty_and_h_is_zero"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a57_no_browser_side_formula_or_hardcoded_ready"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a57_a59_every_surface_reads_the_same_stored_evaluation"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_layout_parity.py::test_ios_and_classic_show_the_same_stored_scores"
+    }
+   ]
+  },
+  "A58": {
+   "stage": "P18",
+   "status": "PASS",
+   "summary": "Approved relief case scores 100; all-excused or no plan is neutral null; missing evidence is unknown null; B0 retained",
+   "tests": [
+    {
+     "nodes": 2,
+     "outcomes": {
+      "passed": 2
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_all_excused_or_no_plan_is_neutral_null"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_missing_evidence_or_policy_is_unknown_null"
+    },
+    {
+     "nodes": 6,
+     "outcomes": {
+      "passed": 6
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_s14_numeric_examples"
+    }
+   ]
+  },
+  "A59": {
+   "stage": "P18",
+   "status": "PASS",
+   "summary": "Pooled D400/Cp200 with D100/Cp100 scores 72, not the 82.5 average; team, factory and history surfaces agree",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_a59_pooled_aggregate_is_72_not_average_82_5"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_rounding_only_after_sums_and_bands"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_progression.py::test_a59_team_factory_history_surfaces_pool_the_same_units"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_views_api.py::test_a59_arena_history_and_factory_pool_the_same_stored_evaluations"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a57_a59_every_surface_reads_the_same_stored_evaluation"
+    }
+   ]
+  },
+  "A60": {
+   "stage": "P18",
+   "status": "PASS",
+   "summary": "Planned OOS gives O20 and score 90 with Cp unchanged; unapproved off-plan OOS is not double charged; XP and economics never subtract O again",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_oos_charge_is_separate_and_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_views_api.py::test_a60_oos_is_charged_once_in_o_and_never_reduces_xp"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_planned_oos_charged_once_offplan_oos_not_double_charged"
+    }
+   ]
+  },
+  "A61": {
+   "stage": "P18",
+   "status": "PASS",
+   "summary": "Actual gate ages 0,2,3,5,7 give raw 0,.4,.6,1,1; proxy grace applies once; a future gate is 0 and an absent one unavailable",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_a61_actual_gate_ages"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_a61_proxy_grace_once_future_absent_and_completion"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_a61_unit_values_use_the_frozen_context"
+    }
+   ]
+  },
+  "A62": {
+   "stage": "P18",
+   "status": "PASS",
+   "summary": "A frozen recognition value earns once, never ages after completion, and a correction appends a revision instead of rewriting XP",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_progression.py::test_a62_frozen_value_earns_once_and_never_ages"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_progression.py::test_a62_source_correction_appends_reversal_and_keeps_history"
+    }
+   ]
+  },
+  "A63": {
+   "stage": "P18",
+   "status": "PASS",
+   "summary": "No duplicated XP or badge across repeats and month transitions; awards name verified events; qualification never derives from XP",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_progression.py::test_a63_replays_month_transition_and_named_lineage"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_progression.py::test_a63_xp_never_qualifies_and_levels_are_exact"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_views_api.py::test_a63_projection_replay_appends_nothing_and_arena_shows_lineage"
+    }
+   ]
+  },
+  "A64": {
+   "stage": "P21",
+   "status": "PASS",
+   "summary": "Exactly 10 distinct virtual people per configured MHE/PSC/TST team-shift with union certs; forecast-labeled; rejected from executable crews by origin evidence",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a64_exactly_ten_virtual_people_per_configured_team_shift"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a64_virtual_people_hold_the_union_of_team_required_certs"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a64_spoofed_flags_cannot_make_virtual_people_executable"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_twin_scenarios.py::test_a64_ten_virtual_people_per_team_shift_union_certs_and_origin_rejection"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a64_virtual_support_is_forecast_only_by_origin_evidence"
+    }
+   ]
+  },
+  "A65": {
+   "stage": "P21",
+   "status": "PASS",
+   "summary": "Twin drilldowns give the same canonical totals and revisions; observed, planned, forecast and unknown stay separate; scenarios never move live pointers, goals or commitments",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_twin_scenarios.py::test_a65_scenario_cancel_timeout_and_retry_never_change_the_twin_or_live_state"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_twin_scenarios.py::test_twin_drilldowns_give_the_same_canonical_totals_and_revisions"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_twin_scenarios.py::test_twin_cells_are_keyed_by_the_canonical_revision_and_layers_never_mix"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_views_api.py::test_scenario_is_isolated_and_never_publishable"
+    }
+   ]
+  },
+  "A66": {
+   "stage": "P21",
+   "status": "PASS",
+   "summary": "Mock and recorded explanations use actual ids; forged candidates, numbers, entities, units or narrative are rejected; the deterministic fallback is unchanged",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_a66_mock_and_recorded_explanations_use_actual_ids"
+    },
+    {
+     "nodes": 18,
+     "outcomes": {
+      "passed": 18
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_a66_forgeries_fall_back_to_the_unchanged_deterministic_explanation"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_a66_tolerance_is_explicit_and_never_applies_to_money"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_workflows.py::test_a66_team_lead_explanation_is_a_grounded_worker_result"
+    }
+   ]
+  },
+  "A67": {
+   "stage": "P21",
+   "status": "PASS",
+   "summary": "Prompt injection, nonfinite or extra fields, timeouts and missing BCAI credentials cause no tool use, mutation or secret leak; schedule and rank unchanged",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_a67_prompt_injection_stays_data_and_cannot_change_rank_or_plan"
+    },
+    {
+     "nodes": 7,
+     "outcomes": {
+      "passed": 7
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_a67_malformed_or_nonfinite_output_falls_back"
+    },
+    {
+     "nodes": 7,
+     "outcomes": {
+      "passed": 7
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_a67_extra_fields_and_wrong_types_fall_back"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_a67_timeouts_unavailable_bcai_and_errors_fall_back_without_leaking_secrets"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_a67_worker_explanations_write_only_their_record_and_keep_the_ranking"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_explanations.py::test_provider_selection_defaults_to_none_and_fixture_providers_stay_offline"
+    }
+   ]
+  },
+  "A68": {
+   "stage": "P19",
+   "status": "PASS",
+   "summary": "Scope before fetch; CSRF, version and idempotency enforced; GET never solves, writes or grades; commands return honest worker status",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_every_read_needs_a_trusted_identity_and_its_grants"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_scope_is_checked_before_any_fetch"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_scoped_content_hides_other_teams_people_and_economics"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_cursor_is_bound_to_scope_filters_and_revision"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_get_never_writes_solves_or_grades"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_schedule_and_other_commands_report_honest_worker_status"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_claim_and_decision_commands_are_csrf_idempotent_versioned_and_honest"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_amendment_is_versioned_feasible_and_never_changes_b0"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_a68_unauthenticated_and_wrong_grant_rejected"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_a68_commands_require_csrf_json_schema_and_same_origin"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_a68_idempotent_command_returns_honest_queued_status"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_pages_carrying_the_session_csrf_token_are_never_cached"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_every_read_operation_answers_identically_over_rest_and_mcp"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_workflows.py::test_a68_claim_then_reviewed_decision_through_worker_runs"
+    }
+   ]
+  },
+  "A69": {
+   "stage": "P20",
+   "status": "PASS",
+   "summary": "iOS and Classic are accessible with the same facts at 375/390, tablet and desktop, keyboard and reduced motion; no overflow or hardcoded Ready/100; travel, parts and QA reasons visible",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_workflows.py::test_a69_every_view_renders_in_both_layouts_at_phone_and_desktop"
+    },
+    {
+     "nodes": 4,
+     "outcomes": {
+      "passed": 4
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_layout_parity.py::test_layouts_fit_every_width_with_reduced_motion"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_layout_parity.py::test_keyboard_reaches_skip_link_and_views"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_layout_parity.py::test_no_data_states_are_honest_in_both_layouts"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_layout_parity.py::test_team_lead_sees_only_their_goal_in_both_layouts"
+    }
+   ]
+  },
+  "A70": {
+   "stage": "P22",
+   "status": "PASS",
+   "summary": "Whole-WIP benchmark: zero required skips and violations, complete inventory, bounded runtime and memory; solver timeout, unavailability or invalid incumbent falls back truthfully",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_max_pipeline.py::test_a70_deterministic_and_bounded"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a47_a70_zero_violations_zero_required_skips_full_coverage"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a70_scale_inventory_exercises_the_hard_rules"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a70_optional_solver_at_scale_is_truthful"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_solver_status.py::test_a70_solver_probe_cannot_bypass_named_feasibility"
+    }
+   ]
+  },
+  "A71": {
+   "stage": "P23",
+   "status": "PASS",
+   "summary": "Needs, locks and idempotency block races and promotion; migrations are reviewable and reversible; unsigned readback strictly precedes signing",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a71_roles_order_and_idempotent_replay"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a71_live_lease_blocks_a_competitor_and_an_expired_one_is_taken_over"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a71_cli_role_that_only_waited_is_not_a_success"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a71_dry_run_apply_and_replay_are_idempotent"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a71_checksum_mismatch_blocks_every_later_version"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a71_unrecorded_object_is_a_collision"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_failure_mid_version_records_nothing_and_resumes_forward"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_rollback_only_the_latest_version_and_only_without_data"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_ci_draft_orders_roles_and_protects_signing"
+    }
+   ]
+  },
+  "A72": {
+   "stage": "P24",
+   "status": "PASS",
+   "summary": "A fresh checkout completes the documented fixture flow; a new versioned review preserves historical review files; unresolved live gates are listed precisely",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/acceptance/test_release.py::test_a72_fresh_checkout_runs_the_documented_fixture_flow"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/acceptance/test_release.py::test_a72_new_review_preserves_history_and_binds_exact_hashes"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/acceptance/test_release.py::test_a72_review_refuses_stale_acceptance_and_reports_incomplete_builds"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/acceptance/test_release.py::test_a72_live_gates_are_listed_precisely"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/acceptance/test_traceability.py::test_register_covers_every_case_and_requirement"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/acceptance/test_traceability.py::test_register_matches_the_manual"
+    }
+   ]
+  }
+ },
+ "constraints": {
+  "C01": {
+   "cases": [
+    "A25",
+    "A26"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/pnet_dag.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.graph:build_graph",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.max.optimizer.greedy:_floors",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._place",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.job_floor",
+     "caller": "focus.engine.max.optimizer.greedy:_floors",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v2",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.satisfied",
+     "caller": "focus.validation.plan:_derive_times",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.satisfied",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    }
+   ],
+   "requirement": "Task precedence and prerequisite closure",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.graph:build_graph"
+    }
+   ],
+   "stages": [
+    "P09",
+    "P13",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-omitted-predecessor]"
+    }
+   ]
+  },
+  "C02": {
+   "cases": [
+    "A27",
+    "A28"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/neo_graph_rework.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/graph/rework_linkage.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.graph:build_graph",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v2",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.known_node",
+     "caller": "focus.validation.plan:_v2",
+     "problem": null
+    }
+   ],
+   "requirement": "Rework predecessor injection and affected-root closure",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.graph:build_graph"
+    }
+   ],
+   "stages": [
+    "P09",
+    "P10",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": []
+  },
+  "C03": {
+   "cases": [
+    "A29"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/etracs_active.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/parts/shortage_profile.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.parts:build_parts",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.parts:root_chain",
+     "caller": "focus.data.parts:build_parts",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v9",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_reached",
+     "caller": "focus.validation.plan:_v9",
+     "problem": null
+    }
+   ],
+   "requirement": "Late-part child-to-root linkage",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.parts:build_parts"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.parts:root_chain"
+    }
+   ],
+   "stages": [
+    "P09",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": []
+  },
+  "C04": {
+   "cases": [
+    "A29",
+    "A30"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/etracs_history.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.engine.model:EngineContext.release_floor",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder.run",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.release_floor",
+     "caller": "focus.engine.max.optimizer.greedy:_floors",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.release_time",
+     "caller": "focus.validation.plan:_derive_times",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.ancestors",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    }
+   ],
+   "requirement": "Root successor of ETA/physical part-release milestone",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.parts:build_parts"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.model:EngineContext.release_floor"
+    }
+   ],
+   "stages": [
+    "P09",
+    "P16"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_v9_forecast_part_floor_and_label"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V9-part-executable]"
+    }
+   ]
+  },
+  "C05": {
+   "cases": [
+    "A12",
+    "A13",
+    "A14"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/mechanic_certs.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/source_inputs/soi_cert_requirements.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.qualifications:build_holdings",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.qualifications:build_requirements",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.qualifications:parse_cert_date",
+     "caller": "focus.data.qualifications:build_holdings",
+     "problem": null
+    },
+    {
+     "callee": "focus.eligibility:HoldingIndex.check_bundle",
+     "caller": "focus.engine.model:EngineContext.qualifies",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.qualifies_within",
+     "caller": "focus.engine.crew_selection:choose_crew",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.bundle_held",
+     "caller": "focus.validation.plan:_v5",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.bundle_held",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    }
+   ],
+   "requirement": "Certification eligibility and individual multi-cert superset",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.eligibility:HoldingIndex.check_bundle"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.qualifications:build_holdings"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.qualifications:build_requirements"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.qualifications:parse_cert_date"
+    }
+   ],
+   "stages": [
+    "P06",
+    "P11",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-unqualified-forged-evidence]"
+    }
+   ]
+  },
+  "C06": {
+   "cases": [
+    "A10",
+    "A11",
+    "A34"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/person_team_map.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/source_inputs/attendance_shift.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.workforce:build_workforce",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.pool_for",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._search",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.pool_members",
+     "caller": "focus.engine.crew_selection:choose_crew",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.admitted_members",
+     "caller": "focus.validation.plan:_v5",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.admitted_members",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    }
+   ],
+   "requirement": "Pure team/shift/day pools and no borrowing",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.workforce:build_workforce"
+    }
+   ],
+   "stages": [
+    "P05",
+    "P06",
+    "P11",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-loan]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-pool-key]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-roster]"
+    }
+   ]
+  },
+  "C07": {
+   "cases": [
+    "A08",
+    "A09"
+   ],
+   "files": [
+    {
+     "file": "queries/workforce/infer_mechanic_teams.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/workforce/read_team_inference.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/source_inputs/mech_team_inferred.sql",
+     "problem": null
+    },
+    {
+     "file": "sql/migrations/004_workforce_inference.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.workforce:build_workforce",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    }
+   ],
+   "requirement": "Mechanic home-team inference in SQL Server",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.workforce:build_workforce"
+    }
+   ],
+   "stages": [
+    "P05",
+    "P23"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_team_inference.py::test_p05_stale_inference_is_labelled_and_never_a_home_team"
+    }
+   ]
+  },
+  "C08": {
+   "cases": [
+    "A15",
+    "A16",
+    "A17"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/flow_budget.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/durations/percentiles.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/durations/build_observations.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.durations:flow_index",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.durations:resolve",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.duration_gauge:compute_statistics",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.duration_gauge:scheduled_ticks",
+     "caller": "focus.data.durations:resolve",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.duration_gauge:interval_union",
+     "caller": "focus.data.duration_gauge:episode_metrics",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v1",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    }
+   ],
+   "requirement": "Flow duration and NC/PU/CI P75 elapsed rework estimates",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.durations:resolve"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.durations:flow_index"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.duration_gauge:compute_statistics"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.duration_gauge:interval_union"
+    }
+   ],
+   "stages": [
+    "P07",
+    "P13",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V1-work]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V1-restart-fiction]"
+    }
+   ]
+  },
+  "C09": {
+   "cases": [
+    "A17",
+    "A18"
+   ],
+   "files": [
+    {
+     "file": "sql/migrations/005_duration_statistics.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.duration_gauge:compute_statistics",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.duration_gauge:scheduled_ticks",
+     "caller": "focus.data.durations:resolve",
+     "problem": null
+    }
+   ],
+   "requirement": "Persist P55/average/P75/P90 with future toggling",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.duration_gauge:compute_statistics"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.duration_gauge:DurationStatistics"
+    }
+   ],
+   "stages": [
+    "P07",
+    "P23"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_policy_config.py::test_statistic_toggle_creates_new_policy_hash"
+    }
+   ]
+  },
+  "C10": {
+   "cases": [
+    "A31",
+    "A32"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/inspection_standards.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/source_inputs/inspection_counts.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.inspections:phase_plan",
+     "caller": "focus.data.graph:build_graph",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.inspections:build_triggers",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v1",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    }
+   ],
+   "requirement": "45 minutes total in-process inspection",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.inspections:phase_plan"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.inspections:build_triggers"
+    }
+   ],
+   "stages": [
+    "P10",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": []
+  },
+  "C11": {
+   "cases": [
+    "A32",
+    "A33"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/buyoff_plan.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.inspections:phase_plan",
+     "caller": "focus.data.graph:build_graph",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v2",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.bundle_held",
+     "caller": "focus.validation.plan:_v5",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.admitted_members",
+     "caller": "focus.validation.duty:reconstruct",
+     "problem": null
+    }
+   ],
+   "requirement": "Separate final 45-minute FS inspection before successors",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.inspections:phase_plan"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.graph:build_graph"
+    }
+   ],
+   "stages": [
+    "P10",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-and-release]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-qa-pool]"
+    }
+   ]
+  },
+  "C12": {
+   "cases": [
+    "A23",
+    "A24",
+    "A48"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/cs_windows.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/calendars/cs_window_grain.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.cs_windows:build_cs_facts",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.acquisition:_readback",
+     "caller": "focus.data.acquisition:acquire",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_e_cs",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_e_lineage",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.publication.serializer:cs_lineage",
+     "caller": "focus.publication.serializer:build_artifact",
+     "problem": null
+    },
+    {
+     "callee": "focus.publication.serializer:cs_lineage",
+     "caller": "focus.validation.publication:_artifact_violations",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.publication:validate_artifact",
+     "caller": "focus.publication.service:publish",
+     "problem": null
+    }
+   ],
+   "requirement": "Distinct CS earliest/deadline/gate, same-run source lineage",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.cs_windows:build_cs_facts"
+    },
+    {
+     "problem": null,
+     "rule": "focus.data.acquisition:acquire"
+    },
+    {
+     "problem": null,
+     "rule": "focus.publication.serializer:cs_lineage"
+    }
+   ],
+   "stages": [
+    "P04",
+    "P08",
+    "P12",
+    "P15",
+    "P16"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a06_cs_dataset_from_another_run_fails_admission"
+    }
+   ]
+  },
+  "C13": {
+   "cases": [
+    "A19",
+    "A20"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/cday_op_plan.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/calendars/calendar_generations.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.calendar:admit_line_calendars",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.calendar:CalendarService",
+     "caller": "focus.engine.model:EngineContext.__init__",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.line_shifts",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._search",
+     "problem": null
+    },
+    {
+     "callee": "focus.calendar:CalendarService.eligible",
+     "caller": "focus.engine.model:EngineContext.line_shifts",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.workday",
+     "caller": "focus.validation.plan:_v3",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.workday",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    }
+   ],
+   "requirement": "Bounded authoritative FOCUS_CDAY_OP_PLAN per line",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.calendar:admit_line_calendars"
+    },
+    {
+     "problem": null,
+     "rule": "focus.calendar:CalendarService.eligible"
+    }
+   ],
+   "stages": [
+    "P08",
+    "P13",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V3-weekend]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V3-bounds]"
+    }
+   ]
+  },
+  "C14": {
+   "cases": [
+    "A15",
+    "A34"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/flow_budget.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.durations:crew_demand",
+     "caller": "focus.data.durations:resolve",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.crew_selection:choose_crew",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._book",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v5",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    }
+   ],
+   "requirement": "FOCUS_FLOW_BUDGET.TOTAL_MECHANICS and full crew",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.durations:crew_demand"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.crew_selection:choose_crew"
+    }
+   ],
+   "stages": [
+    "P07",
+    "P10",
+    "P11",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-short]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-duplicate]"
+    }
+   ]
+  },
+  "C15": {
+   "cases": [
+    "A21",
+    "A35",
+    "A36"
+   ],
+   "files": [
+    {
+     "file": "config/policies/rebuild-v1.json",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.engine.ledger:DutyLedger.plan",
+     "caller": "focus.engine.crew_selection:choose_crew",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.ledger:DutyLedger._check_budget",
+     "caller": "focus.engine.ledger:DutyLedger.plan",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.duty:reconstruct",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v4",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    }
+   ],
+   "requirement": "Three shifts and working budget plus at most 60 allowance",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.calendar:build_shift"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.ledger:DutyLedger.plan"
+    }
+   ],
+   "stages": [
+    "P08",
+    "P11",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_calendar.py::test_s1_fixture_protected_windows_and_budget"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V4-ot-misreported]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V4-break]"
+    }
+   ]
+  },
+  "C16": {
+   "cases": [
+    "A20",
+    "A21"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.calendar:CalendarService.day_status",
+     "caller": "focus.calendar:CalendarService.eligible",
+     "problem": null
+    },
+    {
+     "callee": "focus.calendar:CalendarService.eligible",
+     "caller": "focus.engine.model:EngineContext.line_shifts",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.workday",
+     "caller": "focus.validation.plan:_v3",
+     "problem": null
+    }
+   ],
+   "requirement": "Nonworking-d shift 3 iff d+1 working on same line",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.calendar:CalendarService.eligible"
+    }
+   ],
+   "stages": [
+    "P08",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V3-s3-rule]"
+    }
+   ]
+  },
+  "C17": {
+   "cases": [
+    "A37",
+    "A38"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.data.workforce:activation_cap",
+     "caller": "focus.data.workforce:build_workforce",
+     "problem": null
+    },
+    {
+     "callee": "focus.data.workforce:activation_cap",
+     "caller": "focus.simulation.pools:merge_virtual_pools",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.ledger:DutyLedger.cap_problem",
+     "caller": "focus.engine.crew_selection:choose_crew",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.ledger:DutyLedger.cap_problem",
+     "caller": "focus.engine.ledger:DutyLedger.plan",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.activation_cap",
+     "caller": "focus.validation.duty:reconstruct",
+     "problem": null
+    }
+   ],
+   "requirement": "Exact floor(0.85*pool) distinct activation cap",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.workforce:activation_cap"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.ledger:DutyLedger.cap_problem"
+    },
+    {
+     "problem": null,
+     "rule": "focus.validation.input:ValidationInput.activation_cap"
+    }
+   ],
+   "stages": [
+    "P11",
+    "P13",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V8-cap]"
+    }
+   ]
+  },
+  "C18": {
+   "cases": [
+    "A35",
+    "A36"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.ledger:DutyLedger._check_budget",
+     "caller": "focus.engine.ledger:DutyLedger.plan",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.ledger:DutyLedger.person_conflict",
+     "caller": "focus.engine.ledger:DutyLedger.plan",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.ledger:DutyLedger.person_conflict",
+     "caller": "focus.engine.crew_selection:choose_crew",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.duty:reconstruct",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    }
+   ],
+   "requirement": "Per-person complete duty load cap and OT",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.ledger:DutyLedger.plan"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.ledger:DutyLedger.person_conflict"
+    }
+   ],
+   "stages": [
+    "P11",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_scale_exactness.py::test_person_conflict_returns_exactly_what_plan_raises"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V6-overlap]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V6-carry-in]"
+    }
+   ]
+  },
+  "C19": {
+   "cases": [
+    "A22"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.calendar:ShiftInstance.valid_start",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._search",
+     "problem": null
+    },
+    {
+     "callee": "focus.calendar:ShiftInstance.valid_start",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._defend",
+     "problem": null
+    },
+    {
+     "callee": "focus.calendar:ShiftInstance.valid_start",
+     "caller": "focus.validation.plan:_v4",
+     "problem": null
+    }
+   ],
+   "requirement": "No-start cutoff effective minus 30, equality allowed",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.calendar:ShiftInstance.valid_start"
+    },
+    {
+     "problem": null,
+     "rule": "focus.calendar:ShiftInstance.latest_start"
+    }
+   ],
+   "stages": [
+    "P08",
+    "P11",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V4-no-start]"
+    }
+   ]
+  },
+  "C20": {
+   "cases": [
+    "A39",
+    "A40"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.ledger:DutyLedger._derive",
+     "caller": "focus.engine.ledger:DutyLedger.plan",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.ledger:DutyLedger.all_items",
+     "caller": "focus.engine.max.optimizer.orchestrator:MaxOptimizer.evaluate",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.max.optimizer.continuity:continuity_breaks",
+     "caller": "focus.engine.max.optimizer.orchestrator:MaxOptimizer.evaluate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.duty:reconstruct",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    }
+   ],
+   "requirement": "Consecutive aircraft switch time and changeover penalty",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.travel:TravelPolicy"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.ledger:DutyLedger.plan"
+    }
+   ],
+   "stages": [
+    "P11",
+    "P13",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V7-transfer]"
+    }
+   ]
+  },
+  "C21": {
+   "cases": [
+    "A40",
+    "A41"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.crew_selection:preference_key",
+     "caller": "focus.engine.crew_selection:choose_crew",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.crew_selection:choose_crew",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._book",
+     "problem": null
+    }
+   ],
+   "requirement": "Aircraft affinity and reduced walking",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.crew_selection:preference_key"
+    }
+   ],
+   "stages": [
+    "P11",
+    "P13"
+   ],
+   "status": "PASS",
+   "tests": []
+  },
+  "C22": {
+   "cases": [
+    "A41"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.model:EngineContext.usable_applicable",
+     "caller": "focus.engine.crew_selection:preference_key",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.crew_selection:preference_key",
+     "caller": "focus.engine.crew_selection:choose_crew",
+     "problem": null
+    }
+   ],
+   "requirement": "Fewer usable certs and rare-skill crew conservation",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.crew_selection:preference_key"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.model:EngineContext.usable_applicable"
+    }
+   ],
+   "stages": [
+    "P06",
+    "P11",
+    "P13"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_eligibility.py::test_scarcity_counts_usable_applicable_certs_only"
+    }
+   ]
+  },
+  "C23": {
+   "cases": [
+    "A42",
+    "A43"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.commitments:defended_tasks",
+     "caller": "focus.engine.max.optimizer.orchestrator:schedule_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.max.optimizer.greedy:Decoder._defend",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._place",
+     "problem": null
+    },
+    {
+     "callee": "focus.publication.dispatch:assess_action",
+     "caller": "focus.publication.dispatch:dispatch_check",
+     "problem": null
+    }
+   ],
+   "requirement": "Feasible committed-first dispatch",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.commitments:defended_tasks"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.max.optimizer.greedy:Decoder._defend"
+    }
+   ],
+   "stages": [
+    "P13",
+    "P14",
+    "P16"
+   ],
+   "status": "PASS",
+   "tests": []
+  },
+  "C24": {
+   "cases": [
+    "A42",
+    "A43"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.commitments:lookup_incumbent",
+     "caller": "focus.engine.commitments:defended_tasks",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.max.optimizer.greedy:Decoder._record",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._defend",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_e_commitment",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    }
+   ],
+   "requirement": "Enabled, 3 calendar days, exact two-attempt defense",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.commitments:defended_tasks"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.max.optimizer.greedy:Decoder._defend"
+    }
+   ],
+   "stages": [
+    "P14",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-commitment-misreported]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-commitment-missing]"
+    }
+   ]
+  },
+  "C25": {
+   "cases": [
+    "A29",
+    "A30"
+   ],
+   "files": [
+    {
+     "file": "queries/source_inputs/etracs_active.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/source_inputs/etracs_history.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.parts:build_parts",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v9",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.publication.dispatch:assess_action",
+     "caller": "focus.publication.dispatch:dispatch_check",
+     "problem": null
+    }
+   ],
+   "requirement": "FOCUS_ETRACS_ACTIVE current shortage blocking",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.parts:build_parts"
+    }
+   ],
+   "stages": [
+    "P04",
+    "P09",
+    "P16"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair[shortage-reopened-reopen-names1-PART_NOT_RECEIVED]"
+    }
+   ]
+  },
+  "C26": {
+   "cases": [
+    "A30",
+    "A47"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.model:EngineContext.release_floor",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder.run",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.release_floor",
+     "caller": "focus.engine.max.optimizer.greedy:_floors",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.job_floor",
+     "caller": "focus.engine.max.optimizer.solver:build_relaxation",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.release_time",
+     "caller": "focus.validation.plan:_derive_times",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.ancestors",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    }
+   ],
+   "requirement": "Parts ETA floor on every scan/mutation/status",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.model:EngineContext.release_floor"
+    },
+    {
+     "problem": null,
+     "rule": "focus.validation.input:ValidationInput.release_time"
+    }
+   ],
+   "stages": [
+    "P09",
+    "P13",
+    "P15",
+    "P16"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_v9_forecast_part_floor_and_label"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V9-part-executable]"
+    }
+   ]
+  },
+  "C27": {
+   "cases": [
+    "A44",
+    "A45",
+    "A46"
+   ],
+   "files": [
+    {
+     "file": "queries/economics/effective_terms.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/source_inputs/econ_term.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.economics.registry:EconomicsRegistry.derive_priority_weights",
+     "caller": "focus.engine.max.optimizer.orchestrator:MaxOptimizer.run",
+     "problem": null
+    },
+    {
+     "callee": "focus.economics.evaluator:line_costs",
+     "caller": "focus.engine.max.optimizer.orchestrator:MaxOptimizer.evaluate",
+     "problem": null
+    },
+    {
+     "callee": "focus.economics.evaluator:summarize",
+     "caller": "focus.engine.max.optimizer.orchestrator:MaxOptimizer.evaluate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_e_economics",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.economics.evaluator:summarize",
+     "caller": "focus.validation.plan:_e_economics",
+     "problem": null
+    }
+   ],
+   "requirement": "Rich EconomicsRegistry weighted whole-WIP redispatch",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.economics.registry:EconomicsRegistry.derive_priority_weights"
+    },
+    {
+     "problem": null,
+     "rule": "focus.economics.evaluator:summarize"
+    }
+   ],
+   "stages": [
+    "P12",
+    "P13",
+    "P22"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-economics-cost]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-economics-completion]"
+    }
+   ]
+  },
+  "C28": {
+   "cases": [
+    "A49",
+    "A50"
+   ],
+   "files": [
+    {
+     "file": "sql/migrations/006_commitments.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.engine.commitments:observe",
+     "caller": "focus.engine.commitments:DeliveryCommitments._transition",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.commitments:DeliveryCommitments.record_accepted_plan",
+     "caller": "focus.engine.projections:record_accepted",
+     "problem": null
+    }
+   ],
+   "requirement": "Two-day hysteresis and distinct-run persistence",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.commitments:observe"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.commitments:DeliveryCommitments.record_accepted_plan"
+    }
+   ],
+   "stages": [
+    "P14",
+    "P23"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_accepted_forecast_plan_feeds_delivery_commitments_once"
+    }
+   ]
+  },
+  "C29": {
+   "cases": [
+    "A49",
+    "A50"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.commitments:observe",
+     "caller": "focus.engine.commitments:DeliveryCommitments._transition",
+     "problem": null
+    }
+   ],
+   "requirement": "Seven-day bad news immediately and sustained other changes",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.engine.commitments:observe"
+    },
+    {
+     "problem": null,
+     "rule": "focus.engine.commitments:HysteresisPolicy"
+    }
+   ],
+   "stages": [
+    "P14"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_policy_constants_are_the_user_values"
+    }
+   ]
+  },
+  "C30": {
+   "cases": [
+    "A54",
+    "A55"
+   ],
+   "files": [
+    {
+     "file": "queries/actuals/disruption_claims.sql",
+     "problem": null
+    },
+    {
+     "file": "queries/actuals/excusal_decisions.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.performance.disruption:taxonomy_errors",
+     "caller": "focus.performance.disruption:Intake.admit_claim",
+     "problem": null
+    },
+    {
+     "callee": "focus.performance.disruption:taxonomy_errors",
+     "caller": "focus.performance.score:evidence_for",
+     "problem": null
+    },
+    {
+     "callee": "focus.performance.disruption:relief_summary",
+     "caller": "focus.performance.score:evidence_for",
+     "problem": null
+    },
+    {
+     "callee": "focus.performance.disruption:approved_units",
+     "caller": "focus.performance.lifecycle:ObservationView.relief_units",
+     "problem": null
+    }
+   ],
+   "requirement": "Eight disruption codes and five nominal excusables",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.performance.disruption:taxonomy_errors"
+    },
+    {
+     "problem": null,
+     "rule": "focus.performance.disruption:approved_units"
+    },
+    {
+     "problem": null,
+     "rule": "focus.performance.disruption:relief_summary"
+    }
+   ],
+   "stages": [
+    "P17",
+    "P18"
+   ],
+   "status": "PASS",
+   "tests": []
+  },
+  "C31": {
+   "cases": [
+    "A57",
+    "A60",
+    "A62",
+    "A63"
+   ],
+   "files": [
+    {
+     "file": "sql/migrations/009_evaluation.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.analytics.progression:project",
+     "caller": "focus.pipeline:observe_and_evaluate",
+     "problem": null
+    },
+    {
+     "callee": "focus.analytics.progression:entitlements",
+     "caller": "focus.analytics.progression:project",
+     "problem": null
+    },
+    {
+     "callee": "focus.analytics.points:unit_values",
+     "caller": "focus.analytics.progression:entitlements",
+     "problem": null
+    }
+   ],
+   "requirement": "Effort points, progression, badges, streams and XP",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.analytics.progression:project"
+    },
+    {
+     "problem": null,
+     "rule": "focus.analytics.progression:entitlements"
+    },
+    {
+     "problem": null,
+     "rule": "focus.analytics.points:unit_values"
+    }
+   ],
+   "stages": [
+    "P18",
+    "P19",
+    "P20"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_progression.py::test_firebreak_counts_distinct_previously_blocked_jobs"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_progression.py::test_steady_shift_needs_three_consecutive_scored_shifts"
+    }
+   ]
+  },
+  "C32": {
+   "cases": [
+    "A65"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.analytics.twin:build_twin",
+     "caller": "focus.web.serializers:twin_view",
+     "problem": null
+    }
+   ],
+   "requirement": "Digital twin per team/shift/aircraft",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.analytics.twin:build_twin"
+    }
+   ],
+   "stages": [
+    "P20",
+    "P21"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_twin_scenarios.py::test_twin_reconciles_exactly_with_frozen_goals_evaluations_ledger_and_census"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_twin_scenarios.py::test_twin_without_accepted_plans_is_honest_and_still_reconciles"
+    }
+   ]
+  },
+  "C33": {
+   "cases": [
+    "A61",
+    "A62"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.analytics.points:behind_raw",
+     "caller": "focus.analytics.points:gate_context",
+     "problem": null
+    },
+    {
+     "callee": "focus.analytics.points:effective_gate",
+     "caller": "focus.analytics.points:gate_context",
+     "problem": null
+    },
+    {
+     "callee": "focus.analytics.points:unit_values",
+     "caller": "focus.analytics.progression:entitlements",
+     "problem": null
+    }
+   ],
+   "requirement": "Behind-station value 35/cap5/grace2",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.analytics.points:effective_gate"
+    },
+    {
+     "problem": null,
+     "rule": "focus.analytics.points:behind_raw"
+    },
+    {
+     "problem": null,
+     "rule": "focus.analytics.points:unit_values"
+    }
+   ],
+   "stages": [
+    "P18",
+    "P20"
+   ],
+   "status": "PASS",
+   "tests": []
+  },
+  "C34": {
+   "cases": [
+    "A13",
+    "A14",
+    "A53"
+   ],
+   "files": [
+    {
+     "file": "queries/qualifications/holding_validity_profile.sql",
+     "problem": null
+    }
+   ],
+   "paths": [
+    {
+     "callee": "focus.data.qualifications:parse_cert_date",
+     "caller": "focus.data.qualifications:build_holdings",
+     "problem": null
+    },
+    {
+     "callee": "focus.engine.model:EngineContext.qualifies_within",
+     "caller": "focus.engine.crew_selection:choose_crew",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.bundle_held",
+     "caller": "focus.validation.plan:_v5",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.bundle_held",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    }
+   ],
+   "requirement": "certexpired removes expired holdings",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.qualifications:build_holdings"
+    },
+    {
+     "problem": null,
+     "rule": "focus.eligibility:Eligibility"
+    }
+   ],
+   "stages": [
+    "P06",
+    "P15",
+    "P16"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair[cert-revoked-revoke-names0-CERT_NOT_HELD]"
+    }
+   ]
+  },
+  "C35": {
+   "cases": [
+    "A64"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.simulation.pools:build_virtual_support",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.simulation.pools:merge_virtual_pools",
+     "caller": "focus.data.snapshot_builder:build_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.simulation.pools:is_synthetic_person",
+     "caller": "focus.engine.model:EngineContext.__init__",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.synthetic",
+     "caller": "focus.validation.plan:_v5",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.synthetic",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.publication:publication_capability",
+     "caller": "focus.publication.service:publish",
+     "problem": null
+    }
+   ],
+   "requirement": "Exactly 10 fictitious MHE/PSC/TST union-cert support people",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.simulation.pools:build_virtual_support"
+    },
+    {
+     "problem": null,
+     "rule": "focus.simulation.pools:is_synthetic_person"
+    }
+   ],
+   "stages": [
+    "P06",
+    "P21",
+    "P15"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V5-synthetic]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-capability-conditional]"
+    }
+   ]
+  },
+  "C36": {
+   "cases": [
+    "A66",
+    "A67"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.explanations.validators:validate",
+     "caller": "focus.explanations.pipeline:explain",
+     "problem": null
+    },
+    {
+     "callee": "focus.explanations.validators:parse_response",
+     "caller": "focus.explanations.pipeline:explain",
+     "problem": null
+    },
+    {
+     "callee": "focus.explanations.provider:provider_for",
+     "caller": "focus.explanations.pipeline:worker_explanation",
+     "problem": null
+    }
+   ],
+   "requirement": "Mock/recorded/BCAI explanation providers and strict validation",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.explanations.provider:provider_for"
+    },
+    {
+     "problem": null,
+     "rule": "focus.explanations.validators:validate"
+    }
+   ],
+   "stages": [
+    "P21"
+   ],
+   "status": "PASS",
+   "tests": []
+  },
+  "C37": {
+   "cases": [
+    "A47",
+    "A48",
+    "A52"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.validation.plan:validate",
+     "caller": "focus.engine.max.optimizer.orchestrator:schedule_snapshot",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:validate",
+     "caller": "focus.engine.max.optimizer.orchestrator:MaxOptimizer._valid",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:validate",
+     "caller": "focus.orchestration:step_validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:validate",
+     "caller": "focus.publication.service:publish",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.publication:validate_artifact",
+     "caller": "focus.publication.service:publish",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:validate",
+     "caller": "focus.validation.publication:validate_artifact",
+     "problem": null
+    }
+   ],
+   "requirement": "Stable nine-check suite with independent mandatory enforcement",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.validation.plan:validate"
+    },
+    {
+     "problem": null,
+     "rule": "focus.validation.publication:validate_artifact"
+    }
+   ],
+   "stages": [
+    "P15",
+    "P16",
+    "P24"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_zero_violations_with_a_skipped_required_check_is_invalid"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_every_search_path_rolls_back_an_invalid_candidate"
+    }
+   ]
+  },
+  "C38": {
+   "cases": [
+    "A26",
+    "A47",
+    "A53"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.engine.max.optimizer.greedy:_floors",
+     "caller": "focus.engine.max.optimizer.greedy:Decoder._place",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v2",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.plan:_v1",
+     "caller": "focus.validation.plan:validate",
+     "problem": null
+    },
+    {
+     "callee": "focus.validation.input:ValidationInput.satisfied",
+     "caller": "focus.publication.dispatch:assess_action",
+     "problem": null
+    },
+    {
+     "callee": "focus.performance.lifecycle:Satisfaction.at",
+     "caller": "focus.performance.lifecycle:derive_sequence_violations",
+     "problem": null
+    }
+   ],
+   "requirement": "In-progress never voids incoming incomplete predecessor",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.data.graph:build_graph"
+    }
+   ],
+   "stages": [
+    "P09",
+    "P13",
+    "P15",
+    "P16",
+    "P17"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-in-progress-before-predecessor]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair[predecessor-incomplete-unfinish-names2-PREDECESSOR_INCOMPLETE]"
+    }
+   ]
+  },
+  "C39": {
+   "cases": [
+    "A56",
+    "A57",
+    "A60"
+   ],
+   "files": [],
+   "paths": [
+    {
+     "callee": "focus.performance.lifecycle:ObservationView.oos_for",
+     "caller": "focus.performance.score:evidence_for",
+     "problem": null
+    },
+    {
+     "callee": "focus.performance.lifecycle:ObservationView.offplan_oos",
+     "caller": "focus.performance.score:evidence_for",
+     "problem": null
+    },
+    {
+     "callee": "focus.performance.score:components",
+     "caller": "focus.performance.score:evidence_for",
+     "problem": null
+    },
+    {
+     "callee": "focus.performance.score:formula",
+     "caller": "focus.performance.score:status_and_score",
+     "problem": null
+    }
+   ],
+   "requirement": "Separate once-only OOS penalty",
+   "rules": [
+    {
+     "problem": null,
+     "rule": "focus.performance.lifecycle:ObservationView.oos_for"
+    },
+    {
+     "problem": null,
+     "rule": "focus.performance.lifecycle:ObservationView.offplan_oos"
+    },
+    {
+     "problem": null,
+     "rule": "focus.performance.score:components"
+    }
+   ],
+   "stages": [
+    "P17",
+    "P18",
+    "P19"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_planned_oos_charged_once_offplan_oos_not_double_charged"
+    }
+   ]
+  }
+ },
+ "counterexamples": {
+  "activation_repair": {
+   "refs": [
+    "A38",
+    "C17"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_named_crew.py::test_a38_every_path_rejects_a_cap_breach_and_v8_catches_forgery"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_every_search_path_rolls_back_an_invalid_candidate"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V8-cap]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_scale_exactness.py::test_cap_problem_equals_the_activation_rule_of_plan"
+    }
+   ],
+   "title": "Repair or continuity move that would breach the activation cap"
+  },
+  "in_progress_edge": {
+   "refs": [
+    "A26",
+    "C38"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_constraint_graph.py::test_a26_in_progress_keeps_incomplete_predecessor_and_actual_history"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_max_pipeline.py::test_a26_engine_keeps_in_progress_remaining_after_its_predecessor"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V2-in-progress-before-predecessor]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[V1-restart-fiction]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair[predecessor-incomplete-unfinish-names2-PREDECESSOR_INCOMPLETE]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a26_oos_record_survives_predecessor_completion_and_never_legalizes"
+    }
+   ],
+   "title": "In-progress job with an incomplete incoming predecessor"
+  },
+  "oos_double_charge": {
+   "refs": [
+    "A60",
+    "C39"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_oos_charge_is_separate_and_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_planned_oos_charged_once_offplan_oos_not_double_charged"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_views_api.py::test_a60_oos_is_charged_once_in_o_and_never_reduces_xp"
+    },
+    {
+     "nodes": 6,
+     "outcomes": {
+      "passed": 6
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_score_facts.py::test_s14_numeric_examples"
+    }
+   ],
+   "title": "Out-of-sequence charged once, never again in XP or economics"
+  },
+  "rework_p75": {
+   "refs": [
+    "A17",
+    "C08"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_duration_policy.py::test_a17_rework_uses_p75_of_elapsed_cohort_not_effort_over_crew"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_a17_statistics_persist_all_fields_on_elapsed_basis"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_duration_gauge.py::test_a17_s18_analytic_percentiles_and_tick"
+    }
+   ],
+   "title": "Rework P75 from the elapsed cohort, not effort divided by crew"
+  },
+  "same_run_cs_readback": {
+   "refs": [
+    "A48",
+    "C12"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 6,
+     "outcomes": {
+      "passed": 6
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a48_corrupted_readback_is_rejected_before_signing"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a48_detached_bytes_with_forged_fields_are_rejected"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a48_source_part_snapshot_binds_same_run_cs_lineage"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a06_cs_dataset_from_another_run_fails_admission"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_e_cs_forged_source_station_offset_is_caught_against_raw_rows"
+    }
+   ],
+   "title": "Same-run CS lineage through serialization and pre-sign readback"
+  }
+ },
+ "hashes": {
+  "implementation": {
+   "files": 299,
+   "method": "git",
+   "sha256": "df2e2ce070cf3fcff409354e2eabb0b9c624eb9005feb0ddd4ec43c60a179120"
+  },
+  "manual": {
+   "expected": "f81939211ef01f900ef5a3fe965e27f97f8c71a82832f5d541b3865ce205e5d5",
+   "sha256": "f81939211ef01f900ef5a3fe965e27f97f8c71a82832f5d541b3865ce205e5d5",
+   "status": "MATCH"
+  },
+  "policy": {
+   "id": "rebuild-v1",
+   "sha256": "98a57f5eb641a65d1c332e524d399fcf94d46a6c9954cdf3bdb97104c71f8ac4"
+  },
+  "source": {
+   "fixture": {
+    "files": 55,
+    "method": "git",
+    "sha256": "04df23dcaaa2a9a1aa5eed7f118814a89901d6ecc5ddbd8cd8200e28d8622649"
+   },
+   "live": "NOT_ACQUIRED: no live source run exists in this build"
+  },
+  "tests": {
+   "files": 56,
+   "method": "git",
+   "sha256": "fe3b92a8c99919e94ae1f52d9355e63a1f019219faffe0cfd95735ad4f533472"
+  }
+ },
+ "run": {
+  "command": [
+   "python",
+   "-m",
+   "pytest",
+   "-q",
+   "-p",
+   "no:cacheprovider",
+   "-p",
+   "focus.release.pytest_receipts",
+   "--focus-receipts=<out>/receipts.json",
+   "tests"
+  ],
+  "map_sha256": "6682025acf054480bb000f736eea64baaf7926f6bb44c03d820eb3a7111fc15a",
+  "python": "3.12.3",
+  "recorded_at_utc": "2026-10-30T18:48:32Z",
+  "returncode": 0,
+  "scope": "full suite",
+  "wall_seconds": 1007.1
+ },
+ "summary": {
+  "cases": {
+   "passed": 72,
+   "statuses": {
+    "PASS": 72
+   },
+   "total": 72
+  },
+  "constraints": {
+   "passed": 39,
+   "paths_total": 149,
+   "paths_verified": 149,
+   "statuses": {
+    "PASS": 39
+   },
+   "total": 39
+  },
+  "counterexamples": {
+   "activation_repair": "PASS",
+   "in_progress_edge": "PASS",
+   "oos_double_charge": "PASS",
+   "rework_p75": "PASS",
+   "same_run_cs_readback": "PASS"
+  },
+  "local_acceptance": "PASS",
+  "map_problems": [],
+  "required_skips": [],
+  "tests": {
+   "collected": 496,
+   "exitstatus": 0,
+   "passed": 493,
+   "skipped": 3
+  },
+  "unmapped_failures": [],
+  "verification": {
+   "bounded_scale": "PASS",
+   "complete_wip_census": "PASS",
+   "crash_recovery_evaluation": "PASS",
+   "crash_recovery_publication": "PASS",
+   "crash_recovery_source": "PASS",
+   "economics_commitment_scoring_parity": "PASS",
+   "forecast_versus_dispatch": "PASS",
+   "hosting_api_mcp": "PASS",
+   "mobile_browser_workflows": "PASS",
+   "security_scope_cache_csrf": "PASS"
+  }
+ },
+ "verification": {
+  "bounded_scale": {
+   "refs": [
+    "A70"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_max_pipeline.py::test_a70_deterministic_and_bounded"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a47_a70_zero_violations_zero_required_skips_full_coverage"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a70_optional_solver_at_scale_is_truthful"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_solver_status.py::test_cancel_during_the_solve_stops_cp_sat_promptly"
+    }
+   ],
+   "title": "Bounded scale"
+  },
+  "complete_wip_census": {
+   "refs": [
+    "A03",
+    "C27"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_scope.py::test_a03_fifty_one_aircraft_all_reconciled_no_cap"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a03_every_aircraft_and_job_survives_to_the_plan"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_max_pipeline.py::test_complete_inventory_and_truthful_receipt"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-inventory-missing]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-inventory-blocked]"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/benchmarks/test_complete_scope.py::test_a70_scale_inventory_exercises_the_hard_rules"
+    }
+   ],
+   "title": "Complete WIP census"
+  },
+  "crash_recovery_evaluation": {
+   "refs": [
+    "A56",
+    "A62",
+    "A50"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_lifecycle_excusals.py::test_a56_reopen_revokes_and_late_void_appends_corrected_evaluation"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_progression.py::test_a62_source_correction_appends_reversal_and_keeps_history"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_twin_scenarios.py::test_twin_correction_appends_an_evaluation_revision_and_still_reconciles"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_commitments.py::test_a50_crash_after_event_before_acknowledgment_recovers_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a71_live_lease_blocks_a_competitor_and_an_expired_one_is_taken_over"
+    }
+   ],
+   "title": "Evaluation crash-recovery and correction boundaries"
+  },
+  "crash_recovery_publication": {
+   "refs": [
+    "A51",
+    "A50"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 7,
+     "outcomes": {
+      "passed": 7
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a51_crash_recovery_reconciles_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a51_crash_inside_publication_never_reports_signed_but_uncommitted"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a50_takeover_after_acceptance_does_not_duplicate_commitments"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a52_tampered_storage_never_becomes_current"
+    }
+   ],
+   "title": "Publication crash-recovery boundaries"
+  },
+  "crash_recovery_source": {
+   "refs": [
+    "A05",
+    "A07"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a07_crash_before_head_then_replay_reconciles_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_a07_crash_mid_capture_resumes_same_run"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_a07_crash_after_acquisition_replays_one_source_run"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_head_only_moves_forward_in_cutoff"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_source_runs.py::test_fixture_runs_survive_independent_processes"
+    }
+   ],
+   "title": "Source crash-recovery boundaries"
+  },
+  "economics_commitment_scoring_parity": {
+   "refs": [
+    "A44",
+    "A49",
+    "A59"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_economic_steering.py::test_a44_cli_schedule_reports_weights_complete_dispositions_and_costs"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_incumbent_defense.py::test_accepted_forecast_plan_feeds_delivery_commitments_once"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a57_a59_every_surface_reads_the_same_stored_evaluation"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_views_api.py::test_budget_gantt_and_capacity_reconcile_with_the_plan"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_twin_scenarios.py::test_twin_reconciles_exactly_with_frozen_goals_evaluations_ledger_and_census"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_views_api.py::test_demo_run_is_idempotent_byte_for_byte"
+    }
+   ],
+   "title": "Economics, commitment and scoring parity across stages and surfaces"
+  },
+  "forecast_versus_dispatch": {
+   "refs": [
+    "A52",
+    "A64",
+    "C35"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_max_pipeline.py::test_forecast_labels_virtual_support_and_executable_excludes_it"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_publication_recovery.py::test_a52_forecast_publication_is_never_executable_dispatch"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_pools.py::test_a64_spoofed_flags_cannot_make_virtual_people_executable"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_v9_forecast_part_floor_and_label"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_views_api.py::test_scenario_is_isolated_and_never_publishable"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_validator_mutations.py::test_a47_each_corruption_is_caught_and_cannot_publish[E-capability-conditional]"
+    }
+   ],
+   "title": "Conditional and virtual forecast versus real dispatch"
+  },
+  "hosting_api_mcp": {
+   "refs": [
+    "A01",
+    "A68"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_hosting_files.py::test_python_312_everywhere"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_policy_config.py::test_posit_connect_detection"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_policy_config.py::test_tanzu_adapter_reads_port_and_vcap_services"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_posit_connect_identity_header_and_prefix"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_preflight_python_role_and_platform_rules"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_migration_pipeline.py::test_live_host_with_sql_credentials_starts_with_typed_unavailability"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_openapi_generated_from_registry"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_mcp_disabled_by_default_and_read_only_when_enabled"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_mcp_read_tools_share_the_rest_envelope"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_every_read_operation_answers_identically_over_rest_and_mcp"
+    }
+   ],
+   "title": "Posit Connect and Tanzu on Python 3.12; REST and MCP for application-to-application calls"
+  },
+  "mobile_browser_workflows": {
+   "refs": [
+    "A69"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_workflows.py::test_a69_every_view_renders_in_both_layouts_at_phone_and_desktop"
+    },
+    {
+     "nodes": 4,
+     "outcomes": {
+      "passed": 4
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_layout_parity.py::test_layouts_fit_every_width_with_reduced_motion"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_layout_parity.py::test_keyboard_reaches_skip_link_and_views"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_workflows.py::test_what_if_is_an_isolated_scenario_result"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_workflows.py::test_reported_completion_is_a_claim_and_ie_proposal_is_listed"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_workflows.py::test_team_lead_emergency_addition_completes_as_a_worker_run"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/ui/test_workflows.py::test_a68_claim_then_reviewed_decision_through_worker_runs"
+    }
+   ],
+   "title": "Mobile and browser workflows in both layouts"
+  },
+  "security_scope_cache_csrf": {
+   "refs": [
+    "A68",
+    "A52"
+   ],
+   "status": "PASS",
+   "tests": [
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_scope_is_checked_before_any_fetch"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_a68_scoped_content_hides_other_teams_people_and_economics"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_a68_commands_require_csrf_json_schema_and_same_origin"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_pages_carrying_the_session_csrf_token_are_never_cached"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_web_runtime.py::test_error_envelope_and_query_strictness"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_policy_config.py::test_secrets_never_render"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/unit/test_policy_config.py::test_live_mode_refuses_demo_identity"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_demo_vercel_access.py::test_real_api_still_requires_identity"
+    },
+    {
+     "nodes": 1,
+     "outcomes": {
+      "passed": 1
+     },
+     "status": "PASS",
+     "test": "tests/integration/test_api_scope.py::test_live_identity_scope_comes_from_server_configuration"
+    }
+   ],
+   "title": "Security: scope, cache and CSRF"
+  }
+ }
+}

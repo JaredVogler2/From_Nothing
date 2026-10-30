@@ -46,6 +46,7 @@ ALLOWED_KEYS = frozenset({
     "FOCUS_PROGRAM",
     "FOCUS_WORKER_BUDGET_SECONDS",
     "FOCUS_SOLVER_ENABLED",
+    "FOCUS_NATIVE_CORE",
     "FOCUS_LLM_PROVIDER",
     "FOCUS_BCAI_ENDPOINT",
     "FOCUS_BCAI_CREDENTIAL_REF",
@@ -267,6 +268,7 @@ class Settings:
     program: str = "787"
     worker_budget_seconds: float = 30.0
     solver_enabled: bool = False
+    native_core: bool = False             # optional Rust ledger/crew core (exact parity); off by default
     llm_provider: str = "none"
     bcai_endpoint: str | None = None
     bcai_credential_ref: str | None = None
@@ -334,6 +336,7 @@ class Settings:
             "scope_key": self.scope_key,
             "sql_configured": self.sql_configured,
             "solver_enabled": self.solver_enabled,
+            "native_core": self.native_core,
             "llm_provider": self.llm_provider,
             "identity_provider": self.identity_provider,
             "mcp_enabled": self.mcp_enabled,
@@ -421,6 +424,7 @@ class Settings:
             program=get("FOCUS_PROGRAM") or "787",
             worker_budget_seconds=_parse_float("FOCUS_WORKER_BUDGET_SECONDS", get("FOCUS_WORKER_BUDGET_SECONDS"), 30.0, 0.1, 3600.0),
             solver_enabled=_parse_bool("FOCUS_SOLVER_ENABLED", get("FOCUS_SOLVER_ENABLED"), False),
+            native_core=_parse_bool("FOCUS_NATIVE_CORE", get("FOCUS_NATIVE_CORE"), False),
             llm_provider=_choice("FOCUS_LLM_PROVIDER", get("FOCUS_LLM_PROVIDER"), LLM_PROVIDERS, "none"),
             bcai_endpoint=get("FOCUS_BCAI_ENDPOINT") or None,
             bcai_credential_ref=bcai_ref,

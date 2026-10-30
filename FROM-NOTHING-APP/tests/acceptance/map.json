@@ -368,7 +368,7 @@
       "paths": [["focus.data.snapshot_builder:build_snapshot", "focus.data.parts:build_parts"],
                 ["focus.data.parts:build_parts", "focus.data.parts:root_chain"],
                 ["focus.validation.plan:validate", "focus.validation.plan:_v9"],
-                ["focus.validation.plan:_v9", "focus.validation.input:ValidationInput.ancestors"]],
+                ["focus.validation.plan:_v9", "focus.validation.plan:_reached"]],
       "files": ["queries/source_inputs/etracs_active.sql", "queries/parts/shortage_profile.sql"],
       "tests": []},
     "C04": {"requirement": "Root successor of ETA/physical part-release milestone", "stages": ["P09", "P16"], "cases": ["A29", "A30"],

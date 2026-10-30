@@ -1,5 +1,8 @@
 # Complete-scope scale report (P22)
 
+> **Production-shaped measurements** (about 7,500 tasks and 25,000 dependencies per aircraft) and the optional native core
+> are in `PRODUCTION_SCALE.md` and `NATIVE_CORE.md`. The numbers below use the P22 14-operation template.
+
 Every number here was measured on this build's benchmark machine: 4 vCPU Intel Xeon at 2.10 GHz, 16 GB RAM,
 CPython 3.12.3. The inputs are synthetic scale fixtures, labeled `SYNTHETIC_SCALE_FIXTURE (real readiness not
 established)`. They are not live proof. Raw receipts are in `evidence/22/` (`benchmark_solver_off.json`,
