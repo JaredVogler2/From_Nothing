@@ -1,0 +1,264 @@
+{
+ "acceptance": {
+  "cases": {
+   "passed": 72,
+   "statuses": {
+    "PASS": 72
+   },
+   "total": 72
+  },
+  "constraints": {
+   "passed": 39,
+   "paths_total": 149,
+   "paths_verified": 149,
+   "statuses": {
+    "PASS": 39
+   },
+   "total": 39
+  },
+  "counterexamples": {
+   "activation_repair": "PASS",
+   "in_progress_edge": "PASS",
+   "oos_double_charge": "PASS",
+   "rework_p75": "PASS",
+   "same_run_cs_readback": "PASS"
+  },
+  "local_acceptance": "PASS",
+  "map_problems": [],
+  "required_skips": [],
+  "tests": {
+   "collected": 483,
+   "exitstatus": 0,
+   "passed": 480,
+   "skipped": 3
+  },
+  "unmapped_failures": [],
+  "verification": {
+   "bounded_scale": "PASS",
+   "complete_wip_census": "PASS",
+   "crash_recovery_evaluation": "PASS",
+   "crash_recovery_publication": "PASS",
+   "crash_recovery_source": "PASS",
+   "economics_commitment_scoring_parity": "PASS",
+   "forecast_versus_dispatch": "PASS",
+   "hosting_api_mcp": "PASS",
+   "mobile_browser_workflows": "PASS",
+   "security_scope_cache_csrf": "PASS"
+  }
+ },
+ "hashes": {
+  "acceptance_run": {
+   "file": "evidence/24/acceptance.json",
+   "python": "3.12.3",
+   "recorded_at_utc": "2026-10-30T15:56:33Z",
+   "sha256": "fcf333dbdbafe52ff5e8b729fe374aa7948b14566e32c883a90482292e0cfd58"
+  },
+  "git": {
+   "head": "17f011e5d5b7ed38d3e4b96220b14b00e7d522e9",
+   "uncommitted_changes": false
+  },
+  "implementation": {
+   "files": 292,
+   "method": "git",
+   "sha256": "76c22dfafa789c61c6da4aa84bc007611223162c7ed9c83ada3a97a5e25e1928"
+  },
+  "manual": {
+   "expected": "f81939211ef01f900ef5a3fe965e27f97f8c71a82832f5d541b3865ce205e5d5",
+   "sha256": "f81939211ef01f900ef5a3fe965e27f97f8c71a82832f5d541b3865ce205e5d5",
+   "status": "MATCH"
+  },
+  "policy": {
+   "id": "rebuild-v1",
+   "sha256": "98a57f5eb641a65d1c332e524d399fcf94d46a6c9954cdf3bdb97104c71f8ac4"
+  },
+  "source": {
+   "fixture": {
+    "files": 55,
+    "method": "git",
+    "sha256": "04df23dcaaa2a9a1aa5eed7f118814a89901d6ecc5ddbd8cd8200e28d8622649"
+   },
+   "live": "NOT_ACQUIRED: no live source run exists in this build"
+  },
+  "tests": {
+   "files": 53,
+   "method": "git",
+   "sha256": "a62146080601193733c46acc87c6e9c6743a92e8def9d4d927ca4aefc10ba715"
+  }
+ },
+ "independent": false,
+ "kind": "IMPLEMENTER_SELF_CHECK",
+ "live_release": {
+  "gates": [
+   {
+    "area": "SQL schema",
+    "effect": "A live host starts with REPOSITORY_UNAVAILABLE: /health/live is 200, /health/ready is 503, nothing is stored and pipeline steps stop with typed unavailability.",
+    "id": "LG-01",
+    "kind": "BLOCKING",
+    "missing": "FOCUS_FN migrations 001-009 are not installed on any SQL Server.",
+    "reference": "docs/execution/INSTALL_AND_PIPELINE.md",
+    "resolve": "A DBA with DDL rights re-runs queries/discovery/fn_collisions.sql, then applies the reviewed bundle with `migrate --apply --catalog live --installer <subject> --confirm-manifest <sha256>`."
+   },
+   {
+    "area": "Live repository adapter",
+    "effect": "Even with the schema installed, live storage stays REPOSITORY_UNAVAILABLE.",
+    "id": "LG-02",
+    "kind": "BLOCKING",
+    "missing": "The mapping of the repository protocol onto the FOCUS_FN tables is not built; focus/data/sql_store.py refuses every write.",
+    "reference": "focus/data/sql_store.py",
+    "resolve": "Engineering builds the adapter and verifies it against an installed non-production database."
+   },
+   {
+    "area": "Roles and grants",
+    "effect": "No live process holds its role's permissions; the separation of duties exists only as a reviewed script.",
+    "id": "LG-03",
+    "kind": "BLOCKING",
+    "missing": "sql/grants/focus_fn_roles.sql is generated and linted but not applied, and no login is mapped to a role.",
+    "reference": "docs/execution/INSTALL_AND_PIPELINE.md",
+    "resolve": "A DBA applies the grants after 001-009 and maps one login per process (web, source, stager, signer, evaluator)."
+   },
+   {
+    "area": "Signing key custody",
+    "effect": "Live publication refuses, so there is no executable acceptance and no executable dispatch.",
+    "id": "LG-04",
+    "kind": "BLOCKING",
+    "missing": "No production signing key or FOCUS_SIGN_KEY_REF exists; only the fixture TEST key is present.",
+    "reference": "docs/execution/DEPLOYMENT.md",
+    "resolve": "The security owner provisions the key, referenced only in the signer's environment."
+   },
+   {
+    "area": "Pre-sign SQL readback",
+    "effect": "An executable live release cannot be claimed; only the fixture rehearsal of the same protocol exists.",
+    "id": "LG-05",
+    "kind": "BLOCKING",
+    "missing": "The live stage, readback, validation and accept sequence has never run against SQL Server.",
+    "reference": "docs/execution/INSTALL_AND_PIPELINE.md",
+    "resolve": "Rehearse on a non-production database once LG-01 to LG-04 are resolved, and keep the receipts."
+   },
+   {
+    "area": "Live source readiness",
+    "effect": "Live snapshots have no executable crews; jobs that depend on an open semantic are blocked or conditional with typed reasons.",
+    "id": "LG-06",
+    "kind": "BLOCKING",
+    "missing": "PERSON_TEAM_MAP and ATTENDANCE_SHIFT were empty when the manual observed them (OD-10), and OD-01 to OD-14 have fixture choices only.",
+    "reference": "docs/execution/SOURCE_READINESS.md",
+    "resolve": "Source owners populate the feeds and record decisions OD-01 to OD-14 in the policy."
+   },
+   {
+    "area": "Live observation producers",
+    "effect": "The evaluator refuses live (LIVE_OBSERVATIONS_UNAVAILABLE), so there are no live scores, points or XP.",
+    "id": "LG-07",
+    "kind": "BLOCKING",
+    "missing": "OD-15: no approved producer writes lifecycle events, actual intervals, claims or decisions.",
+    "reference": "docs/execution/DECISIONS.md",
+    "resolve": "Approve and install the producers, granted FOCUS_FN_ObservationProducer."
+   },
+   {
+    "area": "Score policy approval",
+    "effect": "Every evaluation is labeled demonstration and personal grades stay disabled.",
+    "id": "LG-08",
+    "kind": "BLOCKING",
+    "missing": "OD-16: score.policy_status is DEMONSTRATION with no approval reference.",
+    "reference": "docs/execution/DECISIONS.md",
+    "resolve": "The policy owner approves the score policy and records score.policy_approval_ref."
+   },
+   {
+    "area": "Excusal reviewers",
+    "effect": "Claims can be filed, but no live decision can be recorded, so no relief is applied.",
+    "id": "LG-09",
+    "kind": "BLOCKING",
+    "missing": "OD-17: no reviewer identity is mapped to the excusal_decider role on a live host.",
+    "reference": "docs/execution/DECISIONS.md",
+    "resolve": "The operations owner names the reviewers in FOCUS_GRANTS_JSON."
+   },
+   {
+    "area": "Host identity and grants",
+    "effect": "Every scoped read and command refuses with UNAUTHENTICATED or FORBIDDEN; only health and the landing page answer.",
+    "id": "LG-10",
+    "kind": "BLOCKING",
+    "missing": "FOCUS_GRANTS_JSON and the identity provider settings are not configured on any host (the Posit Connect credentials header, or the Tanzu trusted header).",
+    "reference": "docs/execution/DEPLOYMENT.md",
+    "resolve": "The platform administrator configures the identity provider and the server-owned grants per host."
+   },
+   {
+    "area": "Deployment",
+    "effect": "No hosted instance exists.",
+    "id": "LG-11",
+    "kind": "BLOCKING",
+    "missing": "Nothing was deployed to Posit Connect or Tanzu by this build: the session held no environment authority.",
+    "reference": "docs/execution/RELEASE_CHECKLIST.md",
+    "resolve": "The platform owner deploys the reviewed commit (`rsconnect deploy api`, then `cf push`) after preflight passes."
+   },
+   {
+    "area": "Independent review",
+    "effect": "A real release still needs an independent verdict on the same hashes.",
+    "id": "LG-12",
+    "kind": "BLOCKING",
+    "missing": "Only implementer self-checks exist in review/; no independent reviewer has examined this build.",
+    "reference": "docs/execution/RELEASE_CHECKLIST.md",
+    "resolve": "An independent reviewer writes the next review/REVIEW-NNN.md and VERDICT-NNN.json against the bound hashes."
+   },
+   {
+    "area": "CI and scheduling",
+    "effect": "Pipeline roles have no scheduler; they run only by hand or as Tanzu tasks.",
+    "id": "LG-13",
+    "kind": "BLOCKING",
+    "missing": "The GitLab CI draft was never pushed to a GitLab remote or activated; its protected environments and resource groups do not exist.",
+    "reference": ".gitlab-ci.yml",
+    "resolve": "The CI owner activates .gitlab-ci.yml with protected environments per role."
+   },
+   {
+    "area": "CP-SAT ordering stage",
+    "effect": "Plans come from the named heuristic alone, with the typed solver status DISABLED. Every rule is still enforced.",
+    "id": "OPT-01",
+    "kind": "OPTIONAL",
+    "missing": "solver.enabled is false and FOCUS_SOLVER_ENABLED is unset; ortools is not in requirements.txt.",
+    "reference": "docs/execution/SOLVER_ENABLEMENT.md",
+    "resolve": "The owner decides with SOLVER_ENABLEMENT.md and installs requirements-solver.txt."
+   },
+   {
+    "area": "BCAI explanations",
+    "effect": "Explanations are the complete deterministic ones; the schedule and ranking are unchanged.",
+    "id": "OPT-02",
+    "kind": "OPTIONAL",
+    "missing": "OD-18: no BCAI endpoint, credential or response adapter is approved.",
+    "reference": "docs/execution/DECISIONS.md",
+    "resolve": "Approve the provider and configure it; responses still pass the strict validators."
+   },
+   {
+    "area": "MCP endpoint",
+    "effect": "POST /mcp answers 404. When enabled, it is read-only and uses the same identity, grants and scope as REST; commands, signing and grading are never exposed over MCP.",
+    "id": "OPT-03",
+    "kind": "OPTIONAL",
+    "missing": "FOCUS_MCP_ENABLED is false by default.",
+    "reference": "docs/execution/DEPLOYMENT.md",
+    "resolve": "Set FOCUS_MCP_ENABLED=true on the host that serves application-to-application callers."
+   },
+   {
+    "area": "Unsupported economic curves",
+    "effect": "A term with any other curve is UNSUPPORTED: its line cost is never zero, it is listed as unknown, and no improvement is claimed from it.",
+    "id": "OPT-04",
+    "kind": "OPTIONAL",
+    "missing": "Only the LINEAR_DAILY penalty curve is supported.",
+    "reference": "docs/execution/ECONOMICS_POLICY.md",
+    "resolve": "Add the curve to the economics registry with its exact evaluator and tests."
+   }
+  ],
+  "status": "BLOCKED"
+ },
+ "local_blockers": [],
+ "local_verdict": "LOCAL_BUILD_COMPLETE",
+ "number": 1,
+ "previous_reviews": [],
+ "recorded_at_utc": "2026-10-30T15:59:22Z",
+ "review_id": "REVIEW-001",
+ "reviewer": "Claude Code build session (implementer self-check)",
+ "schema_version": 1,
+ "scope": {
+  "cases": "A01-A72",
+  "evidence": "fixture only; live release is a separate capability (S21)",
+  "manual_sections": "S00-S21, Z01",
+  "requirements": "C01-C39",
+  "stages": "P01-P24"
+ },
+ "statement": "This verdict is an implementer self-check, not an independent review. It binds the hashes above; a changed file needs a new review."
+}

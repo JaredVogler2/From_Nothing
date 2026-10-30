@@ -1,0 +1,10 @@
+{
+  "failures": [],
+  "focus_file": "<fresh-clone>/FROM-NOTHING-APP/focus/__init__.py",
+  "loaded_optional": [],
+  "local_package": true,
+  "module_count": 110,
+  "ok": true,
+  "runtime_written": false,
+  "sys_path_offenders": []
+}

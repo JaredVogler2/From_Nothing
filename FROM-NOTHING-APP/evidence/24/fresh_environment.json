@@ -1,0 +1,50 @@
+{
+ "acceptance_run": {
+  "command": "python -m focus.cli acceptance --out <out>",
+  "exit_code": 0,
+  "finished_utc": "2026-10-30T15:56:34Z",
+  "implementation_sha256": "76c22dfafa789c61c6da4aa84bc007611223162c7ed9c83ada3a97a5e25e1928",
+  "started_utc": "2026-10-30T15:41:40Z",
+  "status": "ok",
+  "tests_sha256": "a62146080601193733c46acc87c6e9c6743a92e8def9d4d927ca4aefc10ba715"
+ },
+ "checkout": {
+  "app_root": "<fresh-clone>/FROM-NOTHING-APP",
+  "command": "git clone --branch claude/magical-ramanujan-dxyt8a <repository> <fresh-clone>",
+  "head": "17f011e5d5b7ed38d3e4b96220b14b00e7d522e9"
+ },
+ "environment": {
+  "browser": "Chromium pre-installed in the build container (PLAYWRIGHT_BROWSERS_PATH); playwright install was not run",
+  "command_environment": "env -i PATH HOME LANG (no FOCUS_* settings): fixture mode, demo identity, ephemeral session secret",
+  "install": [
+   ".venv/bin/python -m pip install --no-deps -r requirements.lock",
+   ".venv/bin/python -m pip install --no-deps -e ."
+  ],
+  "packages": 27,
+  "python": "3.12.3",
+  "venv": "/usr/bin/python3.12 -m venv .venv"
+ },
+ "purpose": "P24 step 1: supported commands from a fresh checkout in a fresh environment",
+ "run_through": [
+  "01_check_imports.json",
+  "02_status_empty.json",
+  "03_demo_bootstrap.json",
+  "04_demo_run.json",
+  "05_explain.json",
+  "06_dispatch_check.json",
+  "07_status_heads.json",
+  "08_scenario.json",
+  "09_status_after_scenario.json",
+  "10_evaluate.json",
+  "11_migrate_dry_run.json",
+  "12_preflight.json",
+  "13_pipeline_app.json",
+  "13_pipeline_evaluator.json",
+  "13_pipeline_signer.json",
+  "13_pipeline_source.json",
+  "13_pipeline_stager.json",
+  "14_pipeline_status.json",
+  "15_serve_smoke.txt"
+ ],
+ "schema_version": 1
+}

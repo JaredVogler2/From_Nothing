@@ -1,0 +1,60 @@
+{
+  "command": "status",
+  "heads": {
+    "plan/DEMO-787/EXECUTABLE": null,
+    "plan/DEMO-787/FORECAST": null,
+    "source/DEMO-787": null
+  },
+  "policy": {
+    "hash": "98a57f5eb641a65d1c332e524d399fcf94d46a6c9954cdf3bdb97104c71f8ac4",
+    "policy_id": "rebuild-v1",
+    "status": "ready"
+  },
+  "schema_version": 1,
+  "settings": {
+    "bind": "127.0.0.1",
+    "identity_provider": "fixture",
+    "ignored_setting_names": [],
+    "inprocess_worker": true,
+    "llm_provider": "none",
+    "mcp_enabled": false,
+    "mode": "fixture",
+    "platform": "local",
+    "policy_id": "rebuild-v1",
+    "port": 5055,
+    "scenario_id": "manufacturing_demo",
+    "scope_key": "DEMO-787",
+    "secrets_from": [],
+    "session_secret": "ephemeral",
+    "sign_key": "fixture-test-key",
+    "solver_enabled": false,
+    "sql_configured": false
+  },
+  "stages": {
+    "01": "fixture_verified",
+    "02": "fixture_verified",
+    "03": "fixture_verified",
+    "04": "fixture_verified",
+    "05": "fixture_verified",
+    "06": "fixture_verified",
+    "07": "fixture_verified",
+    "08": "fixture_verified",
+    "09": "fixture_verified",
+    "10": "fixture_verified",
+    "11": "fixture_verified",
+    "12": "fixture_verified",
+    "13": "fixture_verified",
+    "14": "fixture_verified",
+    "15": "fixture_verified",
+    "16": "fixture_verified",
+    "17": "fixture_verified",
+    "18": "fixture_verified",
+    "19": "fixture_verified",
+    "20": "fixture_verified",
+    "21": "fixture_verified",
+    "22": "fixture_verified",
+    "23": "fixture_verified",
+    "24": "not_started"
+  },
+  "status": "ok"
+}

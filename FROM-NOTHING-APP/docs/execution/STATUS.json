@@ -1,6 +1,239 @@
 {
   "app_root": "/home/user/From_Nothing/FROM-NOTHING-APP",
   "app_root_note": "Resolved app root inside the From_Nothing repository; see docs/execution/ROOTS.md for the substitution.",
+  "capabilities": {
+    "note": "Current register (P24). It supersedes earlier per-stage remaining_gaps, which record the state when each stage was written. No capability is live_verified.",
+    "optional": {
+      "OPT-01": {
+        "effect": "Plans come from the named heuristic alone, with the typed solver status DISABLED. Every rule is still enforced.",
+        "enabled_by_default": false,
+        "feature": "CP-SAT ordering stage"
+      },
+      "OPT-02": {
+        "effect": "Explanations are the complete deterministic ones; the schedule and ranking are unchanged.",
+        "enabled_by_default": false,
+        "feature": "BCAI explanations"
+      },
+      "OPT-03": {
+        "effect": "POST /mcp answers 404. When enabled, it is read-only and uses the same identity, grants and scope as REST; commands, signing and grading are never exposed over MCP.",
+        "enabled_by_default": false,
+        "feature": "MCP endpoint"
+      },
+      "OPT-04": {
+        "effect": "A term with any other curve is UNSUPPORTED: its line cost is never zero, it is listed as unknown, and no improvement is claimed from it.",
+        "enabled_by_default": false,
+        "feature": "Unsupported economic curves"
+      }
+    },
+    "sources": {
+      "certifications_OD-09": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "positive-only requirement rows cannot prove cert-free work: unknown requirements block",
+        "live_verified": false
+      },
+      "complete_wip_census": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "not probed; every non-complete line would be reconciled without a cap",
+        "live_verified": false
+      },
+      "cs_windows_OD-05": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "date basis open: CS facts block",
+        "live_verified": false
+      },
+      "economics_OD-06_OD-12": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "no production default rate: costs unknown, never zero",
+        "live_verified": false
+      },
+      "flow_standards_OD-01": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "invalid TOTAL_MECHANICS rows become blocked jobs, never defaulted",
+        "live_verified": false
+      },
+      "lifecycle_observations_OD-15": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "the live evaluator refuses (LIVE_OBSERVATIONS_UNAVAILABLE)",
+        "live_verified": false
+      },
+      "line_calendars": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "generation selection per line required; holes, ambiguity or out-of-bounds block",
+        "live_verified": false
+      },
+      "parts_shortages": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "null ECD or blank USED_ON rows become blocked or conditional",
+        "live_verified": false
+      },
+      "qa_holds_OD-03": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "unknown hold locations block the root",
+        "live_verified": false
+      },
+      "rework_durations_OD-02": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "no raw clock producer: P75 cohorts unavailable, never a flat 60",
+        "live_verified": false
+      },
+      "source_timezone_policy": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "FOCUS_SOURCE_TIMEZONE_MAP_JSON required, else SOURCE_TIMEZONE_POLICY_MISSING",
+        "live_verified": false
+      },
+      "sql_team_inference": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "infer_mechanic_teams.sql not installed: no inferred home team asserted",
+        "live_verified": false
+      },
+      "status_semantics_OD-13": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "unknown statuses quarantined; PREVIEW/FORECASTED forecast-only",
+        "live_verified": false
+      },
+      "workforce_feeds_OD-10": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_effect": "empty assignment/attendance feeds: no executable crews",
+        "live_verified": false
+      }
+    },
+    "stages": {
+      "01": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "02": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "03": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "04": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "05": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "06": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "07": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "08": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "09": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "10": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "11": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "12": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "13": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "14": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "15": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "16": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "17": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "18": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "19": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "20": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "21": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "22": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "23": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      },
+      "24": {
+        "fixture_verified": true,
+        "implemented": true,
+        "live_verified": false
+      }
+    }
+  },
   "manual_sha256": "f81939211ef01f900ef5a3fe965e27f97f8c71a82832f5d541b3865ce205e5d5",
   "python": "3.12",
   "schema_version": 1,
@@ -1610,9 +1843,49 @@
       "title": "SQL migrations, worker orchestration and CI"
     },
     "24": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A72",
+          "result": "pass (A fresh checkout completes the documented fixture flow; a new versioned review preserves historical review files; unresolved live gates are listed precisely)"
+        },
+        {
+          "case": "A01-A71",
+          "result": "pass: re-executed in the P24 acceptance run (72/72 cases, 39/39 requirements, 149/149 caller paths; evidence/24/ACCEPTANCE.md)"
+        }
+      ],
+      "changed_paths": [
+        "focus/release/__init__.py",
+        "focus/release/hashes.py",
+        "focus/release/acceptance.py",
+        "focus/release/pytest_receipts.py",
+        "focus/release/review.py",
+        "focus/release/gates.py",
+        "focus/web/security.py",
+        "focus/cli.py",
+        "tools/final_acceptance.py",
+        "tools/release_review.py",
+        "tests/acceptance/__init__.py",
+        "tests/acceptance/map.json",
+        "tests/acceptance/test_traceability.py",
+        "tests/acceptance/test_release.py",
+        "tests/integration/test_web_runtime.py",
+        "tests/integration/test_api_scope.py",
+        "docs/execution/FINAL_ACCEPTANCE.md",
+        "docs/execution/RELEASE_CHECKLIST.md",
+        "docs/execution/ROLLBACK.md",
+        "docs/execution/STATUS.json",
+        "README.md",
+        "review/REVIEW-001.md",
+        "review/VERDICT-001.json",
+        "evidence/24/"
+      ],
+      "commands": [
+        "git clone, python3.12 -m venv .venv, pip install --no-deps -r requirements.lock, pip install --no-deps -e . (fresh environment, CPython 3.12.3)",
+        "python -m focus.cli acceptance --out <out> (fresh clone of 17f011e): PASS; 483 collected, 480 passed, 0 failed, 3 skipped (opt-in benchmark sizes), 892 s",
+        "documented run-through in the fresh clone: status, demo-bootstrap, demo-run, explain, dispatch-check, scenario, evaluate, migrate --dry-run, preflight, pipeline per role, serve (evidence/24/fresh/)",
+        "python -m focus.cli review --acceptance evidence/24/acceptance.json: REVIEW-001, LOCAL_BUILD_COMPLETE, live BLOCKED",
+        "python -m focus.cli review --verify 1: MATCH (manual, implementation, tests, fixture source, policy)"
+      ],
       "depends_on": [
         "01",
         "02",
@@ -1641,11 +1914,46 @@
       "evidence": [
         "evidence/24/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "focus.release.acceptance: load_map/map_problems/check_path/evaluate/run; python -m focus.cli acceptance --out --only-mapped --receipts --pytest-arg",
+        "focus.release.review: next_number/history/write_review/verify_review; python -m focus.cli review --acceptance --reviewer --kind | --list | --verify NNN",
+        "focus.release.hashes.build_hashes: manual, implementation, tests, fixture source, policy",
+        "focus.release.gates.GATES: 13 blocking live gates and 4 optional features with exact effects",
+        "tests/acceptance/map.json: the A01-A72 / C01-C39 register with caller-path receipts",
+        "Cache-Control: no-store on every response except static assets"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "release": {
+        "implementation_sha256": "76c22dfafa789c61c6da4aa84bc007611223162c7ed9c83ada3a97a5e25e1928",
+        "live_release": "BLOCKED",
+        "local_verdict": "LOCAL_BUILD_COMPLETE",
+        "review": "review/REVIEW-001.md",
+        "review_kind": "IMPLEMENTER_SELF_CHECK",
+        "reviewed_commit": "17f011e5d5b7ed38d3e4b96220b14b00e7d522e9",
+        "tests_sha256": "a62146080601193733c46acc87c6e9c6743a92e8def9d4d927ca4aefc10ba715",
+        "verdict": "review/VERDICT-001.json"
+      },
+      "remaining_gaps": [
+        "LG-01 SQL schema: FOCUS_FN migrations 001-009 are not installed on any SQL Server. Effect: A live host starts with REPOSITORY_UNAVAILABLE: /health/live is 200, /health/ready is 503, nothing is stored and pipeline steps stop with typed unavailability.",
+        "LG-02 Live repository adapter: The mapping of the repository protocol onto the FOCUS_FN tables is not built; focus/data/sql_store.py refuses every write. Effect: Even with the schema installed, live storage stays REPOSITORY_UNAVAILABLE.",
+        "LG-03 Roles and grants: sql/grants/focus_fn_roles.sql is generated and linted but not applied, and no login is mapped to a role. Effect: No live process holds its role's permissions; the separation of duties exists only as a reviewed script.",
+        "LG-04 Signing key custody: No production signing key or FOCUS_SIGN_KEY_REF exists; only the fixture TEST key is present. Effect: Live publication refuses, so there is no executable acceptance and no executable dispatch.",
+        "LG-05 Pre-sign SQL readback: The live stage, readback, validation and accept sequence has never run against SQL Server. Effect: An executable live release cannot be claimed; only the fixture rehearsal of the same protocol exists.",
+        "LG-06 Live source readiness: PERSON_TEAM_MAP and ATTENDANCE_SHIFT were empty when the manual observed them (OD-10), and OD-01 to OD-14 have fixture choices only. Effect: Live snapshots have no executable crews; jobs that depend on an open semantic are blocked or conditional with typed reasons.",
+        "LG-07 Live observation producers: OD-15: no approved producer writes lifecycle events, actual intervals, claims or decisions. Effect: The evaluator refuses live (LIVE_OBSERVATIONS_UNAVAILABLE), so there are no live scores, points or XP.",
+        "LG-08 Score policy approval: OD-16: score.policy_status is DEMONSTRATION with no approval reference. Effect: Every evaluation is labeled demonstration and personal grades stay disabled.",
+        "LG-09 Excusal reviewers: OD-17: no reviewer identity is mapped to the excusal_decider role on a live host. Effect: Claims can be filed, but no live decision can be recorded, so no relief is applied.",
+        "LG-10 Host identity and grants: FOCUS_GRANTS_JSON and the identity provider settings are not configured on any host (the Posit Connect credentials header, or the Tanzu trusted header). Effect: Every scoped read and command refuses with UNAUTHENTICATED or FORBIDDEN; only health and the landing page answer.",
+        "LG-11 Deployment: Nothing was deployed to Posit Connect or Tanzu by this build: the session held no environment authority. Effect: No hosted instance exists.",
+        "LG-12 Independent review: Only implementer self-checks exist in review/; no independent reviewer has examined this build. Effect: A real release still needs an independent verdict on the same hashes.",
+        "LG-13 CI and scheduling: The GitLab CI draft was never pushed to a GitLab remote or activated; its protected environments and resource groups do not exist. Effect: Pipeline roles have no scheduler; they run only by hand or as Tanzu tasks.",
+        "OPT-01 CP-SAT ordering stage: solver.enabled is false and FOCUS_SOLVER_ENABLED is unset; ortools is not in requirements.txt. Effect: Plans come from the named heuristic alone, with the typed solver status DISABLED. Every rule is still enforced.",
+        "OPT-02 BCAI explanations: OD-18: no BCAI endpoint, credential or response adapter is approved. Effect: Explanations are the complete deterministic ones; the schedule and ranking are unchanged.",
+        "OPT-03 MCP endpoint: FOCUS_MCP_ENABLED is false by default. Effect: POST /mcp answers 404. When enabled, it is read-only and uses the same identity, grants and scope as REST; commands, signing and grading are never exposed over MCP.",
+        "OPT-04 Unsupported economic curves: Only the LINEAR_DAILY penalty curve is supported. Effect: A term with any other curve is UNSUPPORTED: its line cost is never zero, it is listed as unknown, and no improvement is claimed from it."
+      ],
+      "status": "fixture_verified",
       "title": "End-to-end acceptance, versioned review and release"
     }
   }

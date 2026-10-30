@@ -1,0 +1,131 @@
+{
+  "aggregate": {
+    "B": "952",
+    "B0": "848",
+    "Cp": "674",
+    "D": "784",
+    "E": "168",
+    "O": "8",
+    "U": "420",
+    "adherence": "337/547",
+    "attainment": "337/392",
+    "base": "1204775/15316",
+    "cutoff": "2026-10-27T16:00:00+00:00",
+    "evaluation_id": "EVLf85999a33aa6b2a657dd",
+    "evidence_hash": "b3bfd81f3a34a2286fbf4ba7832bee42a2f6db9823a66da8ab0399721875d72c",
+    "final": "8324025/107212",
+    "goal_ids": [
+      "GOAL171a285568ace7b17c46",
+      "GOAL39767d104574f635ae5a",
+      "GOALdf3074be3775dfe4519b"
+    ],
+    "grade": "C",
+    "kind": "AGGREGATE",
+    "label": "FACTORY DEMO:2026-10-26:S1",
+    "policy_id": "rebuild-v1",
+    "policy_status": "DEMONSTRATION",
+    "reasons": [],
+    "revision": 2,
+    "score": "77.6",
+    "status": "demonstration",
+    "supersedes": "EVL64214eb733e8543daee0"
+  },
+  "as_of": "2026-10-28T16:00:00+00:00",
+  "command": "evaluate",
+  "evaluations": [
+    {
+      "B": "240",
+      "B0": "240",
+      "Cp": "240",
+      "D": "240",
+      "E": "0",
+      "O": "0",
+      "U": "420",
+      "adherence": "4/11",
+      "attainment": "1",
+      "base": "890/11",
+      "cutoff": "2026-10-26T19:30:00+00:00",
+      "evaluation_id": "EVL4b92ba97260959ef575f",
+      "evidence_hash": "99fd2569a92841b078ee0df41ebad7796e0d2019219909488e3f55f8c63e39ac",
+      "final": "890/11",
+      "goal_ids": [
+        "GOAL39767d104574f635ae5a"
+      ],
+      "grade": "B",
+      "kind": "GOAL",
+      "label": "PROD-A DEMO:2026-10-26:S1",
+      "policy_id": "rebuild-v1",
+      "policy_status": "DEMONSTRATION",
+      "reasons": [],
+      "revision": 1,
+      "score": "80.9",
+      "status": "demonstration",
+      "supersedes": null
+    },
+    {
+      "B": "512",
+      "B0": "408",
+      "Cp": "344",
+      "D": "344",
+      "E": "168",
+      "O": "8",
+      "U": "0",
+      "adherence": "1",
+      "attainment": "1",
+      "base": "100",
+      "cutoff": "2026-10-27T16:00:00+00:00",
+      "evaluation_id": "EVL4e8b76c299ef4db336b0",
+      "evidence_hash": "a3e10f6aec8532e74a98a9c17b71f9e406a465fa443487b2aa2b93d38369f120",
+      "final": "4200/43",
+      "goal_ids": [
+        "GOAL171a285568ace7b17c46"
+      ],
+      "grade": "A",
+      "kind": "GOAL",
+      "label": "PROD-B DEMO:2026-10-26:S1",
+      "policy_id": "rebuild-v1",
+      "policy_status": "DEMONSTRATION",
+      "reasons": [
+        "CLAIMS_PENDING_REVIEW: 1"
+      ],
+      "revision": 2,
+      "score": "97.7",
+      "status": "demonstration",
+      "supersedes": "EVL0a08687402ee190288a7"
+    },
+    {
+      "B": "200",
+      "B0": "200",
+      "Cp": "90",
+      "D": "200",
+      "E": "0",
+      "O": "0",
+      "U": "0",
+      "adherence": "1",
+      "attainment": "9/20",
+      "base": "123/2",
+      "cutoff": "2026-10-27T16:00:00+00:00",
+      "evaluation_id": "EVL312b464d3be2d211c35d",
+      "evidence_hash": "93fb0e20f875737786b7dbc5d88fbde5734b0551571d748df26ab62e0c44fcc5",
+      "final": "123/2",
+      "goal_ids": [
+        "GOALdf3074be3775dfe4519b"
+      ],
+      "grade": "D",
+      "kind": "GOAL",
+      "label": "QA DEMO:2026-10-26:S1",
+      "policy_id": "rebuild-v1",
+      "policy_status": "DEMONSTRATION",
+      "reasons": [
+        "CLAIMS_PENDING_REVIEW: 2"
+      ],
+      "revision": 2,
+      "score": "61.5",
+      "status": "demonstration",
+      "supersedes": "EVLe22a79ca8ec6939f9b6a"
+    }
+  ],
+  "schema_version": 1,
+  "shift": "DEMO:2026-10-26:S1",
+  "status": "ok"
+}
