@@ -61,8 +61,24 @@ result and exits non-zero on error:
 `demo-bootstrap`, `demo-run`, `source-discover --read-only`, `acquire`,
 `duration-stats`, `schedule`, `validate --all-required`,
 `publish --rehearse-readback`, `dispatch-check`, `collect-observations`,
-`evaluate`, `scenario`, `benchmark --complete-scope`, `migrate --dry-run`,
+`evaluate`, `scenario`, `explain`, `benchmark --complete-scope`, `migrate --dry-run`,
+`preflight`, `pipeline`, `retain-history`, `acceptance`, `review`,
 `worker`, `serve`, `status`, `mcp-catalog`, `mcp-stdio`.
+
+## Final acceptance and release (P24)
+
+```bash
+python -m focus.cli acceptance --out evidence/24
+python -m focus.cli review --acceptance evidence/24/acceptance.json --reviewer "<name>"
+python -m focus.cli review --verify 1
+```
+
+- `acceptance` runs the whole suite once and judges every case A01-A72 and requirement C01-C39 from per-test
+  receipts, including each requirement's caller paths. The register is `tests/acceptance/map.json`.
+- `review` writes the next unused `review/REVIEW-NNN.md` and `VERDICT-NNN.json`. It never overwrites a review, and it
+  binds the manual, implementation, test, fixture-source, policy and acceptance hashes.
+- Results and live gates: `docs/execution/FINAL_ACCEPTANCE.md`. Rollout: `docs/execution/RELEASE_CHECKLIST.md`.
+  Rollback: `docs/execution/ROLLBACK.md`.
 
 ## API and MCP
 
@@ -113,5 +129,6 @@ prefix. Posit Connect identity (`RStudio-Connect-Credentials`) and Tanzu
 - A conditional part ETA is never physical receipt.
 - Virtual MHE/PSC/TST support people are forecast-only.
 - Unknown is never rendered as zero.
-- Live readiness is a separate capability with precise gaps (`OD-01..OD-17`
-  in the policy). See `docs/execution/SOURCE_READINESS.md` once P03 exists.
+- Live readiness is a separate capability with precise gaps (`OD-01..OD-18`
+  in the policy, and release gates `LG-01..LG-13`). See `docs/execution/SOURCE_READINESS.md`
+  and `docs/execution/FINAL_ACCEPTANCE.md`.

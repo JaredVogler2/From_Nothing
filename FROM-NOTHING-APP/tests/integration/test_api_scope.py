@@ -7,6 +7,7 @@ CSRF, idempotency and optimistic versions and return honest worker status.
 """
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from datetime import timedelta
@@ -494,3 +495,35 @@ def test_mcp_read_tools_share_the_rest_envelope(world, app_root) -> None:
     denied = client.post("/mcp", json={"jsonrpc": "2.0", "id": 3, "method": "tools/call",
                                        "params": {"name": "get_shiftbook", "arguments": {"team": "PROD-A"}}}).get_json()["result"]
     assert denied["isError"] is True and "OUT_OF_SCOPE" in denied["content"][0]["text"]
+
+
+def test_every_read_operation_answers_identically_over_rest_and_mcp(world, app_root) -> None:
+    """P24 application-to-application check: every registered read operation returns the same envelope, or the same
+    refusal, through REST and through the MCP tool another application calls, under one identity and one scope."""
+    import focus.web.api_views  # noqa: F401  (registers the projection operations)
+    from focus.web.operations import REGISTRY
+
+    client, _, _ = client_on(world.root, app_root, "manager", mcp_enabled=True)
+    listed = client.post("/mcp", json={"jsonrpc": "2.0", "id": 0, "method": "tools/list"}).get_json()["result"]["tools"]
+    reads = {op.name for op in REGISTRY.all() if op.read_only}
+    assert {t["name"] for t in listed} == reads                       # every read is a tool, and no command is
+    paths = {**read_paths(world), "get_context": "/api/v1/context"}
+    assert set(paths) == reads
+    adapter = client.application.url_map.bind("localhost")
+    refused = 0
+    for i, (name, url) in enumerate(sorted(paths.items()), start=1):
+        path, _, query = url.partition("?")
+        endpoint, path_args = adapter.match(path, method="GET")
+        assert endpoint == f"focus.api_{name}", url
+        arguments = {**path_args, **dict(pair.split("=", 1) for pair in query.split("&") if pair)}
+        rest = client.get(url)
+        call = client.post("/mcp", json={"jsonrpc": "2.0", "id": i, "method": "tools/call",
+                                         "params": {"name": name, "arguments": arguments}}).get_json()["result"]
+        if rest.status_code == 200:
+            assert call["isError"] is False and call["structuredContent"] == rest.get_json(), name
+            assert json.loads(call["content"][0]["text"]) == rest.get_json(), name
+        else:
+            refused += 1
+            assert call["isError"] is True, name
+            assert json.loads(call["content"][0]["text"])["error"]["code"] == rest.get_json()["error"]["code"], name
+    assert refused < len(paths) // 2                                  # the comparison is mostly over real data

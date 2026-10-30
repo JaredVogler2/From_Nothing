@@ -1,0 +1,139 @@
+# FOCUS pipeline (S17 MIGRATIONS/CI, P23). DRAFT: reviewable, never pushed to a GitLab remote or activated by this build.
+#
+# Order:
+#   verify
+#   -> acquire/admit (source role)
+#   -> schedule/validate on the same snapshot (app role)
+#   -> unsigned stage and readback (stager role, protected)
+#   -> sign and accept, head last (signer role, protected, manual)
+#   -> observe and evaluate against the frozen goals (evaluator role)
+#
+# How the order is enforced:
+#   * Each job runs ONE role of `python -m focus.cli pipeline` with that role's own protected credentials.
+#   * `needs` mirrors the step dependencies, and the pipeline state enforces them again. A job started early returns
+#     BLOCKED, so signing can never precede a clean readback and evaluation never runs without frozen goals and coverage.
+#   * `resource_group` serializes pipelines per scope, so two pipelines never race one scope's heads.
+#   * Artifacts carry receipts only: no secrets and no source rows.
+#   * Live jobs share state through the installed FOCUS_FN pipeline tables (migration 002). Until an authorized installer
+#     applies 001-009 (docs/execution/INSTALL_AND_PIPELINE.md), they stop with typed UNAVAILABLE results.
+#   * The fixture rehearsal of the whole order runs inside the verify stage, without SQL or GitLab services.
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+default:
+  image: python:3.12-slim
+  interruptible: true
+  before_script:
+    - python -V
+    - python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
+    - python -m pip install --disable-pip-version-check --no-deps -e .
+
+variables:
+  FOCUS_SCOPE_KEY: "DEMO-787"
+  PIPELINE_KEY: "ci-$CI_PIPELINE_ID"
+
+stages: [verify, source, schedule, stage, sign, observe]
+
+# ---------------------------------------------------------------------- verify (fixture only, no secrets)
+
+import_and_lint:
+  stage: verify
+  script:
+    - python tools/check_imports.py
+    - python -m focus.cli migrate --dry-run
+    - python -m focus.cli preflight
+    - mkdir -p ci-receipts && python -m focus.cli migrate --emit-dir ci-receipts/migration-bundle > ci-receipts/migrate.json
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths: [ci-receipts/]
+
+unit_and_integration:
+  stage: verify
+  script:
+    - python -m pytest -q -p no:cacheprovider tests --ignore=tests/ui
+  artifacts:
+    when: on_failure
+    expire_in: 7 days
+    paths: [fixtures/runtime/]
+
+ui:
+  stage: verify
+  image: mcr.microsoft.com/playwright/python:v1.50.0-noble
+  script:
+    - python -m pytest -q -p no:cacheprovider tests/ui
+
+fixture_pipeline_rehearsal:
+  stage: verify
+  needs: [import_and_lint]
+  script:
+    - python -m focus.cli demo-bootstrap
+    - mkdir -p ci-receipts
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role all --budget-seconds 10 --max-moves 10 > ci-receipts/fixture-pipeline.json
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --status > ci-receipts/fixture-pipeline-status.json
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths: [ci-receipts/]
+
+# ---------------------------------------------------------------------- live order (protected, scheduled or manual)
+
+.live:
+  rules:
+    - if: $FOCUS_MODE == "live" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  resource_group: focus-$FOCUS_SCOPE_KEY
+  variables:
+    FOCUS_MODE: live
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [ci-receipts/]
+
+acquire_admit:
+  extends: .live
+  stage: source
+  needs: [import_and_lint, unit_and_integration]
+  environment: { name: focus-source }               # source-worker SQL credentials only
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli preflight --role worker --probe-sql > ci-receipts/preflight-source.json
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source > ci-receipts/source.json
+
+schedule_validate:
+  extends: .live
+  stage: schedule
+  needs: [acquire_admit]
+  environment: { name: focus-app }
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app > ci-receipts/app.json
+
+stage_readback:
+  extends: .live
+  stage: stage
+  needs: [schedule_validate]
+  environment: { name: focus-stager }               # protected: stager credentials, no signing material
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role stager > ci-receipts/stager.json
+
+sign_accept:
+  extends: .live
+  stage: sign
+  needs: [stage_readback]
+  when: manual                                      # an authorized operator promotes; FOCUS_SIGN_KEY_REF exists only here
+  allow_failure: false
+  environment: { name: focus-signer }
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli preflight --role signer > ci-receipts/preflight-signer.json
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role signer > ci-receipts/signer.json
+
+observe_evaluate:
+  extends: .live
+  stage: observe
+  needs: [sign_accept]
+  environment: { name: focus-evaluator }
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role evaluator > ci-receipts/evaluator.json

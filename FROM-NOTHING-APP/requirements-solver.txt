@@ -1,0 +1,22 @@
+# Optional CP-SAT ordering stage (P22). A complete alternative to requirements.txt: deploy it as the bundle's
+# requirements.txt only when the operator enables the solver (see docs/execution/SOLVER_ENABLEMENT.md).
+# Python 3.12, exact versions tested together (requirements.lock); the default requirements.txt stays solver-free.
+absl-py==2.5.1
+blinker==1.9.0
+click==8.5.0
+Flask==3.1.3
+immutabledict==4.3.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+numpy==2.5.4
+ortools==9.15.6755
+pandas==3.1.0
+protobuf==6.33.6
+pymssql==2.4.6
+python-dateutil==3.0.0
+six==1.17.0
+typing_extensions==4.16.0
+tzdata==2026.5
+waitress==3.0.2
+Werkzeug==3.1.9

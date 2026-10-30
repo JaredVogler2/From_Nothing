@@ -483,10 +483,9 @@ def _e_inventory(run: _Run) -> None:
 def _e_lineage(run: _Run, purpose: Purpose) -> bool:
     inp, plan, snap = run.inp, run.plan, run.inp.snapshot
     run.count("E_LINEAGE")
-    try:
-        snap.verify()
-    except DomainError as exc:
-        run.bad("E_LINEAGE", "SNAPSHOT_HASH_MISMATCH", snap.id, str(exc))
+    integrity = inp.snapshot_integrity()
+    if integrity != "OK":
+        run.bad("E_LINEAGE", "SNAPSHOT_HASH_MISMATCH", snap.id, integrity)
         return False
     checks = ((plan.snapshot_id == snap.id and plan.snapshot_hash == snap.hash, "SNAPSHOT_MISMATCH", "plan is bound to another snapshot"),
               (plan.source_run_id == snap.source_run_id, "SOURCE_RUN_MISMATCH", "plan names another source run"),

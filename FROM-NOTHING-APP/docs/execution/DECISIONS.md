@@ -94,6 +94,62 @@ attendance. A conditional ETA is never physical receipt.
     - Validation covers the complete schema, every claim against its fact (exact; tolerance only by explicit policy and never for money) and every narrative word: grounded ids, labels and values, or a small approved vocabulary.
     - Any failure returns the complete deterministic explanation in the unchanged rank.
     - The default provider is none. BCAI is optional, https-only, uses a referenced credential, and has bounded timeouts and retries.
+- **D-20 Complete-scope scale and the optional solver (P22).**
+  - **Scale shortcuts are exact.** No shortcut prunes a candidate, so the only feasible rare-role crew is never
+    removed. Each is pinned by tests to the rule it replaces or to a brute-force definition.
+    - `DutyLedger.person_conflict` runs `plan`'s first per-person checks (window, pool, cross-shift and located
+      overlap).
+    - `DutyLedger.cap_problem` runs `plan`'s pool-level activation check.
+    - Transactions snapshot only the containers that are mutated in place.
+    - The cross-shift check bisects a person's sorted rows by end, instead of rebuilding the list on every call.
+    - Qualification reuses a whole-shift-window answer, because validity is interval-monotone.
+    - Transport ids and snapshot verification are memoized.
+  - **Outputs verified identical.** Old and new code gave the same assignments, duties, dispositions, commitments
+    and costs on the demo and at 51 and 150 aircraft.
+  - **Scale fixture.** The synthetic scale census also carries sourced in-process QA holds and a forecast-only
+    support test on one aircraft in ten. These are derived rows, so the random stream and every other row are
+    unchanged.
+  - **The solver proposes orders, never plans.** CP-SAT solves a pooled relaxation and proposes job orders. The
+    same named decoder, the independent validator and the exact comparison judge each order.
+    - A probe is accepted only when it is strictly better at a substantive level; a signature-only tie is refused.
+    - The outcome is a typed status (`DISABLED` ... `IMPROVED`) recorded in every receipt.
+    - The stage is off by default; switches are `solver.enabled` and `FOCUS_SOLVER_ENABLED`.
+    - Bounds: wall-clock, probes, memory, one seeded worker, and cancellation through `StopSearch`.
+    - `global_optimality_proven` stays false.
+  - **Benchmark.** `benchmark --complete-scope` and `tools/benchmark_solver.py` run each size in its own process.
+    The bounded 51-aircraft cases are in the default test suite; 100, 150 and 300 aircraft run with
+    `--benchmark-sizes`.
+- **D-21 Migrations, roles, pipeline and retention (P23).**
+  - **One versioned set.**
+    - `sql/migrations/001`-`009` (001 is S06 verbatim; 002 is new; 003-009 are the reviewed drafts with their
+      statements unchanged).
+    - Rollbacks and the grants script are generated from one authority each (`rollback_script`, `ROLE_GRANTS`) and
+      checked for freshness.
+    - Migration files that are not versioned are never applied, so other modules' design drafts stay out.
+  - **Runner protocol.**
+    - Checksum ledger; static lint; a plan against the catalog.
+    - One transaction per version under `FOCUS_FN_MIGRATIONS`, verifying every declared object before the ledger row.
+    - Rollback only of the latest, data-free version.
+    - Live apply only with an installer subject plus the reviewed manifest SHA-256 and the CREATE TABLE privilege.
+      Never implicit, and never run by this build.
+  - **Query files stay authorities.** `queries/workforce` and `queries/durations` run as parameterized batches from the
+    source worker. No copy is installed as a procedure, so there are not two bodies to drift.
+  - **Roles.** app (reader and command), source, stager, signer, evaluator, observation producer, retention. The grant
+    lint keeps separation of duties: only the signer accepts, only the stager stages and reads back, only the source
+    worker promotes, and the app reader executes nothing. The installer is a DBA principal; no script grants DDL.
+  - **Pipeline** (`focus/orchestration.py`).
+    - Durable steps, each owned by one role.
+    - Needs-gated, with input hashes; optimistic-version leases with expiry takeover; at most three attempts.
+    - Exactly one outbox event per completed step, built from the recorded state, re-emitted after a crash.
+    - `publish(until="readback")` splits the stager from the signer, so signing never precedes a clean readback.
+    - `demo-run` and the evaluator step share one observe-and-evaluate authority.
+  - **Live storage.**
+    - `SqlStore` reports one typed unavailability until 001-009 are installed and the live repository adapter exists.
+      The host starts, and `/health/ready` explains.
+    - The preflight's `--probe-sql` reads the ledger read-only.
+  - **Retention never deletes.** The operator supplies the period. Accepted history, evidence, references and legal
+    holds are always preserved. Fixture archives are SHA-256 receipted and restorable; live retention is the installed
+    procedures only.
 
 ## Semantic gaps (live), each a precise readiness effect
 
@@ -116,7 +172,7 @@ capability until the owner admits the semantic:
 - OD-13 master shop-order status meanings
 - OD-14 which accepted plan purpose drives delivery commitments (fixture: FORECAST)
 - OD-15 live observation producers: no S04 table carries lifecycle facts, raw actual intervals, claims, decisions,
-  amendments or defect evidence. The `queries/actuals` readers and the `lifecycle_draft.sql` landing tables are
+  amendments or defect evidence. The `queries/actuals` readers and the `008_lifecycle.sql` landing tables are
   proposed. Live collection reports `NOT_PROBED`, so official evaluation stays UNKNOWN until producers and receipts exist.
 - OD-16 score policy approval: `score.policy_status` is DEMONSTRATION with no `score.policy_approval_ref`. An OFFICIAL
   grade needs the owner's approval receipt; personal grades need their own policy (both disabled).

@@ -37,6 +37,11 @@ COMMANDS: dict[str, str] = {
     "explain": "focus.explanations.pipeline:cli_explain",
     "benchmark": "focus.engine.max.optimizer.solver:cli_benchmark",
     "migrate": "focus.migrations:cli_migrate",
+    "preflight": "focus.preflight:cli_preflight",
+    "pipeline": "focus.orchestration:cli_pipeline",
+    "retain-history": "focus.retention:cli_retain_history",
+    "acceptance": "focus.release.acceptance:cli_acceptance",
+    "review": "focus.release.review:cli_review",
     "worker": "focus.workers:cli_worker",
     "serve": "focus.cli:cli_serve",
     "status": "focus.cli:cli_status",
@@ -108,7 +113,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("scenario", help="isolated what-if scenario")
     p.add_argument("--source-run", required=True)
-    p.add_argument("--changes", required=True, help="JSON object of allowlisted typed changes")
+    p.add_argument("--changes", required=True, help='JSON list of allowlisted typed changes, e.g. \'[{"type": "duration_statistic", "statistic": "P90"}]\'')
     p.add_argument("--budget-seconds", type=float, default=30.0)
 
     p = sub.add_parser("explain", help="grounded explanation of a team-shift's ranked actions (fixture providers)")
@@ -123,14 +128,55 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--complete-scope", action="store_true", required=True)
     p.add_argument("--solver", choices=["off", "on"], default="off")
     p.add_argument("--sizes", default="51,100,150,300")
-    p.add_argument("--budget-seconds", type=float, default=20.0)
+    p.add_argument("--budget-seconds", type=float, default=20.0, help="heuristic search wall-clock budget per plan")
+    p.add_argument("--max-moves", type=int, default=None, help="neighbourhood move bound (default: policy optimizer.max_neighborhood_moves)")
+    p.add_argument("--solver-budget-seconds", type=float, default=None, help="CP-SAT relaxation wall-clock limit (default: policy solver.budget_seconds)")
 
-    p = sub.add_parser("migrate", help="SQL migration preflight/dry-run (never applied implicitly)")
-    p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--apply", action="store_true", help="apply with an authorized installer principal")
-    p.add_argument("--emit-dir", default=None)
+    p = sub.add_parser("migrate", help="versioned FOCUS_FN migrations: lint, dry-run, apply, rollback, bundle (never implicit)")
+    p.add_argument("--dry-run", action="store_true", help="lint and plan against the catalog (the default action)")
+    p.add_argument("--apply", action="store_true", help="apply pending versions (fixture catalog; live only in an authorized installer session)")
+    p.add_argument("--rollback", type=int, default=None, help="roll back the latest applied version, which must be this number")
+    p.add_argument("--catalog", default=None, help="fixture (default in fixture mode), live, or a path to a fixture catalog JSON")
+    p.add_argument("--installer", default=None, help="installer subject recorded in the version ledger")
+    p.add_argument("--confirm-manifest", default=None, help="live only: the SHA-256 of the manifest the installer reviewed")
+    p.add_argument("--emit-dir", default=None, help="write a reviewable bundle: scripts, rollbacks, grants and a checksum manifest")
+    p.add_argument("--write-generated", action="store_true", help="regenerate rollback scripts and the grants script from their authorities")
+
+    p = sub.add_parser("preflight", help="host preflight: Python 3.12, settings, identity, secrets by presence, storage, app, migrations")
+    p.add_argument("--role", choices=["web", "worker", "signer", "installer"], default="web")
+    p.add_argument("--probe-sql", action="store_true", help="read the installed migration ledger with the configured principal (read-only)")
+
+    p = sub.add_parser("pipeline", help="durable role-separated pipeline: acquire, admit, schedule, validate, stage/readback, sign/accept, evaluate")
+    p.add_argument("--key", default="default", help="pipeline idempotency key (one pipeline per key and scope)")
+    p.add_argument("--role", choices=["all", "source", "app", "stager", "signer", "evaluator"], default="all")
+    p.add_argument("--step", default=None, help="run one step only")
+    p.add_argument("--status", action="store_true", help="show the pipeline state without running anything")
+    p.add_argument("--scenario", default=None)
+    p.add_argument("--budget-seconds", type=float, default=None)
+    p.add_argument("--max-moves", type=int, default=None)
+    p.add_argument("--lease-seconds", type=float, default=900.0)
+
+    p = sub.add_parser("retain-history", help="non-destructive retention plan; --apply archives eligible fixture records (never deletes)")
+    p.add_argument("--keep-days", type=int, required=True, help="operator-chosen retention period in days (no default is assumed)")
+    p.add_argument("--legal-hold", default=None, help="JSON file listing held record ids or source run ids")
+    p.add_argument("--apply", action="store_true")
+
+    p = sub.add_parser("acceptance", help="P24: run the suite once and judge every A01-A72 case and C01-C39 requirement from per-test receipts")
+    p.add_argument("--out", default="evidence/24", help="directory for acceptance.json, ACCEPTANCE.md, receipts.json and pytest.log")
+    p.add_argument("--only-mapped", action="store_true", help="run only the tests the register names (faster; failures elsewhere stay unseen)")
+    p.add_argument("--receipts", default=None, help="judge an existing receipts.json instead of running the suite")
+    p.add_argument("--pytest-arg", action="append", default=None, help="extra pytest argument, repeatable (use --pytest-arg=-x)")
+
+    p = sub.add_parser("review", help="P24: write the next versioned review bound to exact hashes (never overwrites), list reviews, or verify one")
+    p.add_argument("--acceptance", default="evidence/24/acceptance.json", help="the acceptance run the review binds")
+    p.add_argument("--reviewer", default="implementer self-check", help="who reviews (recorded as given)")
+    p.add_argument("--kind", choices=["IMPLEMENTER_SELF_CHECK", "INDEPENDENT_REVIEW"], default="IMPLEMENTER_SELF_CHECK")
+    which = p.add_mutually_exclusive_group()
+    which.add_argument("--verify", type=int, default=None, metavar="NNN", help="compare VERDICT-NNN's bound hashes with the files now")
+    which.add_argument("--list", action="store_true", help="list earlier reviews and the next unused number")
 
     p = sub.add_parser("worker", help="process queued worker runs")
+    p.add_argument("--role", choices=["all", "app", "evaluator"], default="all", help="process only this role's run kinds")
     p.add_argument("--once", action="store_true")
     p.add_argument("--loop", action="store_true", help="keep polling for queued runs (separate worker process)")
     p.add_argument("--interval-seconds", type=float, default=5.0)

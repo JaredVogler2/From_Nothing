@@ -1,0 +1,16 @@
+{
+  "command": "demo-bootstrap",
+  "incumbents": {
+    "EXECUTABLE": "INC505e0bee08b8a02cf935",
+    "FORECAST": "INCfdb7d471ce97cc057da5"
+  },
+  "inputs": {
+    "verified": 52,
+    "written": []
+  },
+  "policy": "rebuild-v1",
+  "runtime_dir": "<fresh-clone>/FROM-NOTHING-APP/fixtures/runtime/manufacturing_demo",
+  "scenario": "manufacturing_demo",
+  "schema_version": 1,
+  "status": "ok"
+}

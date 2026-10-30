@@ -320,7 +320,8 @@ class Decoder:
         wait_crew = self._wait_crew(phase, result) if phase.kind is PhaseKind.IP_QA and ctx.crew_during_ip == "WAIT" else None
         choice, reason = choose_crew(ctx, ledger, phase_id=phase.key.id, assignment_id=aid, line=job.line, team=demand.team,
                                      shift_id=shift.id, pool_id=pool_id, count=demand.bundle.count, bundle=demand.bundle,
-                                     segments=segments, kind=kind, exact_crew=exact_crew, tools=tools)
+                                     segments=segments, kind=kind, exact_crew=exact_crew, tools=tools,
+                                     window=(shift.start, max(shift.end, shift.ot_window[1] if shift.ot_window else shift.end)))
         if choice is None:
             return None, reason
         try:

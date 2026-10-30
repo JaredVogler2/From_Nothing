@@ -28,7 +28,7 @@ from typing import Iterable
 from ..calendar import ShiftInstance, ShiftPolicy, build_shift, parse_shift_id
 from ..contracts.planning import (CSFacts, Edge, Job, JobDisposition, JobRequirement, LineCalendar, Person, Phase, PlanningSnapshot, Pool,
                                   RawCSRow, ReleaseMilestone)
-from ..domain import Disposition, EdgeType, Holding, PersonOrigin, PhaseKind, Purpose, ReleaseStatus, RequirementBundle, minute_ceil, minute_floor
+from ..domain import Disposition, DomainError, EdgeType, Holding, PersonOrigin, PhaseKind, Purpose, ReleaseStatus, RequirementBundle, minute_ceil, minute_floor
 from ..policy import Policy
 
 VALIDATOR_VERSION = "focus-independent-validator-1.0"
@@ -72,6 +72,22 @@ class ValidationInput:
     holdings: dict[str, dict[str, list[Holding]]] = field(default_factory=dict)
     requirements: dict[str, JobRequirement] = field(default_factory=dict)
     durations: dict[str, object] = field(default_factory=dict)
+    _integrity: str | None = field(default=None, repr=False)        # memoized snapshot verification ("OK" or the failure)
+
+    def snapshot_integrity(self) -> str:
+        """Verify the immutable snapshot's content hash once per input ("OK" or the failure message).
+
+        The snapshot is a frozen object, so one verification holds for every candidate validated against this input
+        (the optimizer's gate reuses one input across all retained candidates); each candidate's own hash is still
+        recomputed on every validation.
+        """
+        if self._integrity is None:
+            try:
+                self.snapshot.verify()
+                self._integrity = "OK"
+            except DomainError as exc:
+                self._integrity = str(exc)
+        return self._integrity
 
     # ------------------------------------------------------------------ construction
     @classmethod

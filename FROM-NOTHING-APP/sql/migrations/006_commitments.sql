@@ -1,6 +1,8 @@
--- Draft (P14): incumbent lookup and persistent delivery commitments on the S06 tables.
--- NOT executed by this build: no live DDL or write authority exists. Consolidated into the versioned
--- migration set in P23 (behind the migration lock and checksum ledger); 001 itself stays verbatim.
+-- Migration 006 (P23): incumbent lookup and persistent delivery commitments.
+-- Consolidated from the reviewed P14 draft; its statements are unchanged. PROPOSED storage, NOT executed by this
+-- build. `python -m focus.cli migrate --apply` runs it only in an authorized installer session, in one transaction
+-- under sp_getapplock('FOCUS_FN_MIGRATIONS'), and records this file's SHA-256 in WEB_APP.FOCUS_FN_SchemaVersion only
+-- after every declared object is verified (docs/execution/INSTALL_AND_PIPELINE.md).
 --
 -- Three obligations stay separate (S12):
 --   * physical carry-in duty: source facts locked in the ledger, never stored here;

@@ -1,0 +1,9 @@
+/health/live 200 application/json cache=no-store
+/health/ready 200 application/json cache=no-store
+/api/v1/context 200 application/json cache=no-store
+/api/v1/openapi.json 200 application/json cache=no-store
+/api/docs 200 text/html; charset=utf-8 cache=no-store
+/ 200 text/html; charset=utf-8 cache=no-store
+/dashboard 302 text/html; charset=utf-8 cache=no-store
+/static/css/focus.css 200 text/css; charset=utf-8 cache=no-cache
+/mcp 404 application/json cache=no-store

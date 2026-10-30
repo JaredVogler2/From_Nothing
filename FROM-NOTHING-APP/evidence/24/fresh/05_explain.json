@@ -1,0 +1,279 @@
+{
+  "audit": {
+    "explain_version": "focus-explain-v1",
+    "facts_hash": "0226ccefa99e7ba458b79126e80898acf2ee42dc7677ea23026962281cc7dc3a",
+    "output_hash": "3f651eb9b82267fd0538202d360f1e35a32672e833527142f576b7a1b783295d",
+    "plan_hash": "e7f64a691891a25cd7b84db3888a316ec2b56032209c5bd1cf5253591d157ef0",
+    "policy_hash": "98a57f5eb641a65d1c332e524d399fcf94d46a6c9954cdf3bdb97104c71f8ac4",
+    "privacy": {
+      "candidates": 1,
+      "fact_rows": 13,
+      "metrics_sent": [
+        "commitment",
+        "crew_size",
+        "dispatch_status",
+        "duration_basis",
+        "duration_minutes",
+        "end",
+        "job",
+        "line_marginal_day_cost",
+        "rank",
+        "ready_after",
+        "shift",
+        "start",
+        "travel_minutes"
+      ],
+      "person_fields_sent": 0,
+      "scope": "all_teams+economics"
+    },
+    "prompt_sha256": "54f2e653c4b9c5b26574ef0fec446c1c29466141b21b13f38cbd50ae26069f14",
+    "prompt_version": "focus-explain-prompt-v1",
+    "recorded_input_hash": null,
+    "request_hash": "6768ce67d99cd32d01313dfc3735325f724bc8057fb85d6542dbb9557d25538c",
+    "response_sha256": null,
+    "source_hash": "88db4e4527a556b028bc12c1e9f8a43e62db4351dc5bfb082c1ec9619a560cef",
+    "violations": []
+  },
+  "command": "explain",
+  "created_at": "2026-10-26T10:00:00Z",
+  "deterministic": [
+    {
+      "candidate_id": "ASG87e04c65d3bc7cff0cbd",
+      "claims": [
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCTab4d92e04695f39a5a41",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 1
+        },
+        {
+          "entity_id": "Jda823e0461fdda096d2d",
+          "evidence_id": "FCTeec690f9b973fd959924",
+          "label": "1301/A1",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1301/A1"
+        },
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCTef6e285eaad3fcb95814",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "DISPATCHABLE"
+        },
+        {
+          "entity_id": "J4122f1562331459ad2a2.RELEASE.0",
+          "evidence_id": "FCT44a27ade7e58308fce73",
+          "label": "1301/A0_RELEASE__verified_complete_",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "COMPLETE"
+        },
+        {
+          "entity_id": "Q3e0689dfadcfca845959",
+          "evidence_id": "FCTe7d6c79753d85bb89251",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "Jda823e0461fdda096d2d.WORK.0",
+          "evidence_id": "FCTb8a4f4dc1ab76235a0cc",
+          "label": "1301/A1_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 120
+        },
+        {
+          "entity_id": "DUR526e0657869a69b23e09",
+          "evidence_id": "FCT2c5b3b404ca455e5a834",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "FLOW_CRITICAL_MINUTES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT0a9c1f15417a43d92da9",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCTc05bd8701af5f3679fba",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T10:15:00Z"
+        },
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCT491ff9b696b5dd86e192",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T12:15:00Z"
+        },
+        {
+          "entity_id": "Jda823e0461fdda096d2d",
+          "evidence_id": "FCT923bb13bd0c5de540e3c",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "KEPT"
+        },
+        {
+          "entity_id": "1301",
+          "evidence_id": "FCT316ed69b7c4c07505350",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCT22fdeacc878a1c6946e8",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 1,
+      "reason_codes": [],
+      "summary": "Job 1301/A1 is dispatchable now. It is ready after J4122f1562331459ad2a2.RELEASE.0 (COMPLETE). It requires 2 people from pool Q3e0689dfadcfca845959, uses 120 min by FLOW_CRITICAL_MINUTES, fits shift DEMO:2026-10-26:S1 from 2026-10-26T10:15:00Z to 2026-10-26T12:15:00Z, preserves its commitment (KEPT), changes modeled line cost by $0.00 per day of delay and reserves 0 min of travel. Unknown facts: none.",
+      "uncertainty": "LOW"
+    }
+  ],
+  "explanation_id": "EXPe551d6b24a3c32a74b43",
+  "fallback_codes": [],
+  "items": [
+    {
+      "candidate_id": "ASG87e04c65d3bc7cff0cbd",
+      "claims": [
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCTab4d92e04695f39a5a41",
+          "label": "",
+          "metric_key": "rank",
+          "unit": "rank",
+          "value": 1
+        },
+        {
+          "entity_id": "Jda823e0461fdda096d2d",
+          "evidence_id": "FCTeec690f9b973fd959924",
+          "label": "1301/A1",
+          "metric_key": "job",
+          "unit": "label",
+          "value": "1301/A1"
+        },
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCTef6e285eaad3fcb95814",
+          "label": "",
+          "metric_key": "dispatch_status",
+          "unit": "state",
+          "value": "DISPATCHABLE"
+        },
+        {
+          "entity_id": "J4122f1562331459ad2a2.RELEASE.0",
+          "evidence_id": "FCT44a27ade7e58308fce73",
+          "label": "1301/A0_RELEASE__verified_complete_",
+          "metric_key": "ready_after",
+          "unit": "state",
+          "value": "COMPLETE"
+        },
+        {
+          "entity_id": "Q3e0689dfadcfca845959",
+          "evidence_id": "FCTe7d6c79753d85bb89251",
+          "label": "",
+          "metric_key": "crew_size",
+          "unit": "people",
+          "value": 2
+        },
+        {
+          "entity_id": "Jda823e0461fdda096d2d.WORK.0",
+          "evidence_id": "FCTb8a4f4dc1ab76235a0cc",
+          "label": "1301/A1_work",
+          "metric_key": "duration_minutes",
+          "unit": "min",
+          "value": 120
+        },
+        {
+          "entity_id": "DUR526e0657869a69b23e09",
+          "evidence_id": "FCT2c5b3b404ca455e5a834",
+          "label": "",
+          "metric_key": "duration_basis",
+          "unit": "basis",
+          "value": "FLOW_CRITICAL_MINUTES"
+        },
+        {
+          "entity_id": "DEMO:2026-10-26:S1",
+          "evidence_id": "FCT0a9c1f15417a43d92da9",
+          "label": "",
+          "metric_key": "shift",
+          "unit": "shift",
+          "value": "DEMO:2026-10-26:S1"
+        },
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCTc05bd8701af5f3679fba",
+          "label": "",
+          "metric_key": "start",
+          "unit": "utc",
+          "value": "2026-10-26T10:15:00Z"
+        },
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCT491ff9b696b5dd86e192",
+          "label": "",
+          "metric_key": "end",
+          "unit": "utc",
+          "value": "2026-10-26T12:15:00Z"
+        },
+        {
+          "entity_id": "Jda823e0461fdda096d2d",
+          "evidence_id": "FCT923bb13bd0c5de540e3c",
+          "label": "",
+          "metric_key": "commitment",
+          "unit": "outcome",
+          "value": "KEPT"
+        },
+        {
+          "entity_id": "1301",
+          "evidence_id": "FCT316ed69b7c4c07505350",
+          "label": "",
+          "metric_key": "line_marginal_day_cost",
+          "unit": "USD_cents",
+          "value": 0
+        },
+        {
+          "entity_id": "ASG87e04c65d3bc7cff0cbd",
+          "evidence_id": "FCT22fdeacc878a1c6946e8",
+          "label": "",
+          "metric_key": "travel_minutes",
+          "unit": "min",
+          "value": 0
+        }
+      ],
+      "rank": 1,
+      "reason_codes": [],
+      "summary": "Job 1301/A1 is dispatchable now. It is ready after J4122f1562331459ad2a2.RELEASE.0 (COMPLETE). It requires 2 people from pool Q3e0689dfadcfca845959, uses 120 min by FLOW_CRITICAL_MINUTES, fits shift DEMO:2026-10-26:S1 from 2026-10-26T10:15:00Z to 2026-10-26T12:15:00Z, preserves its commitment (KEPT), changes modeled line cost by $0.00 per day of delay and reserves 0 min of travel. Unknown facts: none.",
+      "uncertainty": "LOW"
+    }
+  ],
+  "outcome": "DETERMINISTIC",
+  "plan_id": "PLAN1c02ef6728223d24b763",
+  "provider": "none",
+  "run_id": "cli-bc787f093084f3a2",
+  "schema_version": 1,
+  "shift_id": "DEMO:2026-10-26:S1",
+  "status": "ok",
+  "team": "PROD-A"
+}

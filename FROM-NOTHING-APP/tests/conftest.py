@@ -20,6 +20,20 @@ from focus.policy import load_policy  # noqa: E402
 from focus.runtime import build_services  # noqa: E402
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption("--benchmark-sizes", default="", help="complete-scope benchmark aircraft counts, e.g. 100,150,300 (P22; slow)")
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """``benchmark`` tests (sizes beyond the bounded 51-aircraft cases) run only when sizes are requested."""
+    if config.getoption("--benchmark-sizes"):
+        return
+    skip = pytest.mark.skip(reason="complete-scope benchmark sizes run only with --benchmark-sizes=100,150,300 (slow)")
+    for item in items:
+        if item.get_closest_marker("benchmark") is not None:
+            item.add_marker(skip)
+
+
 @pytest.fixture(scope="session")
 def app_root() -> Path:
     return APP_ROOT

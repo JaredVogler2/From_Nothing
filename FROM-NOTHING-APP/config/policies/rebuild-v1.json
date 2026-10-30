@@ -620,6 +620,26 @@
       "authority": "user_requirement",
       "ref": "S09"
     },
+    "solver.budget_seconds": {
+      "value": 20,
+      "authority": "fixture_default",
+      "ref": "S12 optional CP-SAT ordering stage: wall-clock limit of the relaxation solve"
+    },
+    "solver.max_probes": {
+      "value": 2,
+      "authority": "fixture_default",
+      "ref": "S12 optional CP-SAT ordering stage: complete named decodes tried from one relaxation solution"
+    },
+    "solver.max_memory_mb": {
+      "value": 2048,
+      "authority": "fixture_default",
+      "ref": "S12 optional CP-SAT ordering stage: solver memory limit"
+    },
+    "solver.num_workers": {
+      "value": 1,
+      "authority": "fixture_default",
+      "ref": "S12 optional CP-SAT ordering stage: search workers (1 with a fixed seed is reproducible; more trade determinism for speed)"
+    },
     "llm.provider": {
       "value": "none",
       "authority": "user_requirement",
@@ -736,7 +756,7 @@
       "fixture_choice": "Accepted FORECAST plans (complete-WIP projections, conditional support labelled) feed the per-aircraft committed delivery date; accepted EXECUTABLE plans drive dispatch only. One commitment row per scope and aircraft (S06 FOCUS_FN_Commitment).",
       "live_effect": "Until the delivery owner confirms the purpose and date basis, the committed date is a planning commitment shown with its raw risk, never a contractual promise."
     },
-  {"id": "OD-15", "topic": "Live observation producers (lifecycle facts, actual intervals, claims, decisions, amendments, defect evidence)", "fixture_choice": "Deterministic S18 observation feeds under fixtures/inputs/<scenario>/observations with complete producer receipts and covered-through watermarks.", "live_effect": "queries/actuals readers and lifecycle_draft.sql landing tables are proposed; live collection is NOT_PROBED, so official evaluation stays UNKNOWN until producers and receipts exist."},
+  {"id": "OD-15", "topic": "Live observation producers (lifecycle facts, actual intervals, claims, decisions, amendments, defect evidence)", "fixture_choice": "Deterministic S18 observation feeds under fixtures/inputs/<scenario>/observations with complete producer receipts and covered-through watermarks.", "live_effect": "queries/actuals readers and 008_lifecycle.sql landing tables are proposed; live collection is NOT_PROBED, so official evaluation stays UNKNOWN until producers and receipts exist."},
   {"id": "OD-16", "topic": "Score policy approval and personal grades", "fixture_choice": "score.policy_status DEMONSTRATION with no approval receipt; personal grades disabled.", "live_effect": "An OFFICIAL grade requires score.policy_approval_ref from the owner; personal grades require their own approved policy."},
   {"id": "OD-17", "topic": "Excusal reviewer identity mapping", "fixture_choice": "Demo persona 'excusal' holds the excusal_decider grant; claimants never decide their own claims.", "live_effect": "The operator maps reviewer subjects to the server-owned excusal_decider grant; without it no decision is admitted and relief stays zero."}
   ]

@@ -1,11 +1,13 @@
--- Draft (P05): reviewable workforce inference write/readback, refresh and retention for the S06 tables.
--- NOT executed by this build: no live DDL or write authority exists. Consolidated into the versioned
--- migration set in P23 (004_workforce_inference.sql) behind the migration lock and checksum ledger.
+-- Migration 004 (P23): workforce inference integrity, readback and retention.
+-- Consolidated from the reviewed P05 draft; its statements are unchanged. PROPOSED storage, NOT executed by this
+-- build. `python -m focus.cli migrate --apply` runs it only in an authorized installer session, in one transaction
+-- under sp_getapplock('FOCUS_FN_MIGRATIONS'), and records this file's SHA-256 in WEB_APP.FOCUS_FN_SchemaVersion only
+-- after every declared object is verified (docs/execution/INSTALL_AND_PIPELINE.md).
 --
 -- Refresh strategy
 --   * Inference is part of the atomic source run: the refresh worker runs
---     queries/workforce/infer_mechanic_teams.sql (the single authority, installed verbatim as the body of
---     WEB_APP.FOCUS_FN_RefreshTeamInference by the P23 generator) while the run is CAPTURING, then hashes
+--     queries/workforce/infer_mechanic_teams.sql (the single authority, executed with bound parameters by the source
+--     worker; no copy is installed as a procedure) while the run is CAPTURING, then hashes
 --     the readback rows into the run's team_inference dataset receipt. Completing the run seals them.
 --   * A refresh replaces only its own run's rows (run isolation); a sealed run's rows cannot change.
 --   * Trailing window = workforce.inference_window_days (30) ending at the run cutoff, half-open.

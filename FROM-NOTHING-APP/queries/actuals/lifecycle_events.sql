@@ -1,5 +1,5 @@
 -- Draft reader (P17) for the observation feed lifecycle_events (focus/performance/actuals.py FEEDS). NOT installed:
--- the landing table is proposed in sql/migrations/lifecycle_draft.sql. Read-only, explicit projection; the one
+-- the landing table is proposed in sql/migrations/008_lifecycle.sql. Read-only, explicit projection; the one
 -- parameter is the collection as-of instant (rows become visible once observed).
 SELECT s.SourceEventKey AS SOURCE_EVENT_KEY, s.SourceSequence AS SOURCE_SEQUENCE, s.SourceRevision AS SOURCE_REVISION,
  s.LineNumber AS LINE_NUMBER, s.Soi AS SOI, s.PhaseKind AS PHASE_KIND, s.PhaseOrdinal AS PHASE_ORDINAL, s.SegmentsJson AS SEGMENTS,

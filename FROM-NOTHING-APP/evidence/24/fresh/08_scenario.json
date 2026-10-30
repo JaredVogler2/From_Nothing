@@ -1,0 +1,132 @@
+{
+  "base_snapshot_id": "SNAP17aa8f5ceb4c999a61a00993",
+  "baseline_candidate_id": "CANDa00aaee8a74d9d777305",
+  "baseline_valid": true,
+  "budget_seconds": 20.0,
+  "capability": "SCENARIO_ONLY",
+  "changes": [
+    {
+      "statistic": "P90",
+      "type": "duration_statistic"
+    }
+  ],
+  "command": "scenario",
+  "comparison": {
+    "baseline": {
+      "assignments": 29,
+      "candidate_id": "CANDa00aaee8a74d9d777305",
+      "complete_cost": false,
+      "dispositions": {
+        "blocked": 1,
+        "conditional": 6,
+        "scheduled": 11,
+        "verified_complete": 1
+      },
+      "known_cost_cents": "0",
+      "virtual_assignments": 3
+    },
+    "cost_delta_cents": "0",
+    "lines": [
+      {
+        "baseline": {
+          "completion_at": "2026-10-26T17:50:00Z",
+          "status": "known"
+        },
+        "delta_minutes": 0,
+        "line": 1301,
+        "scenario": {
+          "completion_at": "2026-10-26T17:50:00Z",
+          "status": "known"
+        }
+      },
+      {
+        "baseline": {
+          "completion_at": "2026-10-26T16:15:00Z",
+          "status": "known"
+        },
+        "delta_minutes": 0,
+        "line": 1302,
+        "scenario": {
+          "completion_at": "2026-10-26T16:15:00Z",
+          "status": "known"
+        }
+      },
+      {
+        "baseline": {
+          "completion_at": "2026-10-26T17:04:00Z",
+          "status": "known"
+        },
+        "delta_minutes": 10,
+        "line": 1303,
+        "scenario": {
+          "completion_at": "2026-10-26T17:14:00Z",
+          "status": "known"
+        }
+      },
+      {
+        "baseline": {
+          "completion_at": "2026-10-28T13:00:00Z",
+          "status": "known"
+        },
+        "delta_minutes": 0,
+        "line": 1304,
+        "scenario": {
+          "completion_at": "2026-10-28T13:00:00Z",
+          "status": "known"
+        }
+      },
+      {
+        "baseline": {
+          "completion_at": "2026-10-28T13:50:00Z",
+          "status": "conditional"
+        },
+        "delta_minutes": 0,
+        "line": 1305,
+        "scenario": {
+          "completion_at": "2026-10-28T13:50:00Z",
+          "status": "conditional"
+        }
+      },
+      {
+        "baseline": {
+          "completion_at": null,
+          "status": "unknown"
+        },
+        "delta_minutes": null,
+        "line": 1306,
+        "scenario": {
+          "completion_at": null,
+          "status": "unknown"
+        }
+      }
+    ],
+    "note": "same optimizer, ledger, validator and budget on the unchanged copy and the changed copy; differences come from the changes",
+    "scenario": {
+      "assignments": 29,
+      "candidate_id": "CANDd3ea2d7f1837dca3b893",
+      "complete_cost": false,
+      "dispositions": {
+        "blocked": 1,
+        "conditional": 6,
+        "scheduled": 11,
+        "verified_complete": 1
+      },
+      "known_cost_cents": "0",
+      "virtual_assignments": 3
+    }
+  },
+  "created_at": "2026-10-26T10:00:00Z",
+  "notes": [
+    "duration statistic P90 (policy toggle)"
+  ],
+  "requested_by": "cli",
+  "run_id": "cli-001dac19f687db54",
+  "scenario_candidate_id": "CANDd3ea2d7f1837dca3b893",
+  "scenario_id": "SCR0202d8da40de7ca20306",
+  "scenario_snapshot_id": "SCNa35c6748cb9bd765c33c1a28",
+  "scenario_status": "COMPLETED",
+  "scenario_valid": true,
+  "schema_version": 1,
+  "source_run_id": "SR-1ce6b628853f460494af",
+  "status": "ok"
+}

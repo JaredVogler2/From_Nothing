@@ -39,7 +39,7 @@ credentials.
   Receipts are labelled `fixture_readback`. A TEST key, or any key other than the configured
   one, is refused (`TEST_KEY_NOT_LIVE`, `UNAUTHORIZED_SIGNER`).
 - Live publication stays `UNAVAILABLE` until the proposed `FOCUS_FN` stage, readback and
-  acceptance objects (`sql/migrations/publication_draft.sql`) are installed by an authorized
+  acceptance objects (`sql/migrations/007_publication.sql`) are installed by an authorized
   migration (P23). No live signature, acceptance or head move happens before that.
 
 ## Explanation providers (P21)
@@ -62,6 +62,29 @@ credentials.
 - The audit record keeps hashes only (request, prompt, raw response, output, facts), never the raw text.
 - The approved endpoint, its response adapter and the credential are operator decisions. No endpoint is built into
   the application.
+
+## Optional CP-SAT solver stage (P22)
+
+- It is off by default: policy `solver.enabled` is `false` and `FOCUS_SOLVER_ENABLED` is unset. The default
+  `requirements.txt` does not install it, and every plan comes from the named heuristic and the independent
+  validator.
+- Turning it on is an operational decision (`docs/execution/SOLVER_ENABLEMENT.md`). There are two switches:
+  - `FOCUS_SOLVER_ENABLED=true`: a Connect content variable or a Tanzu `env` entry. It keeps the policy hash.
+  - A policy revision with `solver.enabled: true`. This gives a new policy hash; accepted artifacts keep the hash they
+    were built with.
+- Install by deploying `requirements-solver.txt` as the bundle's `requirements.txt` (same base pins plus OR-Tools).
+  If the switch is on without the dependency, every run records `UNAVAILABLE` and keeps the validated baseline.
+- Where it runs: inside schedule and scenario worker runs only, never in a GET request.
+- Bounds come from the policy:
+  - `solver.budget_seconds`: wall-clock limit of the relaxation solve;
+  - `solver.max_probes`: complete named decodes;
+  - `solver.max_memory_mb`: solver memory;
+  - `solver.num_workers`: 1 with the policy seed is reproducible.
+  A cancel request stops the solve.
+- Memory: importing OR-Tools added about 67 MB of peak RSS in the small benchmark (61 MB to 128 MB). Size the Tanzu
+  `memory` (1G in `manifest.yml`) and `solver.max_memory_mb` from the measured `SCALE_REPORT.md` before enabling it.
+- Rollback: unset the variable, or return to the previous policy. The stage never wrote anything a disabled run
+  depends on.
 
 ## Posit Connect
 
@@ -89,6 +112,16 @@ Connect content settings ("Vars"):
 | `FOCUS_SESSION_SECRET` | random 32+ bytes (secret) |
 | `FOCUS_SOURCE_TIMEZONE_MAP_JSON` | source datetime2 timezone policy |
 | `FOCUS_MCP_ENABLED` | `false` until MCP access is approved |
+
+Before publishing, run `python -m focus.cli preflight --role web` with the content's variables. It checks:
+
+- CPython 3.12;
+- trusted identity;
+- the session secret;
+- SQL by presence;
+- the policy;
+- `create_app`;
+- migrations.
 
 How the app behaves under Connect:
 
@@ -133,9 +166,12 @@ How the app behaves under Tanzu:
   `X-Forwarded-User` (configurable with `FOCUS_TRUSTED_USER_HEADER`). Never
   expose the app route without that proxy in front of it in live mode.
 - The health check is `http` on `/health/live`.
-- Workers run as a separate process type
-  (`python -m focus.cli worker --loop`) or as a task
-  (`cf run-task focus-scheduling --command "python -m focus.cli worker --once"`).
+- Workers run as a separate process type (`python -m focus.cli worker --loop --role app`) or as a task
+  (`cf run-task focus-scheduling --command "python -m focus.cli worker --once --role app"`).
+- Evaluator-role runs and the pipeline's other roles (source, stager, signer, evaluator) run in separate apps bound to
+  their own user-provided services. Each process then holds only its own role's credentials
+  (`docs/execution/INSTALL_AND_PIPELINE.md`).
+- Run `python -m focus.cli preflight --role web` (or `worker`, `signer`) before a process serves or works.
 - The filesystem is ephemeral. Live mode persists everything in SQL Server
   (`FOCUS_FN_*`). Fixture mode on Tanzu is for demos only.
 

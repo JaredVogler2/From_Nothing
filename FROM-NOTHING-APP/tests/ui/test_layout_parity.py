@@ -154,6 +154,6 @@ def test_no_data_states_are_honest_in_both_layouts(empty_server, browser) -> Non
         text = page.inner_text("main")
         assert "100" not in text.split("How the canonical score")[0]              # no invented perfect score
     anonymous = browser.new_context().new_page()
-    anonymous.goto(empty_server + "/dashboard#performance")
-    anonymous.wait_for_selector("main .state-blocked")
-    assert "Sign in" in anonymous.inner_text("main")
+    anonymous.goto(empty_server + "/dashboard#performance")     # no session: guided to the demo sign-in, never a data view
+    anonymous.wait_for_selector("#persona-title")
+    assert "Demo sign-in" in anonymous.inner_text("body") and "/dashboard" not in anonymous.url

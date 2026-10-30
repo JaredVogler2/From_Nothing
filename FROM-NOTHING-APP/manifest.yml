@@ -14,7 +14,9 @@ applications:
     - type: web
       command: python app.py
     - type: worker
-      command: python -m focus.cli worker --loop
+      # app-role runs only (schedule, scenario, explanation); evaluator-role runs belong to a separate evaluator app
+      # with its own bound credentials (docs/execution/INSTALL_AND_PIPELINE.md, roles and grants)
+      command: python -m focus.cli worker --loop --role app
       instances: 1
       health-check-type: process
   env:

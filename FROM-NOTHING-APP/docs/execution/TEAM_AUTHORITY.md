@@ -66,7 +66,7 @@ exactly at 06:00 local governs the S1 shift starting then; one effective at 06:0
 The production adapters are written but have never been installed or probed:
 
 - The inference query, the draft constraints, trigger, view and retention procedure
-  (`sql/migrations/workforce_draft.sql`), and the refresh strategy are written but **not
+  (`sql/migrations/004_workforce_inference.sql`), and the refresh strategy are written but **not
   installed**.
 - No live clock, HR or assignment feed was read. `ATTENDANCE_SHIFT`, `PERSON_TEAM_MAP` and
   `LABOR_SHIFT` were observed empty in the S04 catalog estimates.

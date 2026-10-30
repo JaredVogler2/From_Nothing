@@ -1,6 +1,8 @@
--- Draft (P16): immutable publication, pre-sign readback and the accepted head on the S06 tables.
--- NOT executed by this build: no live DDL, write or signing authority exists. Consolidated into the versioned
--- migration set in P23 behind the migration lock and checksum ledger; 001 itself stays verbatim.
+-- Migration 007 (P23): immutable publication, pre-sign readback and the accepted head.
+-- Consolidated from the reviewed P16 draft; its statements are unchanged. PROPOSED storage, NOT executed by this
+-- build. `python -m focus.cli migrate --apply` runs it only in an authorized installer session, in one transaction
+-- under sp_getapplock('FOCUS_FN_MIGRATIONS'), and records this file's SHA-256 in WEB_APP.FOCUS_FN_SchemaVersion only
+-- after every declared object is verified (docs/execution/INSTALL_AND_PIPELINE.md).
 --
 -- Protocol (S13 CANONICAL ACCEPTANCE ORDER) and where each step lives:
 --   1-3  final validation, canonical serialization, detached validation      application (focus.validation, focus.publication)

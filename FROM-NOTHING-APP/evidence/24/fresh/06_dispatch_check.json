@@ -1,0 +1,13 @@
+{
+  "action_id": "ASG87e04c65d3bc7cff0cbd",
+  "checked_at": "2026-10-26T10:00:00+00:00",
+  "command": "dispatch-check",
+  "current_source_run_id": "SR-1ce6b628853f460494af",
+  "decision": "DISPATCHABLE",
+  "dispatchable": true,
+  "plan_id": "PLAN1c02ef6728223d24b763",
+  "reasons": [],
+  "repair_request_id": null,
+  "schema_version": 1,
+  "status": "ok"
+}

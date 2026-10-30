@@ -1,0 +1,34 @@
+{
+  "command": "retain-history",
+  "cutoff": "2026-09-26T10:00:00Z",
+  "eligible": [],
+  "keep_days": 30,
+  "kept_in_eligible_collections": {
+    "younger than 30 days": 8
+  },
+  "legal_hold": {
+    "records": 0,
+    "source_runs": 0
+  },
+  "note": "nothing is deleted; --apply archives eligible fixture records with a restorable receipt",
+  "preserved_collections": {
+    "acceptance_receipts": 2,
+    "accepted_plans": 4,
+    "actual_intervals": 9,
+    "datasets": 44,
+    "defect_evidence": 1,
+    "delivery_events": 5,
+    "delivery_receipts": 1,
+    "evaluations": 7,
+    "frozen_goals": 9,
+    "lifecycle_events": 23,
+    "manifests": 1,
+    "observation_runs": 3,
+    "plan_stages": 2,
+    "published_payloads": 2,
+    "published_plans": 2,
+    "snapshots": 1
+  },
+  "schema_version": 1,
+  "status": "ok"
+}

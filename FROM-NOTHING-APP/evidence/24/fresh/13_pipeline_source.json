@@ -1,0 +1,107 @@
+{
+  "command": "pipeline",
+  "failed": [],
+  "key": "fresh-checkout",
+  "outbox": [
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "e4497c6d9028725b2743059385cde94b0dbeaca88f5aff24d3c882de44aeed9c",
+      "step": "acquire"
+    },
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "ab0a6f61bc5992514444a309e5af214650424720f6f44b40f3c34c957480406b",
+      "step": "admit"
+    }
+  ],
+  "pipeline_id": "PIPEbaad73cc5201dfd24793",
+  "ran": [
+    {
+      "outcome": "COMPLETED",
+      "output_sha": "e4497c6d9028725b2743059385cde94b0dbeaca88f5aff24d3c882de44aeed9c",
+      "step": "acquire"
+    },
+    {
+      "outcome": "COMPLETED",
+      "output_sha": "ab0a6f61bc5992514444a309e5af214650424720f6f44b40f3c34c957480406b",
+      "step": "admit"
+    }
+  ],
+  "schema_version": 1,
+  "scope": "DEMO-787",
+  "state": "in_progress",
+  "status": "ok",
+  "steps": [
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "acquire",
+      "output_sha": "e4497c6d9028725b2743059385cde94b0dbeaca88f5aff24d3c882de44aeed9c",
+      "owner": null,
+      "role": "source",
+      "status": "completed"
+    },
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "admit",
+      "output_sha": "ab0a6f61bc5992514444a309e5af214650424720f6f44b40f3c34c957480406b",
+      "owner": null,
+      "role": "source",
+      "status": "completed"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "schedule",
+      "output_sha": null,
+      "owner": null,
+      "role": "app",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "validate",
+      "output_sha": null,
+      "owner": null,
+      "role": "app",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "stage_readback",
+      "output_sha": null,
+      "owner": null,
+      "role": "stager",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "sign_accept",
+      "output_sha": null,
+      "owner": null,
+      "role": "signer",
+      "status": "pending"
+    },
+    {
+      "attempts": 0,
+      "error": null,
+      "lease_until": null,
+      "name": "observe_evaluate",
+      "output_sha": null,
+      "owner": null,
+      "role": "evaluator",
+      "status": "pending"
+    }
+  ],
+  "version": 5
+}

@@ -1,0 +1,127 @@
+{
+  "command": "pipeline",
+  "failed": [],
+  "key": "fresh-checkout",
+  "outbox": [
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "e4497c6d9028725b2743059385cde94b0dbeaca88f5aff24d3c882de44aeed9c",
+      "step": "acquire"
+    },
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "ab0a6f61bc5992514444a309e5af214650424720f6f44b40f3c34c957480406b",
+      "step": "admit"
+    },
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "cbaa7dcb5b9d921995a5477ba24fba272714f8e7cb99c154eebc3197cec8307c",
+      "step": "schedule"
+    },
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "31ed903daf9230492fd93c4abacc0b58e45e2808672867065ec504811a2e595f",
+      "step": "validate"
+    },
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "dedc86e4b2b06a9ba2d6339449692a5e1d29b3fd2b2bbaee44a037952679c7c6",
+      "step": "stage_readback"
+    },
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "44e4d812b851d18fc8a3d62cad6a4d08aa345bbf970c942f0be36fc39bd08ecf",
+      "step": "sign_accept"
+    },
+    {
+      "completed_at": "2026-10-26T10:00:00Z",
+      "output_sha": "52201570d1f01030016807b35b9c5ab49e3d04d8e14994fd52c23a60edd05120",
+      "step": "observe_evaluate"
+    }
+  ],
+  "pipeline_id": "PIPEbaad73cc5201dfd24793",
+  "ran": [
+    {
+      "outcome": "COMPLETED",
+      "output_sha": "52201570d1f01030016807b35b9c5ab49e3d04d8e14994fd52c23a60edd05120",
+      "step": "observe_evaluate"
+    }
+  ],
+  "schema_version": 1,
+  "scope": "DEMO-787",
+  "state": "completed",
+  "status": "ok",
+  "steps": [
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "acquire",
+      "output_sha": "e4497c6d9028725b2743059385cde94b0dbeaca88f5aff24d3c882de44aeed9c",
+      "owner": null,
+      "role": "source",
+      "status": "completed"
+    },
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "admit",
+      "output_sha": "ab0a6f61bc5992514444a309e5af214650424720f6f44b40f3c34c957480406b",
+      "owner": null,
+      "role": "source",
+      "status": "completed"
+    },
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "schedule",
+      "output_sha": "cbaa7dcb5b9d921995a5477ba24fba272714f8e7cb99c154eebc3197cec8307c",
+      "owner": null,
+      "role": "app",
+      "status": "completed"
+    },
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "validate",
+      "output_sha": "31ed903daf9230492fd93c4abacc0b58e45e2808672867065ec504811a2e595f",
+      "owner": null,
+      "role": "app",
+      "status": "completed"
+    },
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "stage_readback",
+      "output_sha": "dedc86e4b2b06a9ba2d6339449692a5e1d29b3fd2b2bbaee44a037952679c7c6",
+      "owner": null,
+      "role": "stager",
+      "status": "completed"
+    },
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "sign_accept",
+      "output_sha": "44e4d812b851d18fc8a3d62cad6a4d08aa345bbf970c942f0be36fc39bd08ecf",
+      "owner": null,
+      "role": "signer",
+      "status": "completed"
+    },
+    {
+      "attempts": 1,
+      "error": null,
+      "lease_until": null,
+      "name": "observe_evaluate",
+      "output_sha": "52201570d1f01030016807b35b9c5ab49e3d04d8e14994fd52c23a60edd05120",
+      "owner": null,
+      "role": "evaluator",
+      "status": "completed"
+    }
+  ],
+  "version": 15
+}

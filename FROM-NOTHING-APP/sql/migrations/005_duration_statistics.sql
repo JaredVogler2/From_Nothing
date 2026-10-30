@@ -1,6 +1,8 @@
--- Draft (P07): reviewable duration observation/statistics write, readback, refresh and retention for the S06 tables.
--- NOT executed by this build: no live DDL or write authority exists. Consolidated into the versioned migration
--- set in P23 (005_duration_statistics.sql) behind the migration lock and checksum ledger.
+-- Migration 005 (P23): duration observation and statistics integrity, readback and retention.
+-- Consolidated from the reviewed P07 draft; its statements are unchanged. PROPOSED storage, NOT executed by this
+-- build. `python -m focus.cli migrate --apply` runs it only in an authorized installer session, in one transaction
+-- under sp_getapplock('FOCUS_FN_MIGRATIONS'), and records this file's SHA-256 in WEB_APP.FOCUS_FN_SchemaVersion only
+-- after every declared object is verified (docs/execution/INSTALL_AND_PIPELINE.md).
 --
 -- Refresh strategy
 --   * Inside the atomic source run (status CAPTURING), the worker runs queries/durations/build_observations.sql

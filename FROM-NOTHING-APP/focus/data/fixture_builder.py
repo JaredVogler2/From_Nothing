@@ -729,6 +729,12 @@ TEMPLATE_EDGES: tuple[tuple[str, str], ...] = (
     ("J01", "J02"), ("J02", "J03"), ("J03", "J05"), ("J05", "J07"), ("J07", "J09"), ("J09", "J11"), ("J11", "J13"), ("J13", "J14"),
     ("J02", "J04"), ("J04", "J06"), ("J06", "J08"), ("J08", "J10"), ("J10", "J12"), ("J12", "J13"), ("J03", "J04"), ("J06", "J07"),
 )
+# sourced in-process QA holds on the two longest template operations: (after work minutes, inspector minutes), totalling
+# qa.total_ip_minutes; every hold lies inside the shortest flow the template can draw (135 and 225 minutes)
+SCALE_IP_HOLDS: dict[str, tuple[tuple[int, int], ...]] = {"J04": ((50, 20), (100, 25)), "J09": ((80, 20), (160, 25))}
+# one aircraft in ten carries a functional test owned by a support team: forecast-only virtual TST capacity, an honest
+# readiness gap (unknown completion) in EXECUTABLE plans
+SCALE_SUPPORT_EVERY, SCALE_SUPPORT_OFFSET = 10, 5
 SCALE_TEAM_CERT = {"PROD-A": "A", "PROD-B": "B", "PROD-C": "C", "PROD-D": "D"}
 SCALE_SECOND_CERT = {"PROD-A": "B", "PROD-B": "C", "PROD-C": "D", "PROD-D": "A"}
 
@@ -798,6 +804,31 @@ def build_scale_fixture(n_aircraft: int, scenario: str | None = None, seed: int 
                 ds["buyoff_plan"].append({"SHOP_ORDER_IDENTIFIER": soi, "LINE_NUMBER": line, "SHOP_ORDER_STATUS": status, "MANUFACTURING_INSP": 0,
                                           "QUALITY_INSP": 0, "CC_INSP": 0, "ODAUNITMEMBER_INSP": 0, "PARTNER_QT_INSP": 0,
                                           "FINAL_QUALITY_INSP": 1, "IN_PROCESS_QUALITY_INSP": 0, "LOAD_TIMESTAMP": LOAD_TS})
+            holds = SCALE_IP_HOLDS.get(soi, ())
+            if holds:                                    # derived, not drawn: the random stream (and every other row) is unchanged
+                ds["buyoff_plan"].append({"SHOP_ORDER_IDENTIFIER": soi, "LINE_NUMBER": line, "SHOP_ORDER_STATUS": status, "MANUFACTURING_INSP": 0,
+                                          "QUALITY_INSP": 0, "CC_INSP": 0, "ODAUNITMEMBER_INSP": 0, "PARTNER_QT_INSP": 0,
+                                          "FINAL_QUALITY_INSP": int(final), "IN_PROCESS_QUALITY_INSP": len(holds), "LOAD_TIMESTAMP": LOAD_TS})
+                ds["inspection_counts"].append({"SHOP_ORDER_IDENTIFIER": soi, "LINE_NUMBER": line, "MANUFACTURING_INSPECTIONS": 0, "QUALITY_INSPECTIONS": 0,
+                                                "FINAL_QUALITY_INSPECTIONS": int(final), "IN_PROCESS_QUALITY_INSPECTIONS": len(holds), "CC_INSPECTIONS": 0,
+                                                "ODAUNITMEMBER_INSPECTIONS": 0, "PARTNER_QT_INSPECTIONS": 0, "LOAD_TIMESTAMP": LOAD_TS})
+                for seq, (after, minutes) in enumerate(holds, start=1):
+                    ds["inspection_holds"].append({"LINE_NUMBER": line, "SOI": soi, "SEQUENCE": seq, "AFTER_WORK_MINUTES": after,
+                                                   "INSPECTOR_MINUTES": minutes, "EVIDENCE_REF": f"FIXTURE-SCALE-IP-{line}-{soi}-{seq}"})
+        if (line - lines[0]) % SCALE_SUPPORT_EVERY == SCALE_SUPPORT_OFFSET:        # derived, not drawn: the random stream is unchanged
+            ds["master_task_list"].append({
+                "SHOP_ORDER_IDENTIFIER": "T15", "SHOP_ORDER_DESCRIPTION": "Functional test (virtual TST support forecast)", "LINE_NUMBER": line,
+                "SHOP_ORDER_STATUS": "AVAILABLE", "TEAM": "TST", "CURRENT_CONTROL_STATION": "744", "MINOR_MODEL_IDENT": MODEL,
+                "CUSTOMER_CODE": CUSTOMER, "PARENT_SOI": None, "SUPERINTENDENT": "DEMO-SUPT",
+                "FIRST_AVAILABLE": _local_naive(date(2026, 10, 25), 6), "ACT_START": None, "ACT_COMP": None,
+                "LOAD_TIMESTAMP": LOAD_TS, "PLANNING_SYSTEM_NAME": "DEMO-PS", "IS_REWORK": False, "RECORD_KEY": record_key,
+            })
+            record_key += 1
+            ds["flow_budget"].append({"JOB_NUMBER": "T15", "LINE_NUMBER": line, "CRITICAL_FLOW_MINUTES": 60, "TOTAL_MECHANICS": 2,
+                                      "PRIMARY_MECHANIC_COUNT": 2, "PRIMARY_MECHANIC_DURATION": 60, "ASSIST_COUNT": 0, "ASSIST_LABOR_MINUTES": 0,
+                                      "TOTAL_LABOR_MINUTES": 120, "DURATION_SOURCE": "FIXTURE_STANDARD", "LOAD_TIMESTAMP": LOAD_TS})
+            ds["soi_cert_requirements"].append({"SOI_ID": "T15", "LINE_NUMBER": line, "CRITICAL_PROCESS_NAME": "DEMO PROCESS TST-1",
+                                                "CERT_CODE": "TST-1", "CERT_TYPE": "CERT", "REQ_CERT": "Y", "SNAPSHOT_TS": "2026-10-25T05:00:00"})
         if not blocked_line and rng.random() < 0.12:
             open_jobs = [s for s in order if s not in complete]
             parent = rng.choice(open_jobs)

@@ -645,7 +645,8 @@ def candidate_summary(plan: Any) -> dict[str, Any]:
             "algorithm": {"name": st.name, "version": st.version, "seed": st.seed, "budget_seconds": st.budget_seconds,
                           "deadline_reached": st.deadline_reached, "proof_status": st.proof_status, "paths_used": list(st.paths_used),
                           "stages": [{"stage": s.stage, "runtime_ms": s.runtime_ms, "candidates": s.candidates, "accepted": s.accepted, "note": s.note}
-                                     for s in st.stages], "incumbent": dict(st.incumbent)},
+                                     for s in st.stages], "incumbent": dict(st.incumbent),
+                          "solver": st.baseline_comparison.get("solver")},
             "global_optimality_proven": plan.global_optimality_proven,
             "costs": {"known_total_cents": frac(plan.costs.known_total_cents), "conditional_total_cents": frac(plan.costs.conditional_total_cents),
                       "controllable_known_cents": frac(plan.costs.controllable_known_cents), "unknown_lines": list(plan.costs.unknown_lines),

@@ -1,0 +1,57 @@
+{
+  "checks": [
+    {
+      "detail": "CPython 3.12",
+      "name": "interpreter",
+      "status": "PASS"
+    },
+    {
+      "detail": "mode fixture, scope DEMO-787",
+      "name": "settings",
+      "status": "PASS"
+    },
+    {
+      "detail": "local (local)",
+      "name": "platform",
+      "status": "PASS"
+    },
+    {
+      "detail": "fixture (fixture mode is a labeled demo)",
+      "name": "identity",
+      "status": "PASS"
+    },
+    {
+      "detail": "ephemeral: fine for one local process, not for several instances",
+      "name": "session_secret",
+      "status": "WARN"
+    },
+    {
+      "detail": "rebuild-v1 hash 98a57f5eb641a65d",
+      "name": "policy",
+      "status": "PASS"
+    },
+    {
+      "detail": "fixture runtime <fresh-clone>/FROM-NOTHING-APP/fixtures/runtime/manufacturing_demo writable (ephemeral on Posit Connect and Tanzu)",
+      "name": "storage",
+      "status": "PASS"
+    },
+    {
+      "detail": "create_app built 52 routes (app:app, Flask WSGI)",
+      "name": "app",
+      "status": "PASS"
+    },
+    {
+      "detail": "9 versions shipped, lint clean, latest 009",
+      "name": "migrations",
+      "status": "PASS"
+    }
+  ],
+  "command": "preflight",
+  "failed": [],
+  "mode": "fixture",
+  "note": "presence checks only: no secret value is read into this report",
+  "platform": "local",
+  "role": "web",
+  "schema_version": 1,
+  "status": "ok"
+}

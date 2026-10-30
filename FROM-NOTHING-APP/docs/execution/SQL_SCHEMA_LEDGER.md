@@ -55,21 +55,43 @@ Proposed `FOCUS_FN_*` output tables (S06) are **not installed**. See
 
 ## Drafted SQL authorities (written, not installed)
 
+P23 consolidated these into the versioned set:
+
+| File | Content |
+| --- | --- |
+| `001_focus_fn_core.sql` | S06 core, verbatim |
+| `002_worker_pipeline.sql` | New in P23 |
+| `003_source_promotion.sql` | Source-run admission and head promotion |
+| `004_workforce_inference.sql` | Workforce inference |
+| `005_duration_statistics.sql` | Duration statistics |
+| `006_commitments.sql` | Delivery commitments |
+| `007_publication.sql` | Publication |
+| `008_lifecycle.sql` | Lifecycle |
+| `009_evaluation.sql` | Evaluation |
+
+- Every version has a generated rollback in `sql/migrations/rollback/`.
+- Roles and grants are in `sql/grants/focus_fn_roles.sql`.
+- The checksum ledger, lint, plan, apply and rollback protocol is `focus/migrations.py`.
+- Install steps are in `docs/execution/INSTALL_AND_PIPELINE.md`.
+
+The statements of 003-009 are unchanged from the reviewed drafts below.
+
 | Artifact | Stage | Purpose |
 | --- | --- | --- |
 | `queries/workforce/infer_mechanic_teams.sql` | P05 | S07 plurality inference into FOCUS_FN_TeamInference (run-isolated, CAPTURING only) |
-| `sql/migrations/workforce_draft.sql` | P05 | TeamInference constraints, clock indexes, sealed-run trigger, head view, retention |
+| `sql/migrations/004_workforce_inference.sql` | P05 | TeamInference constraints, clock indexes, sealed-run trigger, head view, retention |
 | `queries/qualifications/requirement_census.sql`, `holding_validity_profile.sql` | P06 | Read-only readiness: unknown-requirement census, holding date-encoding/status profile |
 | `queries/durations/build_observations.sql` | P07 | Episode metrics (job/owner unions, cycle) into FOCUS_FN_DurationObservation |
 | `queries/durations/percentiles.sql` | P07 | PERCENTILE_CONT P50/P55/P75/P90 + mean into FOCUS_FN_DurationStatistics per policy |
-| `sql/migrations/durations_draft.sql` | P07 | Duration constraints, UX(RunId, GroupKeySha, PolicyId), indexes, sealed triggers, head view, retention |
+| `sql/migrations/005_duration_statistics.sql` | P07 | Duration constraints, UX(RunId, GroupKeySha, PolicyId), indexes, sealed triggers, head view, retention |
 | `queries/calendars/*.sql`, `queries/graph/*.sql`, `queries/parts/shortage_profile.sql`, `queries/quality/inspection_profile.sql` | P08-P10 | Read-only readiness: calendar generations and CS grain, template edges and rework linkage, shortages, inspection counts |
 | `queries/economics/effective_terms.sql`, `liability_floor.sql` | P12 | Read-only mirror of the term resolution (one current mapping, one active scenario, one assignment, selector precedence, version conflicts, authority) and the latest checkpoint floor |
-| `sql/migrations/commitments_draft.sql` | P14 | FOCUS_FN_Commitment checks; CommitmentObservation (replay key per accepted plan), DeliveryReceipt, CommitmentResult projection; immutability triggers; IncumbentAtHead view; one-transaction RecordDeliveryObservation with an optimistic version check; state readback view |
-| `sql/migrations/publication_draft.sql` | P16 | PlanStage/Validation/PublishedPlan/PlanHead checks; append-only triggers (stages, validations, published plans, frozen goals); StagePlan (idempotent, sha-checked), ReadPlanStage, RecordValidation; AcceptPlan (applock, exact staged bytes, clean READBACK receipt, goals, head LAST with expected version); CurrentPlan view |
+| `sql/migrations/006_commitments.sql` | P14 | FOCUS_FN_Commitment checks; CommitmentObservation (replay key per accepted plan), DeliveryReceipt, CommitmentResult projection; immutability triggers; IncumbentAtHead view; one-transaction RecordDeliveryObservation with an optimistic version check; state readback view |
+| `sql/migrations/007_publication.sql` | P16 | PlanStage/Validation/PublishedPlan/PlanHead checks; append-only triggers (stages, validations, published plans, frozen goals); StagePlan (idempotent, sha-checked), ReadPlanStage, RecordValidation; AcceptPlan (applock, exact staged bytes, clean READBACK receipt, goals, head LAST with expected version); CurrentPlan view |
 | `queries/actuals/*.sql` | P17 | Read-only feed readers (lifecycle events, actual intervals, defect evidence, amendments, claims, decisions, producer receipts) with the exact `FEEDS` projections and one as-of parameter |
-| `sql/migrations/lifecycle_draft.sql` | P17 | Producer landing tables and receipts; FOCUS_FN_Event clock checks; typed append-only ActualInterval, DefectEvidence, GoalAmendment, DisruptionClaim (cause/status checks, notes rule), SequenceViolation, ObservationRun/FeedReceipt/Quarantine, IEReview; ExcusalDecision track/exception columns; immutability triggers; RecordAmendment (zero-minute goal row for B0 = 0) |
-| `sql/migrations/evaluation_draft.sql` | P18 | Evaluation series columns and null-score checks; EvaluationEvidence; EvaluationHead (optimistic version); RecognitionEvent and BadgeAward chains (dedupe, positive values except corrections); immutability triggers; AppendEvaluation (applock, unchanged evidence is a no-op); CurrentEvaluation and TeamXp views |
+| `sql/migrations/008_lifecycle.sql` | P17 | Producer landing tables and receipts; FOCUS_FN_Event clock checks; typed append-only ActualInterval, DefectEvidence, GoalAmendment, DisruptionClaim (cause/status checks, notes rule), SequenceViolation, ObservationRun/FeedReceipt/Quarantine, IEReview; ExcusalDecision track/exception columns; immutability triggers; RecordAmendment (zero-minute goal row for B0 = 0) |
+| `sql/migrations/009_evaluation.sql` | P18 | Evaluation series columns and null-score checks; EvaluationEvidence; EvaluationHead (optimistic version); RecognitionEvent and BadgeAward chains (dedupe, positive values except corrections); immutability triggers; AppendEvaluation (applock, unchanged evidence is a no-op); CurrentEvaluation and TeamXp views |
 
-All of them are consolidated into the versioned migration set in P23. Installing any of them
-requires authorized migration tooling. None was executed against a server by this build.
+All of them are consolidated into the versioned migration set (P23). Installing them requires an authorized
+installer session (`migrate --apply --catalog live --installer ... --confirm-manifest ...`). None was executed against
+a server by this build.
