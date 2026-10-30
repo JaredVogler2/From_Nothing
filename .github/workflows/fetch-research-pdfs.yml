@@ -8,24 +8,47 @@ on:
       - '.github/workflows/fetch-research-pdfs.yml'
 permissions:
   contents: write
+concurrency:
+  group: research-pdf-fetch-main
+  cancel-in-progress: false
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           persist-credentials: true
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Fetch public PDFs and validate PDF headers
         run: python research/fetch_open_papers.py
-      - name: Commit available open-access PDFs
+      - name: Commit PDFs safely on latest main
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add research/*.pdf
-          if ! git diff --cached --quiet; then
+          mkdir -p /tmp/research-pdfs
+          find research -maxdepth 1 -type f -name '*.pdf' -exec cp -n {} /tmp/research-pdfs/ \;
+          # Preserve downloaded files outside the worktree before syncing.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            find /tmp/research-pdfs -maxdepth 1 -type f -name '*.pdf' -exec cp -n {} research/ \;
+            git add -- research/*.pdf
+            if git diff --cached --quiet; then
+              echo "All available PDFs already exist on main."
+              exit 0
+            fi
             git commit -m "Add verified open-access research PDFs"
-            git push
-          fi
+            if git push origin HEAD:main; then
+              echo "PDFs committed to main."
+              exit 0
+            fi
+            echo "Remote main advanced; retrying against latest main ($attempt/5)."
+            sleep $((attempt * 2))
+          done
+          echo "Could not push after five safe retries." >&2
+          exit 1
