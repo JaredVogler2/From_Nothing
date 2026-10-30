@@ -226,10 +226,7 @@ class JobKey:
 
     @property
     def id(self) -> str:
-        return digest_id(
-            "J", "JobKey", self.site, self.program, self.line, self.native_id,
-            self.revision, self.operation, self.effective_from, self.effective_to,
-        )
+        return _job_id(self)
 
     def label(self) -> str:
         rev = "" if self.revision is None else f" rev {self.revision}"
@@ -265,7 +262,7 @@ class PersonKey:
 
     @property
     def id(self) -> str:
-        return digest_id("H", "PersonKey", self.authority_namespace, self.native_id)
+        return _person_id(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -287,11 +284,28 @@ class PoolKey:
 
     @property
     def id(self) -> str:
-        return digest_id("Q", "PoolKey", self.site, self.team, self.start_date, self.shift_number, self.source_run_id)
+        return _pool_id(self)
 
     @property
     def label(self) -> str:
         return f"{self.team} {self.start_date.isoformat()} S{self.shift_number}"
+
+
+# Transport ids are pure functions of the frozen key values, memoized per key (hashing a key is far cheaper than
+# rendering its canonical JSON on every access in the engine's inner loops).
+@functools.lru_cache(maxsize=1_048_576)
+def _job_id(k: JobKey) -> str:
+    return digest_id("J", "JobKey", k.site, k.program, k.line, k.native_id, k.revision, k.operation, k.effective_from, k.effective_to)
+
+
+@functools.lru_cache(maxsize=1_048_576)
+def _person_id(k: PersonKey) -> str:
+    return digest_id("H", "PersonKey", k.authority_namespace, k.native_id)
+
+
+@functools.lru_cache(maxsize=1_048_576)
+def _pool_id(k: PoolKey) -> str:
+    return digest_id("Q", "PoolKey", k.site, k.team, k.start_date, k.shift_number, k.source_run_id)
 
 
 # ---------------------------------------------------------------------------

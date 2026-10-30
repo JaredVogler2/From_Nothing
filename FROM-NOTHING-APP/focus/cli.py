@@ -123,7 +123,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--complete-scope", action="store_true", required=True)
     p.add_argument("--solver", choices=["off", "on"], default="off")
     p.add_argument("--sizes", default="51,100,150,300")
-    p.add_argument("--budget-seconds", type=float, default=20.0)
+    p.add_argument("--budget-seconds", type=float, default=20.0, help="heuristic search wall-clock budget per plan")
+    p.add_argument("--max-moves", type=int, default=None, help="neighbourhood move bound (default: policy optimizer.max_neighborhood_moves)")
+    p.add_argument("--solver-budget-seconds", type=float, default=None, help="CP-SAT relaxation wall-clock limit (default: policy solver.budget_seconds)")
 
     p = sub.add_parser("migrate", help="SQL migration preflight/dry-run (never applied implicitly)")
     p.add_argument("--dry-run", action="store_true")

@@ -63,6 +63,29 @@ credentials.
 - The approved endpoint, its response adapter and the credential are operator decisions. No endpoint is built into
   the application.
 
+## Optional CP-SAT solver stage (P22)
+
+- It is off by default: policy `solver.enabled` is `false` and `FOCUS_SOLVER_ENABLED` is unset. The default
+  `requirements.txt` does not install it, and every plan comes from the named heuristic and the independent
+  validator.
+- Turning it on is an operational decision (`docs/execution/SOLVER_ENABLEMENT.md`). There are two switches:
+  - `FOCUS_SOLVER_ENABLED=true`: a Connect content variable or a Tanzu `env` entry. It keeps the policy hash.
+  - A policy revision with `solver.enabled: true`. This gives a new policy hash; accepted artifacts keep the hash they
+    were built with.
+- Install by deploying `requirements-solver.txt` as the bundle's `requirements.txt` (same base pins plus OR-Tools).
+  If the switch is on without the dependency, every run records `UNAVAILABLE` and keeps the validated baseline.
+- Where it runs: inside schedule and scenario worker runs only, never in a GET request.
+- Bounds come from the policy:
+  - `solver.budget_seconds`: wall-clock limit of the relaxation solve;
+  - `solver.max_probes`: complete named decodes;
+  - `solver.max_memory_mb`: solver memory;
+  - `solver.num_workers`: 1 with the policy seed is reproducible.
+  A cancel request stops the solve.
+- Memory: importing OR-Tools added about 67 MB of peak RSS in the small benchmark (61 MB to 128 MB). Size the Tanzu
+  `memory` (1G in `manifest.yml`) and `solver.max_memory_mb` from the measured `SCALE_REPORT.md` before enabling it.
+- Rollback: unset the variable, or return to the previous policy. The stage never wrote anything a disabled run
+  depends on.
+
 ## Posit Connect
 
 The content type is a Python API (WSGI/Flask), entrypoint `app:app`.

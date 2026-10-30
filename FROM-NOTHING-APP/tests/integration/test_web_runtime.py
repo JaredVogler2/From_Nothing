@@ -19,9 +19,13 @@ def test_a01_no_credentials_no_source_pages_load_without_side_effects(make_clien
     app, client, services = make_client()
     runtime = tmp_path / "runtime"
     before = _tree_snapshot(runtime)
-    for path in ("/", "/dashboard", "/dashboard/classic", "/api/docs", "/health/live"):
+    for path in ("/", "/api/docs", "/health/live"):
         response = client.get(path)
         assert response.status_code == 200, path
+    for path in ("/dashboard", "/dashboard/classic"):          # a fixture visitor without a session is guided to the demo sign-in
+        response = client.get(path)
+        assert response.status_code == 302 and response.headers["Location"].endswith("/"), path
+        assert b"Demo sign-in" in client.get(path, follow_redirects=True).data, path
     ready = client.get("/health/ready")
     assert ready.status_code == 503
     body = ready.get_json()
@@ -33,6 +37,9 @@ def test_a01_no_credentials_no_source_pages_load_without_side_effects(make_clien
     assert ctx["source_run_id"] is None and ctx["plan_id"] is None
     assert ctx["data"]["capabilities"]["executable_plan"] is False
     assert {"NO_SOURCE_RUN"} <= {r["code"] for r in ctx["reasons"]}
+    login(client, "manager")
+    for path in ("/dashboard", "/dashboard/classic"):          # signed in, the workspace itself loads
+        assert client.get(path).status_code == 200, path
     # GET/import produced no acquisition, solve, write or grade
     assert _tree_snapshot(runtime) == before
 

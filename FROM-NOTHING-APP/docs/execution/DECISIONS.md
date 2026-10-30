@@ -94,6 +94,31 @@ attendance. A conditional ETA is never physical receipt.
     - Validation covers the complete schema, every claim against its fact (exact; tolerance only by explicit policy and never for money) and every narrative word: grounded ids, labels and values, or a small approved vocabulary.
     - Any failure returns the complete deterministic explanation in the unchanged rank.
     - The default provider is none. BCAI is optional, https-only, uses a referenced credential, and has bounded timeouts and retries.
+- **D-20 Complete-scope scale and the optional solver (P22).**
+  - **Scale shortcuts are exact.** No shortcut prunes a candidate, so the only feasible rare-role crew is never
+    removed. Each is pinned by tests to the rule it replaces or to a brute-force definition.
+    - `DutyLedger.person_conflict` runs `plan`'s first per-person checks (window, pool, cross-shift and located
+      overlap).
+    - `DutyLedger.cap_problem` runs `plan`'s pool-level activation check.
+    - Transactions snapshot only the containers that are mutated in place.
+    - The cross-shift check bisects a person's sorted rows by end, instead of rebuilding the list on every call.
+    - Qualification reuses a whole-shift-window answer, because validity is interval-monotone.
+    - Transport ids and snapshot verification are memoized.
+  - **Outputs verified identical.** Old and new code gave the same assignments, duties, dispositions, commitments
+    and costs on the demo and at 51 and 150 aircraft.
+  - **Scale fixture.** The synthetic scale census also carries sourced in-process QA holds and a forecast-only
+    support test on one aircraft in ten. These are derived rows, so the random stream and every other row are
+    unchanged.
+  - **The solver proposes orders, never plans.** CP-SAT solves a pooled relaxation and proposes job orders. The
+    same named decoder, the independent validator and the exact comparison judge each order.
+    - A probe is accepted only when it is strictly better at a substantive level; a signature-only tie is refused.
+    - The outcome is a typed status (`DISABLED` ... `IMPROVED`) recorded in every receipt.
+    - The stage is off by default; switches are `solver.enabled` and `FOCUS_SOLVER_ENABLED`.
+    - Bounds: wall-clock, probes, memory, one seeded worker, and cancellation through `StopSearch`.
+    - `global_optimality_proven` stays false.
+  - **Benchmark.** `benchmark --complete-scope` and `tools/benchmark_solver.py` run each size in its own process.
+    The bounded 51-aircraft cases are in the default test suite; 100, 150 and 300 aircraft run with
+    `--benchmark-sizes`.
 
 ## Semantic gaps (live), each a precise readiness effect
 

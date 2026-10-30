@@ -55,8 +55,11 @@ def preference_key(ctx: "EngineContext", ledger: DutyLedger, person: str, team: 
 def choose_crew(ctx: "EngineContext", ledger: DutyLedger, *, phase_id: str, assignment_id: str, line: int, team: str,
                 shift_id: str, pool_id: str, count: int, bundle, segments: Sequence[tuple[int, int, bool]],
                 kind: DutyKind = DutyKind.WORK, exact_crew: Sequence[str] | None = None,
-                tools: Sequence[str] = ()) -> tuple[CrewChoice | None, str]:
-    """Return (choice, reason). ``reason`` is a stable code when no full crew can be booked."""
+                tools: Sequence[str] = (), window: tuple[int, int] | None = None) -> tuple[CrewChoice | None, str]:
+    """Return (choice, reason). ``reason`` is a stable code when no full crew can be booked.
+
+    ``window`` (the shift span) lets qualification reuse an exact whole-window answer (``EngineContext.qualifies_within``).
+    """
     if count <= 0:
         return None, "CREW_DEMAND_UNAVAILABLE: no sourced positive crew demand (never clamped to 1)"
     start, end = segments[0][0], segments[-1][1]
@@ -75,12 +78,19 @@ def choose_crew(ctx: "EngineContext", ledger: DutyLedger, *, phase_id: str, assi
         except LedgerError as exc:
             return None, f"{exc.code}: {exc.detail}"
         return CrewChoice(crew, booking, 1, len(crew), ()), "EXACT_CREW"
-    qualified = [m for m in members if ctx.qualifies(m, bundle, start, end)]
+    if window is None:
+        qualified = [m for m in members if ctx.qualifies(m, bundle, start, end)]
+    else:
+        qualified = [m for m in members if ctx.qualifies_within(m, bundle, window, start, end)]
     if len(qualified) < count:
         return None, f"CREW_UNQUALIFIED: {len(qualified)} qualified of {count} demanded in {pool_id}"
     feasible: list[str] = []
     last_problem = ""
     for person in qualified:
+        conflict = ledger.person_conflict(person, shift_id, pool_id, segments)
+        if conflict is not None:                     # exactly what ``plan`` would raise first; skip the full derivation
+            last_problem = f"{conflict.code}: {conflict.detail}"
+            continue
         try:
             ledger.plan(f"{assignment_id}?{person}", [person], line, shift_id, pool_id, segments, kind, tools)
             feasible.append(person)
@@ -104,6 +114,11 @@ def choose_crew(ctx: "EngineContext", ledger: DutyLedger, *, phase_id: str, assi
         tried += 1
         if tried > MAX_COMBINATIONS:
             return None, f"CREW_SEARCH_BOUND: more than {MAX_COMBINATIONS} combinations; no crew asserted"
+        problem = ledger.cap_problem(pool_id, crew, kind, active)
+        if problem is not None:
+            # every member already passed ``plan`` alone, so the pool-level check is the only one a crew can fail
+            last_cap = f"{problem.code}: {problem.detail}"
+            continue
         try:
             booking = ledger.plan(assignment_id, crew, line, shift_id, pool_id, segments, kind, tools)
         except LedgerError as exc:

@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import bisect
 import contextlib
-import copy
+import operator
 from dataclasses import dataclass, field, replace
 from typing import Iterable, Iterator, Mapping, Sequence
 
@@ -129,6 +129,15 @@ def _inside(a: int, b: int, windows: Sequence[tuple[int, int]]) -> bool:
     return _overlap(a, b, windows) == b - a
 
 
+_END = operator.itemgetter(1)
+
+
+@dataclass(frozen=True, slots=True)
+class _Span:
+    start: int
+    end: int
+
+
 class DutyLedger:
     def __init__(self, windows: Mapping[tuple[str, str], PersonWindow], travel: TravelPolicy, pool_caps: Mapping[str, int],
                  counted_kinds: Iterable[DutyKind], tools: ToolCalendar | None = None):
@@ -218,32 +227,62 @@ class DutyLedger:
                 raise LedgerError(problem.split(":")[0], problem)
         new_items: dict[str, tuple[DutyItem, ...]] = {}
         for person in crew:
-            window = self.windows.get((person, shift_id))
-            if window is None:
-                raise LedgerError("PERSON_NOT_AVAILABLE", f"{person} has no admitted window in {shift_id}")
-            if window.pool_id != pool_id:
-                raise LedgerError("POOL_MISMATCH", f"{person} belongs to {window.pool_id}, not {pool_id}")
+            conflict = self.person_conflict(person, shift_id, pool_id, segs)
+            if conflict is not None:
+                raise conflict
+            window = self.windows[(person, shift_id)]
             work = [DutyItem(f"{assignment_id}#{person}#{n}", person, a, b, kind, line, None, True, shift_id, pool_id, assignment_id)
                     for n, (a, b, _) in enumerate(segs)]
-            self._check_cross_shift(person, shift_id, work)
             current = [i for i in self.shift_items(person, shift_id) if i.kind is not DutyKind.TRAVEL]
-            for w in work:
-                for i in current:
-                    if i.start < w.end and w.start < i.end:
-                        raise LedgerError("PERSON_OVERLAP", f"{person} already has {i.kind.value} {i.id} over [{i.start},{i.end})")
             items = tuple(sorted(current + work, key=lambda i: (i.start, i.end, i.id)))
             items = self._derive(window, items)
             self._check_windows(window, items)
             self._check_budget(window, items)
             new_items[person] = items
-        active = self.active(pool_id)
-        heads = active | set(crew)
+        problem = self.cap_problem(pool_id, crew, kind)
+        if problem is not None:
+            raise problem
+        return Booking(assignment_id, kind, line, shift_id, pool_id, tuple(crew), segs, tuple(tools), new_items)
+
+    def cap_problem(self, pool_id: str, crew: Sequence[str], kind: DutyKind, active: frozenset[str] | None = None) -> LedgerError | None:
+        """The pool-level check that ends ``plan``: a known pool, and the activation cap over already-active people plus
+        this crew (counted kinds only). It depends on no per-person derivation, so crew selection may apply it to
+        candidate crews of individually feasible people without re-planning them; ``active`` may be passed when the
+        caller already holds ``self.active(pool_id)``."""
         cap = self.pool_caps.get(pool_id)
         if cap is None:
-            raise LedgerError("POOL_UNKNOWN", pool_id)
+            return LedgerError("POOL_UNKNOWN", pool_id)
+        heads = (self.active(pool_id) if active is None else active) | set(crew)
         if kind in self.counted and len(heads) > cap:
-            raise LedgerError("ACTIVATION_CAP", f"pool {pool_id} would activate {len(heads)} people > cap {cap}")
-        return Booking(assignment_id, kind, line, shift_id, pool_id, tuple(crew), segs, tuple(tools), new_items)
+            return LedgerError("ACTIVATION_CAP", f"pool {pool_id} would activate {len(heads)} people > cap {cap}")
+        return None
+
+    def person_conflict(self, person: str, shift_id: str, pool_id: str,
+                        segments: Sequence[tuple[int, int, bool]]) -> LedgerError | None:
+        """The first cheap reason one person cannot take these segments, or None.
+
+        These are exactly the first per-person checks of ``plan``: an admitted window in the shift, the same pool, no
+        overlap with duty in another shift, and no overlap with located (non-travel) duty in this shift. Travel is
+        re-derived around new work, so it never conflicts here. A person failing this can never be booked over the
+        segments, so crew selection may skip them before the full derivation: an exact filter, never a pruning
+        heuristic.
+        """
+        window = self.windows.get((person, shift_id))
+        if window is None:
+            return LedgerError("PERSON_NOT_AVAILABLE", f"{person} has no admitted window in {shift_id}")
+        if window.pool_id != pool_id:
+            return LedgerError("POOL_MISMATCH", f"{person} belongs to {window.pool_id}, not {pool_id}")
+        try:
+            self._check_cross_shift(person, shift_id, [_Span(a, b) for a, b, _ in segments])
+        except LedgerError as exc:
+            return exc
+        for i in self.shift_items(person, shift_id):
+            if i.kind is DutyKind.TRAVEL:
+                continue
+            for a, b, _ in segments:
+                if i.start < b and a < i.end:
+                    return LedgerError("PERSON_OVERLAP", f"{person} already has {i.kind.value} {i.id} over [{i.start},{i.end})")
+        return None
 
     def commit(self, booking: Booking) -> None:
         for person, items in booking.new_shift_items.items():
@@ -284,9 +323,14 @@ class DutyLedger:
 
     @contextlib.contextmanager
     def transaction(self) -> Iterator["DutyLedger"]:
-        """Run a multi-step move; any exception restores the complete previous ledger state."""
-        saved = (dict(self._shift), copy.deepcopy(self._all), dict(self._bookings), copy.deepcopy(self._active),
-                 copy.deepcopy(self.tools.reservations))
+        """Run a multi-step move; any exception restores the complete previous ledger state.
+
+        The snapshot is exact and cheap: item tuples and per-person interval lists are only ever replaced whole
+        (``_replace``), never mutated, so copying the dicts suffices; activation counts and tool reservations are
+        mutated in place, so their inner containers are copied too.
+        """
+        saved = (dict(self._shift), dict(self._all), dict(self._bookings), {pool: dict(c) for pool, c in self._active.items()},
+                 {tool: list(r) for tool, r in self.tools.reservations.items()})
         try:
             yield self
         except Exception:
@@ -305,11 +349,10 @@ class DutyLedger:
         self._all[person] = rows
 
     def _check_cross_shift(self, person: str, shift_id: str, new: Sequence[DutyItem]) -> None:
-        # a person's committed items never overlap, so sorted starts imply sorted ends
+        # a person's committed items never overlap, so sorted starts imply sorted ends: bisect the rows by end directly
         rows = self._all.get(person, [])
-        ends = [r[1] for r in rows]
         for item in new:
-            idx = bisect.bisect_right(ends, item.start)
+            idx = bisect.bisect_right(rows, item.start, key=_END)
             while idx < len(rows) and rows[idx][0] < item.end:
                 r = rows[idx]
                 if r[3] != shift_id:

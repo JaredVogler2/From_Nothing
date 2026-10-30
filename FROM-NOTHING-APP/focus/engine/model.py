@@ -120,6 +120,7 @@ class EngineContext:
                 demanded[d.team] |= set(d.bundle.all_codes)
         self.team_certs = {t: frozenset(c) for t, c in demanded.items()}
         self.tails = self._tails()
+        self._whole_window: dict[tuple, bool] = {}
 
     # ---------------------------------------------------------------- readiness
     def placeability(self, job_id: str) -> Placeability:
@@ -183,6 +184,25 @@ class EngineContext:
     def qualifies(self, person: str, bundle, start: int, end: int) -> bool:
         if not bundle.groups:
             return True
+        return self.eligibility.index.check_bundle(person, bundle, start, end).allowed
+
+    def qualifies_within(self, person: str, bundle, window: tuple[int, int], start: int, end: int) -> bool:
+        """``qualifies`` for [start, end) inside ``window`` (a shift span), with the whole-window answer memoized.
+
+        Holding the bundle over the whole window implies holding it over every sub-interval: status and known validity
+        do not depend on the interval, and a validity start, end or revocation that covers the window covers any part
+        of it. So a whole-window yes is exact for every interval inside it; anything else is checked exactly.
+        """
+        if not bundle.groups:
+            return True
+        lo, hi = window
+        if lo <= start and end <= hi:
+            key = (person, bundle, lo, hi)
+            whole = self._whole_window.get(key)
+            if whole is None:
+                whole = self._whole_window[key] = self.eligibility.index.check_bundle(person, bundle, lo, hi).allowed
+            if whole:
+                return True
         return self.eligibility.index.check_bundle(person, bundle, start, end).allowed
 
     def usable_applicable(self, person: str, team: str, start: int, end: int) -> int:

@@ -620,6 +620,26 @@
       "authority": "user_requirement",
       "ref": "S09"
     },
+    "solver.budget_seconds": {
+      "value": 20,
+      "authority": "fixture_default",
+      "ref": "S12 optional CP-SAT ordering stage: wall-clock limit of the relaxation solve"
+    },
+    "solver.max_probes": {
+      "value": 2,
+      "authority": "fixture_default",
+      "ref": "S12 optional CP-SAT ordering stage: complete named decodes tried from one relaxation solution"
+    },
+    "solver.max_memory_mb": {
+      "value": 2048,
+      "authority": "fixture_default",
+      "ref": "S12 optional CP-SAT ordering stage: solver memory limit"
+    },
+    "solver.num_workers": {
+      "value": 1,
+      "authority": "fixture_default",
+      "ref": "S12 optional CP-SAT ordering stage: search workers (1 with a fixed seed is reproducible; more trade determinism for speed)"
+    },
     "llm.provider": {
       "value": "none",
       "authority": "user_requirement",

@@ -30,6 +30,10 @@ Weights never decide acceptance. Every candidate is a full decode through the sh
 so a move cannot bypass a constraint. The independent validator (P15) re-checks the final
 plan from source. The run receipt is truthful: a heuristic, so ``global_optimality_proven``
 is false.
+
+8. Optional, default off (P22): a CP-SAT pooled relaxation proposes job orders that the same
+   named decoder, validator and exact comparison judge (``solver.improve``). Its typed status is
+   recorded in every receipt (``baseline_comparison["solver"]``); it never yields a plan itself.
 """
 from __future__ import annotations
 
@@ -57,6 +61,9 @@ from .repair import repairable_jobs
 ALGORITHM = "FOCUS-rich-MAX"
 VERSION = "1.0"
 DEFENDED = frozenset({"KEPT", "CREW_CHANGED"})
+# the exact comparison key, level by level (``Evaluation.key``); the signature only breaks ties deterministically
+KEY_LEVELS = ("commitments_defended", "commitments_exact", "unknown_completion_aircraft", "deferred_phases", "controllable_known_cents",
+              "travel_plus_wait_minutes", "ot_minutes", "continuity_breaks", "signature")
 
 
 @dataclass
@@ -90,6 +97,7 @@ class MaxRun:
     validated: int = 0                   # retained candidates (seed included) independently validated in search
     validator_rejections: list[str] = field(default_factory=list)
     validation: Any = None               # final ValidationReceipt (schedule)
+    solver: dict[str, Any] = field(default_factory=dict)   # optional CP-SAT stage receipt (P22); DISABLED by default
 
 
 def make_priority(ctx: EngineContext, state: PriorityState, weights: Mapping[int, Fraction] | None,
@@ -180,6 +188,14 @@ class MaxOptimizer:
         ev.key = (-defended, -exact, len(summary.unknown_lines), len(decode.deferred), summary.controllable_known_cents, travel + wait, ot,
                   breaks, signature)
         return ev
+
+    @staticmethod
+    def improved_level(candidate: Evaluation, best: Evaluation) -> str | None:
+        """The first key level where ``candidate`` is strictly better than ``best`` (None when it is not better)."""
+        for name, a, b in zip(KEY_LEVELS, candidate.key, best.key):
+            if a != b:
+                return name if a < b else None
+        return None
 
     @staticmethod
     def better(candidate: Evaluation, best: Evaluation) -> bool:
@@ -364,8 +380,10 @@ def build_candidate(ctx: EngineContext, run: MaxRun, *, created_at: datetime, in
             "baseline_deferred_phases": len(run.baseline.decode.deferred), "final_deferred_phases": len(decode.deferred),
             "final_travel_minutes": best.travel_minutes, "final_wait_minutes": best.wait_minutes, "final_ot_minutes": best.ot_minutes,
             "moves": run.moves, "accepted_moves": run.accepted_moves, "complete_fleet_cost": fin.complete,
+            "solver": run.solver or None,
         }),
-        paths_used=tuple(sorted(decode.paths_used | {"economics_registry", "exact_evaluator", "neighborhoods", "delay_repair"})),
+        paths_used=tuple(sorted(decode.paths_used | {"economics_registry", "exact_evaluator", "neighborhoods", "delay_repair"}
+                                | ({"cpsat_relaxation_order"} if run.solver.get("model") else set()))),
         incumbent=dict(incumbent or {"id": incumbent_id or "", "status": "NOT_LOOKED_UP", "detail": "no incumbent lookup was requested",
                                      "defended": "0"}))
     plan = CandidatePlan(
@@ -408,19 +426,21 @@ CANDIDATES = "candidates"
 
 
 def schedule(services: Any, *, source_run: str, purpose: Purpose, budget_seconds: float | None = None,
-             max_moves: int | None = None) -> tuple[CandidatePlan, MaxRun]:
+             max_moves: int | None = None, solver: bool | None = None) -> tuple[CandidatePlan, MaxRun]:
     from ....data.acquisition import snapshot_for_run
 
     snapshot = snapshot_for_run(services, source_run, services.policy)
-    return schedule_snapshot(services, snapshot, purpose=purpose, budget_seconds=budget_seconds, max_moves=max_moves)
+    return schedule_snapshot(services, snapshot, purpose=purpose, budget_seconds=budget_seconds, max_moves=max_moves, solver=solver)
 
 
 def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy: Any = None, budget_seconds: float | None = None,
                       max_moves: int | None = None, fixed_ranks: Mapping[str, int] | None = None,
-                      cancel: Callable[[], bool] | None = None) -> tuple[CandidatePlan, MaxRun]:
+                      cancel: Callable[[], bool] | None = None, solver: bool | None = None,
+                      solver_budget_seconds: float | None = None) -> tuple[CandidatePlan, MaxRun]:
     """Rich MAX over one sealed snapshot (admitted or an isolated scenario copy), then FINAL validation; persists the candidate.
 
     ``fixed_ranks`` (scenario planned task priorities) and ``cancel`` (a cooperative stop) are for SCENARIO runs only.
+    ``solver`` forces the optional CP-SAT stage on or off; None follows policy ``solver.enabled``, then FOCUS_SOLVER_ENABLED.
     """
     from ...commitments import defended_tasks
     from ....domain import DomainError
@@ -433,6 +453,17 @@ def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy:
     optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves, incumbent_id=defense.incumbent_id,
                              fixed_ranks=fixed_ranks, cancel=cancel)
     run = optimizer.run()
+    from .solver import budgets, enabled_by, improve
+
+    switch = enabled_by(policy, services.settings, solver)
+    began = time.monotonic()
+    outcome = improve(optimizer, run, enabled=switch, bounds=budgets(policy, solver_budget_seconds) if switch else None,
+                      cancel=cancel or (lambda: False))
+    run.solver = outcome.receipt()
+    run.validated, run.validator_rejections = optimizer._gate_count, list(optimizer._gate_log)
+    if switch:
+        run.stages.append(StageMetric("solver", int((time.monotonic() - began) * 1000), len(outcome.probes),
+                                      int(outcome.status == "IMPROVED"), f"{outcome.status}: {outcome.reason}"))
     plan = build_candidate(ctx, run, created_at=services.clock.now(), incumbent_id=defense.incumbent_id, extra_commitments=defense.other_results,
                            incumbent=defense.receipt())
     stored = services.repositories.get_typed(CANDIDATES, plan.id, "CandidatePlan", CandidatePlan)
@@ -461,7 +492,7 @@ def worker_schedule(services: Any, run: Any) -> dict[str, Any]:
     plan, mrun = schedule(services, source_run=str(req.get("source_run_id", "")), purpose=Purpose(req.get("purpose", "EXECUTABLE")),
                           budget_seconds=budget)
     return {"status": "scheduled", **receipt(plan), "validation": receipt_summary(mrun.validation, limit=20),
-            "publishable": mrun.validation.valid, "published": False,
+            "publishable": mrun.validation.valid, "published": False, "solver": mrun.solver,
             "note": "a candidate is never executable; signing and promotion stay in the trusted publication worker or CLI"}
 
 
@@ -473,4 +504,4 @@ def cli_schedule(services: Any, args: Any) -> dict[str, Any]:
     plan, run = schedule(services, source_run=args.source_run, purpose=Purpose(args.purpose), budget_seconds=args.budget_seconds)
     return {"status": "ok", **receipt(plan), "validation": receipt_summary(run.validation, limit=20), "publishable": run.validation.valid,
             "search_validation": {"validated": run.validated, "rolled_back": run.validator_rejections, "seed_valid": run.seed_valid},
-            "published": False}
+            "solver": run.solver, "published": False}

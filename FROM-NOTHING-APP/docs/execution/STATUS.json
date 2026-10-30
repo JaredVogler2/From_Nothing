@@ -1421,9 +1421,64 @@
       "title": "Digital twin, isolated scenarios and grounded explanations"
     },
     "22": {
-      "case_results": [],
-      "changed_paths": [],
-      "commands": [],
+      "case_results": [
+        {
+          "case": "A03",
+          "result": "pass (51 aircraft, one blocked and one missing standards: all reconciled, no cap, every job dispositioned with reasons in both plans; same at 100/150/300 in the benchmark receipts)"
+        },
+        {
+          "case": "A45",
+          "result": "pass on the solver path (exact complete-fleet comparison governs; relaxation proxy never decides; signature-only tie refused; claimed level confirmed from the plans' own duties; unknown-cost aircraft stay counted)"
+        },
+        {
+          "case": "A47",
+          "result": "pass at scale (nonzero V1-V9 coverage at every size; corrupted solver probes rolled back by the in-search validator; P15 mutation suite unchanged)"
+        },
+        {
+          "case": "A70",
+          "result": "pass (whole-WIP benchmark with scarce certs, travel, rework, parts, QA holds, DST-crossing shifts and virtual support: 0 required skips, 0 violations, complete inventory, at most 845 s and 567 MB per plan at 300 aircraft; every solver fallback returns the same-input validated baseline with a truthful status)"
+        }
+      ],
+      "changed_paths": [
+        "focus/engine/ledger.py",
+        "focus/engine/crew_selection.py",
+        "focus/engine/model.py",
+        "focus/engine/max/optimizer/greedy.py",
+        "focus/domain.py",
+        "focus/validation/input.py",
+        "focus/validation/plan.py",
+        "focus/engine/max/optimizer/solver.py",
+        "focus/engine/max/optimizer/orchestrator.py",
+        "focus/web/serializers.py",
+        "focus/cli.py",
+        "focus/data/fixture_builder.py",
+        "config/policies/rebuild-v1.json",
+        "tools/benchmark_solver.py",
+        "requirements-solver.txt",
+        "requirements.lock",
+        "tests/benchmarks/test_solver_status.py",
+        "tests/benchmarks/test_complete_scope.py",
+        "tests/unit/test_scale_exactness.py",
+        "tests/unit/test_hosting_files.py",
+        "tests/conftest.py",
+        "tests/integration/test_web_runtime.py",
+        "tests/ui/test_layout_parity.py",
+        "docs/execution/SCALE_REPORT.md",
+        "docs/execution/SOLVER_ENABLEMENT.md",
+        "docs/execution/DEPLOYMENT.md",
+        "docs/execution/DECISIONS.md",
+        "evidence/22/REPORT.md",
+        "evidence/22/SUMMARY.md",
+        "evidence/22/benchmark_solver_off.json",
+        "evidence/22/benchmark_solver_on.json"
+      ],
+      "commands": [
+        "python tools/benchmark_solver.py --sizes 51,100,150,300 --budget-seconds 600 --max-moves 2 --out evidence/22 (ok: 16 plans valid, 0 violations, 0 required skips, complete inventory)",
+        "old-vs-new canonical output comparison on copies of one runtime: identical on the demo, 51 and 150 aircraft",
+        "python -m pytest tests -q (447 passed, 2 failed, 3 skipped in 16:24; both failures pre-existing on main, from its /dashboard sign-in redirect)",
+        "python -m pytest tests/integration/test_web_runtime.py tests/ui/test_layout_parity.py tests/integration/test_demo_vercel_access.py -q (22 passed after updating the two tests)",
+        "python -m pytest tests/benchmarks tests/integration/test_source_scope.py tests/unit/test_scale_exactness.py -q (38 passed, 3 benchmark sizes skipped without --benchmark-sizes)"
+      ],
       "depends_on": [
         "13",
         "14",
@@ -1434,11 +1489,22 @@
       "evidence": [
         "evidence/22/REPORT.md"
       ],
-      "fixture_verified": false,
-      "interfaces": [],
+      "fixture_verified": true,
+      "interfaces": [
+        "engine.max.optimizer.solver.improve / budgets / enabled_by / SolverStatus (typed status, proof scope, probes)",
+        "orchestrator.schedule_snapshot(solver=, solver_budget_seconds=) and MaxRun.solver; KEY_LEVELS and MaxOptimizer.improved_level",
+        "python -m focus.cli benchmark --complete-scope --solver off|on --sizes --budget-seconds --max-moves --solver-budget-seconds",
+        "DutyLedger.person_conflict / cap_problem (exact pre-checks); EngineContext.qualifies_within"
+      ],
       "live_verified": false,
-      "remaining_gaps": [],
-      "status": "not_started",
+      "remaining_gaps": [
+        "no complete named CP-SAT model (by design): the relaxation stopped FEASIBLE at its 20 s limit at every scale size; enabling the stage is an operational decision (SOLVER_ENABLEMENT.md), including churn of 1,200-7,700 changed placements per accepted probe",
+        "synthetic scale fixtures only; live readiness gaps OD-01..OD-18 unchanged",
+        "night-shift DST length change has no roster in the scale fixture (covered by calendar/ledger tests)",
+        "runtime grows superlinearly with shared-pool size x congestion; next exact steps documented in SCALE_REPORT.md",
+        "benchmark-marked pytest cases (100/150/300) not run under pytest in this session; the same subprocess runs are committed as receipts"
+      ],
+      "status": "fixture_verified",
       "title": "Complete-scope scaling and optional named solver"
     },
     "23": {
