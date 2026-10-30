@@ -1,0 +1,167 @@
+[
+  {
+    "id": "01",
+    "title": "Aircraft pulsed assembly skill-aware GIN-PPO",
+    "date": "2026-08",
+    "app": "FOCUS",
+    "source": "https://doi.org/10.1016/j.cie.2026.112135",
+    "pdf": "",
+    "leverage": "Worker skill-duration coupling and pulsed station scheduling",
+    "access": "publisher-access",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "02",
+    "title": "Multi-agent graph attention for aircraft assembly dynamic scheduling",
+    "date": "2026",
+    "app": "BOTH",
+    "source": "https://doi.org/10.1016/j.aei.2026.104565",
+    "pdf": "",
+    "leverage": "Local station/global fleet coordination and material disruptions",
+    "access": "publisher-access",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "03",
+    "title": "Constraint Programming for Mixed-Model Assembly Line Scheduling with Complex Industrial Constraints",
+    "date": "2026-07-13",
+    "app": "FOCUS",
+    "source": "https://doi.org/10.4230/LIPIcs.CP.2026.46",
+    "pdf": "https://drops.dagstuhl.de/opus/volltexte/2026/266793/pdf/LIPIcs-CP-2026-46.pdf",
+    "leverage": "Calendar preemption, resource blocking, topological decomposition",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "04",
+    "title": "Optimization of structural assembly scheduling in the aeronautics industry",
+    "date": "2026-06-02",
+    "app": "FOCUS",
+    "source": "https://doi.org/10.1111/itor.70214",
+    "pdf": "",
+    "leverage": "Shift workforce and execution-mode integration",
+    "access": "open-web",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "05",
+    "title": "Modeling and Explaining an Industrial Workforce Allocation Problem",
+    "date": "2026",
+    "app": "FOCUS",
+    "source": "https://doi.org/10.24963/ijcai.2026/917",
+    "pdf": "https://www.ijcai.org/proceedings/2026/0917.pdf",
+    "leverage": "Minimal infeasibility explanations and safe repairs",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "06",
+    "title": "A large language model-based agent system for interactive large-scale project scheduling",
+    "date": "2026-09-14",
+    "app": "BOTH",
+    "source": "https://doi.org/10.1093/jcde/qwag082",
+    "pdf": "",
+    "leverage": "Graph-RAG with deterministic schedule tools",
+    "access": "open-web",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "07",
+    "title": "Graph-RHO Critical-path-aware Heterogeneous Graph Network",
+    "date": "2026-04-11",
+    "app": "FOCUS",
+    "source": "https://arxiv.org/abs/2604.10073",
+    "pdf": "https://arxiv.org/pdf/2604.10073",
+    "leverage": "Selective rolling horizon decision fixing",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "08",
+    "title": "CoRS Fast Neural Flexible Job-Shop Scheduling via Composite Interval State Reuse",
+    "date": "2026-10",
+    "app": "BOTH",
+    "source": "https://arxiv.org/abs/2610.26239",
+    "pdf": "https://arxiv.org/pdf/2610.26239",
+    "leverage": "Incremental graph state representation and dynamic feasibility",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "09",
+    "title": "Coordinating from Memory Graph-Structured Experience Reuse",
+    "date": "2026-07",
+    "app": "BOTH",
+    "source": "https://arxiv.org/abs/2607.19985",
+    "pdf": "https://arxiv.org/pdf/2607.19985",
+    "leverage": "Graph-structured disruption memory and warm starts",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "10",
+    "title": "Solving Distributed Flexible Job Shop Scheduling Problem Using SAT",
+    "date": "2026-10",
+    "app": "FOCUS",
+    "source": "https://arxiv.org/abs/2610.14749",
+    "pdf": "https://arxiv.org/pdf/2610.14749",
+    "leverage": "SAT exact solver challenger and certificates",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "11",
+    "title": "Resource-Constrained Project Scheduling with Time-of-Use Energy Tariffs and Machine States",
+    "date": "2026-01",
+    "app": "FOCUS",
+    "source": "https://arxiv.org/abs/2601.06542",
+    "pdf": "https://arxiv.org/pdf/2601.06542",
+    "leverage": "Logic-based Benders decomposition",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "12",
+    "title": "Agentic AI-Assisted Modeling for Production Scheduling Assessment in Constraint Programming",
+    "date": "2026-10-07",
+    "app": "BOTH",
+    "source": "https://arxiv.org/abs/2610.10184",
+    "pdf": "https://arxiv.org/pdf/2610.10184",
+    "leverage": "LLM/MCP solver model generation with validation",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "13",
+    "title": "Heterogeneous Graph Neural Network-Guided Adaptive Large Neighborhood Search",
+    "date": "2026-09-04",
+    "app": "FOCUS",
+    "source": "https://doi.org/10.3390/app16178807",
+    "pdf": "https://www.mdpi.com/2076-3417/16/17/8807/pdf",
+    "leverage": "Graph-guided repair neighborhoods and search operators",
+    "access": "open",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "14",
+    "title": "Enhancing multi-agent deep reinforcement learning for flexible job-shop scheduling through constraint programming",
+    "date": "2026-06",
+    "app": "FOCUS",
+    "source": "https://doi.org/10.1016/j.cor.2026.107428",
+    "pdf": "",
+    "leverage": "CP expert imitation and guided RL policy",
+    "access": "open-web",
+    "download_status": "not_verified"
+  },
+  {
+    "id": "15",
+    "title": "An incumbent-aware selective-repair framework for dynamic flexible job shop scheduling",
+    "date": "2026",
+    "app": "FOCUS",
+    "source": "https://doi.org/10.1016/j.cie.2026.112299",
+    "pdf": "",
+    "leverage": "Incumbent stability, low-churn repair and CP-SAT",
+    "access": "publisher-access",
+    "download_status": "not_verified"
+  }
+]
