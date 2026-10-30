@@ -1,0 +1,31 @@
+name: Fetch open-access research PDFs
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'research/papers.json'
+      - 'research/fetch_open_papers.py'
+      - '.github/workflows/fetch-research-pdfs.yml'
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch public PDFs and validate PDF headers
+        run: python research/fetch_open_papers.py
+      - name: Commit available open-access PDFs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/*.pdf
+          if ! git diff --cached --quiet; then
+            git commit -m "Add verified open-access research PDFs"
+            git push
+          fi
