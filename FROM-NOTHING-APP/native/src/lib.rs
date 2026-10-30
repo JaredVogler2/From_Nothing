@@ -1138,22 +1138,105 @@ impl Ledger {
         !self.items_of(person, shift).iter().any(|i| i.kind != TRAVEL && segs.iter().any(|&(a, b, _)| i.start < b && a < i.end))
     }
 
-    /// At least `need` pool members are qualified and free over the segments. A crew can only come from such people,
-    /// so when this is false the full crew attempt is certain to fail and is skipped.
+    /// A transfer slot as `derive` looks for it: `minutes` inside one open window between `after` and `before`.
+    fn has_slot(w: &Window, after: i64, before: i64, minutes: i64) -> bool {
+        w.open.iter().any(|&(ws, we)| after.max(ws) + minutes <= we.min(before))
+    }
+
+    /// False only when booking `person` alone on the segments is certain to fail in `plan_inner`: a conflict
+    /// (`person_conflict_inner`), a segment outside the person's open windows (`check_windows`), a missing transfer slot
+    /// into or out of the new work (`derive`, for the two pairs the new work creates), or regular or overtime minutes over
+    /// the caps even before transfers are added (`check_budget`; transfers only add minutes).
+    fn could_book(&self, person: u32, shift: u32, pool: u32, line: i64, segs: &[(i64, i64, bool)]) -> bool {
+        let Some(w) = self.data().windows.get(&(person, shift)) else { return false };
+        if w.pool != pool || !self.conflict_free(person, shift, pool, segs) {
+            return false;
+        }
+        if segs.iter().any(|&(a, b, _)| !inside(a, b, &w.open)) {
+            return false;
+        }
+        let (start, end) = (segs[0].0, segs[segs.len() - 1].1);
+        let items = self.items_of(person, shift);
+        let mut before: Option<&Item> = None;
+        let mut after: Option<&Item> = None;
+        let (mut regular, mut ot) = (0i64, 0i64);
+        let (span_start, span_end) = w.span;
+        for i in items {
+            if i.kind == TRAVEL {
+                continue;
+            }
+            let in_ot = overlap(i.start, i.end, &w.ot);
+            if i.locked {
+                regular += (i.end.min(span_end) - i.start.max(span_start)).max(0) - in_ot;
+            } else {
+                regular += overlap(i.start, i.end, &w.regular);
+            }
+            ot += in_ot;
+            if i.end <= start {
+                before = Some(i);
+            } else if i.start >= end && after.is_none() {
+                after = Some(i);
+            }
+        }
+        for &(a, b, _) in segs {
+            regular += overlap(a, b, &w.regular);
+            ot += overlap(a, b, &w.ot);
+        }
+        if regular > w.regular_cap || ot > w.ot_cap {
+            return false;
+        }
+        if let Some(pv) = before {
+            match self.travel_minutes(pv.line, pv.known, line) {
+                None => return false,
+                Some(minutes) if minutes > 0 && !Self::has_slot(w, pv.end, start, minutes) => return false,
+                _ => {}
+            }
+        }
+        if let Some(nx) = after {
+            if !nx.locked {
+                if let Some(next_line) = nx.line {
+                    match self.travel_minutes(Some(line), true, next_line) {
+                        None => return false,
+                        Some(minutes) if minutes > 0 && !Self::has_slot(w, end, nx.start, minutes) => return false,
+                        _ => {}
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    /// A crew of `need` can only come from members who could be booked alone and are qualified, and it may add at most
+    /// `cap - active` heads not already active in the pool (`cap_problem_inner`). When even that many people do not exist,
+    /// the full crew attempt is certain to fail and is skipped.
     #[allow(clippy::too_many_arguments)]
-    fn enough_free(&self, s: u32, q: u32, need: usize, bundle: usize, groups: &[Vec<Arc<str>>], window: Option<(i64, i64)>, segs: &[(i64, i64, bool)]) -> bool {
+    fn enough_free(&self, s: u32, q: u32, need: usize, bundle: usize, groups: &[Vec<Arc<str>>], window: Option<(i64, i64)>, line: i64,
+                   segs: &[(i64, i64, bool)]) -> bool {
         if need == 0 {
             return true;
         }
         let (start, end) = (segs[0].0, segs[segs.len() - 1].1);
         let Some(members) = self.data().members.get(&q) else { return false };
-        let mut n = 0usize;
+        let counted = self.data().counted[WORK as usize];
+        let room = if counted {
+            let active = self.active.get(&q).map_or(0, |m| m.values().filter(|&&n| n > 0).count()) as i64;
+            (self.data().pool_caps.get(&q).copied().unwrap_or(0) - active).max(0) as usize
+        } else {
+            usize::MAX
+        };
+        let (mut active_free, mut new_free) = (0usize, 0usize);
         for &m in members {
-            if self.conflict_free(m, s, q, segs) && self.shared.qualifies(m, bundle, groups, window, start, end) {
-                n += 1;
-                if n >= need {
-                    return true;
-                }
+            if !self.could_book(m, s, q, line, segs) || !self.shared.qualifies(m, bundle, groups, window, start, end) {
+                continue;
+            }
+            let is_active = counted && self.active.get(&q).is_some_and(|a| a.get(&m).is_some_and(|&n| n > 0));
+            if is_active {
+                active_free += 1;
+            } else {
+                new_free += 1;
+            }
+            if active_free + new_free.min(room) >= need {
+                return true;
             }
         }
         false
@@ -1575,7 +1658,7 @@ impl Ledger {
                     if end < end_floor {
                         break;
                     }
-                    if !self.enough_free(s, q, need, bundle, &groups, window, &segs) {
+                    if !self.enough_free(s, q, need, bundle, &groups, window, line, &segs) {
                         skipped += 1;
                         owed = Some((s, q, window, segs));
                         break;

@@ -57,7 +57,7 @@ from ...model import EngineContext
 from ...projections import completion_minutes
 from .continuity import continuity_breaks
 from .greedy import DecodeResult, Decoder, DefendedTask
-from .neighborhoods import Move, PriorityState, generate
+from .neighborhoods import Competition, Move, PriorityState, generate
 from .repair import repairable_jobs
 from .urgency import cost_of_delay, long_waits, urgency_summary
 
@@ -147,13 +147,15 @@ class MaxOptimizer:
         placeable = [j for j in ctx.jobs if ctx.placeability(j).placeable]
         self.team_jobs: dict[str, list[str]] = defaultdict(list)
         self.line_jobs: dict[int, list[str]] = defaultdict(list)
+        listed: set[tuple[str, str]] = set()
         for job in placeable:
             for p in ctx.job_phases[job]:
                 for d in p.role_demands:
-                    if job not in self.team_jobs[d.team]:
+                    if (d.team, job) not in listed:
+                        listed.add((d.team, job))
                         self.team_jobs[d.team].append(job)
             self.line_jobs[ctx.jobs[job].line].append(job)
-        self.peers = {job: sorted({o for jobs in self.team_jobs.values() if job in jobs for o in jobs if o != job}) for job in placeable}
+        self.peers = Competition(self.team_jobs)
 
     # ------------------------------------------------------------------ evaluation
     def decode(self, state: PriorityState, urgency: Mapping[str, int] | None) -> DecodeResult:

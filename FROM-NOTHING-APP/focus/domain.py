@@ -42,6 +42,14 @@ def aware_utc(value: Any, field_name: str = "datetime") -> datetime:
 
 
 def _total_us(value: datetime) -> int:
+    if type(value) is not datetime or value.tzinfo is None:
+        aware_utc(value)                                     # raises the typed error for a non-datetime or naive value
+    return _total_us_of(value)
+
+
+@functools.lru_cache(maxsize=1 << 18)
+def _total_us_of(value: datetime) -> int:
+    """Microseconds since the epoch. Equal instants give equal results, so caching by value is exact."""
     delta = aware_utc(value) - EPOCH
     return (delta.days * 86_400 + delta.seconds) * 1_000_000 + delta.microseconds
 
@@ -65,6 +73,11 @@ def to_minute(value: datetime) -> int:
 def from_minute(minute: int) -> datetime:
     if isinstance(minute, bool) or not isinstance(minute, int):
         raise DomainError("TYPE_MISMATCH", f"minute must be int, got {minute!r}")
+    return _from_minute(minute)
+
+
+@functools.lru_cache(maxsize=1 << 18)
+def _from_minute(minute: int) -> datetime:
     return EPOCH + timedelta(minutes=minute)
 
 
