@@ -276,7 +276,10 @@ def init_app(app: Flask, settings: Settings) -> None:
         )
         if settings.platform != "posit_connect":
             response.headers.setdefault("X-Frame-Options", "DENY")
-        if request.path.startswith("/api/") or request.path.startswith("/mcp"):
+        # Identity-bound bytes are never cached by a browser or a shared proxy: API and MCP results,
+        # and every rendered page, since each page embeds the session's CSRF token. Only the shipped
+        # static assets (CSS and JS, the same for everyone) stay cacheable.
+        if request.endpoint != "static":
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 

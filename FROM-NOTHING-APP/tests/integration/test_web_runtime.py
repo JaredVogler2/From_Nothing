@@ -146,6 +146,21 @@ def test_error_envelope_and_query_strictness(make_client) -> None:
     assert "frame-ancestors" in r.headers["Content-Security-Policy"]
 
 
+def test_pages_carrying_the_session_csrf_token_are_never_cached(make_client) -> None:
+    """P24 cache check: every rendered page embeds the session's CSRF token, so no browser or shared proxy may keep it."""
+    app, client, services = make_client()
+    token = login(client, "manager")
+    page = client.get("/dashboard")
+    assert page.status_code == 200 and f'content="{token}"' in page.get_data(as_text=True)
+    assert page.headers["Cache-Control"] == "no-store"
+    for path in ("/", "/dashboard/classic", "/api/docs", "/health/live", "/health/ready", "/api/v1/openapi.json", "/no-such-page"):
+        assert client.get(path).headers["Cache-Control"] == "no-store", path
+    logout = client.post("/auth/logout", headers={"X-CSRF-Token": token})
+    assert logout.headers["Cache-Control"] == "no-store"
+    static = client.get("/static/css/focus.css")                    # the same bytes for everyone: still cacheable
+    assert static.status_code == 200 and "no-store" not in static.headers.get("Cache-Control", "")
+
+
 def test_openapi_generated_from_registry(make_client) -> None:
     app, client, services = make_client()
     doc = client.get("/api/v1/openapi.json").get_json()

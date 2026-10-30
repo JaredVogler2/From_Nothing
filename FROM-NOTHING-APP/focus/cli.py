@@ -40,6 +40,8 @@ COMMANDS: dict[str, str] = {
     "preflight": "focus.preflight:cli_preflight",
     "pipeline": "focus.orchestration:cli_pipeline",
     "retain-history": "focus.retention:cli_retain_history",
+    "acceptance": "focus.release.acceptance:cli_acceptance",
+    "review": "focus.release.review:cli_review",
     "worker": "focus.workers:cli_worker",
     "serve": "focus.cli:cli_serve",
     "status": "focus.cli:cli_status",
@@ -111,7 +113,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("scenario", help="isolated what-if scenario")
     p.add_argument("--source-run", required=True)
-    p.add_argument("--changes", required=True, help="JSON object of allowlisted typed changes")
+    p.add_argument("--changes", required=True, help='JSON list of allowlisted typed changes, e.g. \'[{"type": "duration_statistic", "statistic": "P90"}]\'')
     p.add_argument("--budget-seconds", type=float, default=30.0)
 
     p = sub.add_parser("explain", help="grounded explanation of a team-shift's ranked actions (fixture providers)")
@@ -158,6 +160,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--keep-days", type=int, required=True, help="operator-chosen retention period in days (no default is assumed)")
     p.add_argument("--legal-hold", default=None, help="JSON file listing held record ids or source run ids")
     p.add_argument("--apply", action="store_true")
+
+    p = sub.add_parser("acceptance", help="P24: run the suite once and judge every A01-A72 case and C01-C39 requirement from per-test receipts")
+    p.add_argument("--out", default="evidence/24", help="directory for acceptance.json, ACCEPTANCE.md, receipts.json and pytest.log")
+    p.add_argument("--only-mapped", action="store_true", help="run only the tests the register names (faster; failures elsewhere stay unseen)")
+    p.add_argument("--receipts", default=None, help="judge an existing receipts.json instead of running the suite")
+    p.add_argument("--pytest-arg", action="append", default=None, help="extra pytest argument, repeatable (use --pytest-arg=-x)")
+
+    p = sub.add_parser("review", help="P24: write the next versioned review bound to exact hashes (never overwrites), list reviews, or verify one")
+    p.add_argument("--acceptance", default="evidence/24/acceptance.json", help="the acceptance run the review binds")
+    p.add_argument("--reviewer", default="implementer self-check", help="who reviews (recorded as given)")
+    p.add_argument("--kind", choices=["IMPLEMENTER_SELF_CHECK", "INDEPENDENT_REVIEW"], default="IMPLEMENTER_SELF_CHECK")
+    which = p.add_mutually_exclusive_group()
+    which.add_argument("--verify", type=int, default=None, metavar="NNN", help="compare VERDICT-NNN's bound hashes with the files now")
+    which.add_argument("--list", action="store_true", help="list earlier reviews and the next unused number")
 
     p = sub.add_parser("worker", help="process queued worker runs")
     p.add_argument("--role", choices=["all", "app", "evaluator"], default="all", help="process only this role's run kinds")
