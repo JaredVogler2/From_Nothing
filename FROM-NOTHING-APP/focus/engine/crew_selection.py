@@ -78,6 +78,10 @@ def choose_crew(ctx: "EngineContext", ledger: DutyLedger, *, phase_id: str, assi
         except LedgerError as exc:
             return None, f"{exc.code}: {exc.detail}"
         return CrewChoice(crew, booking, 1, len(crew), ()), "EXACT_CREW"
+    if getattr(ledger, "native", False):            # the same rules, entirely in the Rust core (focus/engine/native.py)
+        result, reason = ledger.choose(assignment_id=assignment_id, line=line, team=team, shift_id=shift_id, pool_id=pool_id, count=count,
+                                       bundle=bundle, segments=segments, kind=kind, tools=tools, window=window)
+        return (None, reason) if result is None else (CrewChoice(*result), reason)
     if window is None:
         qualified = [m for m in members if ctx.qualifies(m, bundle, start, end)]
     else:

@@ -1,6 +1,7 @@
 """Exact content hashes that bind an acceptance run and a review to what was built (S21 REVIEW, P24).
 
-* ``implementation``: every shipped source file: the ``focus`` package, SQL, queries, policy, fixture inputs, tools
+* ``implementation``: every shipped source file: the ``focus`` package, the optional ``native`` core, SQL, queries, policy,
+  fixture inputs, tools
   and the hosting files (``Procfile``, ``manifest.yml``, ``runtime.txt``, requirements, CI draft).
 * ``tests``: the test suite, including the acceptance map.
 * ``source``: the fixture source inputs the acceptance run used. No live source run exists in this build.
@@ -22,12 +23,12 @@ from pathlib import Path
 from typing import Any, Iterable
 
 MANUAL_NAME = "FOCUS_FROM_NOTHING_MASTER.txt"
-IMPLEMENTATION = ("focus", "sql", "queries", "config", "fixtures", "tools", "scripts", "app.py", "build_demo.py",
+IMPLEMENTATION = ("focus", "native", "sql", "queries", "config", "fixtures", "tools", "scripts", "app.py", "build_demo.py",
                   "pyproject.toml", "requirements.txt", "requirements-solver.txt", "requirements.lock", "runtime.txt",
                   ".python-version", "Procfile", "manifest.yml", ".gitlab-ci.yml", ".env.example")
 TESTS = ("tests",)
 SOURCE = ("fixtures/inputs", "fixtures/source_contracts", "fixtures/workforce")
-_SKIP_PARTS = frozenset({"__pycache__", ".pytest_cache", ".venv", ".git", "runtime", "node_modules"})
+_SKIP_PARTS = frozenset({"__pycache__", ".pytest_cache", ".venv", ".git", "runtime", "node_modules", "target"})
 _SKIP_SUFFIXES = (".pyc", ".pyo")
 
 

@@ -404,21 +404,47 @@ def _v5(run: _Run) -> None:
                     run.bad("V5", "CERT_EVIDENCE_FORGED", a.id, f"{r.person} declares evidence {forged[:3]} that is not a source holding row")
 
 
+def _reached(inp: ValidationInput, seeds: Iterable[str]) -> set[str]:
+    """Nodes reached from ``seeds`` through one or more hard edges: exactly the nodes having a seed in
+    ``inp.ancestors(node)``, cycles included (``hard_out`` is ``hard_in`` reversed)."""
+    seen: set[str] = set()
+    stack = [e.succ_phase for s in seeds for e in inp.hard_out.get(s, ())]
+    while stack:
+        n = stack.pop()
+        if n in seen:
+            continue
+        seen.add(n)
+        stack.extend(e.succ_phase for e in inp.hard_out.get(n, ()))
+    return seen
+
+
 def _v9(run: _Run) -> None:
+    """Part release floors and blocking shortages on every placed phase's hard-edge ancestors.
+
+    Each assignment needs only two facts about its ancestors: which part releases are among them, and whether one
+    belongs to a job a blocking shortage affects. Both come from one forward pass per part release and per blocking
+    shortage, instead of materializing and sorting every assignment's whole ancestor set (the same decisions, the same
+    violations; pinned against the per-assignment reference in ``tests/unit/test_native_core.py``).
+    """
     inp = run.inp
-    memo: dict[str, frozenset[str]] = {}
     blocking = [s for s in inp.snapshot.shortages if s.status in ("UNKNOWN_ECD", "REOPENED")]
+    part_ancestors: dict[str, list[str]] = defaultdict(list)
+    for rid in sorted(inp.releases):
+        if inp.releases[rid].kind is ReleaseKind.PART:
+            for node in _reached(inp, (rid,)):
+                part_ancestors[node].append(rid)
+    shortage_reach = []
+    for s in blocking:
+        affected = set(s.affected_jobs)
+        shortage_reach.append((s, affected, _reached(inp, [pid for pid, ph in inp.phases.items() if ph.job in affected])))
     for a in run.plan.assignments:
         phase = inp.phases.get(a.phase)
         if phase is None:
             continue
         run.count("V9")
         start = to_minute(a.start)
-        ancestors = inp.ancestors(a.phase, memo)
-        for node in sorted(ancestors):
-            rel = inp.releases.get(node)
-            if rel is None or rel.kind is not ReleaseKind.PART:
-                continue
+        for node in part_ancestors.get(a.phase, ()):
+            rel = inp.releases[node]
             if rel.status is ReleaseStatus.CONFIRMED and rel.ready_at is not None:
                 if start < minute_ceil(rel.ready_at):
                     run.bad("V9", "BEFORE_PART_RELEASE", a.id, f"{rel.label} received {rel.ready_at.isoformat()}")
@@ -431,9 +457,8 @@ def _v9(run: _Run) -> None:
                     run.bad("V9", "PART_CONDITIONAL_UNLABELLED", a.id, f"{rel.label} is a forecast ETA: the assignment must be conditional")
             else:
                 run.bad("V9", "PART_RELEASE_BLOCKED", a.id, f"{rel.label} is {rel.status.value}")
-        jobs = {phase.job} | {inp.phases[n].job for n in ancestors if n in inp.phases}
-        for s in blocking:
-            if jobs & set(s.affected_jobs):
+        for s, affected, reach in shortage_reach:
+            if phase.job in affected or a.phase in reach:
                 run.bad("V9", "PART_SHORTAGE_BLOCKED", a.id, f"shortage {s.record_id} is {s.status}")
 
 

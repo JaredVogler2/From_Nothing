@@ -43,12 +43,15 @@ class Placeability:
 
 class EngineContext:
     def __init__(self, snapshot: PlanningSnapshot, policy: Policy, purpose: Purpose, *,
-                 tool_capacity: Mapping[str, int] | None = None, tool_requirements: Mapping[str, tuple[str, ...]] | None = None):
+                 tool_capacity: Mapping[str, int] | None = None, tool_requirements: Mapping[str, tuple[str, ...]] | None = None,
+                 native: bool = False):
         if snapshot.policy_hash != policy.hash:
             raise ValueError(f"snapshot policy {snapshot.policy_hash[:12]} differs from engine policy {policy.hash[:12]}")
         self.snapshot = snapshot
         self.policy = policy
         self.purpose = purpose
+        self.native = native                 # use the Rust ledger/crew core when installed (identical results)
+        self._native_context = None
         self.site = snapshot.site
         self.cutoff_minute = minute_ceil(snapshot.cutoff)
         self.shift_policy = ShiftPolicy.from_policy(policy)
@@ -209,7 +212,14 @@ class EngineContext:
         return len(self.eligibility.index.usable_certs(person, start, end, self.team_certs.get(team, frozenset())))
 
     def new_ledger(self) -> DutyLedger:
-        ledger = DutyLedger(self.windows, self.travel, self.pool_caps, self.counted_kinds, ToolCalendar(self.tool_capacity))
+        from .native import NativeDutyLedger, available, build_context
+
+        if self.native and available():
+            if self._native_context is None:
+                self._native_context = build_context(self)
+            ledger = NativeDutyLedger(self._native_context, self.windows, self.travel, self.pool_caps, self.counted_kinds)
+        else:
+            ledger = DutyLedger(self.windows, self.travel, self.pool_caps, self.counted_kinds, ToolCalendar(self.tool_capacity))
         for ci in self.snapshot.carry_in:
             start, end = to_minute(ci.start), to_minute(ci.end)
             shift = None

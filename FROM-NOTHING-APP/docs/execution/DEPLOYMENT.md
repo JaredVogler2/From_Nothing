@@ -86,6 +86,12 @@ credentials.
 - Rollback: unset the variable, or return to the previous policy. The stage never wrote anything a disabled run
   depends on.
 
+## Optional native scheduling core
+
+`FOCUS_NATIVE_CORE=true` uses the Rust ledger and crew core when the `focus-native` wheel is installed, with plans
+byte-identical to the Python core's. Without the wheel, the app runs the Python core and the schedule receipt says
+`engine: python`. Build, vendoring and the Connect and Tanzu steps are in `NATIVE_CORE.md`.
+
 ## Posit Connect
 
 The content type is a Python API (WSGI/Flask), entrypoint `app:app`.

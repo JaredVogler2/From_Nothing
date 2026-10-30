@@ -362,27 +362,48 @@ def _plan_summary(plan: Any, run: Any, synthetic: frozenset[str]) -> dict[str, A
     }
 
 
+def schedule_digest(plan: Any) -> str:
+    """Hash of what a plan decides (assignments, duties, dispositions with reasons, completions, costs, commitments)."""
+    from ....codec import content_hash, to_jsonable
+
+    return content_hash(to_jsonable({"assignments": plan.assignments, "duties": plan.duties, "dispositions": plan.job_dispositions,
+                                     "completions": plan.aircraft_completion, "costs": plan.costs, "commitments": plan.commitment_results}))
+
+
 def benchmark_size(app_root: Path, n_aircraft: int, *, budget_seconds: float, max_moves: int | None, solver: bool,
-                   solver_budget_seconds: float | None = None, purposes: tuple[str, ...] = ("EXECUTABLE", "FORECAST")) -> dict[str, Any]:
-    """One complete-scope run in a fresh fixture runtime: acquire the synthetic scale census, schedule, validate."""
+                   solver_budget_seconds: float | None = None, purposes: tuple[str, ...] = ("EXECUTABLE", "FORECAST"),
+                   shape: str = "scale", engines: tuple[str, ...] = ("python",), shape_options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """One complete-scope run in a fresh fixture runtime: acquire the synthetic census, schedule, validate.
+
+    ``shape`` is ``scale`` (the P22 14-operation template) or ``production`` (the program's stated per-aircraft shape,
+    ``focus.data.production_fixture``). ``engines`` lists the ledger/crew cores to run (``python``, ``native``); every
+    engine schedules the SAME admitted snapshot in this process, so their plans can be compared byte for byte.
+    """
     from ....clock import FIXTURE_CUTOFF, FixedClock
     from ....config import Settings
     from ....data.acquisition import acquire, load_snapshot
     from ....data.fixture_builder import build_scale_fixture
     from ....data.fixture_reader import FixtureSourceReader
+    from ....data.production_fixture import build_production_fixture
     from ....data.repositories import Repositories
     from ....data.store import FixtureStore
     from ....domain import Purpose
     from ....runtime import build_services
     from .orchestrator import schedule_snapshot
 
+    if shape not in ("scale", "production") or not engines or set(engines) - {"python", "native"}:
+        raise ValueError(f"shape must be scale or production and engines python/native, got {shape!r} {engines!r}")
     with tempfile.TemporaryDirectory(prefix=f"focus-bench-{n_aircraft}-") as tmp:
-        settings = Settings.from_env({}, app_root=app_root, inprocess_worker=False)
         clock = FixedClock(FIXTURE_CUTOFF)
-        services = build_services(settings, repositories=Repositories(FixtureStore(Path(tmp)), mode="fixture", scope_key=settings.scope_key,
+
+        def services_for(engine: str) -> Any:
+            settings = Settings.from_env({}, app_root=app_root, inprocess_worker=False, native_core=engine == "native")
+            return build_services(settings, repositories=Repositories(FixtureStore(Path(tmp)), mode="fixture", scope_key=settings.scope_key,
                                                                       clock=clock), clock=clock)
+
+        services = services_for(engines[0])
         started = time.monotonic()
-        datasets = build_scale_fixture(n_aircraft)
+        datasets = build_scale_fixture(n_aircraft) if shape == "scale" else build_production_fixture(n_aircraft, **(shape_options or {}))
         reader = FixtureSourceReader(app_root / "fixtures" / "inputs" / "manufacturing_demo",
                                      overrides={name: ds.to_json() for name, ds in datasets.items()})
         outcome = acquire(services, reader, cutoff=FIXTURE_CUTOFF, idempotency_key=f"benchmark-{n_aircraft}")
@@ -390,24 +411,37 @@ def benchmark_size(app_root: Path, n_aircraft: int, *, budget_seconds: float, ma
             return {"aircraft": n_aircraft, "status": "SOURCE_REJECTED", "reason": str(outcome.rejection)}
         snapshot = load_snapshot(services.repositories, outcome.snapshot_id)
         synthetic = frozenset(p.id for p in snapshot.people if p.synthetic)
+        label = "SYNTHETIC_SCALE_FIXTURE" if shape == "scale" else "PRODUCTION_SHAPED_SYNTHETIC_FIXTURE"
         result: dict[str, Any] = {
-            "aircraft": n_aircraft, "status": "COMPLETE", "label": "SYNTHETIC_SCALE_FIXTURE (real readiness not established)",
+            "aircraft": n_aircraft, "status": "COMPLETE", "shape": shape, "label": f"{label} (real readiness not established)",
+            "shape_options": shape_options or {},
             "inventory": {"source_task_rows": len(datasets["master_task_list"].rows), "census_lines": len(snapshot.census), "jobs": len(snapshot.jobs),
                           "phases": len(snapshot.phases), "phase_kinds": _count(ph.kind.value for ph in snapshot.phases),
                           "people": len(snapshot.people), "virtual_people": len(synthetic), "pools": len(snapshot.pools), "edges": len(snapshot.edges),
                           "releases": len(snapshot.releases), "rework_links": len(snapshot.rework_links), "shortages": len(snapshot.shortages),
                           "dispositions": _count(d.disposition.value for d in snapshot.dispositions)},
             "acquire_seconds": round(time.monotonic() - started, 2), "budget_seconds": budget_seconds, "max_moves": max_moves,
-            "solver_requested": solver, "solver_budget_seconds": solver_budget_seconds, "plans": {},
+            "solver_requested": solver, "solver_budget_seconds": solver_budget_seconds, "plans": {}, "engines": {},
         }
         for purpose in purposes:
-            t = time.monotonic()
-            plan, run = schedule_snapshot(services, snapshot, purpose=Purpose(purpose), budget_seconds=budget_seconds, max_moves=max_moves,
-                                          solver=solver, solver_budget_seconds=solver_budget_seconds)
-            summary = _plan_summary(plan, run, synthetic)
-            summary["wall_seconds"] = round(time.monotonic() - t, 2)
-            summary["inventory_complete"] = summary["jobs"] == len(snapshot.jobs)
-            result["plans"][purpose] = summary
+            runs: dict[str, Any] = {}
+            for engine in engines:
+                svc = services if engine == engines[0] else services_for(engine)
+                t = time.monotonic()
+                plan, run = schedule_snapshot(svc, snapshot, purpose=Purpose(purpose), budget_seconds=budget_seconds, max_moves=max_moves,
+                                              solver=solver, solver_budget_seconds=solver_budget_seconds)
+                wall = round(time.monotonic() - t, 2)
+                runs[engine] = {"wall_seconds": wall, "engine": run.native, "candidate_id": plan.id, "plan_hash": plan.hash,
+                                "schedule_digest": schedule_digest(plan), "stages_ms": {st.stage: st.runtime_ms for st in run.stages},
+                                "valid": run.validation.valid, "rss_mb_after": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024)}
+                if engine == engines[0]:
+                    summary = _plan_summary(plan, run, synthetic)
+                    summary["wall_seconds"] = wall
+                    summary["inventory_complete"] = summary["jobs"] == len(snapshot.jobs)
+                    result["plans"][purpose] = summary
+            first = runs[engines[0]]
+            result["engines"][purpose] = {"runs": runs, "identical": all(r["plan_hash"] == first["plan_hash"] and r["candidate_id"] == first["candidate_id"]
+                                                                          for r in runs.values())}
         result["max_rss_mb"] = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024)
         return result
 
@@ -419,6 +453,9 @@ def benchmark_failures(runs: list[dict[str, Any]]) -> list[str]:
         if r.get("status") != "COMPLETE":
             out.append(f"{r.get('aircraft')}: {r.get('status')}")
             continue
+        for purpose, e in (r.get("engines") or {}).items():
+            if not e["identical"]:
+                out.append(f"{r['aircraft']} {purpose}: engines produced different plans")
         for purpose, p in r["plans"].items():
             if not p["validation"]["valid"]:
                 out.append(f"{r['aircraft']} {purpose}: {p['validation']['violations']} violations")
@@ -465,9 +502,14 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--solver", choices=["off", "on"], default="off")
     parser.add_argument("--solver-budget-seconds", type=float, default=None)
     parser.add_argument("--app-root", required=True)
+    parser.add_argument("--shape", choices=["scale", "production"], default="scale")
+    parser.add_argument("--engines", default="python", help="comma-separated: python, native (all schedule one snapshot)")
+    parser.add_argument("--purposes", default="EXECUTABLE,FORECAST")
+    parser.add_argument("--shape-options", default="{}", help="JSON keyword arguments for the production shape")
     args = parser.parse_args(argv)
     result = benchmark_size(Path(args.app_root), args.size, budget_seconds=args.budget_seconds, max_moves=args.max_moves, solver=args.solver == "on",
-                            solver_budget_seconds=args.solver_budget_seconds)
+                            solver_budget_seconds=args.solver_budget_seconds, purposes=tuple(x for x in args.purposes.split(",") if x),
+                            shape=args.shape, engines=tuple(x for x in args.engines.split(",") if x), shape_options=json.loads(args.shape_options))
     from ....codec import to_jsonable
 
     sys.stdout.write(json.dumps(to_jsonable(result), sort_keys=True))

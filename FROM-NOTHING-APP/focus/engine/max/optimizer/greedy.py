@@ -126,6 +126,8 @@ def _floors(ctx: EngineContext, result: DecodeResult, phase: Phase) -> tuple[int
 
 def _candidate_starts(ctx: EngineContext, ledger: DutyLedger, shift, pool_id: str, first: int) -> list[int]:
     travel = ctx.travel.changed_aircraft_minutes
+    if getattr(ledger, "native", False):
+        return ledger.candidate_starts(pool_id, shift.id, first, shift.cutoff_instant, travel, MAX_STARTS_PER_SHIFT)
     points = {first, shift.cutoff_instant}
     for m in ctx.pool_members(pool_id):
         for x in ledger.free_points(m, shift.id):

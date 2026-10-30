@@ -2,7 +2,7 @@
 
 Checks, in a fresh interpreter:
 
-1. every ``focus`` module imports with optional packages (ortools, playwright,
+1. every ``focus`` module imports with optional packages (ortools, playwright, focus_native,
    pymssql, any LLM SDK) *blocked*, so optional dependencies are lazy;
 2. the imported ``focus`` package is the local one under the app root (no
    sibling application or donor package is picked up);
@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parent.parent
-BLOCKED = ("ortools", "playwright", "pymssql", "openai", "anthropic", "requests_oauthlib")
+BLOCKED = ("ortools", "playwright", "pymssql", "openai", "anthropic", "requests_oauthlib", "focus_native")
 
 PROBE = r"""
 import importlib, importlib.abc, json, pkgutil, sys

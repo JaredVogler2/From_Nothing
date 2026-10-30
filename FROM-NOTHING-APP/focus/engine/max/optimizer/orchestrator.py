@@ -98,6 +98,7 @@ class MaxRun:
     validator_rejections: list[str] = field(default_factory=list)
     validation: Any = None               # final ValidationReceipt (schedule)
     solver: dict[str, Any] = field(default_factory=dict)   # optional CP-SAT stage receipt (P22); DISABLED by default
+    native: dict[str, Any] = field(default_factory=dict)   # which ledger/crew core ran; never part of the candidate
 
 
 def make_priority(ctx: EngineContext, state: PriorityState, weights: Mapping[int, Fraction] | None,
@@ -448,7 +449,10 @@ def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy:
     if fixed_ranks and purpose is not Purpose.SCENARIO:
         raise DomainError("PRIORITY_SCENARIO_ONLY", "planned task priorities are scenario inputs, never executable or forecast settings")
     policy = policy or services.policy
-    ctx = EngineContext(snapshot, policy, purpose)
+    from ...native import status as native_status
+
+    requested = bool(getattr(services.settings, "native_core", False))
+    ctx = EngineContext(snapshot, policy, purpose, native=requested)
     defense = defended_tasks(services, ctx)
     optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves, incumbent_id=defense.incumbent_id,
                              fixed_ranks=fixed_ranks, cancel=cancel)
@@ -460,6 +464,7 @@ def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy:
     outcome = improve(optimizer, run, enabled=switch, bounds=budgets(policy, solver_budget_seconds) if switch else None,
                       cancel=cancel or (lambda: False))
     run.solver = outcome.receipt()
+    run.native = native_status(requested)
     run.validated, run.validator_rejections = optimizer._gate_count, list(optimizer._gate_log)
     if switch:
         run.stages.append(StageMetric("solver", int((time.monotonic() - began) * 1000), len(outcome.probes),
@@ -492,7 +497,7 @@ def worker_schedule(services: Any, run: Any) -> dict[str, Any]:
     plan, mrun = schedule(services, source_run=str(req.get("source_run_id", "")), purpose=Purpose(req.get("purpose", "EXECUTABLE")),
                           budget_seconds=budget)
     return {"status": "scheduled", **receipt(plan), "validation": receipt_summary(mrun.validation, limit=20),
-            "publishable": mrun.validation.valid, "published": False, "solver": mrun.solver,
+            "publishable": mrun.validation.valid, "published": False, "solver": mrun.solver, "engine": mrun.native,
             "note": "a candidate is never executable; signing and promotion stay in the trusted publication worker or CLI"}
 
 
@@ -504,4 +509,4 @@ def cli_schedule(services: Any, args: Any) -> dict[str, Any]:
     plan, run = schedule(services, source_run=args.source_run, purpose=Purpose(args.purpose), budget_seconds=args.budget_seconds)
     return {"status": "ok", **receipt(plan), "validation": receipt_summary(run.validation, limit=20), "publishable": run.validation.valid,
             "search_validation": {"validated": run.validated, "rolled_back": run.validator_rejections, "seed_valid": run.seed_valid},
-            "solver": run.solver, "published": False}
+            "solver": run.solver, "engine": run.native, "published": False}

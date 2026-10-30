@@ -1,0 +1,13 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "focus-native"
+version = "0.1.0"
+description = "Optional native scheduling core for FOCUS (exact parity with the Python ledger and crew selection)"
+requires-python = ">=3.12,<3.13"
+
+[tool.maturin]
+module-name = "focus_native"
+features = ["pyo3/extension-module"]

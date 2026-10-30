@@ -1,0 +1,19 @@
+[package]
+name = "focus-native"
+version = "0.1.0"
+edition = "2021"
+description = "FOCUS scheduling hot path (duty ledger, crew selection) with exact parity to the Python reference"
+license = "UNLICENSED"
+publish = false
+
+[lib]
+name = "focus_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py312"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
