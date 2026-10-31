@@ -125,7 +125,12 @@ def resolve(job: Job, *, status_class: str, policy: Policy, mode: str, stats: Ma
     stats_id = None
     method = "FOCUS_FLOW_BUDGET.CRITICAL_FLOW_MINUTES by exact JOB_NUMBER+LINE_NUMBER"
     uncertainty = "standard"
-    if job.rework_class in rework_classes:
+    if status_class == "IN_PROGRESS" and job.remaining_elapsed is not None and job.remaining_elapsed > 0:
+        # remaining actual work is preserved (S08), for rework as for any job: never the full estimate again
+        elapsed = job.remaining_elapsed
+        basis = "REMAINING_ELAPSED"
+        method = f"sourced remaining elapsed after performed {job.performed_elapsed} minutes"
+    elif job.rework_class in rework_classes:
         chosen = None
         for level in fallback:
             key = (job.rework_class, job.team or "") if level == "CLASS_TEAM" else (job.rework_class,)
@@ -148,12 +153,8 @@ def resolve(job: Job, *, status_class: str, policy: Policy, mode: str, stats: Ma
     elif status_class == "IN_PROGRESS":
         if job.remaining_elapsed is None:
             blocked.append("REMAINING_UNKNOWN: in-progress job without sourced remaining elapsed work")
-        elif job.remaining_elapsed <= 0:
-            blocked.append("REMAINING_NONPOSITIVE: sourced remaining work is not positive; completion needs verified evidence")
         else:
-            elapsed = job.remaining_elapsed
-            basis = "REMAINING_ELAPSED"
-            method = f"sourced remaining elapsed after performed {job.performed_elapsed} minutes"
+            blocked.append("REMAINING_NONPOSITIVE: sourced remaining work is not positive; completion needs verified evidence")
     else:
         flow = budget.critical_flow_minutes if budget else None
         if budget is not None and (flow is None or flow <= 0):

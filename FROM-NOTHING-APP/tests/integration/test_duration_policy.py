@@ -152,3 +152,21 @@ def test_a18_insufficient_or_stale_cohort_is_unavailable_never_flat_60(services_
     pu3 = job_id(old, 1303, "PU3")
     assert pu3 not in _estimates(old) and any(r.startswith("DURATION_UNAVAILABLE") for r in _reasons(old, pu3))
     assert all(e.elapsed_minutes != 60 or e.measurement_basis != "ELAPSED_ACTIVE_EPISODES" for e in old.durations)
+
+
+def test_in_progress_rework_keeps_its_remaining_minutes_not_a_fresh_p75(services_factory) -> None:
+    """S08: remaining actual work is preserved for rework as for any job; the full P75 is never scheduled again."""
+    data = {name: json.loads((INPUTS / f"{name}.json").read_text()) for name in ("master_task_list", "work_progress")}
+    for r in data["master_task_list"]["rows"]:
+        if (r["LINE_NUMBER"], r["SHOP_ORDER_IDENTIFIER"]) == (1303, "NC3"):
+            r.update({"SHOP_ORDER_STATUS": "IN WORK", "ACT_START": "2026-10-25T08:00:00"})
+    data["work_progress"]["rows"].append({"AS_OF_UTC": "2026-10-26T09:30:00Z", "EVIDENCE_REF": "TEST-PROGRESS-NC3", "LINE_NUMBER": 1303,
+                                          "PERFORMED_ELAPSED_MINUTES": 30, "REMAINING_ELAPSED_MINUTES": 20, "SOI": "NC3"})
+    services = services_factory()
+    outcome = acquire_demo(services, key="rework-remaining", reader=FixtureSourceReader(INPUTS, overrides=data))
+    assert outcome.status == "COMPLETE", outcome.rejection
+    snap = load_snapshot(services.repositories, outcome.snapshot_id)
+    nc3 = _estimates(snap)[job_id(snap, 1303, "NC3")]
+    assert nc3.measurement_basis == "REMAINING_ELAPSED" and nc3.elapsed_minutes == 20      # not the cohort's P75 of 52
+    pu3 = _estimates(snap)[job_id(snap, 1303, "PU3")]
+    assert pu3.statistic == "P75" and pu3.elapsed_minutes == 52                              # open rework still uses the cohort

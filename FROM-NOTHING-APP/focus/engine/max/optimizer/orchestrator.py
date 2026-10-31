@@ -255,7 +255,7 @@ class MaxOptimizer:
         baseline = self.evaluate(self.decode(neutral, None))
         seed_decoded = self.clock()
         weight_records = self.registry.derive_priority_weights(completion_minutes(baseline.completions))
-        urgency = cost_of_delay(self.ctx, self.registry, baseline.decode)
+        urgency = cost_of_delay(self.ctx, self.registry, baseline.decode, weight_records)      # dispatch through the Registry weights
         timed: dict[str, float] = {}
 
         def validate_seed() -> bool:
@@ -284,11 +284,13 @@ class MaxOptimizer:
                                   f"independent validation {'passed' if seed_valid else 'FAILED'}{overlap}"))
         best, best_state, best_valid = baseline, neutral, seed_valid
         accepted = self._admit(econ, best, best_valid, "economic_redispatch")
+        best_urgency: Mapping[str, int] | None = None              # the order the best candidate was decoded with
         if accepted:
-            best, best_valid = econ, True
+            best, best_valid, best_urgency = econ, True, urgency
         stages.append(StageMetric("economic_redispatch", int((econ_decoded - t_econ + self.clock() - econ_decoded) * 1000), 1, int(accepted),
                                   f"{urgency_summary(urgency)}; exact complete-candidate comparison"))
-        run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages, seed_valid=seed_valid, urgency=urgency)
+        run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages, seed_valid=seed_valid,
+                     urgency=dict(best_urgency or {}))
         t = self.clock()
         phase_job = {pid: p.job for pid, p in self.ctx.phases.items()}
         repaired = 0
@@ -298,7 +300,7 @@ class MaxOptimizer:
                 run.stop_reason = "cancelled" if self.cancel() else "deadline"
                 break
             state = best_state.apply(Move("boost", (job,), "repair"), self.peers)
-            cand = self.evaluate(self.decode(state, urgency))
+            cand = self.evaluate(self.decode(state, best_urgency))
             if self._admit(cand, best, best_valid, "delay_repair"):
                 best, best_state, best_valid = cand, state, True
                 repaired += 1
@@ -325,7 +327,7 @@ class MaxOptimizer:
                 batch.append((move, rng.getstate()))
             states = [best_state.apply(move, self.peers) for move, _ in batch]
             accepted = False
-            for (move, after), state, cand in zip(batch, states, self._decode_all(states, urgency)):
+            for (move, after), state, cand in zip(batch, states, self._decode_all(states, best_urgency)):
                 moves += 1
                 if self._admit(cand, best, best_valid, f"neighborhoods:{move.kind}"):
                     best, best_state, best_valid = cand, state, True

@@ -1,16 +1,18 @@
 """Dispatch urgency for the economic passes and the search's long-wait focus (S12 MAX steps 5-7).
 
 **Cost of delay.** Which aircraft gets a mechanic is decided, among ready phases of one dispatch class, by the cost of
-delaying each phase: its aircraft's daily penalty (customer and minor model terms, in cents), reduced by how much slack
+delaying each phase. That cost is its aircraft's economic weight from ``EconomicsRegistry.derive_priority_weights``: the
+marginal penalty of one more day at the aircraft's projected completion in the seed, under its customer and minor-model
+terms, penalty curve and cap. An aircraft already at its cap carries no weight. The weight is reduced by how much slack
 the phase has before it would make the aircraft late. A phase on the critical chain of a late aircraft carries the full
-daily penalty; a phase with days of slack carries little, whatever its aircraft. This is the apparent-tardiness-cost
-rule for weighted lateness, made exact for repeatability:
+weight; a phase with days of slack carries little, whatever its aircraft. This is the apparent-tardiness-cost rule for
+weighted lateness, made exact for repeatability:
 
 * slack = latest start - earliest start, where latest start = due - CPM tail x the line's calendar factor (calendar
   minutes per open work minute) and earliest start is the phase's start in the neutral seed (the cutoff when unplaced);
 * decay = ``COD_DECAY[slack // COD_STEP_MINUTES]``, an integer table of exp(-i/4) in millionths, so one day of slack
   divides the urgency by e; no floating point is involved, so every platform orders phases identically;
-* aircraft without known economics carry no urgency (unknown is never zero cost; it simply does not rank).
+* aircraft without a known weight carry no urgency (unknown is never zero cost; it simply does not rank).
 
 **Long waits.** A phase that waited more than ``LONG_WAIT_MINUTES`` past its earliest start lost that time to other jobs
 of its team. The search aims part of its moves at the jobs with the longest waits, moving each ahead of the jobs it
@@ -24,7 +26,7 @@ from typing import TYPE_CHECKING, Mapping
 from ....domain import to_minute
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ....economics.registry import EconomicsRegistry
+    from ....economics.registry import EconomicsRegistry, WeightRecord
     from ...model import EngineContext
     from .greedy import DecodeResult
 
@@ -45,14 +47,16 @@ def calendar_factor(ctx: "EngineContext", line: int) -> Fraction:
     return Fraction(shifts[-1].end - shifts[0].start, open_minutes)
 
 
-def cost_of_delay(ctx: "EngineContext", registry: "EconomicsRegistry", seed: "DecodeResult") -> dict[str, int]:
-    """phase -> daily penalty in cents x decay(slack); phases of aircraft without known economics are absent."""
+def cost_of_delay(ctx: "EngineContext", registry: "EconomicsRegistry", seed: "DecodeResult",
+                  weights: Mapping[int, "WeightRecord"]) -> dict[str, int]:
+    """phase -> the aircraft's registry weight (marginal cents of one more day at its projected completion) x decay(slack);
+    phases of aircraft without a known, positive weight are absent."""
     factors: dict[int, Fraction] = {}
     out: dict[str, int] = {}
     for pid, phase in ctx.phases.items():
         line = phase.line
-        ok, _ = registry.supported(line)
-        if not ok:
+        weight = weights.get(line)
+        if weight is None or weight.status != "known" or not weight.marginal_cents:
             continue
         econ = registry.economics[line]
         factor = factors.get(line)
@@ -65,7 +69,7 @@ def cost_of_delay(ctx: "EngineContext", registry: "EconomicsRegistry", seed: "De
         step = max(0, latest - earliest) // COD_STEP_MINUTES
         decay = COD_DECAY[step] if step < len(COD_DECAY) else 0
         if decay:
-            out[pid] = int(econ.daily_rate_cents * decay)                                                    # type: ignore[operator]
+            out[pid] = int(weight.marginal_cents * decay)
     return out
 
 
@@ -84,4 +88,4 @@ def long_waits(decode: "DecodeResult", focus: int = LONG_WAIT_FOCUS) -> list[str
 
 
 def urgency_summary(urgency: Mapping[str, int]) -> str:
-    return f"cost of delay for {len(urgency)} phases (aircraft daily penalty, decayed by slack)"
+    return f"cost of delay for {len(urgency)} phases (registry marginal weight at the projected completion, decayed by slack)"
