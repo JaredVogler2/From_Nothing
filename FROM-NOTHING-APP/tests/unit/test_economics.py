@@ -74,7 +74,7 @@ def test_a45_exact_evaluator_beats_weighted_tardiness_and_keeps_unknowns(policy)
 
 
 def _snapshot(services_factory, key, mutate):
-    names = ("econ_term", "econ_original_sale_basis", "econ_contract_assignment", "cs_windows")
+    names = ("econ_term", "econ_original_sale_basis", "econ_contract_assignment", "econ_liability_checkpoint", "cs_windows")
     data = {n: json.loads((INPUTS / f"{n}.json").read_text()) for n in names}
     mutate(data)
     services = services_factory()
@@ -156,3 +156,45 @@ def test_accrued_accounting_floor_bounds_exposure_increment_and_weight(policy) -
     assert weights[1].marginal_cents == 0 and weights[2].marginal_cents > 0                     # the floor, not the rate, decides
     costs = line_costs(reg, {1: _done(1, DUE + timedelta(days=3))}, due - 60)
     assert costs[1].total_cents == Fraction(300000) and costs[1].controllable_cents == Fraction(50000)
+
+
+def test_utc_columns_are_read_as_utc_never_in_the_source_zone(services_factory) -> None:
+    """Database columns named ...Utc hold UTC: a naive value is UTC (the demo declares America/New_York for the dataset)."""
+    def effective_from(value):
+        def mutate(d):
+            next(t for t in d["econ_term"]["rows"] if t.get("LineNumber") == 1302)["EffectiveFromUtc"] = value
+        return mutate
+
+    naive = {e.line: e for e in _snapshot(services_factory, "utc-naive", effective_from("2026-10-26T08:00:00.000")).economics}
+    assert naive[1302].selector_type == "AIRCRAFT_OVERRIDE" and naive[1302].daily_rate_cents == 1000   # 08:00Z is before the 10:00Z cutoff
+    offset = {e.line: e for e in _snapshot(services_factory, "utc-offset", effective_from("2026-10-26T08:00:00-04:00")).economics}
+    assert offset[1302].selector_type != "AIRCRAFT_OVERRIDE"                                           # 12:00Z: not yet effective
+
+
+def test_liability_floor_uses_checkpoints_booked_by_the_cutoff_and_never_breaks_a_tie_by_row_order(services_factory) -> None:
+    basis_id = "6a1f0c64-0000-5000-8000-0000000000b1"
+
+    def with_checkpoints(*checkpoints):
+        def mutate(d):
+            term = next(t for t in d["econ_term"]["rows"] if t.get("LineNumber") == 1301)
+            d["econ_original_sale_basis"]["rows"] = [{
+                "OriginalBasisId": basis_id, "LineNumber": 1301, "ContractKey": "DEMO-K9", "ScenarioRevisionId": term["ScenarioRevisionId"],
+                "AssignmentId": "6a1f0c64-0000-5000-8000-0000000000b2", "OriginalSalePrice": "1000000.0000", "Currency": "USD",
+                "Provenance": "ACTUAL", "TermId": term["TermId"], "SourceReference": "FIXTURE-BASIS", "CreatedAtUtc": "2026-10-20T12:00:00.000"}]
+            d["econ_original_sale_basis"]["receipt"]["certified_empty"] = False
+            d["econ_liability_checkpoint"] = json.loads((INPUTS / "econ_liability_checkpoint.json").read_text())
+            d["econ_liability_checkpoint"]["rows"] = [{
+                "CheckpointId": f"6a1f0c64-0000-5000-8000-0000000000c{i}", "OriginalBasisId": basis_id, "SequenceNumber": seq,
+                "AsOfUtc": created, "ElapsedLateDays": 1, "AssessedAmount": amount, "CumulativeAccounted": amount,
+                "AssessmentCoverage": "FULL", "AssessmentReference": f"FIXTURE-CP-{i}", "CheckpointKind": "ASSESSMENT", "CreatedAtUtc": created}
+                for i, (seq, amount, created) in enumerate(checkpoints)]
+            d["econ_liability_checkpoint"]["receipt"]["certified_empty"] = False
+        return mutate
+
+    later = {e.line: e for e in _snapshot(services_factory, "cp-later", with_checkpoints(
+        (1, "250.0000", "2026-10-20T12:00:00.000"), (2, "999.0000", "2027-01-05T12:00:00.000"))).economics}
+    assert later[1301].accrued_floor_cents == 25000                                     # the 2027 checkpoint is not known yet
+    tie = {e.line: e for e in _snapshot(services_factory, "cp-tie", with_checkpoints(
+        (2, "250.0000", "2026-10-20T12:00:00.000"), (2, "999.0000", "2026-10-21T12:00:00.000"))).economics}
+    assert tie[1301].accrued_floor_cents is None                                        # unknown, never a row-order pick
+    assert any(r.startswith("CHECKPOINT_SEQUENCE_CONFLICT") for r in tie[1301].reasons)

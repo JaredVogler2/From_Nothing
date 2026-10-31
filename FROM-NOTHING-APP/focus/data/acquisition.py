@@ -213,8 +213,11 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
                                    manifest_hash=manifest_sha, tzp=tzp, policy=policy,
                                    dataset_queries={d.name: d.query_sha for d in run.datasets}, dataset_receipts=receipts,
                                    dataset_captured={d.name: d.captured_at for d in run.datasets if d.status != "FAILED"})
-        except AdmissionError as exc:
-            run = replace(run, status="REJECTED", capture_end=_now(services), rejection={"code": exc.code, "detail": exc.message})
+        except (AdmissionError, ValueError, TypeError, ArithmeticError) as exc:
+            # a value admission cannot read (no offset, null, not a number) rejects the run with a code; it never leaves it CAPTURING
+            rejection = ({"code": exc.code, "detail": exc.message} if isinstance(exc, AdmissionError) else
+                         {"code": "SOURCE_VALUE_INVALID", "detail": str(exc) if hasattr(exc, "code") else f"{type(exc).__name__}: {exc}"})
+            run = replace(run, status="REJECTED", capture_end=_now(services), rejection=rejection)
             _save_run(repos, run, version)
             return AcquisitionOutcome(run.id, "REJECTED", replayed, None, False, None, run.rejection, {d.name: d.status for d in run.datasets}, ())
         snapshot = build.snapshot

@@ -10,7 +10,9 @@
 
 Both return :class:`Capture` objects with raw, JSON-native values. Naive
 ``datetime2`` text stays naive; its timezone comes from the explicit source
-timezone policy at admission time.
+timezone policy at admission time. The exception is a column named ``..._UTC``
+or ``...Utc``: the database holds UTC there, so the live reader writes the
+value with its offset.
 """
 from __future__ import annotations
 
@@ -153,8 +155,15 @@ LIVE_SUPPLEMENTAL_QUERIES: dict[str, str] = {
 }
 
 
-def raw_value(value: Any) -> Any:
-    """Convert driver values to raw JSON-native source text without changing meaning."""
+def is_utc_column(column: str) -> bool:
+    """A column named ``..._UTC`` or ``...Utc``: the database holds UTC there (owner decision, 2026-10-31)."""
+    return column.upper().endswith("_UTC") or column.endswith("Utc")
+
+
+def raw_value(value: Any, utc: bool = False) -> Any:
+    """Convert driver values to raw JSON-native source text without changing meaning. A naive ``datetime2`` from a UTC
+    column is written with its offset, so it reads back as the instant the database means; other naive values stay naive
+    for the dataset's source timezone policy."""
     if value is None or isinstance(value, (str, bool, int)):
         return value
     if isinstance(value, float):
@@ -162,6 +171,8 @@ def raw_value(value: Any) -> Any:
     if isinstance(value, Decimal):
         return str(value)
     if isinstance(value, datetime):
+        if value.tzinfo is None and utc:
+            value = value.replace(tzinfo=UTC)
         if value.tzinfo is None:
             return value.isoformat(timespec="microseconds" if value.microsecond else "seconds")
         return value.isoformat()
@@ -198,11 +209,15 @@ class LiveSourceReader:
         else:
             query_file = spec.query_file
         sql = self._query(query_file)
-        result = self.sql.fetch(spec.name, sql, params)
+        try:
+            result = self.sql.fetch(spec.name, sql, params)
+        except Exception as exc:   # the driver's own error types (connection, login, missing object, denied access): the capture failed
+            raise CaptureError("SOURCE_QUERY_FAILED", f"{spec.name}: {type(exc).__name__}: {exc}") from exc
         columns = tuple(result.columns)
         if columns != spec.columns:
             raise CaptureError("SCHEMA_DRIFT", f"{spec.name}: live columns {list(columns)} differ from {list(spec.columns)}")
-        rows = tuple({c: raw_value(v) for c, v in zip(columns, r)} for r in result.rows)
+        utc = {c: is_utc_column(c) for c in columns}
+        rows = tuple({c: raw_value(v, utc[c]) for c, v in zip(columns, r)} for r in result.rows)
         status = "ROWS" if rows else "EMPTY_UNCERTIFIED"
         receipt = {"complete": True, "certified_empty": False, "producer": f"sql:{spec.source_object or spec.name}",
                    "query": query_file, "row_count": len(rows)}

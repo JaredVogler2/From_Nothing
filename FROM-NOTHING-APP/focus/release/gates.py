@@ -57,9 +57,10 @@ GATES: tuple[Gate, ...] = (
          "Rehearse on a non-production database once LG-01 to LG-04 are resolved, and keep the receipts.",
          "docs/execution/INSTALL_AND_PIPELINE.md"),
     Gate("LG-06", BLOCKING, "Live source readiness",
-         "PERSON_TEAM_MAP and ATTENDANCE_SHIFT were empty when the manual observed them (OD-10), and OD-01 to OD-14 have fixture choices only.",
+         "PERSON_TEAM_MAP and ATTENDANCE_SHIFT were empty when the manual observed them (OD-10), and OD-02 to OD-14 have fixture "
+         "choices only (the owner decided OD-01 on 2026-10-31).",
          "Live snapshots have no executable crews; jobs that depend on an open semantic are blocked or conditional with typed reasons.",
-         "Source owners populate the feeds and record decisions OD-01 to OD-14 in the policy.",
+         "Source owners populate the feeds and record decisions OD-02 to OD-14 in the policy.",
          "docs/execution/SOURCE_READINESS.md"),
     Gate("LG-07", BLOCKING, "Live observation producers",
          "OD-15: no approved producer writes lifecycle events, actual intervals, claims or decisions.",

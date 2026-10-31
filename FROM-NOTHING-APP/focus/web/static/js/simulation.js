@@ -1,5 +1,5 @@
 // Fleet simulation dashboard: one page, twelve modules over the read-only /api/v1/sim/* operations (synthetic data).
-import { api, h, mount, loadingCard, errorCard, metric, table, stateCard, setCsrf } from "./core.js";
+import { api, h, mount, loadingCard, errorCard, metric, table, stateCard, setCsrf, fmtStamp, fmtClock, zoneLabel } from "./core.js";
 import { barChart, lineChart, stackedBars, heatmap, gantt, PALETTE, fmtShort } from "./charts.js";
 
 const TABS = [
@@ -26,7 +26,7 @@ const money = (v) => (v === null || v === undefined ? "—" : "$" + fmtShort(v))
 const pct = (v) => (v === null || v === undefined ? "—" : Math.round(v * 1000) / 10 + "%");
 const num = (v, d = 0) => (v === null || v === undefined ? "—" : Number(v).toLocaleString(undefined, { maximumFractionDigits: d }));
 const signed = (v, f = num) => (v === null || v === undefined ? "" : (v > 0 ? "+" : "") + f(v));
-const when = (iso) => (iso ? iso.replace("T", " ").slice(5, 16) + "Z" : "—");
+const when = fmtStamp;                        // stored and served in UTC, shown in the site's local time
 const PRIOR = { KEPT: "kept", CREW_CHANGED: "kept, new crew", UNSAFE: "moved: prior slot no longer safe", PENDING_MOVE: "moved", MOVED: "moved" };
 const customerColor = new Map();
 function colorFor(key) {
@@ -416,9 +416,9 @@ const RENDER = {
         label: x.kind === "WORK" && x.aircraft_to ? String(x.aircraft_to) : null, note: `${x.kind} aircraft ${x.aircraft_to || "—"} ${when(x.start_utc)}–${when(x.end_utc)}` });
     });
     const lanes = Array.from(byPerson.values());
-    const label = (m) => new Date(m * 60000).toISOString().slice(11, 16);
+    const label = (m) => fmtClock(new Date(m * 60000));
     mount(body,
-      h("div", { class: "view-title" }, h("h1", {}, "Worker Gantt (My Day)"), h("p", { class: "muted" }, "Each person's published duties in the shift: work (blue, labelled with the aircraft), transfer between aircraft (orange), wait (gray). Times in UTC.")),
+      h("div", { class: "view-title" }, h("h1", {}, "Worker Gantt (My Day)"), h("p", { class: "muted" }, `Each person's published duties in the shift: work (blue, labelled with the aircraft), transfer between aircraft (orange), wait (gray). Times are site local time (${zoneLabel(new Date(t0 * 60000))}).`)),
       h("div", { class: "toolbar" }, h("label", {}, "Team", pick)),
       card(`${d.team} — ${lanes.length} people`, chartBox(gantt(lanes, { title: `${d.team} duties in the published shift`, t0, t1, tickLabel: label, width: FULL }))));
   },

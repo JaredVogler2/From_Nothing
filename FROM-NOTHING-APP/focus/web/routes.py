@@ -7,6 +7,7 @@ from flask import Blueprint, Flask, current_app, g, jsonify, redirect, render_te
 from werkzeug.exceptions import HTTPException
 
 from ..codec import CodecError, strict_loads
+from ..policy import PolicyError
 from ..runtime import Services
 from .operations import REGISTRY, ApiResult, Operation, build_envelope, reason
 from .schema import SchemaViolation, coerce_query, validate
@@ -229,6 +230,13 @@ def register(app: Flask, services: Services) -> None:
 
     from .views import MOBILE_TABS, SUPPLEMENTARY, VIEWS
 
+    def _site_tz() -> str:
+        """The zone the app shows times in: the site's (policy shift.timezone). Stored and served times stay UTC."""
+        try:
+            return services.policy.str("shift.timezone")
+        except PolicyError:
+            return "UTC"
+
     @app.context_processor
     def _inject() -> dict[str, Any]:
         ctx = getattr(g, "focus_ctx", None)
@@ -240,4 +248,5 @@ def register(app: Flask, services: Services) -> None:
             "demo_personas": DEMO_PERSONAS if services.settings.identity_provider == "fixture" else {},
             "focus_views": VIEWS + SUPPLEMENTARY,
             "focus_mobile_tabs": MOBILE_TABS,
+            "site_tz": _site_tz(),
         }

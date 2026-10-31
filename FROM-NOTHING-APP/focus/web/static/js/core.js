@@ -93,13 +93,37 @@ export function mount(host, ...children) {
 }
 
 // ---------------------------------------------------------------- formatting
-const TZ = "America/New_York";
+// The database and the API carry UTC; the app shows the site's local time (policy shift.timezone, set on the page).
+export const SITE_TZ = document.querySelector('meta[name="focus-site-tz"]')?.content || "UTC";
+const TZ = SITE_TZ;
+const STAMP = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  hourCycle: "h23", timeZoneName: "short" });
+const stampParts = (d) => Object.fromEntries(STAMP.formatToParts(d).map((p) => [p.type, p.value]));
+
+export function zoneLabel(d = new Date()) {
+  return stampParts(d).timeZoneName || TZ;
+}
 
 export function fmtDateTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleString("en-US", { timeZone: TZ, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }) + " ET";
+  return d.toLocaleString("en-US", { timeZone: TZ, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) + " " + zoneLabel(d);
+}
+
+// Compact local stamp for dense tables: "10-26 08:00 EDT".
+export function fmtStamp(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const p = stampParts(d);
+  return `${p.month}-${p.day} ${p.hour}:${p.minute} ${p.timeZoneName}`;
+}
+
+// Local wall-clock time of an instant, for chart ticks: "08:00".
+export function fmtClock(d) {
+  const p = stampParts(d);
+  return `${p.hour}:${p.minute}`;
 }
 
 export function fmtTime(iso) {

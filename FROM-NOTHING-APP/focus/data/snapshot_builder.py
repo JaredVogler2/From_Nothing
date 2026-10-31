@@ -31,6 +31,7 @@ from ..economics.repository import build_economics
 from ..policy import Policy
 from ..simulation.pools import build_virtual_support, merge_virtual_pools
 from .cs_windows import build_cs_facts, raw_rows
+from .datasets import REQUIRED
 from .duration_gauge import DurationStatistics, compute_statistics
 from .durations import DurationResolution, flow_index, resolve
 from .freshness import freshness_gaps
@@ -77,6 +78,9 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
     master = list(datasets.get("master_task_list", ()))
     if not master and dataset_status.get("master_task_list") != "CERTIFIED_EMPTY":
         raise AdmissionError("CENSUS_UNAVAILABLE", "the WIP census returned no rows without a certified-empty receipt")
+    for name in REQUIRED:                                # S05: a required dataset captures rows or a certified empty result
+        if dataset_status.get(name) == "EMPTY_UNCERTIFIED":
+            raise AdmissionError("MANDATORY_DATASET_EMPTY", f"required dataset {name} returned no rows without a certified-empty receipt")
     for name, status in sorted(dataset_status.items()):
         if status in ("NOT_PROBED", "EMPTY_UNCERTIFIED", "FAILED"):
             effect = "BLOCKS_EXECUTABLE" if status != "FAILED" else "BLOCKS_EXECUTABLE"
@@ -201,7 +205,7 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
 
     # ---- economics ----
     cs_by_line = {line: cs_facts.get((line, proxy_station)) for line in lines}
-    economics = build_economics(datasets=datasets, lines=lines, cs_facts_by_line=cs_by_line, policy=policy, tzp=tzp, tz=tz, cutoff=cutoff)
+    economics = build_economics(datasets=datasets, lines=lines, cs_facts_by_line=cs_by_line, policy=policy, tz=tz, cutoff=cutoff)
 
     # ---- dispositions and census ----
     dispositions: list[JobDisposition] = []

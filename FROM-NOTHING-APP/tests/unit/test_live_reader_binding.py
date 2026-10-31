@@ -43,3 +43,21 @@ def test_source_reads_take_no_parameters(app_root: Path) -> None:
     sql = FakeSql()
     LiveSourceReader(app_root, sql, "DEMO|787|ALL_WIP").capture(DATASETS["etracs_active"], AT, {}, AT)
     assert sql.calls[0][2] == ()
+
+
+def test_naive_database_values_in_utc_columns_are_read_as_utc(app_root: Path) -> None:
+    """Database columns named ..._UTC or ...Utc hold UTC (owner decision): the driver's naive datetime2 keeps its instant."""
+    naive = datetime(2026, 10, 26, 8, 30)
+
+    class OneRow(FakeSql):
+        def fetch(self, name, sql, params=()):  # type: ignore[no-untyped-def]
+            columns = DATASETS[name].columns
+            return QueryResult(name, "sha", columns, (tuple(naive if c.upper().endswith(("_UTC", "TIMESTAMP")) or c.endswith("Utc") else 1
+                                                            for c in columns),))
+
+    inference = LiveSourceReader(app_root, OneRow(), "DEMO|787|ALL_WIP").capture(DATASETS["team_inference"], AT, {}, AT)
+    assert inference.rows[0]["WINDOW_START_UTC"] == "2026-10-26T08:30:00+00:00"            # UTC by its name
+    term = LiveSourceReader(app_root, OneRow()).capture(DATASETS["econ_term"], AT, {}, AT)
+    assert term.rows[0]["EffectiveFromUtc"] == "2026-10-26T08:30:00+00:00"
+    actual = LiveSourceReader(app_root, OneRow()).capture(DATASETS["actual_labor"], AT, {}, AT)
+    assert actual.rows[0]["LOAD_TIMESTAMP"] == "2026-10-26T08:30:00"                         # other naive values keep the source zone policy

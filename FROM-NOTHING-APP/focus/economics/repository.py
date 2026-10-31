@@ -20,6 +20,11 @@ Rules:
 * The due date comes from the explicit due policy. The fixture uses the
   same-run CS744 planning proxy; a populated field alone is never contractual
   due.
+* ``...Utc`` columns are UTC: a naive SQL value is read as UTC, never in a
+  local zone.
+* The accounted floor is the latest checkpoint booked by the cutoff (highest
+  SequenceNumber). Two at the same highest sequence are
+  CHECKPOINT_SEQUENCE_CONFLICT, and no floor is assumed.
 """
 from __future__ import annotations
 
@@ -30,7 +35,7 @@ from typing import Any, Iterable, Mapping
 from zoneinfo import ZoneInfo
 
 from ..contracts.planning import AircraftEconomics, CSFacts
-from ..data.sourcetime import TimezonePolicy, local_midnight_utc
+from ..data.sourcetime import SourceTimeError, local_midnight_utc
 from ..policy import Policy
 
 UTC = timezone.utc
@@ -46,10 +51,19 @@ def _dec(value: Any) -> Decimal | None:
     return out if out.is_finite() else None
 
 
-def _effective(row: Mapping[str, Any], at: datetime, tzp: TimezonePolicy, dataset: str, start_col: str = "EffectiveFromUtc",
-               end_col: str = "EffectiveToUtc") -> bool:
-    start = tzp.parse_local(dataset, row.get(start_col)) if row.get(start_col) else None
-    end = tzp.parse_local(dataset, row.get(end_col)) if row.get(end_col) else None
+def _utc(row: Mapping[str, Any], column: str) -> datetime:
+    """A ``...Utc`` column is UTC by name: a naive SQL ``datetime2`` value is read as UTC, an explicit offset is honored."""
+    raw = row.get(column)
+    try:
+        value = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise SourceTimeError("BAD_SOURCE_DATETIME", f"{column} {raw!r} is not a datetime") from exc
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _effective(row: Mapping[str, Any], at: datetime, start_col: str = "EffectiveFromUtc", end_col: str = "EffectiveToUtc") -> bool:
+    start = _utc(row, start_col) if row.get(start_col) else None
+    end = _utc(row, end_col) if row.get(end_col) else None
     return (start is None or start <= at) and (end is None or at < end)
 
 
@@ -58,7 +72,7 @@ def cents(amount: Decimal) -> Fraction:
 
 
 def build_economics(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], lines: Iterable[int], cs_facts_by_line: Mapping[int, CSFacts | None],
-                    policy: Policy, tzp: TimezonePolicy, tz: ZoneInfo, cutoff: datetime) -> dict[int, AircraftEconomics]:
+                    policy: Policy, tz: ZoneInfo, cutoff: datetime) -> dict[int, AircraftEconomics]:
     supported = set(policy.seq("economics.supported_currencies"))
     precedence = list(policy.seq("economics.selector_precedence"))
     cap_policy = policy.str("economics.cap_policy")
@@ -68,22 +82,28 @@ def build_economics(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], li
     mappings = [r for r in datasets.get("econ_mapping_revision", ()) if r.get("IsCurrent")]
     mapping_id = str(mappings[0]["MappingRevisionId"]) if len(mappings) == 1 else None
     aircraft = {int(r["LineNumber"]): r for r in datasets.get("econ_aircraft_mapping", ()) if mapping_id and str(r["MappingRevisionId"]) == mapping_id}
-    scenarios = [r for r in datasets.get("econ_scenario", ()) if r.get("IsActive") and _effective(r, cutoff, tzp, "econ_scenario")]
+    scenarios = [r for r in datasets.get("econ_scenario", ()) if r.get("IsActive") and _effective(r, cutoff)]
     scenario = scenarios[0] if len(scenarios) == 1 else None
     scenario_id = str(scenario["ScenarioRevisionId"]) if scenario else None
     assignments: dict[int, list[Mapping[str, Any]]] = {}
     for r in datasets.get("econ_contract_assignment", ()):
-        if r.get("IsActive") and str(r.get("ScenarioRevisionId")) == scenario_id and _effective(r, cutoff, tzp, "econ_contract_assignment"):
+        if r.get("IsActive") and str(r.get("ScenarioRevisionId")) == scenario_id and _effective(r, cutoff):
             assignments.setdefault(int(r["LineNumber"]), []).append(r)
-    terms = [r for r in datasets.get("econ_term", ()) if str(r.get("ScenarioRevisionId")) == scenario_id and _effective(r, cutoff, tzp, "econ_term")]
+    terms = [r for r in datasets.get("econ_term", ()) if str(r.get("ScenarioRevisionId")) == scenario_id and _effective(r, cutoff)]
     sale_basis: dict[int, list[Mapping[str, Any]]] = {}
     for r in datasets.get("econ_original_sale_basis", ()):
         sale_basis.setdefault(int(r["LineNumber"]), []).append(r)
-    checkpoints: dict[str, Mapping[str, Any]] = {}
+    # the latest checkpoint known at the cutoff, per original sale basis; None when two share the highest sequence
+    checkpoints: dict[str, Mapping[str, Any] | None] = {}
+    sequence: dict[str, int] = {}
     for r in datasets.get("econ_liability_checkpoint", ()):
-        prev = checkpoints.get(str(r["OriginalBasisId"]))
-        if prev is None or int(r["SequenceNumber"]) > int(prev["SequenceNumber"]):
-            checkpoints[str(r["OriginalBasisId"])] = r
+        if _utc(r, "CreatedAtUtc") > cutoff:
+            continue                                     # booked after the cutoff: not known to this run
+        basis_id, seq = str(r["OriginalBasisId"]), int(r["SequenceNumber"])
+        if basis_id not in sequence or seq > sequence[basis_id]:
+            sequence[basis_id], checkpoints[basis_id] = seq, r
+        elif seq == sequence[basis_id]:
+            checkpoints[basis_id] = None
     out: dict[int, AircraftEconomics] = {}
     for line in sorted(set(lines)):
         reasons: list[str] = []
@@ -159,8 +179,11 @@ def build_economics(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], li
             reasons.append("TERM_AUTHORITY_UNPROVEN: actual liability needs approval and an original sale basis")
         accrued = None
         if basis_row is not None:
-            cp = checkpoints.get(str(basis_row["OriginalBasisId"]))
-            if cp is not None and _dec(cp.get("CumulativeAccounted")) is not None:
+            basis_id = str(basis_row["OriginalBasisId"])
+            cp = checkpoints.get(basis_id)
+            if basis_id in checkpoints and cp is None:
+                reasons.append(f"CHECKPOINT_SEQUENCE_CONFLICT: two checkpoints share sequence {sequence[basis_id]}; no floor is assumed")
+            elif cp is not None and _dec(cp.get("CumulativeAccounted")) is not None:
                 accrued = cents(_dec(cp["CumulativeAccounted"]))  # type: ignore[arg-type]
         cap = None
         if cap_policy == "EXPLICIT_ONLY":

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "type": "PolicyFile",
   "policy_id": "rebuild-v1",
-  "revision": 1,
+  "revision": 2,
   "scope": "DEMO",
   "mode": "fixture",
   "effective_from_utc": "2026-01-01T00:00:00Z",
@@ -16,7 +16,8 @@
     "manual_specified": "Value the manual fixes explicitly for the implementation.",
     "fixture_default": "Explicit fixture/demonstration choice. Valid for fixture mode only; live mode needs an actual source/labor/commercial authority.",
     "demo_default": "Proposed demonstration grading/recognition default (S14). Never an approved labor grade.",
-    "open_decision": "Live semantic not yet resolved by an owner. Fixture choice recorded; live effect is a precise readiness gap."
+    "open_decision": "Live semantic not yet resolved by an owner. Fixture choice recorded; live effect is a precise readiness gap.",
+    "owner_decision": "Live semantic decided by the owner. The ref records the decision and its date; it replaces the matching open decision."
   },
   "values": {
     "scope.all_wip": {
@@ -284,8 +285,8 @@
     },
     "duration.total_mechanics_semantics": {
       "value": "SIMULTANEOUS",
-      "authority": "open_decision",
-      "ref": "S08,P01 OD-01"
+      "authority": "owner_decision",
+      "ref": "S08,P01 OD-01, decided by the owner on 2026-10-31: TOTAL_MECHANICS is the number of mechanics that must be on the job at once to work it"
     },
     "duration.standard_effort_basis": {
       "value": "ELAPSED_TIMES_CREW",
@@ -693,12 +694,6 @@
   },
   "open_decisions": [
     {
-      "id": "OD-01",
-      "topic": "FOCUS_FLOW_BUDGET.TOTAL_MECHANICS semantics",
-      "fixture_choice": "Confirmed simultaneous crew count for the fixture.",
-      "live_effect": "Live jobs keep TOTAL/PRIMARY/ASSIST fields. Executable crew demand needs the producer to confirm simultaneity, or role phases. Until then, live crew demand is an admission gap (FLOW_SEMANTICS_UNCONFIRMED)."
-    },
-    {
       "id": "OD-02",
       "topic": "Elapsed-duration calibration from raw clock intervals",
       "fixture_choice": "Fixture episodes are verified elapsed-active observations (n=30 per class).",
@@ -779,5 +774,15 @@
   {"id": "OD-15", "topic": "Live observation producers (lifecycle facts, actual intervals, claims, decisions, amendments, defect evidence)", "fixture_choice": "Deterministic S18 observation feeds under fixtures/inputs/<scenario>/observations with complete producer receipts and covered-through watermarks.", "live_effect": "queries/actuals readers and 008_lifecycle.sql landing tables are proposed; live collection is NOT_PROBED, so official evaluation stays UNKNOWN until producers and receipts exist."},
   {"id": "OD-16", "topic": "Score policy approval and personal grades", "fixture_choice": "score.policy_status DEMONSTRATION with no approval receipt; personal grades disabled.", "live_effect": "An OFFICIAL grade requires score.policy_approval_ref from the owner; personal grades require their own approved policy."},
   {"id": "OD-17", "topic": "Excusal reviewer identity mapping", "fixture_choice": "Demo persona 'excusal' holds the excusal_decider grant; claimants never decide their own claims.", "live_effect": "The operator maps reviewer subjects to the server-owned excusal_decider grant; without it no decision is admitted and relief stays zero."}
+  ],
+  "decided_decisions": [
+    {
+      "id": "OD-01",
+      "topic": "FOCUS_FLOW_BUDGET.TOTAL_MECHANICS semantics",
+      "decision": "TOTAL_MECHANICS is the number of mechanics that must be on the job at once to work it (simultaneous crew).",
+      "decided_by": "owner",
+      "decided_on": "2026-10-31",
+      "policy_key": "duration.total_mechanics_semantics"
+    }
   ]
 }
