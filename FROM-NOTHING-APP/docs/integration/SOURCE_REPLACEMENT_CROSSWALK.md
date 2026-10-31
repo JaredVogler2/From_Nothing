@@ -153,6 +153,7 @@ A mapping is READY only if it has: owner approval, exact canonical projection an
 ## F. Source-of-truth references
 
 - Exact columns: focus/data/datasets.py
+- What each dataset, feed and column means and what FOCUS does with it today: docs/data/README.md
 - SQL type specs/PK: focus/data/discovery.py, fixtures/source_contracts/s04_contracts.json
 - Exact current query text: queries/source_inputs/ and queries/actuals/ etc.
 - SQL execution allowlist: focus/data/sql.py
