@@ -275,14 +275,19 @@ class ValidationInput:
         return None
 
     def ancestors(self, node: str, memo: dict[str, frozenset[str]]) -> frozenset[str]:
-        """Every hard-edge ancestor of a node (iterative, cycle-safe)."""
+        """Every hard-edge ancestor of a node up to verified completion (iterative, cycle-safe).
+
+        Completion is a fact: a satisfied phase satisfies its successors (V2, the decoder), so nothing above it, such as
+        an unreceived part or a blocking shortage, gates the work below it. The walk neither includes a satisfied phase
+        nor passes through one.
+        """
         if node in memo:
             return memo[node]
         seen: set[str] = set()
         stack = [e.pred_phase for e in self.hard_in.get(node, ())]
         while stack:
             n = stack.pop()
-            if n in seen:
+            if n in seen or self.satisfied_node(n):
                 continue
             seen.add(n)
             if n in memo:
@@ -291,6 +296,10 @@ class ValidationInput:
             stack.extend(e.pred_phase for e in self.hard_in.get(n, ()))
         memo[node] = frozenset(seen)
         return memo[node]
+
+    def satisfied_node(self, node: str) -> bool:
+        phase = self.phases.get(node)
+        return phase is not None and self.satisfied(phase) is not None
 
     def known_node(self, node: str) -> bool:
         return node in self.phases or node in self.releases

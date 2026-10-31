@@ -584,8 +584,12 @@ def sim_methods(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
         stages = _rows(con, "SELECT purpose, seq, stage, runtime_ms, candidates, accepted, note FROM method_stage WHERE shift_no = ? ORDER BY purpose, seq", k)
         moves = _rows(con, "SELECT purpose, seq, move FROM method_move WHERE shift_no = ? ORDER BY purpose, seq", k)
         checks = _rows(con, "SELECT purpose, check_name, count, violations FROM method_check WHERE shift_no = ? ORDER BY purpose, check_name", k)
+        violations = [] if "method_violation" not in {r["name"] for r in _rows(con, "SELECT name FROM sqlite_master WHERE type = 'table'")} else \
+            _rows(con, "SELECT purpose, check_name, code, entity, detail FROM method_violation WHERE shift_no = ? "
+                       "ORDER BY purpose, check_name, code, entity", k)
         shift = _rows(con, "SELECT * FROM sim_shift WHERE shift_no = ?", k)
     return ApiResult("ready", _label({"shift": k, "pulled": pulled, "counts": counts, "stages": stages, "moves": moves, "checks": checks,
+                            "violations": violations,
                             "run": shift[0] if shift else None}))
 
 

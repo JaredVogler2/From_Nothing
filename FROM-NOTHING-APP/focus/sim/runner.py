@@ -43,6 +43,7 @@ from .execute import DayGoals, FloorSpec, attendance_rows, execute_shift, freeze
 from .state import SourceState  # noqa: E402
 
 UTC = timezone.utc
+VIOLATION_ROWS = 500                                            # violations kept per shift and plan: enough to diagnose a failed check
 UNSAFE_CODE = re.compile(r"^[A-Z][A-Z_]+(?=:|$)")            # FLOOR_AFTER_COMMITTED_START, SAFETY_OVERRIDE, ...
 DUTY_DAYS = 1                                   # duties kept per plan: the published shift and the rest of its day
 
@@ -274,6 +275,7 @@ def _write_plan(db: SimDB, k: int, purpose: str, sp: Any, shift: Any, tz) -> Non
     val = run.validation
     bad = Counter(v.check for v in val.violations)
     db.insert("method_check", [(k, purpose, name, count, bad.get(name, 0)) for name, count in sorted(val.check_counts.items())])
+    db.insert("method_violation", [(k, purpose, v.check, v.code, v.entity, v.detail[:500]) for v in val.violations[:VIOLATION_ROWS]])
     outcomes: Counter = Counter()
     for r in plan.commitment_results:
         code = next((m.group(0) for m in map(UNSAFE_CODE.match, (r.attempt1, r.reason)) if m), "") if r.outcome == "UNSAFE" else ""

@@ -5,7 +5,8 @@
 * **Calculated** (``calc_*``): what each shift's admitted snapshot holds: per open job its team, station window,
   duration, crew, earliest start, open part shortage and disposition; per aircraft its customer, minor model, due date
   and daily penalty; per team and shift the pool size and activation cap; inventory counts.
-* **Method** (``method_*``, ``sim_shift``): stage timings and accepted moves of the optimizer, validator check counts,
+* **Method** (``method_*``, ``sim_shift``): stage timings and accepted moves of the optimizer, validator check counts and
+  the first violations of each failed check (code, entity and detail),
   the defense outcome of every incumbent commitment (with the code of each UNSAFE one), stop reason, decision digest and
   each step's wall time.
 * **Results and outcomes** (``plan_*``, ``exec_*``, ``perf_*``): the published assignments, duties, aircraft completions
@@ -43,6 +44,7 @@ CREATE TABLE IF NOT EXISTS method_stage (
   shift_no INTEGER, purpose TEXT, seq INTEGER, stage TEXT, runtime_ms INTEGER, candidates INTEGER, accepted INTEGER, note TEXT);
 CREATE TABLE IF NOT EXISTS method_move (shift_no INTEGER, purpose TEXT, seq INTEGER, move TEXT);
 CREATE TABLE IF NOT EXISTS method_check (shift_no INTEGER, purpose TEXT, check_name TEXT, count INTEGER, violations INTEGER);
+CREATE TABLE IF NOT EXISTS method_violation (shift_no INTEGER, purpose TEXT, check_name TEXT, code TEXT, entity TEXT, detail TEXT);
 CREATE TABLE IF NOT EXISTS method_commitment (shift_no INTEGER, purpose TEXT, outcome TEXT, code TEXT, n INTEGER);
 CREATE TABLE IF NOT EXISTS plan_assignment (
   shift_no INTEGER, purpose TEXT, assignment_id TEXT, job_id TEXT, line INTEGER, soi TEXT, kind TEXT, team TEXT,

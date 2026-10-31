@@ -377,7 +377,9 @@ const RENDER = {
           { label: "Candidates", num: true, key: "candidates" }, { label: "Accepted", num: true, key: "accepted" }, { label: "Note", key: "note" }], d.stages)),
       h("div", { class: "grid grid-2" },
         card("Accepted search moves", table([{ label: "#", key: "seq" }, { label: "Move", key: "move" }], d.moves, { empty: "No move improved the plan this shift." })),
-        card("Independent validation", table([{ label: "Check", key: "check_name" }, { label: "Checked", num: true, render: (x) => num(x.count) }, { label: "Violations", num: true, key: "violations" }], d.checks))));
+        card("Independent validation", table([{ label: "Check", key: "check_name" }, { label: "Checked", num: true, render: (x) => num(x.count) }, { label: "Violations", num: true, key: "violations" }], d.checks),
+          (d.violations || []).length ? table([{ label: "Plan", key: "purpose" }, { label: "Check", key: "check_name" }, { label: "Code", key: "code" },
+            { label: "Assignment or edge", key: "entity" }, { label: "Detail", key: "detail" }], d.violations, { caption: "Violations (first 500 per plan)" }) : null))));
   },
 
   async profile(body) {

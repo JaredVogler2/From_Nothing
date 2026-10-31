@@ -27,7 +27,7 @@ Stable check ids:
   budgets; distinct activation against the recomputed cap (``focus.validation.duty``).
 * **V9 parts.** Every own and ancestor part release: confirmed receipt for executable plans;
   precision floor and conditional label for forecasts; unknown, revoked or reopened material
-  blocks.
+  blocks. Ancestors stop at verified completion, which satisfies its successors as in V2.
 
 Extended checks:
 
@@ -405,14 +405,15 @@ def _v5(run: _Run) -> None:
                     run.bad("V5", "CERT_EVIDENCE_FORGED", a.id, f"{r.person} declares evidence {forged[:3]} that is not a source holding row")
 
 
-def _reached(inp: ValidationInput, seeds: Iterable[str]) -> set[str]:
-    """Nodes reached from ``seeds`` through one or more hard edges: exactly the nodes having a seed in
-    ``inp.ancestors(node)``, cycles included (``hard_out`` is ``hard_in`` reversed)."""
+def _reached(inp: ValidationInput, seeds: Iterable[str], stop: frozenset[str] | set[str] = frozenset()) -> set[str]:
+    """Nodes reached from ``seeds`` through one or more hard edges without passing through a ``stop`` node: exactly the
+    nodes having a seed in ``inp.ancestors(node)`` when ``stop`` is the satisfied phases, cycles included
+    (``hard_out`` is ``hard_in`` reversed)."""
     seen: set[str] = set()
     stack = [e.succ_phase for s in seeds for e in inp.hard_out.get(s, ())]
     while stack:
         n = stack.pop()
-        if n in seen:
+        if n in seen or n in stop:
             continue
         seen.add(n)
         stack.extend(e.succ_phase for e in inp.hard_out.get(n, ()))
@@ -420,7 +421,11 @@ def _reached(inp: ValidationInput, seeds: Iterable[str]) -> set[str]:
 
 
 def _v9(run: _Run) -> None:
-    """Part release floors and blocking shortages on every placed phase's hard-edge ancestors.
+    """Part release floors and blocking shortages on every placed phase's hard-edge ancestors, up to verified completion.
+
+    A verified-complete phase satisfies its successors, as in V2 and the decoder: nothing above it gates the work below
+    it (``ValidationInput.ancestors``). A walk through it would condemn work below completed history for an open
+    rework child's part, for example, when the child feeds the root's completed successor (REWORK_REOPENED_ROOT).
 
     One forward pass in topological order carries to every node a summary of what lies above it: the latest part
     floor (a receipt, or a forecast on conditional work), whether some part release above it can never be met (no
@@ -434,6 +439,7 @@ def _v9(run: _Run) -> None:
     executable = inp.purpose is Purpose.EXECUTABLE
     blocking = [s for s in inp.snapshot.shortages if s.status in ("UNKNOWN_ECD", "REOPENED")]
     affected_any = {job for s in blocking for job in s.affected_jobs}
+    satisfied = {pid for pid in inp.phases if inp.satisfied_node(pid)}
     # What each part release imposes on the work below it: (floor minute or None, never met, needs a label).
     own: dict[str, tuple[int | None, bool, bool]] = {}
     for rid, rel in inp.releases.items():
@@ -466,16 +472,18 @@ def _v9(run: _Run) -> None:
             never, label = never or mine[1], label or mine[2]
         phase = inp.phases.get(n)
         shortage = n in shortage_in or (phase is not None and phase.job in affected_any)
+        passes = n not in satisfied                     # completion is a fact: nothing above it reaches below it
         for e in inp.hard_out.get(n, ()):
             s = e.succ_phase
-            if floor is not None and floor > floor_in.get(s, floor - 1):
-                floor_in[s] = floor
-            if never:
-                never_in.add(s)
-            if label:
-                label_in.add(s)
-            if shortage:
-                shortage_in.add(s)
+            if passes:
+                if floor is not None and floor > floor_in.get(s, floor - 1):
+                    floor_in[s] = floor
+                if never:
+                    never_in.add(s)
+                if label:
+                    label_in.add(s)
+                if shortage:
+                    shortage_in.add(s)
             indeg[s] -= 1
             if not indeg[s]:
                 ready.append(s)
@@ -488,7 +496,8 @@ def _v9(run: _Run) -> None:
                 by_job[ph.job].append(pid)
             for s in blocking:
                 affected = set(s.affected_jobs)
-                reach_cache.append((s, affected, _reached(inp, [pid for job in affected for pid in by_job.get(job, ())])))
+                seeds = [pid for job in affected for pid in by_job.get(job, ()) if pid not in satisfied]
+                reach_cache.append((s, affected, _reached(inp, seeds, satisfied)))
         return reach_cache
 
     for a in run.plan.assignments:
@@ -505,7 +514,7 @@ def _v9(run: _Run) -> None:
         stack = [e.pred_phase for e in inp.hard_in.get(n, ())]
         while stack:
             m = stack.pop()
-            if m not in above:
+            if m not in above and m not in satisfied:
                 above.add(m)
                 stack.extend(e.pred_phase for e in inp.hard_in.get(m, ()))
         for node in sorted(above & own.keys()):
