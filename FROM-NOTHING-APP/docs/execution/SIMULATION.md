@@ -217,3 +217,60 @@ teams may read it. Every payload is labelled synthetic and DEMONSTRATION.
 | Data profile | `GET /api/v1/sim/profile` | Workforce, late parts, tasks by station and team, customer mix, pulled table sizes. |
 
 Without a database the operations answer `empty`, with the command that builds one.
+
+## A 50-aircraft, 14-day run
+
+Run on 2026-10-31 with `python -m focus.sim.runner --aircraft 50 --days 14 --db runtime/sim/fleet.db`, from commit
+`29157d9`, on a 4-core, 15 GB container with the native core. All data is synthetic. The run predates later changes:
+concurrency modes (B2), the crew reserve (B3), source freshness (B7), the evidence feeds (B9), the calendar-aware critical
+path (B10), the stored score parts (A14) and recognition facts (A13), stored validator violations, the overrun carry-over
+(its 36 overruns were planned again at full length) and the cost changes below.
+
+**Validity.** All 42 shifts planned both purposes, and every published plan passed the independent validator.
+
+**Time per shift**, in seconds unless noted:
+
+| | Mean | Median | Min | Max |
+| --- | --- | --- | --- | --- |
+| Load (admission) | 102 | 100 | 75 | 143 |
+| Plan (both purposes) | 811 | 797 | 588 | 1,172 |
+| Validate | 71 | 68 | 53 | 104 |
+| Write | 15 | 14 | 11 | 29 |
+| Execute | 4 | 4 | 1 | 6 |
+| Shift total (minutes) | 16.7 | 16.1 | 12.7 | 23.8 |
+
+That is 11.7 hours in all, with a peak of 8.9 GB.
+
+- **Contention.** The slowest shifts ran while test suites shared the four cores. Shifts with the machine to themselves took
+  13 to 16 minutes.
+- **Planning.** In those quiet shifts the planning passes got faster as open work drained: the forecast's first pass took
+  150 s at shift 0 and 124 s at shift 30.
+- **Loading** grows with the finished history, since every completed job stays in the source: 75 s at shift 0, about 90 to
+  100 s late in the run.
+
+**Throughput.** 96,984 dispatched tasks completed and 2,642 slipped (2.7%); 96,450 jobs completed. Open jobs fell from
+138,345 to 102,618 and the executable plan from 38,626 to 16,828 assignments, while verified-complete jobs rose from
+159,664 to 254,277.
+
+**Carry-over.** Each shift planned only what the earlier shifts left open. Across all 41 shift transitions, the 94,613 jobs
+the floor finished were written back COMPLETE before the next cutoff, matching each shift's count. Every one had been open
+work, and none was admitted or planned again (executable or forecast).
+
+**Scores.** 1,302 team-shift goals, all scored (none NEUTRAL).
+
+- **Fleet score.** The pooled score was 99.0 in week 1 and 99.6 in week 2 (attainment 0.989 and 0.996, adherence 0.994
+  and 0.996).
+- **Relief.** 4,036 of 4,647 missed units carried approved relief. Most came from CROSS_TEAM_PREDECESSOR (1,088 claims),
+  LATE_PART (464), CAPACITY_SHORTAGE (228) and REWORK_INJECTION (220).
+- **Not relieved.** 412 same-team-predecessor and 34 overrun claims stayed proposed, and 71 claims were rejected.
+
+**Cost at a late shift.** The source was replayed to shift 40 (355,461 jobs, 466,492 phases) and both purposes were planned
+without an incumbent, before and after the cost changes (commits `29b2427` and `984b8e3`):
+
+| | Before | After |
+| --- | --- | --- |
+| Load | 87.6 s | 76.2 s |
+| Forecast plan | 381.3 s | 371.5 s |
+| Executable plan | 242.6 s | 222.9 s |
+| Validate (both) | 56.4 s | 46.1 s |
+| Decision digests | | identical |
