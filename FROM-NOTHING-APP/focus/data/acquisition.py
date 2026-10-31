@@ -211,7 +211,8 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
                                    cutoff=run.cutoff, created_at=_now(services), datasets=datasets, dataset_status=statuses,
                                    dataset_ids={d.name: d.dataset_id for d in run.datasets}, dataset_lineage=lineage,
                                    manifest_hash=manifest_sha, tzp=tzp, policy=policy,
-                                   dataset_queries={d.name: d.query_sha for d in run.datasets})
+                                   dataset_queries={d.name: d.query_sha for d in run.datasets}, dataset_receipts=receipts,
+                                   dataset_captured={d.name: d.captured_at for d in run.datasets if d.status != "FAILED"})
         except AdmissionError as exc:
             run = replace(run, status="REJECTED", capture_end=_now(services), rejection={"code": exc.code, "detail": exc.message})
             _save_run(repos, run, version)
@@ -333,7 +334,8 @@ def snapshot_for_run(services: Any, run_id: str, policy: Any = None, *, store: b
     build = build_snapshot(run_id=run.id, scope_key=run.scope, site=services.settings.site, program=services.settings.program, mode=run.mode,
                            cutoff=run.cutoff, created_at=run.capture_end or run.cutoff, datasets=datasets, dataset_status=statuses,
                            dataset_ids={d.name: d.dataset_id for d in run.datasets}, dataset_lineage=lineage, manifest_hash=manifest_sha,
-                           tzp=tzp, policy=policy, dataset_queries={d.name: d.query_sha for d in run.datasets})
+                           tzp=tzp, policy=policy, dataset_queries={d.name: d.query_sha for d in run.datasets}, dataset_receipts=receipts,
+                           dataset_captured={d.name: d.captured_at for d in run.datasets if d.status != "FAILED"})
     snap = build.snapshot
     if not store:
         return snap
@@ -366,7 +368,7 @@ def make_reader(services: Any, scenario: str | None = None) -> Any:
         return FixtureSourceReader(settings.fixture_inputs_dir / (scenario or settings.scenario_id))
     from .sql import SqlReader
 
-    return LiveSourceReader(settings.app_root, SqlReader(settings))
+    return LiveSourceReader(settings.app_root, SqlReader(settings), settings.scope_key)
 
 
 def cli_acquire(services: Any, args: Any) -> dict[str, Any]:

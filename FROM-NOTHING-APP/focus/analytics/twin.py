@@ -22,12 +22,18 @@ evaluation revision; it never rewrites the earlier one, which stays readable in 
 * ``unknown`` is what no layer can state: jobs with no placement in either plan, lifecycles that are unknown,
   goals not evaluated yet and people whose attendance is unknown.
 
+**Behind-station value (S01).** Each cell's ``recognition`` is the gate recognition frozen in its goal of record: base
+value and behind-station bonus per job (weight, cap and grace from policy, explicit date basis), labeled
+FROZEN_AT_PUBLICATION and never revalued. ``behind_station`` values each in-scope line and station gate on one display
+date, the selected shift date or else the local knowledge date, with its basis, ages, grace and factor.
+
 **Reconciliation.** These checks are returned with the projection. A failing check is a typed reason, never hidden.
 
 * Each layer's cells sum exactly to its team, shift, line and grand totals (integers, never floats).
 * Each layer's job states partition the census, per line, per team and in total.
 * On an obligation day of the plan of record, the planned standard effort equals the frozen B0.
 * Each evaluated team-shift's observed effort equals its stored evaluation's components.
+* Each goal of record's frozen recognition base equals its frozen effort over ``recognition.base_divisor``.
 * The planned duty minutes equal the duty ledger.
 
 Nothing here schedules, evaluates, signs or writes.
@@ -38,6 +44,7 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from fractions import Fraction
 from typing import Any, Callable, Iterable
+from zoneinfo import ZoneInfo
 
 from ..calendar import parse_shift_id
 from ..domain import Disposition, DutyKind, PhaseKind
@@ -46,6 +53,7 @@ TWIN_VERSION = "focus-twin-v1"
 DUTY_KINDS = tuple(k.value for k in DutyKind)
 FORECAST_BASIS = "CONDITIONAL_FORECAST"
 MEASURED_BASIS = "CANONICAL_EVALUATION_EVIDENCE"
+FROZEN_BASIS = "FROZEN_AT_PUBLICATION"
 PLACED = {Disposition.SCHEDULED.value, Disposition.CONDITIONAL.value, Disposition.VERIFIED_COMPLETE.value}
 
 Coord = tuple[str, date, int, "int | None"]          # team, shift start date, shift number, aircraft line
@@ -56,6 +64,10 @@ Coord = tuple[str, date, int, "int | None"]          # team, shift start date, s
 def blank_plan() -> dict[str, Any]:
     return {"standard_minutes": 0, "assignments": 0, "conditional_assignments": 0, "duty_minutes": {k: 0 for k in DUTY_KINDS},
             "ot_minutes": 0, "virtual_duty_minutes": 0}
+
+
+def blank_recognition() -> dict[str, Any]:
+    return {"base_value": Fraction(0), "bonus_value": Fraction(0), "jobs": 0, "behind_jobs": 0, "unavailable_jobs": 0, "date_bases": {}}
 
 
 def blank_observed() -> dict[str, Any]:
@@ -160,6 +172,56 @@ def plan_cells(inp: Inputs, purpose: str) -> tuple[dict[Coord, dict[str, Any]], 
         if person is not None and person.synthetic:
             cell["virtual_duty_minutes"] += minutes
     return dict(cells), notes
+
+
+def recognition_cells(inp: Inputs, visible: Callable[[str | None], bool]) -> tuple[dict[Coord, dict[str, Any]], list[dict[str, Any]]]:
+    """Frozen gate recognition of each goal of record, by coordinate, and its check against the goal's frozen effort.
+
+    Base and behind-station bonus value are read from the gate contexts publication froze in the goal
+    (``analytics.points.gate_context``), valued at the goal's shift date. They are shown, never revalued.
+    """
+    divisor = inp.services.policy.int("recognition.base_divisor")
+    cells: dict[Coord, dict[str, Any]] = defaultdict(blank_recognition)
+    checks = []
+    for (team, shift_id), record in sorted(inp.registry.records.items()):
+        if record.goal is None or not visible(team):
+            continue
+        _, day, number = parse_shift_id(shift_id)
+        base = Fraction(0)
+        for job, c in sorted(record.goal.gate_contexts.items()):
+            cell = cells[(team, day, number, inp.line_of(job))]
+            cell["base_value"] += c.base_value
+            cell["bonus_value"] += c.bonus_value or 0
+            cell["jobs"] += 1
+            cell["behind_jobs"] += 1 if c.behind_raw else 0
+            cell["unavailable_jobs"] += 1 if c.basis == "UNAVAILABLE" else 0
+            cell["date_bases"][c.basis] = cell["date_bases"].get(c.basis, 0) + 1
+            base += c.base_value
+        frozen = Fraction(record.goal.standard_person_minutes, divisor)
+        checks.append({"check": "RECOGNITION_EQUALS_FROZEN_EFFORT", "team": team, "shift_id": shift_id, "ok": base == frozen,
+                       "mismatch": {} if base == frozen else {"twin": str(base), "frozen": str(frozen)}})
+    return dict(cells), checks
+
+
+def behind_stations(inp: Inputs, visible: Callable[[str | None], bool], states: dict[str, tuple[str, tuple[str, ...]]], valuation: date, *,
+                    team: str | None, line: int | None) -> list[dict[str, Any]]:
+    """Each aircraft line and station gate in scope, valued on ``valuation`` (S01: weight, cap, grace, explicit date basis)."""
+    from .points import behind_station
+
+    facts = {(f.line, f.station): f for f in inp.canon.snapshot.cs_facts}
+    jobs: Counter[tuple[int, str | None]] = Counter()
+    open_jobs: Counter[tuple[int, str | None]] = Counter()
+    for j in inp.canon.snapshot.jobs:
+        if visible(j.team) and (team is None or j.team == team) and (line is None or j.key.line == line):
+            jobs[(j.key.line, j.station)] += 1
+            open_jobs[(j.key.line, j.station)] += 0 if states[j.id][0] == "complete" else 1
+    out = []
+    for (ln, station), n in sorted(jobs.items(), key=lambda kv: (kv[0][0], kv[0][1] or "")):
+        f = facts.get((ln, station))
+        gate = f.gate_date if f is not None and f.status == "ADMITTED" else None
+        out.append({"line": ln, "station": station, "cs_status": "NO_CS_FACT" if f is None else f.status, "jobs": n,
+                    "open_jobs": open_jobs[(ln, station)]} | behind_station(inp.services.policy, gate, valuation))
+    return out
 
 
 def conditional_reasons(plan: Any) -> dict[str, int]:
@@ -438,10 +500,12 @@ def build_twin(services: Any, canon: Any, registry: Any, *, visible: Callable[[s
     planned_all, planned_notes = plan_cells(inp, "EXECUTABLE")
     forecast_all, forecast_notes = plan_cells(inp, "FORECAST")
     observed_all, evaluations, unknown_evals, eval_checks = observed_cells(inp, visible)
+    recognition_all, recognition_checks = recognition_cells(inp, visible)
     layers = {"observed": {k: v for k, v in observed_all.items() if keep(k)},
               "planned": {k: v for k, v in planned_all.items() if keep(k)},
-              "forecast": {k: v for k, v in forecast_all.items() if keep(k)}}
-    blanks = {"observed": blank_observed, "planned": blank_plan, "forecast": blank_plan}
+              "forecast": {k: v for k, v in forecast_all.items() if keep(k)},
+              "recognition": {k: v for k, v in recognition_all.items() if keep(k)}}
+    blanks = {"observed": blank_observed, "planned": blank_plan, "forecast": blank_plan, "recognition": blank_recognition}
     totals = {layer: rollup(cells, blanks[layer]) for layer, cells in layers.items()}
 
     revision = {"source_run_id": canon.source_run_id, "snapshot_id": canon.snapshot.id, "plan_id": canon.plan_id("EXECUTABLE"),
@@ -457,10 +521,16 @@ def build_twin(services: Any, canon: Any, registry: Any, *, visible: Callable[[s
         cells.append({"key": key,
                       "observed": None if coord not in layers["observed"] else layers["observed"][coord] | {"basis": MEASURED_BASIS},
                       "planned": layers["planned"].get(coord),
-                      "forecast": None if coord not in layers["forecast"] else layers["forecast"][coord] | {"basis": FORECAST_BASIS}})
+                      "forecast": None if coord not in layers["forecast"] else layers["forecast"][coord] | {"basis": FORECAST_BASIS},
+                      "recognition": None if coord not in layers["recognition"] else layers["recognition"][coord] | {"basis": FROZEN_BASIS}})
 
     states, lifecycle_error = observed_job_states(inp, None if run is None else run.as_of)
     inv = inventory(inp, visible, states, team=team, line=line)
+    valuation = day if day is not None else known.astimezone(ZoneInfo(policy.str("shift.timezone"))).date()
+    behind = {"valuation_date": valuation, "valuation_basis": "SELECTED_SHIFT_DATE" if day is not None else "KNOWLEDGE_DATE",
+              "date_basis": policy.str("gate.date_basis"), "weight": policy.int("gate.weight"), "cap_days": policy.int("gate.cap_days"),
+              "proxy_grace_days": policy.int("gate.proxy_grace_days"),
+              "stations": behind_stations(inp, visible, states, valuation, team=team, line=line)}
     attendance = []
     avail = {(a.person, a.pool) for a in canon.snapshot.availability}
     for pool in canon.snapshot.pools:
@@ -476,6 +546,7 @@ def build_twin(services: Any, canon: Any, registry: Any, *, visible: Callable[[s
     checks += inventory_check(inv)
     checks += b0_checks(inp, planned_all, visible)
     checks += [c for c in eval_checks if team is None or c["team"] == team]
+    checks += [c for c in recognition_checks if team is None or c["team"] == team]
     checks += [ledger_check(inp, "EXECUTABLE", planned_all, planned_notes, visible), ledger_check(inp, "FORECAST", forecast_all, forecast_notes, visible)]
 
     max_age = timedelta(hours=policy.int("dispatch.max_source_age_hours"))
@@ -507,10 +578,12 @@ def build_twin(services: Any, canon: Any, registry: Any, *, visible: Callable[[s
         "cutoffs": cutoffs, "cells": cells, "totals": totals,
         "forecast_conditions": conditional_reasons(canon.plan("FORECAST")),
         "inventory": inv,
+        "behind_station": behind,
         "unknown": {"jobs": inv["unknown_jobs"], "evaluations": [u for u in unknown_evals if team is None or u["team"] == team],
                     "attendance": attendance},
         "reconciliation": {"ok": not failed, "checks": checks},
         "reasons": reasons,
         "note": "observed = stored canonical evaluation evidence and verified lifecycle facts; planned = accepted EXECUTABLE plan; "
-                "forecast = accepted FORECAST plan (conditional); unknown = what no layer can state",
+                "forecast = accepted FORECAST plan (conditional); recognition = gate recognition frozen in each goal of record; "
+                "unknown = what no layer can state",
     }

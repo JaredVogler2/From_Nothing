@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import functools
 import hashlib
 import json
 import math
@@ -50,12 +51,21 @@ class CodecError(ValueError):
 def format_utc(value: datetime) -> str:
     if value.tzinfo is None or value.utcoffset() is None:
         raise CodecError("NAIVE_DATETIME", f"datetime {value!r} has no timezone")
-    value = value.astimezone(UTC)
+    return _format_utc(value)
+
+
+@functools.lru_cache(maxsize=1 << 17)
+def _format_utc(value: datetime) -> str:
+    """RFC3339 UTC text of an aware datetime. Equal instants give equal text, so caching by value is exact."""
+    if value.tzinfo is not UTC:
+        value = value.astimezone(UTC)
+    if value.year < 1000:                                   # strftime's own padding rules for unusual years
+        text = value.strftime("%Y-%m-%dT%H:%M:%S.%f" if value.microsecond else "%Y-%m-%dT%H:%M:%S")
+        return text + "Z"
     if value.microsecond:
-        text = value.strftime("%Y-%m-%dT%H:%M:%S.%f")
-    else:
-        text = value.strftime("%Y-%m-%dT%H:%M:%S")
-    return text + "Z"
+        return (f"{value.year:04d}-{value.month:02d}-{value.day:02d}T{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
+                f".{value.microsecond:06d}Z")
+    return f"{value.year:04d}-{value.month:02d}-{value.day:02d}T{value.hour:02d}:{value.minute:02d}:{value.second:02d}Z"
 
 
 def parse_utc(text: str) -> datetime:
@@ -119,51 +129,128 @@ def fraction_from_json(data: Any) -> Fraction:
 # ---------------------------------------------------------------------------
 
 def to_jsonable(value: Any) -> Any:
-    """Convert typed domain values into JSON-native structures (deterministically)."""
-    if value is None or isinstance(value, (str, bool)):
-        return value
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        if not math.isfinite(value):
-            raise CodecError("NONFINITE", f"non-finite float {value!r}")
-        return value
-    if isinstance(value, enum.Enum):
-        return to_jsonable(value.value)
-    if isinstance(value, datetime):
-        return format_utc(value)
-    if isinstance(value, date):
-        return value.isoformat()
-    if isinstance(value, Decimal):
-        if not value.is_finite():
-            raise CodecError("NONFINITE", f"non-finite decimal {value!r}")
-        return str(value)
-    if isinstance(value, Fraction):
-        return fraction_to_json(value)
-    if dataclasses.is_dataclass(value) and not isinstance(value, type):
-        return {f.name: to_jsonable(getattr(value, f.name)) for f in dataclasses.fields(value)}
-    if isinstance(value, (dict, types.MappingProxyType)):
-        out: dict[str, Any] = {}
-        for key, item in value.items():
-            if isinstance(key, enum.Enum):
-                key = key.value
-            if isinstance(key, bool) or not isinstance(key, (str, int)):
-                raise CodecError("BAD_KEY", f"object keys must be strings, got {key!r}")
-            skey = str(key)
-            if skey in out:
-                raise CodecError("DUPLICATE_KEY", f"duplicate key after conversion: {skey!r}")
-            out[skey] = to_jsonable(item)
+    """Convert typed domain values into JSON-native structures (deterministically).
+
+    Each type is resolved once to its converter (``_encoder_for``, which follows the same order of checks as the rules
+    above, subclasses included) and cached; a dataclass's field names are read once per class.
+    """
+    tp = type(value)
+    enc = _ENCODERS.get(tp)
+    if enc is None:
+        enc = _encoder_for(tp)
+    return enc(value)
+
+
+_NATIVE = frozenset({str, int, bool, type(None)})          # returned unchanged by to_jsonable
+
+
+def _identity(value: Any) -> Any:
+    return value
+
+
+def _enc_float(value: float) -> float:
+    if not math.isfinite(value):
+        raise CodecError("NONFINITE", f"non-finite float {value!r}")
+    return value
+
+
+def _enc_enum(value: enum.Enum) -> Any:
+    return to_jsonable(value.value)
+
+
+def _enc_date(value: date) -> str:
+    return value.isoformat()
+
+
+def _enc_decimal(value: Decimal) -> str:
+    if not value.is_finite():
+        raise CodecError("NONFINITE", f"non-finite decimal {value!r}")
+    return str(value)
+
+
+def _enc_mapping(value: Any) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, item in value.items():
+        if isinstance(key, enum.Enum):
+            key = key.value
+        if isinstance(key, bool) or not isinstance(key, (str, int)):
+            raise CodecError("BAD_KEY", f"object keys must be strings, got {key!r}")
+        skey = str(key)
+        if skey in out:
+            raise CodecError("DUPLICATE_KEY", f"duplicate key after conversion: {skey!r}")
+        out[skey] = item if type(item) in _NATIVE else to_jsonable(item)
+    return out
+
+
+def _enc_sequence(value: Any) -> list[Any]:
+    native = _NATIVE
+    return [item if type(item) in native else to_jsonable(item) for item in value]
+
+
+def _enc_set(value: Any) -> list[Any]:
+    items = [to_jsonable(item) for item in value]
+    return sorted(items, key=lambda x: canonical_dumps(x))
+
+
+def _unsupported(tp: type) -> Any:
+    def enc(value: Any) -> Any:
+        raise CodecError("UNSUPPORTED_TYPE", f"cannot serialize {tp.__name__}")
+    return enc
+
+
+def _dataclass_encoder(cls: type) -> Any:
+    names = tuple(f.name for f in dataclasses.fields(cls))
+    native = _NATIVE
+
+    def enc(value: Any) -> dict[str, Any]:
+        out = {}
+        for name in names:
+            item = getattr(value, name)
+            out[name] = item if type(item) in native else to_jsonable(item)
         return out
-    if isinstance(value, (list, tuple)):
-        return [to_jsonable(item) for item in value]
-    if isinstance(value, (set, frozenset)):
-        items = [to_jsonable(item) for item in value]
-        return sorted(items, key=lambda x: canonical_dumps(x))
-    raise CodecError("UNSUPPORTED_TYPE", f"cannot serialize {type(value).__name__}")
+    return enc
+
+
+def _encoder_for(tp: type) -> Any:
+    """The converter for every value of exact type ``tp`` (checks in the order of the encoding rules)."""
+    if tp is type(None) or issubclass(tp, (str, bool, int)):
+        enc = _identity
+    elif issubclass(tp, float):
+        enc = _enc_float
+    elif issubclass(tp, enum.Enum):
+        enc = _enc_enum
+    elif issubclass(tp, datetime):
+        enc = format_utc
+    elif issubclass(tp, date):
+        enc = _enc_date
+    elif issubclass(tp, Decimal):
+        enc = _enc_decimal
+    elif issubclass(tp, Fraction):
+        enc = fraction_to_json
+    elif dataclasses.is_dataclass(tp) and not issubclass(tp, type):
+        enc = _dataclass_encoder(tp)
+    elif issubclass(tp, (dict, types.MappingProxyType)):
+        enc = _enc_mapping
+    elif issubclass(tp, (list, tuple)):
+        enc = _enc_sequence
+    elif issubclass(tp, (set, frozenset)):
+        enc = _enc_set
+    else:
+        return _unsupported(tp)                             # not cached: an unsupported type is an error path
+    _ENCODERS[tp] = enc
+    return enc
+
+
+_ENCODERS: dict[type, Any] = {}
 
 
 def canonical_dumps(value: Any) -> bytes:
     """Canonical UTF-8 JSON bytes for hashing and storage."""
+    if _CANON is not None:
+        try:
+            return _CANON.dumps(value)
+        except Exception:  # noqa: BLE001 - the Python path decides: it returns the same bytes or raises the exact error
+            pass
     return json.dumps(
         to_jsonable(value),
         sort_keys=True,
@@ -173,6 +260,76 @@ def canonical_dumps(value: Any) -> bytes:
     ).encode("utf-8")
 
 
+# ---------------------------------------------------------------------------
+# native canonical encoder (optional; byte-identical)
+# ---------------------------------------------------------------------------
+
+_CANON: Any = None          # focus_native.Canon while enabled
+
+
+def _native_kind(tp: type) -> tuple[int, tuple[str, ...] | None]:
+    """The encoding rule ``_encoder_for`` picks for exact type ``tp``, as the native encoder's code, with a dataclass's
+    field names in the order ``sort_keys`` writes them. Same order of checks: a str, int or bool subclass (an enum
+    included) is written as JSON writes the base type."""
+    if tp is type(None):
+        return 0, None
+    if issubclass(tp, str):
+        return 1, None
+    if issubclass(tp, bool):
+        return 2, None
+    if issubclass(tp, int):
+        return 3, None
+    if issubclass(tp, float):
+        return 4, None
+    if issubclass(tp, enum.Enum):
+        return 5, None
+    if issubclass(tp, datetime):
+        return 6, None
+    if issubclass(tp, date):
+        return 7, None
+    if issubclass(tp, (Decimal, Fraction)):
+        return 8, None
+    if dataclasses.is_dataclass(tp) and not issubclass(tp, type):
+        return 9, tuple(sorted(f.name for f in dataclasses.fields(tp)))
+    if issubclass(tp, (dict, types.MappingProxyType)):
+        return 10, None
+    if issubclass(tp, (list, tuple)):
+        return 11, None
+    if issubclass(tp, (set, frozenset)):
+        return 12, None
+    return 13, None
+
+
+def enable_native_codec(on: bool = True) -> bool:
+    """Route canonical JSON, content hashes and digest ids through the native core when it is installed.
+
+    The native encoder writes exactly the bytes of the Python path (``tests/unit/test_native_codec.py``). Values it does
+    not handle natively, and every error, go through the Python path, so results and error codes never change. Returns
+    whether the native encoder is now active.
+    """
+    global _CANON
+    _CANON = None
+    if on:
+        try:
+            import focus_native  # type: ignore[import-not-found]
+        except ImportError:
+            return False
+        canon = getattr(focus_native, "Canon", None)
+        if canon is not None:
+            _CANON = canon(_native_kind, to_jsonable, format_utc)
+    return _CANON is not None
+
+
+def native_codec() -> Any:
+    """The active native encoder, or None."""
+    return _CANON
+
+
+def _native_dumps(value: Any) -> bytes:
+    """``canonical_dumps`` for a value that is already JSON-native (parsed JSON or ``to_jsonable`` output)."""
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
+
+
 def sha256_hex(data: bytes | str) -> str:
     if isinstance(data, str):
         data = data.encode("utf-8")
@@ -180,7 +337,52 @@ def sha256_hex(data: bytes | str) -> str:
 
 
 def content_hash(value: Any) -> str:
+    if _CANON is not None:
+        try:
+            return _CANON.sha256(value)
+        except Exception:  # noqa: BLE001 - see canonical_dumps
+            pass
     return sha256_hex(canonical_dumps(value))
+
+
+def canonical_stream(value: Any, write: Any, chunk: int = 256) -> None:
+    """Write exactly ``canonical_dumps(value)`` to ``write`` in pieces, for a dict with string keys at the top.
+
+    Keys go in sorted order and every list or tuple value is written item by item, so a record with hundreds of
+    thousands of items is never held as one JSON structure or string. JSON joins list items with "," and wraps them in
+    "[]" with each item encoded alone, so the bytes are the same as one ``canonical_dumps`` call.
+    """
+    if not isinstance(value, dict) or not all(type(k) is str for k in value):
+        write(canonical_dumps(value))
+        return
+    write(b"{")
+    for n, key in enumerate(sorted(value)):
+        if n:
+            write(b",")
+        write(_native_dumps(key))
+        write(b":")
+        item = value[key]
+        if isinstance(item, (list, tuple)) and len(item) > chunk:
+            write(b"[")
+            for i in range(0, len(item), chunk):
+                part = _native_dumps([to_jsonable(x) for x in item[i:i + chunk]])
+                write(part[1:-1] if i == 0 else b"," + part[1:-1])
+            write(b"]")
+        else:
+            write(canonical_dumps(item))
+    write(b"}")
+
+
+def streamed_content_hash(value: Any) -> str:
+    """``content_hash`` computed with ``canonical_stream`` (same digest, bounded memory; the native encoder streams too)."""
+    if _CANON is not None:
+        try:
+            return _CANON.sha256(value)
+        except Exception:  # noqa: BLE001 - see canonical_dumps
+            pass
+    digest = hashlib.sha256()
+    canonical_stream(value, digest.update)
+    return digest.hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -208,13 +410,33 @@ def _finite_float(text: str) -> float:
 
 
 def strict_loads(data: bytes | str) -> Any:
+    """Strict JSON decode: duplicate keys and non-finite numbers are rejected.
+
+    Canonical input (what ``canonical_dumps`` writes, e.g. every stored envelope) takes a fast path: parsed with the
+    built-in dict construction, it re-encodes to exactly the same bytes, which proves no key was duplicated (a duplicate
+    would have been dropped and the bytes would differ). Anything else is parsed with the duplicate-rejecting hook.
+    """
     if isinstance(data, (bytes, bytearray)):
+        raw = bytes(data)
         try:
-            text = bytes(data).decode("utf-8")
+            text = raw.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise CodecError("BAD_UTF8", "payload is not valid UTF-8") from exc
     else:
         text = data
+        raw = None
+    try:
+        fast = json.loads(text, parse_constant=_reject_constant, parse_float=_finite_float)
+    except CodecError:
+        raise
+    except (ValueError, RecursionError) as exc:
+        raise CodecError("BAD_JSON", f"malformed JSON: {exc}") from exc
+    try:
+        canonical = _native_dumps(fast) == (raw if raw is not None else text.encode("utf-8"))
+    except (ValueError, TypeError, RecursionError):
+        canonical = False
+    if canonical:
+        return fast
     try:
         return json.loads(
             text,
@@ -239,130 +461,252 @@ def _hints(cls: type) -> dict[str, Any]:
     return cached
 
 
-def from_jsonable(tp: Any, data: Any, path: str = "$") -> Any:
-    """Decode JSON-native ``data`` into type ``tp`` strictly."""
+def from_jsonable(tp: Any, data: Any, path: Any = "$") -> Any:
+    """Decode JSON-native ``data`` into type ``tp`` strictly.
+
+    Each type is compiled once into a decoder (``_compile``) that applies exactly the rules below and is cached. A path
+    is built as (parent, segment) pairs and turned into text only when an error message needs it.
+    """
+    dec = _DECODERS.get(tp)
+    if dec is None:
+        dec = _compile(tp)
+    return dec(data, path)
+
+
+_DECODERS: dict[Any, Any] = {}
+
+
+def _p(path: Any) -> str:
+    """Text of a lazy path: "$", then ".name" for fields and keys and "[i]" for items."""
+    segments = []
+    while type(path) is tuple:
+        path, segment = path
+        segments.append(f"[{segment}]" if type(segment) is int else segment)
+    return path + "".join(reversed(segments))
+
+
+def _compile(tp: Any) -> Any:
+    try:
+        dec = _build_decoder(tp)
+    except TypeError:                                         # unhashable or exotic type objects: decode uncached
+        return lambda data, path: _build_decoder(tp)(data, path)
+    try:
+        _DECODERS[tp] = dec
+    except TypeError:
+        pass
+    return dec
+
+
+def _null_check(tp: Any) -> Any:
+    def check(path: Any) -> CodecError:
+        return CodecError("MISSING_VALUE", f"{_p(path)}: null not allowed for {tp}")
+    return check
+
+
+def _build_decoder(tp: Any) -> Any:
     if tp is Any or tp is object:
-        return data
+        return lambda data, path: data
     origin = get_origin(tp)
     if origin is Union or origin is types.UnionType:
         args = get_args(tp)
-        if data is None:
-            if type(None) in args:
-                return None
-            raise CodecError("MISSING_VALUE", f"{path}: null not allowed")
-        errors = []
-        for arg in args:
-            if arg is type(None):
-                continue
-            try:
-                return from_jsonable(arg, data, path)
-            except CodecError as exc:
-                errors.append(exc.code)
-        raise CodecError("TYPE_MISMATCH", f"{path}: value does not match {tp} ({errors})")
+        nullable = type(None) in args
+        options = tuple(arg for arg in args if arg is not type(None))
+
+        def dec_union(data: Any, path: Any) -> Any:
+            if data is None:
+                if nullable:
+                    return None
+                raise CodecError("MISSING_VALUE", f"{_p(path)}: null not allowed")
+            errors = []
+            for arg in options:
+                try:
+                    return from_jsonable(arg, data, path)
+                except CodecError as exc:
+                    errors.append(exc.code)
+            raise CodecError("TYPE_MISMATCH", f"{_p(path)}: value does not match {tp} ({errors})")
+        return dec_union
     if origin is Literal:
         allowed = get_args(tp)
-        if not any(type(data) is type(option) and data == option for option in allowed):
-            raise CodecError("BAD_LITERAL", f"{path}: {data!r} not in {allowed}")
-        return data
+
+        def dec_literal(data: Any, path: Any) -> Any:
+            if not any(type(data) is type(option) and data == option for option in allowed):
+                raise CodecError("BAD_LITERAL", f"{_p(path)}: {data!r} not in {allowed}")
+            return data
+        return dec_literal
     if tp is type(None):
-        if data is not None:
-            raise CodecError("TYPE_MISMATCH", f"{path}: expected null")
-        return None
-    if data is None:
-        raise CodecError("MISSING_VALUE", f"{path}: null not allowed for {tp}")
+        def dec_none(data: Any, path: Any) -> Any:
+            if data is not None:
+                raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected null")
+            return None
+        return dec_none
+    null = _null_check(tp)
     if origin in (tuple,):
         args = get_args(tp)
-        if not isinstance(data, list):
-            raise CodecError("TYPE_MISMATCH", f"{path}: expected array")
         if len(args) == 2 and args[1] is Ellipsis:
-            return tuple(from_jsonable(args[0], item, f"{path}[{i}]") for i, item in enumerate(data))
-        if len(args) != len(data):
-            raise CodecError("TYPE_MISMATCH", f"{path}: expected {len(args)} items")
-        return tuple(from_jsonable(a, item, f"{path}[{i}]") for i, (a, item) in enumerate(zip(args, data)))
+            item_tp = args[0]
+
+            def dec_tuple_var(data: Any, path: Any) -> Any:
+                if data is None:
+                    raise null(path)
+                if not isinstance(data, list):
+                    raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected array")
+                item = _DECODERS.get(item_tp) or _compile(item_tp)
+                return tuple([item(x, (path, i)) for i, x in enumerate(data)])
+            return dec_tuple_var
+
+        def dec_tuple_fixed(data: Any, path: Any) -> Any:
+            if data is None:
+                raise null(path)
+            if not isinstance(data, list):
+                raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected array")
+            if len(args) != len(data):
+                raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected {len(args)} items")
+            return tuple(from_jsonable(a, x, (path, i)) for i, (a, x) in enumerate(zip(args, data)))
+        return dec_tuple_fixed
     if origin in (list,):
-        (arg,) = get_args(tp) or (Any,)
-        if not isinstance(data, list):
-            raise CodecError("TYPE_MISMATCH", f"{path}: expected array")
-        return [from_jsonable(arg, item, f"{path}[{i}]") for i, item in enumerate(data)]
+        (item_tp,) = get_args(tp) or (Any,)
+
+        def dec_list(data: Any, path: Any) -> Any:
+            if data is None:
+                raise null(path)
+            if not isinstance(data, list):
+                raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected array")
+            item = _DECODERS.get(item_tp) or _compile(item_tp)
+            return [item(x, (path, i)) for i, x in enumerate(data)]
+        return dec_list
     if origin in (dict, typing.Mapping, types.MappingProxyType) or tp in (dict,):
-        args = get_args(tp) or (str, Any)
-        key_tp, val_tp = args
-        if not isinstance(data, dict):
-            raise CodecError("TYPE_MISMATCH", f"{path}: expected object")
-        out = {}
-        for key, item in data.items():
-            if key_tp is int:
-                try:
-                    real_key: Any = int(key)
-                except ValueError as exc:
-                    raise CodecError("BAD_KEY", f"{path}: key {key!r} is not an integer") from exc
-                if str(real_key) != key:
-                    raise CodecError("BAD_KEY", f"{path}: non-canonical integer key {key!r}")
-            elif isinstance(key_tp, type) and issubclass(key_tp, enum.Enum):
-                real_key = key_tp(key)
-            else:
-                real_key = key
-            out[real_key] = from_jsonable(val_tp, item, f"{path}.{key}")
-        return out
+        key_tp, val_tp = get_args(tp) or (str, Any)
+        enum_key = isinstance(key_tp, type) and issubclass(key_tp, enum.Enum)
+
+        def dec_dict(data: Any, path: Any) -> Any:
+            if data is None:
+                raise null(path)
+            if not isinstance(data, dict):
+                raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected object")
+            value = _DECODERS.get(val_tp) or _compile(val_tp)
+            out = {}
+            for key, item in data.items():
+                if key_tp is int:
+                    try:
+                        real_key: Any = int(key)
+                    except ValueError as exc:
+                        raise CodecError("BAD_KEY", f"{_p(path)}: key {key!r} is not an integer") from exc
+                    if str(real_key) != key:
+                        raise CodecError("BAD_KEY", f"{_p(path)}: non-canonical integer key {key!r}")
+                elif enum_key:
+                    real_key = key_tp(key)
+                else:
+                    real_key = key
+                out[real_key] = value(item, (path, f".{key}"))
+            return out
+        return dec_dict
     if isinstance(tp, type):
         if issubclass(tp, enum.Enum):
-            try:
-                return tp(data)
-            except ValueError as exc:
-                raise CodecError("BAD_ENUM", f"{path}: {data!r} is not a valid {tp.__name__}") from exc
+            def dec_enum(data: Any, path: Any) -> Any:
+                if data is None:
+                    raise null(path)
+                try:
+                    return tp(data)
+                except ValueError as exc:
+                    raise CodecError("BAD_ENUM", f"{_p(path)}: {data!r} is not a valid {tp.__name__}") from exc
+            return dec_enum
         if dataclasses.is_dataclass(tp):
-            return _decode_dataclass(tp, data, path)
-        if tp is bool:
-            if not isinstance(data, bool):
-                raise CodecError("TYPE_MISMATCH", f"{path}: expected boolean")
-            return data
-        if tp is int:
-            if isinstance(data, bool) or not isinstance(data, int):
-                raise CodecError("TYPE_MISMATCH", f"{path}: expected integer")
-            return data
-        if tp is float:
-            if isinstance(data, bool) or not isinstance(data, (int, float)):
-                raise CodecError("TYPE_MISMATCH", f"{path}: expected number")
-            if not math.isfinite(float(data)):
-                raise CodecError("NONFINITE", f"{path}: non-finite number")
-            return float(data)
-        if tp is str:
-            if not isinstance(data, str):
-                raise CodecError("TYPE_MISMATCH", f"{path}: expected string")
-            return data
-        if tp is datetime:
-            return parse_utc(data)
-        if tp is date:
-            return parse_iso_date(data)
-        if tp is Decimal:
-            return decimal_from_text(data)
-        if tp is Fraction:
-            return fraction_from_json(data)
-    raise CodecError("UNSUPPORTED_TYPE", f"{path}: cannot decode type {tp!r}")
+            return _dataclass_decoder(tp, null)
+        simple = _SIMPLE.get(tp)
+        if simple is not None:
+            def dec_simple(data: Any, path: Any) -> Any:
+                if data is None:
+                    raise null(path)
+                return simple(data, path)
+            return dec_simple
+
+    def dec_unsupported(data: Any, path: Any) -> Any:
+        if data is None:
+            raise null(path)
+        raise CodecError("UNSUPPORTED_TYPE", f"{_p(path)}: cannot decode type {tp!r}")
+    return dec_unsupported
 
 
-def _decode_dataclass(cls: type, data: Any, path: str) -> Any:
-    if not isinstance(data, dict):
-        raise CodecError("TYPE_MISMATCH", f"{path}: expected object for {cls.__name__}")
-    hints = _hints(cls)
-    fields = {f.name: f for f in dataclasses.fields(cls) if f.init}
-    unknown = sorted(set(data) - set(fields))
-    if unknown:
-        raise CodecError("UNKNOWN_FIELD", f"{path}: unknown field(s) {unknown} for {cls.__name__}")
-    kwargs = {}
-    for name, field_def in fields.items():
-        if name not in data:
-            if field_def.default is not dataclasses.MISSING or field_def.default_factory is not dataclasses.MISSING:  # type: ignore[misc]
-                continue
-            raise CodecError("MISSING_FIELD", f"{path}: missing field {name!r} for {cls.__name__}")
-        kwargs[name] = from_jsonable(hints[name], data[name], f"{path}.{name}")
-    try:
-        return cls(**kwargs)
-    except CodecError:
-        raise
-    except (ValueError, TypeError) as exc:
-        code = getattr(exc, "code", "INVALID_RECORD")
-        raise CodecError(code, f"{path}: {exc}") from exc
+def _dec_bool(data: Any, path: Any) -> bool:
+    if not isinstance(data, bool):
+        raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected boolean")
+    return data
+
+
+def _dec_int(data: Any, path: Any) -> int:
+    if isinstance(data, bool) or not isinstance(data, int):
+        raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected integer")
+    return data
+
+
+def _dec_float(data: Any, path: Any) -> float:
+    if isinstance(data, bool) or not isinstance(data, (int, float)):
+        raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected number")
+    if not math.isfinite(float(data)):
+        raise CodecError("NONFINITE", f"{_p(path)}: non-finite number")
+    return float(data)
+
+
+def _dec_str(data: Any, path: Any) -> str:
+    if not isinstance(data, str):
+        raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected string")
+    return data
+
+
+_SIMPLE: dict[type, Any] = {
+    bool: _dec_bool,
+    int: _dec_int,
+    float: _dec_float,
+    str: _dec_str,
+    datetime: lambda data, path: parse_utc(data),
+    date: lambda data, path: parse_iso_date(data),
+    Decimal: lambda data, path: decimal_from_text(data),
+    Fraction: lambda data, path: fraction_from_json(data),
+}
+
+
+def _dataclass_decoder(cls: type, null: Any) -> Any:
+    fields = None
+
+    def setup() -> tuple:
+        hints = _hints(cls)
+        return tuple((f.name, f".{f.name}", hints[f.name],
+                      f.default is not dataclasses.MISSING or f.default_factory is not dataclasses.MISSING)  # type: ignore[misc]
+                     for f in dataclasses.fields(cls) if f.init)
+
+    def dec_dataclass(data: Any, path: Any) -> Any:
+        nonlocal fields
+        if data is None:
+            raise null(path)
+        if not isinstance(data, dict):
+            raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected object for {cls.__name__}")
+        if fields is None:
+            fields = setup()
+        known = {name for name, _, _, _ in fields}
+        for key in data:
+            if key not in known:
+                unknown = sorted(set(data) - known)
+                raise CodecError("UNKNOWN_FIELD", f"{_p(path)}: unknown field(s) {unknown} for {cls.__name__}")
+        kwargs = {}
+        for name, segment, hint, has_default in fields:
+            if name not in data:
+                if has_default:
+                    continue
+                raise CodecError("MISSING_FIELD", f"{_p(path)}: missing field {name!r} for {cls.__name__}")
+            dec = _DECODERS.get(hint) or _compile(hint)
+            kwargs[name] = dec(data[name], (path, segment))
+        try:
+            return cls(**kwargs)
+        except CodecError:
+            raise
+        except (ValueError, TypeError) as exc:
+            code = getattr(exc, "code", "INVALID_RECORD")
+            raise CodecError(code, f"{_p(path)}: {exc}") from exc
+    return dec_dataclass
+
+
+def _decode_dataclass(cls: type, data: Any, path: Any) -> Any:
+    return from_jsonable(cls, data, path)
 
 
 def decode(cls: type, payload: bytes | str) -> Any:
@@ -403,8 +747,9 @@ class Envelope:
 
 
 def _envelope_hash(fields: dict[str, Any]) -> str:
+    """The body is JSON-native here (sealed fields or a parsed envelope), so it is hashed without conversion."""
     body = {k: v for k, v in fields.items() if k != "content_sha256"}
-    return content_hash(body)
+    return sha256_hex(_native_dumps(body))
 
 
 def seal(

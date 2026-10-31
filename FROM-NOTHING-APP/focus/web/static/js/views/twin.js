@@ -1,6 +1,6 @@
 // Digital Twin (S16): observed, planned, forecast and unknown layers of one canonical revision, reconciled exactly.
 // The browser sums nothing: every total, state count and reconciliation check comes from GET /api/v1/twin.
-import { fmtDate, fmtDateTime, fmtMinutes, h, metric, pill, table } from "../core.js";
+import { fmtDate, fmtDateTime, fmtMinutes, fmtRational, h, metric, pill, table } from "../core.js";
 import { card, dateControl, frame, hashParams, query, reasonList, selectControl, setHashParams, teamOptions, toolbar } from "./common.js";
 import { register } from "./registry.js";
 
@@ -41,6 +41,33 @@ function planColumns(first, forecast) {
   return cols;
 }
 
+// Exact {num, den} from the API -> decimal text for display only; null stays "unknown".
+function exact(x, digits = 1) {
+  return fmtRational(x === null || x === undefined ? null : (typeof x === "object" ? `${x.num}/${x.den}` : String(x)), digits);
+}
+
+function pct(x) {
+  return x === null || x === undefined ? "unavailable" : `${exact({ num: x.num * 100, den: x.den }, 1)}%`;
+}
+
+function behindCard(b) {
+  const valued = b.valuation_basis === "SELECTED_SHIFT_DATE" ? "the selected shift date" : "today, as known";
+  return card("Behind-station value (S01)",
+    h("p", {}, `Weight ${b.weight}, cap ${b.cap_days} days, grace ${b.proxy_grace_days} days on a baseline proxy (applied once). `
+      + `Date basis ${b.date_basis.replaceAll("_", " ")}. Valued on ${fmtDate(b.valuation_date)}, ${valued}.`),
+    h("p", { class: "muted" }, "Bonus factor = weight/100 × min(days behind the effective gate / cap, 1). A missing gate is unavailable, never zero. "
+      + "Recognition already earned stays at the value frozen at publication; this table never raises it."),
+    table([{ key: "line", label: "Line", num: true }, { key: "station", label: "Station" },
+      { key: "gate_date", label: "Gate", render: (r) => (r.gate_date ? fmtDate(r.gate_date) : pill(r.cs_status.replaceAll("_", " "), "warn")) },
+      { key: "basis", label: "Date basis", render: (r) => r.basis.replaceAll("_", " ") },
+      { key: "effective_gate_date", label: "Effective gate", render: (r) => (r.effective_gate_date ? `${fmtDate(r.effective_gate_date)}${r.grace_days ? ` (+${r.grace_days}d grace)` : ""}` : "—") },
+      { key: "behind_days", label: "Days behind", num: true, render: (r) => (r.behind_days === null ? "—" : r.behind_days) },
+      { key: "behind_raw", label: "Behind (of cap)", num: true, render: (r) => pct(r.behind_raw) },
+      { key: "bonus_factor", label: "Bonus factor", num: true, render: (r) => pct(r.bonus_factor) },
+      { key: "open_jobs", label: "Open / jobs", num: true, render: (r) => `${r.open_jobs} / ${r.jobs}` }],
+    b.stations, { caption: "Station gates", empty: "No census jobs in this selection." }));
+}
+
 function drill(label, params) {
   const a = h("a", { href: "#twin" + query(params) }, label);
   return a;
@@ -66,14 +93,15 @@ async function renderTwin(host, context) {
   host.appendChild(h("section", { class: `card ${rec.ok ? "state-reconciled" : "state-blocked"}`, role: "status", "data-reconciled": String(rec.ok) },
     h("strong", {}, rec.ok ? `Reconciled: all ${rec.checks.length} checks pass` : `${failed.length} of ${rec.checks.length} reconciliation checks fail`),
     h("p", { class: "muted" }, "Cells sum exactly to team, shift, line and total; job states partition the census; planned effort equals the frozen "
-      + "B0 of the plan of record; observed effort equals each stored evaluation; duty equals the ledger."),
+      + "B0 of the plan of record; observed effort equals each stored evaluation; frozen recognition equals each goal's effort; duty equals the ledger."),
     failed.length ? reasonList(failed.map((c) => ({ code: c.check, message: JSON.stringify(c.mismatch) }))) : null));
 
-  const o = d.totals.observed.grand, p = d.totals.planned.grand, f = d.totals.forecast.grand;
+  const o = d.totals.observed.grand, p = d.totals.planned.grand, f = d.totals.forecast.grand, g = d.totals.recognition.grand;
   host.appendChild(h("div", { class: "metric-grid" },
     metric("Observed earned (Cp)", fmtMinutes(o.earned_minutes), `of ${fmtMinutes(o.goal_minutes)} goal effort (B)`, "layer-observed"),
     metric("Planned standard", fmtMinutes(p.standard_minutes), `${p.assignments} assignments`, "layer-planned"),
     metric("Forecast standard", fmtMinutes(f.standard_minutes), `${f.conditional_assignments} conditional · virtual ${fmtMinutes(f.virtual_duty_minutes)}`, "layer-forecast"),
+    metric("Frozen recognition", `${exact(g.base_value)} + ${exact(g.bonus_value)}`, `base + gate bonus · ${g.behind_jobs} of ${g.jobs} jobs behind gate`, "layer-planned"),
     metric("Unknown jobs", d.unknown.jobs.length, `${d.inventory.total.jobs} jobs in the census`, "layer-unknown")));
 
   const c = d.cutoffs;
@@ -105,6 +133,7 @@ async function renderTwin(host, context) {
     { key: "observed", label: "Observed", render: (r) => states(r.observed) }, { key: "planned", label: "Planned", render: (r) => states(r.planned) },
     { key: "forecast", label: "Forecast", render: (r) => states(r.forecast) }, { key: "unknown", label: "Unknown", num: true }],
   d.inventory.by_line, { caption: "Inventory", empty: "No census jobs in this selection." })));
+  host.appendChild(behindCard(d.behind_station));
 
   host.appendChild(card("Unknown (what no layer can state)",
     table([{ key: "job", label: "Job" }, { key: "team", label: "Team" }, { key: "observed", label: "Observed" }, { key: "planned", label: "Planned" },
@@ -121,6 +150,8 @@ async function renderTwin(host, context) {
     { key: "observed", label: "Observed earned / goal", render: (r) => (r.observed ? `${fmtMinutes(r.observed.earned_minutes)} / ${fmtMinutes(r.observed.goal_minutes)}` : "not measured") },
     { key: "planned", label: "Planned std", render: (r) => (r.planned ? fmtMinutes(r.planned.standard_minutes) : "—") },
     { key: "forecast", label: "Forecast std", render: (r) => (r.forecast ? fmtMinutes(r.forecast.standard_minutes) : "—") },
+    { key: "recognition", label: "Frozen base + gate bonus",
+      render: (r) => (r.recognition ? `${exact(r.recognition.base_value)} + ${exact(r.recognition.bonus_value)}` : "—") },
     { key: "evaluation", label: "Evaluation", render: (r) => (r.key.evaluation_id ? h("code", {}, `${r.key.evaluation_id} r${r.key.evaluation_revision}`) : "—") }],
   d.cells, { caption: "Twin cells" })));
   host.appendChild(h("p", { class: "muted" }, d.note));

@@ -27,14 +27,16 @@ Stable check ids:
   budgets; distinct activation against the recomputed cap (``focus.validation.duty``).
 * **V9 parts.** Every own and ancestor part release: confirmed receipt for executable plans;
   precision floor and conditional label for forecasts; unknown, revoked or reopened material
-  blocks.
+  blocks. Ancestors stop at verified completion, which satisfies its successors as in V2.
 
 Extended checks:
 
 * **E_INVENTORY**: complete WIP reconciliation.
-* **E_LINEAGE**: snapshot, source run, scope, policy, purpose and hashes.
+* **E_LINEAGE**: snapshot, source run, scope, policy, purpose and hashes; an executable plan also fails on a snapshot whose
+  sources are stale, unclocked or captured too far apart (``focus.data.freshness``).
 * **E_CS**: the same-run raw CS row, load and offsets behind each placed job's station fact.
-* **E_COMMITMENT**: every incumbent task's reported defense outcome.
+* **E_COMMITMENT**: every incumbent task's reported defense outcome, with the incumbent's work located by its position in
+  the job's remaining work (PERFORMED when that work is done, MERGED when an earlier slot already defends it).
 * **E_ECONOMICS**: exact recomputation of completions and costs.
 * **E_CAPABILITY**: the purpose's placeability and conditional labels.
 
@@ -47,11 +49,12 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime
 from typing import Any, Iterable
 
-from ..contracts.planning import CandidatePlan, IncumbentPlan, PlanningSnapshot, ValidationReceipt, Violation
-from ..data.sourcetime import local_to_utc
+from ..calendar import shift_local_minute
+from ..contracts.planning import CandidatePlan, IncumbentPlan, PlanningSnapshot, ValidationReceipt, Violation, locate_position
+from ..data.freshness import EXECUTABLE_BLOCKERS
 from ..domain import (Disposition, DomainError, EdgeType, PersonKey, PhaseKind, Purpose, ReleaseKind, ReleaseStatus, RequirementStatus, digest_id,
                       minute_ceil, to_minute)
 from ..economics.evaluator import JobRelease, aircraft_completions, line_costs, summarize
@@ -66,7 +69,7 @@ GATE_CHECKS = tuple(c for c in REQUIRED_CHECKS if c != "E_COMMITMENT")   # in-se
 VALIDATIONS = "validations"
 CANDIDATES = "candidates"                 # repository contract shared with the optimizer
 ACCEPTED_PLANS = "accepted_plans"         # repository contract shared with commitments (P14)
-DEFENSE_OUTCOMES = ("KEPT", "CREW_CHANGED", "MOVED", "DEFERRED", "UNSAFE", "OUT_OF_HORIZON", "COMPLETED")
+DEFENSE_OUTCOMES = ("KEPT", "CREW_CHANGED", "MOVED", "DEFERRED", "UNSAFE", "OUT_OF_HORIZON", "COMPLETED", "PERFORMED", "MERGED")
 
 
 @dataclass
@@ -256,12 +259,15 @@ def _v2(run: _Run) -> None:
             run.bad("V2", "PRECEDENCE_CYCLE", node, "a placed phase lies on or behind a hard-edge cycle")
     for e in inp.concurrency:
         a, b = run.times.get(e.pred_phase), run.times.get(e.succ_phase)
-        if a is None or b is None or "PLACED" not in (a.basis, b.basis):
-            continue
+        if a is None or b is None or a.basis != "PLACED" or b.basis != "PLACED":
+            continue                                    # a pair constrains only work both of whose phases are planned (S10)
         run.count("V2")
         overlaps = a.start < b.end and b.start < a.end
-        if (e.type is EdgeType.CONCURRENT) != overlaps:
-            run.bad("V2", "CONCURRENCY_VIOLATION", e.id, f"{e.type.value}: overlap={overlaps}")
+        ok = {"REQUIRED_OVERLAP": overlaps, "NO_OVERLAP": not overlaps, "SAME_START": a.start == b.start}.get(e.concurrency_mode or "")
+        if ok is None:
+            run.bad("V2", "CONCURRENCY_MODE_UNSUPPORTED", e.id, f"{e.type.value} has no admitted meaning ({e.concurrency_mode!r})")
+        elif not ok:
+            run.bad("V2", "CONCURRENCY_VIOLATION", e.id, f"{e.concurrency_mode}: [{a.start},{a.end}) and [{b.start},{b.end}) overlap={overlaps}")
 
 
 def _v3(run: _Run) -> None:
@@ -404,14 +410,15 @@ def _v5(run: _Run) -> None:
                     run.bad("V5", "CERT_EVIDENCE_FORGED", a.id, f"{r.person} declares evidence {forged[:3]} that is not a source holding row")
 
 
-def _reached(inp: ValidationInput, seeds: Iterable[str]) -> set[str]:
-    """Nodes reached from ``seeds`` through one or more hard edges: exactly the nodes having a seed in
-    ``inp.ancestors(node)``, cycles included (``hard_out`` is ``hard_in`` reversed)."""
+def _reached(inp: ValidationInput, seeds: Iterable[str], stop: frozenset[str] | set[str] = frozenset()) -> set[str]:
+    """Nodes reached from ``seeds`` through one or more hard edges without passing through a ``stop`` node: exactly the
+    nodes having a seed in ``inp.ancestors(node)`` when ``stop`` is the satisfied phases, cycles included
+    (``hard_out`` is ``hard_in`` reversed)."""
     seen: set[str] = set()
     stack = [e.succ_phase for s in seeds for e in inp.hard_out.get(s, ())]
     while stack:
         n = stack.pop()
-        if n in seen:
+        if n in seen or n in stop:
             continue
         seen.add(n)
         stack.extend(e.succ_phase for e in inp.hard_out.get(n, ()))
@@ -419,36 +426,108 @@ def _reached(inp: ValidationInput, seeds: Iterable[str]) -> set[str]:
 
 
 def _v9(run: _Run) -> None:
-    """Part release floors and blocking shortages on every placed phase's hard-edge ancestors.
+    """Part release floors and blocking shortages on every placed phase's hard-edge ancestors, up to verified completion.
 
-    Each assignment needs only two facts about its ancestors: which part releases are among them, and whether one
-    belongs to a job a blocking shortage affects. Both come from one forward pass per part release and per blocking
-    shortage, instead of materializing and sorting every assignment's whole ancestor set (the same decisions, the same
-    violations; pinned against the per-assignment reference in ``tests/unit/test_native_core.py``).
+    A verified-complete phase satisfies its successors, as in V2 and the decoder: nothing above it gates the work below
+    it (``ValidationInput.ancestors``). A walk through it would condemn work below completed history for an open
+    rework child's part, for example, when the child feeds the root's completed successor (REWORK_REOPENED_ROOT).
+
+    One forward pass in topological order carries to every node a summary of what lies above it: the latest part
+    floor (a receipt, or a forecast on conditional work), whether some part release above it can never be met (no
+    receipt on executable work, or a blocked release), whether one is a forecast that needs a conditional label, and
+    whether a phase of a job a blocking shortage affects is at or above it. An assignment the summary clears has no
+    V9 finding. Every other assignment, and any phase on or below a cycle, gets the exact walk over its own ancestors,
+    so the decisions, the violations and their order are those of the per-assignment reference pinned in
+    ``tests/unit/test_validator_v9_one_pass.py``. The pass costs one visit per edge instead of one walk per release.
     """
     inp = run.inp
+    executable = inp.purpose is Purpose.EXECUTABLE
     blocking = [s for s in inp.snapshot.shortages if s.status in ("UNKNOWN_ECD", "REOPENED")]
-    part_ancestors: dict[str, list[str]] = defaultdict(list)
-    for rid in sorted(inp.releases):
-        if inp.releases[rid].kind is ReleaseKind.PART:
-            for node in _reached(inp, (rid,)):
-                part_ancestors[node].append(rid)
-    shortage_reach = []
-    for s in blocking:
-        affected = set(s.affected_jobs)
-        shortage_reach.append((s, affected, _reached(inp, [pid for pid, ph in inp.phases.items() if ph.job in affected])))
+    affected_any = {job for s in blocking for job in s.affected_jobs}
+    satisfied = {pid for pid in inp.phases if inp.satisfied_node(pid)}
+    # What each part release imposes on the work below it: (floor minute or None, never met, needs a label).
+    own: dict[str, tuple[int | None, bool, bool]] = {}
+    for rid, rel in inp.releases.items():
+        if rel.kind is not ReleaseKind.PART:
+            continue
+        if rel.status is ReleaseStatus.CONFIRMED and rel.ready_at is not None:
+            own[rid] = (minute_ceil(rel.ready_at), False, False)
+        elif executable:
+            own[rid] = (None, True, False)
+        elif rel.status is ReleaseStatus.CONDITIONAL and rel.forecast_at is not None:
+            own[rid] = (minute_ceil(rel.forecast_at), False, True)
+        else:
+            own[rid] = (None, True, False)
+    indeg: dict[str, int] = defaultdict(int)
+    for edges in inp.hard_out.values():
+        for e in edges:
+            indeg[e.succ_phase] += 1
+    ready = [n for n in inp.hard_out if not indeg.get(n)]
+    floor_in: dict[str, int] = {}
+    never_in: set[str] = set()
+    label_in: set[str] = set()
+    shortage_in: set[str] = set()                       # a phase of an affected job lies strictly above
+    while ready:
+        n = ready.pop()
+        floor, never, label = floor_in.get(n), n in never_in, n in label_in
+        mine = own.get(n)
+        if mine is not None:
+            if mine[0] is not None and (floor is None or mine[0] > floor):
+                floor = mine[0]
+            never, label = never or mine[1], label or mine[2]
+        phase = inp.phases.get(n)
+        shortage = n in shortage_in or (phase is not None and phase.job in affected_any)
+        passes = n not in satisfied                     # completion is a fact: nothing above it reaches below it
+        for e in inp.hard_out.get(n, ()):
+            s = e.succ_phase
+            if passes:
+                if floor is not None and floor > floor_in.get(s, floor - 1):
+                    floor_in[s] = floor
+                if never:
+                    never_in.add(s)
+                if label:
+                    label_in.add(s)
+                if shortage:
+                    shortage_in.add(s)
+            indeg[s] -= 1
+            if not indeg[s]:
+                ready.append(s)
+    reach_cache: list[tuple[Any, set[str], set[str]]] = []
+
+    def shortage_reach() -> list[tuple[Any, set[str], set[str]]]:
+        if blocking and not reach_cache:
+            by_job: dict[str, list[str]] = defaultdict(list)
+            for pid, ph in inp.phases.items():
+                by_job[ph.job].append(pid)
+            for s in blocking:
+                affected = set(s.affected_jobs)
+                seeds = [pid for job in affected for pid in by_job.get(job, ()) if pid not in satisfied]
+                reach_cache.append((s, affected, _reached(inp, seeds, satisfied)))
+        return reach_cache
+
     for a in run.plan.assignments:
         phase = inp.phases.get(a.phase)
         if phase is None:
             continue
         run.count("V9")
         start = to_minute(a.start)
-        for node in part_ancestors.get(a.phase, ()):
+        n = a.phase
+        if not indeg.get(n) and n not in never_in and start >= floor_in.get(n, start) \
+                and (a.conditional_reasons or n not in label_in) and n not in shortage_in and phase.job not in affected_any:
+            continue                                    # nothing above this assignment can draw a V9 finding
+        above: set[str] = set()
+        stack = [e.pred_phase for e in inp.hard_in.get(n, ())]
+        while stack:
+            m = stack.pop()
+            if m not in above and m not in satisfied:
+                above.add(m)
+                stack.extend(e.pred_phase for e in inp.hard_in.get(m, ()))
+        for node in sorted(above & own.keys()):
             rel = inp.releases[node]
             if rel.status is ReleaseStatus.CONFIRMED and rel.ready_at is not None:
                 if start < minute_ceil(rel.ready_at):
                     run.bad("V9", "BEFORE_PART_RELEASE", a.id, f"{rel.label} received {rel.ready_at.isoformat()}")
-            elif inp.purpose is Purpose.EXECUTABLE:
+            elif executable:
                 run.bad("V9", "PART_NOT_RECEIVED", a.id, f"{rel.label} has no confirmed receipt: not executable")
             elif rel.status is ReleaseStatus.CONDITIONAL and rel.forecast_at is not None:
                 if start < minute_ceil(rel.forecast_at):
@@ -457,8 +536,8 @@ def _v9(run: _Run) -> None:
                     run.bad("V9", "PART_CONDITIONAL_UNLABELLED", a.id, f"{rel.label} is a forecast ETA: the assignment must be conditional")
             else:
                 run.bad("V9", "PART_RELEASE_BLOCKED", a.id, f"{rel.label} is {rel.status.value}")
-        for s, affected, reach in shortage_reach:
-            if phase.job in affected or a.phase in reach:
+        for s, affected, reach in shortage_reach():
+            if phase.job in affected or n in reach:
                 run.bad("V9", "PART_SHORTAGE_BLOCKED", a.id, f"shortage {s.record_id} is {s.status}")
 
 
@@ -526,6 +605,11 @@ def _e_lineage(run: _Run, purpose: Purpose) -> bool:
         run.count("E_LINEAGE")
         if not ok:
             run.bad("E_LINEAGE", code, plan.id, detail)
+    if purpose is Purpose.EXECUTABLE:                     # S05 step 5: executable work needs fresh, coherently captured sources
+        for g in snap.gaps:
+            if g.code in EXECUTABLE_BLOCKERS:
+                run.count("E_LINEAGE")
+                run.bad("E_LINEAGE", g.code, g.scope, g.detail)
     return True
 
 
@@ -575,21 +659,37 @@ def _e_commitment(run: _Run, incumbent: IncumbentPlan | None) -> None:
     results = {r.incumbent_assignment_id: r for r in plan.commitment_results}
     by_id = {a.id: a for a in plan.assignments}
     jobs = {(j.line, j.key.native_id): j for j in inp.jobs.values()}
+    positions = incumbent.positions if len(incumbent.positions) == len(incumbent.assignments) else ()
+    claimed: set[str] = set()                              # current phases an earlier incumbent slot defends
     for n, ia in enumerate(incumbent.assignments):
         run.count("E_COMMITMENT")
         aid = digest_id("INCA", incumbent.id, n)
         r = results.get(aid)
+        offset = (ia.day - today).days
+        job = jobs.get((ia.line, ia.soi))
+        # where the incumbent's work is now: by its position in the job's remaining work, else by ordinal
+        mapped, performed = None, False
+        if job is not None:
+            kind = PhaseKind(ia.phase)
+            located = (locate_position(inp.job_phases.get(job.id, ()), kind, positions[n]) if positions and positions[n] is not None
+                       else None)
+            if located is not None:
+                mapped, performed = located
+            else:
+                mapped = next((p for p in inp.job_phases.get(job.id, ()) if p.kind is kind and p.ordinal == ia.ordinal), None)
+        completed = job is not None and inp.dispositions[job.id].disposition is Disposition.VERIFIED_COMPLETE
+        merged = not completed and not performed and mapped is not None and 0 <= offset < horizon and mapped.key.id in claimed
+        if not completed and not performed and mapped is not None and 0 <= offset < horizon:
+            claimed.add(mapped.key.id)
         if r is None:
             run.bad("E_COMMITMENT", "COMMITMENT_RESULT_MISSING", aid, f"{ia.line}/{ia.soi} {ia.day} has no defense outcome")
             continue
-        offset = (ia.day - today).days
         a = by_id.get(r.new_assignment_id) if r.new_assignment_id else None
-        start = to_minute(local_to_utc(datetime.combine(ia.day, time.fromisoformat(ia.start_local)), inp.shift_policy.tz))
+        start = shift_local_minute(ia.day, ia.shift, ia.start_local, inp.shift_policy, inp.snapshot.site)
         crew = {PersonKey(c, incumbent.namespace).id for c in ia.crew}
         sid = f"{inp.snapshot.site}:{ia.day.isoformat()}:S{ia.shift}"
         same_slot = a is not None and to_minute(a.start) == start and a.shift_id == sid
         actual = {x.person for x in a.crew} if a is not None else set()
-        job = jobs.get((ia.line, ia.soi))
         expected_ok = {
             "KEPT": same_slot and actual == crew and a.committed and 0 <= offset < horizon,
             "CREW_CHANGED": same_slot and actual != crew and a.committed and 0 <= offset < horizon,
@@ -597,7 +697,9 @@ def _e_commitment(run: _Run, incumbent: IncumbentPlan | None) -> None:
             "DEFERRED": a is None and 0 <= offset < horizon,
             "UNSAFE": bool(r.reason),
             "OUT_OF_HORIZON": offset < 0 or offset >= horizon,
-            "COMPLETED": job is not None and inp.dispositions[job.id].disposition is Disposition.VERIFIED_COMPLETE,
+            "COMPLETED": completed,
+            "PERFORMED": performed and not completed,
+            "MERGED": merged,
         }
         if r.outcome not in expected_ok:
             run.bad("E_COMMITMENT", "COMMITMENT_OUTCOME_UNKNOWN", aid, r.outcome)

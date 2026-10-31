@@ -139,3 +139,20 @@ def test_a23_economic_due_is_the_explicit_station_proxy_not_the_gate_or_earliest
     assert econ[1301].due_at == end_of_proxy_day                                                     # END_OF_LOCAL_DATE instant
     assert econ[1301].due_at != f.hard_latest_at and econ[1301].due_at != f.earliest_at              # due, gate and earliest stay distinct
     assert econ[1301].due_basis.startswith(f"CS{f.station} planning proxy {f.due_proxy.isoformat()}")
+
+
+def test_accrued_accounting_floor_bounds_exposure_increment_and_weight(policy) -> None:
+    """S12: incremental cost respects the cumulative already-accounted exposure floor, and the priority weight is the
+    marginal above it: while the modeled penalty is under the floor, another day adds nothing."""
+    from dataclasses import replace
+
+    floored = replace(_econ(1, Fraction(100000)), accrued_floor_cents=Fraction(250000))      # 2.5 days of penalty already booked
+    reg = EconomicsRegistry({1: floored, 2: _econ(2, Fraction(100000))}, policy)
+    due = to_minute(DUE)
+    assert reg.penalty(1, due) == Fraction(250000) and reg.penalty(1, due + 3 * 1440) == Fraction(300000)
+    assert reg.marginal(1, due + 1440, days=1) == 0                                             # 2 days late: still under the floor
+    assert reg.marginal(1, due + 3 * 1440, days=1) == Fraction(100000)
+    weights = reg.derive_priority_weights({1: due + 1440, 2: due + 1440})
+    assert weights[1].marginal_cents == 0 and weights[2].marginal_cents > 0                     # the floor, not the rate, decides
+    costs = line_costs(reg, {1: _done(1, DUE + timedelta(days=3))}, due - 60)
+    assert costs[1].total_cents == Fraction(300000) and costs[1].controllable_cents == Fraction(50000)

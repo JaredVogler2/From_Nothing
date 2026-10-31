@@ -22,7 +22,7 @@ def test_a01_no_credentials_no_source_pages_load_without_side_effects(make_clien
     for path in ("/", "/api/docs", "/health/live"):
         response = client.get(path)
         assert response.status_code == 200, path
-    for path in ("/dashboard", "/dashboard/classic"):          # a fixture visitor without a session is guided to the demo sign-in
+    for path in ("/dashboard", "/dashboard/classic", "/simulation", "/simulation/ios"):   # a visitor without a session goes to the demo sign-in
         response = client.get(path)
         assert response.status_code == 302 and response.headers["Location"].endswith("/"), path
         assert b"Demo sign-in" in client.get(path, follow_redirects=True).data, path

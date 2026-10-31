@@ -472,7 +472,12 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     for (job, role), previous in zip(order, [None] + [j for j, _ in order]):
         assert role in jobs[job], job
         if previous:
-            assert f"needs: [{previous}]" in jobs[job], job                           # each role needs the one before it
+            assert f"needs: [{previous}]" in jobs[job] or f"needs: [{previous}," in jobs[job], job   # each role needs the one before it
+    # P23: every verification precedes acquisition, and the scheduler runs the native wheel built from the same commit
+    for verify in ("import_and_lint", "unit_and_integration", "ui", "fixture_pipeline_rehearsal", "native_wheel"):
+        assert verify in jobs["acquire_admit"].split("needs:")[1].splitlines()[0], verify
+    assert "{ job: native_wheel, artifacts: true }" in jobs["schedule_validate"] and "dist/focus_native-" in jobs["schedule_validate"]
+    assert "focus-native==" not in jobs["schedule_validate"]                     # never an index wheel from another commit
     assert "when: manual" in jobs["sign_accept"] and "focus-signer" in jobs["sign_accept"]
     assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[".live"]
     assert "image: python:3.12-slim" in jobs["default"]

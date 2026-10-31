@@ -30,6 +30,7 @@ class _H:
     end: int            # exclusive; _PERPETUAL when perpetual
     revoked: int | None
     evidence: tuple[EvidenceRef, ...]
+    windows: tuple[tuple[int, int], ...] = ()      # closed revocation windows [revoked, reinstated)
 
 
 class HoldingIndex:
@@ -54,6 +55,7 @@ class HoldingIndex:
                 end=end,
                 revoked=minute_floor(h.revoked_at) if h.revoked_at else None,
                 evidence=h.evidence,
+                windows=tuple((minute_floor(a), minute_floor(b)) for a, b in h.revoked_windows),
             )
             self._by_person.setdefault(h.person, {}).setdefault(h.cert, []).append(item)
 
@@ -71,6 +73,8 @@ class HoldingIndex:
         if h.end < end:
             return False, "EXPIRED" if h.end <= start else "EXPIRES_DURING_INTERVAL"
         if h.revoked is not None and h.revoked < end:
+            return False, "REVOKED"
+        if any(a < end and start < b for a, b in h.windows):
             return False, "REVOKED"
         return True, "VALID"
 

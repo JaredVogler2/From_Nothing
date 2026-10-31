@@ -263,6 +263,7 @@ class DesiredBadge:
     period: str
     evidence: tuple[str, ...]
     goal_id: str | None                                    # goal-scoped badges are held (never revoked) while that goal is unknown
+    units: tuple[str, ...] = ()                            # the exact earning units behind it
 
     @property
     def key(self) -> str:
@@ -285,11 +286,11 @@ def _badge_revision(services: Any, d: DesiredBadge, revision: int, revoked: bool
                     evidence: tuple[str, ...]) -> BadgeAward:
     key = f"{d.key}#r{revision}"
     award = BadgeAward(digest_id("BDG", services.settings.scope_key, key), key, d.badge, services.settings.scope_key, d.team, d.period, evidence,
-                       STATEMENTS[d.badge], at, revision, revoked, supersedes)
+                       STATEMENTS[d.badge], at, revision, revoked, supersedes, d.units, services.policy.id)
     repos = services.repositories
     repos.put_record(BADGES, "BadgeAward", award.id, award, created_at=at)
     kind = "correction_applied" if revoked else "badge_earned"
-    ent = Entitlement(f"badge_earned:{d.key}", kind, d.team, d.goal_id, (), Fraction(0), None, (award.id,) + evidence)
+    ent = Entitlement(f"badge_earned:{d.key}", kind, d.team, d.goal_id, d.units, Fraction(0), None, (award.id,) + evidence)
     chain = [c for c in _chains(services).get(ent.base_key, [])]
     ev = _event(services, ent, (chain[-1].revision + 1) if chain else 1, Fraction(0), kind, chain[-1].id if chain else None, at, ent.evidence)
     if repos.get_raw(RECOGNITION, ev.id) is None:
@@ -336,15 +337,16 @@ def _badges(services: Any, view: Any, evaluations: dict[str, Evaluation], wanted
             continue
         recov = [w for w in items if w.event_type == "gate_recovery"]
         if recov:
-            desired.append(DesiredBadge("Recovery", team, goal_id, (e.id,) + tuple(u for w in recov for u in w.units), goal_id))
+            units = tuple(u for w in recov for u in w.units)
+            desired.append(DesiredBadge("Recovery", team, goal_id, (e.id,) + units, goal_id, units))
         for w in items:
             if w.event_type == "dependency_unlocked" and len(w.evidence) - 2 >= policy.int("badges.firebreak_min_unlocked"):
-                desired.append(DesiredBadge("Firebreak", team, f"{goal_id}:{w.base_key.rsplit(':', 1)[-1]}", w.evidence, goal_id))
+                desired.append(DesiredBadge("Firebreak", team, f"{goal_id}:{w.base_key.rsplit(':', 1)[-1]}", w.evidence, goal_id, w.units))
             if w.event_type == "commitment_kept":
-                desired.append(DesiredBadge("CommitmentKeeper", team, goal_id, (e.id,) + w.units, goal_id))
+                desired.append(DesiredBadge("CommitmentKeeper", team, goal_id, (e.id,) + w.units, goal_id, w.units))
         steward = _skill_steward(view, records.get(goal_id), e)
         if steward:
-            desired.append(DesiredBadge("SkillSteward", team, goal_id, (e.id,) + steward, goal_id))
+            desired.append(DesiredBadge("SkillSteward", team, goal_id, (e.id,) + steward, goal_id, steward))
     desired += _steady_shift(services, view, evaluations)
     champions, closed = _monthly_champion(services, view, evaluations, as_of)
     desired += champions
@@ -393,6 +395,17 @@ def _plan_snapshot(view: Any, plan_id: str) -> Any:
     return cache[sid]
 
 
+def _earned_units(view: Any, evaluations: list[Evaluation]) -> tuple[str, ...]:
+    """The verified-credited earning units of the evaluated goals, in goal and unit order (a run or month badge's units)."""
+    records = {r.goal_id: r for r in view.records()}
+    out: list[str] = []
+    for e in evaluations:
+        for goal_id in e.goal_ids:
+            record = records.get(goal_id)
+            out += [u.id for u in (record.units if record is not None else ()) if u.id in view.credits]
+    return tuple(out)
+
+
 def _team_series(view: Any, evaluations: dict[str, Evaluation]) -> dict[str, list[tuple[Any, Evaluation]]]:
     series: dict[str, list[tuple[Any, Evaluation]]] = defaultdict(list)
     for record in view.records():
@@ -415,7 +428,8 @@ def _steady_shift(services: Any, view: Any, evaluations: dict[str, Evaluation]) 
             run = run + [e] if ok else []
             if len(run) >= need:
                 window = run[-need:]
-                out.append(DesiredBadge("SteadyShift", team, f"RUN:{window[0].goal_ids[0]}:{window[-1].goal_ids[0]}", tuple(x.id for x in window), None))
+                out.append(DesiredBadge("SteadyShift", team, f"RUN:{window[0].goal_ids[0]}:{window[-1].goal_ids[0]}", tuple(x.id for x in window), None,
+                                        _earned_units(view, window)))
     return out
 
 
@@ -445,7 +459,8 @@ def _monthly_champion(services: Any, view: Any, evaluations: dict[str, Evaluatio
         if ranked:
             ranked.sort(key=lambda r: (r[0], r[1]))        # best pooled score; ties: stable team id ascending
             _, team, team_eval, members = ranked[0]
-            out.append(DesiredBadge("MonthlyChampion", team, period, (team_eval.id,) + tuple(m.id for m in members), None))
+            out.append(DesiredBadge("MonthlyChampion", team, period, (team_eval.id,) + tuple(m.id for m in members), None,
+                                    _earned_units(view, members)))
     return out, closed
 
 

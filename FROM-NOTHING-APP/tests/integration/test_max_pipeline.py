@@ -101,3 +101,30 @@ def test_cli_schedule_in_a_fresh_process(tmp_path, app_root) -> None:
     result = json.loads(out.stdout)
     assert out.returncode == 0 and result["status"] == "ok" and result["published"] is False
     assert result["jobs_total"] == 19 and result["global_optimality_proven"] is False
+
+
+def test_speculative_moves_accept_exactly_the_sequential_sequence(services_factory, monkeypatch) -> None:
+    """Moves decoded in batches (``SPECULATION``, threads with the native core) must be drawn, judged and accepted in
+    exactly the order of one move at a time: same accepted moves, same plan. The production shape accepts moves, so
+    the discard-and-redraw path after an acceptance is exercised; the native core runs the batches on threads."""
+    from focus.clock import FIXTURE_CUTOFF
+    from focus.data.acquisition import acquire, load_snapshot
+    from focus.data.fixture_reader import FixtureSourceReader
+    from focus.data.production_fixture import build_production_fixture
+    from focus.engine.max.optimizer import orchestrator
+    from focus.engine.native import available
+
+    data = build_production_fixture(2, baseline=260, edges=1100, rework_total=90)
+    seen = {}
+    for native in ((False, True) if available() else (False,)):
+        services = services_factory(native_core=native)
+        reader = FixtureSourceReader(services.settings.app_root / "fixtures" / "inputs" / "manufacturing_demo",
+                                     overrides={k: v.to_json() for k, v in data.items()})
+        snapshot = load_snapshot(services.repositories, acquire(services, reader, cutoff=FIXTURE_CUTOFF, idempotency_key=f"spec-{native}").snapshot_id)
+        for batch in (1, 3, 4):
+            monkeypatch.setattr(orchestrator, "SPECULATION", batch)
+            plan, run = orchestrator.schedule_snapshot(services, snapshot, purpose=Purpose.FORECAST, budget_seconds=600, max_moves=12)
+            seen[(native, batch)] = (orchestrator.decision_digest(plan), tuple(run.accepted_moves), run.moves, run.stop_reason)
+    reference = seen[(False, 1)]
+    assert all(value == reference for value in seen.values()), seen
+    assert reference[1] and reference[3] == "move_bound"                 # moves were accepted, so redraws happened

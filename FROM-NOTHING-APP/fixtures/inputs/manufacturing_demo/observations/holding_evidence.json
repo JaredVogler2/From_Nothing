@@ -1,0 +1,21 @@
+{
+ "columns": [
+  "SOURCE_EVENT_KEY",
+  "PERSON_KEY",
+  "CERT_CODE",
+  "EVENT",
+  "EFFECTIVE_AT_UTC",
+  "OBSERVED_AT_UTC",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "holding_evidence",
+ "receipt": {
+  "certified_empty": true,
+  "complete": true,
+  "covered_through_utc": "2026-10-28T23:59:59Z",
+  "producer": "fixture:manufacturing_demo",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [],
+ "schema_version": 1
+}

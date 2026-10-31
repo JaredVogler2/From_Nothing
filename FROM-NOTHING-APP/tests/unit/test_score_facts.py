@@ -10,7 +10,7 @@ from fractions import Fraction
 
 import pytest
 
-from focus.analytics.points import gate_context, unit_values
+from focus.analytics.points import behind_station, gate_context, unit_values
 from focus.contracts.evaluation import OffplanFact, OOSFact, UnitFact
 from focus.domain import DomainError, EvaluationStatus
 from focus.performance.score import (WINDOW_OPEN, build_evaluation, components, formula, grade_for, personal_grade_refusal, pooled,
@@ -173,6 +173,20 @@ def test_a61_proxy_grace_once_future_absent_and_completion(policy) -> None:
     assert absent.basis == "UNAVAILABLE" and absent.behind_raw is None and absent.bonus_value is None and absent.base_value == 40
     done = gate_context(policy, gate, gate + timedelta(days=9), 200, basis="ACTUAL_CS_GATE", completed_on=gate + timedelta(days=2))
     assert done.valuation_date == gate + timedelta(days=2) and done.behind_raw == Fraction(2, 5)               # completion stops aging
+
+
+def test_behind_station_value_names_its_weight_cap_grace_and_date_basis(policy) -> None:
+    gate = date(2026, 10, 20)
+    actual = behind_station(policy, gate, gate + timedelta(days=3), basis="ACTUAL_CS_GATE")
+    assert (actual["basis"], actual["effective_gate_date"], actual["grace_days"], actual["behind_days"]) == ("ACTUAL_CS_GATE", gate, 0, 3)
+    assert actual["behind_raw"] == Fraction(3, 5) and actual["bonus_factor"] == Fraction(21, 100)
+    assert (actual["weight"], actual["cap_days"], actual["valuation_date"]) == (35, 5, gate + timedelta(days=3))
+    proxy = behind_station(policy, gate, gate + timedelta(days=3), basis="BASELINE_PROXY")
+    assert proxy["effective_gate_date"] == gate + timedelta(days=2) and proxy["grace_days"] == 2 and proxy["bonus_factor"] == Fraction(7, 100)
+    capped = behind_station(policy, gate, gate + timedelta(days=10))                                           # policy basis, past the cap
+    assert capped["basis"] == policy.str("gate.date_basis") and capped["behind_raw"] == 1 and capped["bonus_factor"] == Fraction(35, 100)
+    missing = behind_station(policy, None, gate)
+    assert missing["basis"] == "UNAVAILABLE" and missing["behind_days"] is None and missing["bonus_factor"] is None   # never zero-filled
     with pytest.raises(DomainError):
         gate_context(policy, gate, gate, 200, basis="WHATEVER")
 

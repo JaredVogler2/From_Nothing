@@ -8,7 +8,8 @@
    exists. An empty feed counts as covered only with an affirmative producer receipt; anything
    else is ``EMPTY_UNCERTIFIED`` and withholds official evaluation.
 2. **Normalize.** Rows become typed facts: ``LifecycleEvent``, ``ActualInterval``,
-   ``DefectEvidence``, ``GoalAmendment``, ``DisruptionClaim`` and ``ExcusalDecision``. Natural keys
+   ``DefectEvidence``, ``AttendanceEvidence``, ``HoldingEvidence``, ``GoalAmendment``,
+   ``DisruptionClaim`` and ``ExcusalDecision``. Natural keys
    resolve to the same deterministic job, phase and person identities the source admission uses.
    A malformed or unsupported row is quarantined with a stable reason code; it never defaults.
 3. **Append.** Records are write-once. Ids derive from the source key and revision. A replayed
@@ -34,8 +35,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..codec import CodecError, content_hash, from_jsonable, open_envelope, parse_utc, sha256_hex, strict_loads, to_jsonable
-from ..contracts.events import (ActualInterval, DefectEvidence, DisruptionClaim, ExcusalDecision, FeedReceipt, GoalAmendment, IEReview,
-                                LifecycleEvent, ObservationRun, QuarantinedRow, SequenceViolation)
+from ..contracts.events import (ActualInterval, AttendanceEvidence, DefectEvidence, DisruptionClaim, ExcusalDecision, FeedReceipt, GoalAmendment,
+                                HoldingEvidence, IEReview, LifecycleEvent, ObservationRun, QuarantinedRow, SequenceViolation)
 from ..contracts.planning import EarningUnit
 from ..data.store import ImmutableConflict, VersionConflict
 from ..data.workforce import person_namespace
@@ -44,6 +45,8 @@ from ..domain import DomainError, EvidenceRef, JobKey, PersonKey, PhaseKind, awa
 EVENTS = "lifecycle_events"
 INTERVALS = "actual_intervals"
 DEFECTS = "defect_evidence"
+ATTENDANCE = "attendance_evidence"
+HOLDINGS = "holding_evidence"
 AMENDMENTS = "goal_amendments"
 CLAIMS = "disruption_claims"
 DECISIONS = "excusal_decisions"
@@ -97,6 +100,10 @@ FEEDS: tuple[FeedSpec, ...] = (
         INTERVALS, True, "Raw actual clock intervals per owner (union method evidence; never completion credit)."),
     FeedSpec("defect_evidence", _cols("SOURCE_EVENT_KEY,LINE_NUMBER,SOI,ROOT_SOI,REWORK_CLASS,DEFECT_ORIGIN_TEAM,EVIDENCE_REF,OBSERVED_AT_UTC"),
              DEFECTS, False, "Explicit defect-origin evidence for rework observed after the planning cutoff."),
+    FeedSpec("attendance_evidence", _cols("SOURCE_EVENT_KEY,PERSON_KEY,SHIFT_DATE,SHIFT_NUMBER,PRESENT,REASON,RECORDED_AT_UTC,OBSERVED_AT_UTC,EVIDENCE_REF"),
+             ATTENDANCE, False, "Attendance records (call-offs and corrections) observed after planning: CAPACITY_SHORTAGE evidence."),
+    FeedSpec("holding_evidence", _cols("SOURCE_EVENT_KEY,PERSON_KEY,CERT_CODE,EVENT,EFFECTIVE_AT_UTC,OBSERVED_AT_UTC,EVIDENCE_REF"),
+             HOLDINGS, False, "Certificate revocations and reinstatements observed after planning: SKILL_SHORTAGE evidence."),
     FeedSpec("goal_amendments", _cols(
         "AMENDMENT_KEY,TEAM,SHIFT_DATE,SHIFT_NUMBER,WORK_REF,STANDARD_PERSON_MINUTES,EFFORT_BASIS,FEASIBILITY_REF,AUTHORITY,DECISION_AT_UTC,REASON,"
         "OBSERVED_AT_UTC"), AMENDMENTS, True, "Approved feasible emergency additions (B = B0 + additions; original units retained)."),
@@ -221,6 +228,8 @@ _TYPES: dict[str, tuple[str, type, str]] = {
     EVENTS: ("LifecycleEvent", LifecycleEvent, "ingested_at"),
     INTERVALS: ("ActualInterval", ActualInterval, "ingested_at"),
     DEFECTS: ("DefectEvidence", DefectEvidence, "ingested_at"),
+    ATTENDANCE: ("AttendanceEvidence", AttendanceEvidence, "ingested_at"),
+    HOLDINGS: ("HoldingEvidence", HoldingEvidence, "ingested_at"),
     AMENDMENTS: ("GoalAmendment", GoalAmendment, "ingested_at"),
     CLAIMS: ("DisruptionClaim", DisruptionClaim, "ingested_at"),
     DECISIONS: ("ExcusalDecision", ExcusalDecision, "ingested_at"),
@@ -510,6 +519,29 @@ def defect_from_row(row: Mapping[str, Any], ident: Identity, scope: str, as_of: 
         raise RowError(exc.code, exc.message) from None
 
 
+def attendance_from_row(row: Mapping[str, Any], ident: Identity, scope: str, as_of: datetime) -> AttendanceEvidence:
+    key = _text(row, "SOURCE_EVENT_KEY")
+    recorded, observed = _utc(row, "RECORDED_AT_UTC"), _utc(row, "OBSERVED_AT_UTC")
+    if recorded > observed:
+        raise RowError("OBSERVED_BEFORE_RECORDED", "an attendance record cannot be observed before the source recorded it")
+    try:
+        return AttendanceEvidence(digest_id("ATT", scope, key), scope, f"attendance_evidence:{key}", ident.person(_text(row, "PERSON_KEY")) or "",
+                                  shift_id_of(ident.site, _date(row, "SHIFT_DATE"), _int(row, "SHIFT_NUMBER")), _bool(row, "PRESENT"),
+                                  (_opt_text(row, "REASON") or "")[:200], recorded, observed, as_of, _opt_text(row, "EVIDENCE_REF") or "")
+    except DomainError as exc:
+        raise RowError(exc.code, exc.message) from None
+
+
+def holding_from_row(row: Mapping[str, Any], ident: Identity, scope: str, as_of: datetime) -> HoldingEvidence:
+    key = _text(row, "SOURCE_EVENT_KEY")
+    try:
+        return HoldingEvidence(digest_id("HEV", scope, key), scope, f"holding_evidence:{key}", ident.person(_text(row, "PERSON_KEY")) or "",
+                               _text(row, "CERT_CODE"), _text(row, "EVENT"), _utc(row, "EFFECTIVE_AT_UTC"), _utc(row, "OBSERVED_AT_UTC"), as_of,
+                               _opt_text(row, "EVIDENCE_REF") or "")
+    except DomainError as exc:
+        raise RowError(exc.code, exc.message) from None
+
+
 def latest_revisions(items: list[Any]) -> list[Any]:
     """The latest revision of each source key (numeric revisions outrank text, as in the clock admission)."""
     from ..data.duration_gauge import revision_rank
@@ -581,12 +613,14 @@ def collect_observations(services: Any, *, as_of: datetime | None = None, reader
                 run.append("actual_intervals", INTERVALS, interval_from_row(row, run.ident, scope, as_of), key)
             except RowError as exc:
                 run.reject("actual_intervals", key, exc.code, exc.detail)
-        for row in captures["defect_evidence"].rows:
-            key = _row_key(FEED_BY_NAME["defect_evidence"], row)
-            try:
-                run.append("defect_evidence", DEFECTS, defect_from_row(row, run.ident, scope, as_of), key)
-            except RowError as exc:
-                run.reject("defect_evidence", key, exc.code, exc.detail)
+        for feed, collection, parse in (("defect_evidence", DEFECTS, defect_from_row), ("attendance_evidence", ATTENDANCE, attendance_from_row),
+                                        ("holding_evidence", HOLDINGS, holding_from_row)):
+            for row in captures[feed].rows:
+                key = _row_key(FEED_BY_NAME[feed], row)
+                try:
+                    run.append(feed, collection, parse(row, run.ident, scope, as_of), key)
+                except RowError as exc:
+                    run.reject(feed, key, exc.code, exc.detail)
 
         registry = lifecycle.GoalRegistry.load(services)
         graph = lifecycle.current_graph(services)

@@ -156,7 +156,29 @@ def test_a13_revocation_wins_for_its_interval_and_reinstatement_restores(policy)
     restored = events + [{"BEMS_ID": "r", "CERT_CODE": "A", "EVENT": "REINSTATED", "EFFECTIVE_AT_UTC": "2026-10-30T12:00:00Z",
                           "EVIDENCE_REF": "E2"}]
     again = HoldingIndex(_certs(policy, [_row("r", "2027/12/31")], restored).holdings)
-    assert again.holds("r", "A", _m("2026-10-29T11:00:00+00:00"), _m("2026-10-29T13:00:00+00:00"))[0] is True
+    # the latest status effective for the job interval wins (S07): the reinstatement restores work after it, never the
+    # interval the revocation covered
+    assert again.holds("r", "A", _m("2026-10-29T11:00:00+00:00"), _m("2026-10-29T13:00:00+00:00")) == (False, "REVOKED")
+    assert again.holds("r", "A", _m("2026-10-30T09:00:00+00:00"), _m("2026-10-30T13:00:00+00:00")) == (False, "REVOKED")
+    assert again.holds("r", "A", _m("2026-10-30T12:00:00+00:00"), _m("2026-10-30T16:00:00+00:00"))[0] is True
+    assert again.holds("r", "A", _m("2026-10-29T08:00:00+00:00"), _m("2026-10-29T12:00:00+00:00"))[0] is True
+
+
+def test_a13_every_revocation_window_survives_later_events(policy) -> None:
+    """Two revocation cycles: each window holds; a second revocation while revoked keeps the first start."""
+    def ev(event: str, at: str, ref: str) -> dict:
+        return {"BEMS_ID": "r", "CERT_CODE": "A", "EVENT": event, "EFFECTIVE_AT_UTC": at, "EVIDENCE_REF": ref}
+
+    events = [ev("REVOKED", "2026-10-27T12:00:00Z", "E1"), ev("REVOKED", "2026-10-27T18:00:00Z", "E2"), ev("REINSTATED", "2026-10-28T12:00:00Z", "E3"),
+              ev("REVOKED", "2026-10-30T12:00:00Z", "E4")]
+    built = _certs(policy, [_row("r", "2027/12/31")], events)
+    holding = built.holdings[0]
+    assert holding.revoked_at == datetime(2026, 10, 30, 12, tzinfo=timezone.utc)
+    assert holding.revoked_windows == ((datetime(2026, 10, 27, 12, tzinfo=timezone.utc), datetime(2026, 10, 28, 12, tzinfo=timezone.utc)),)
+    index = HoldingIndex(built.holdings)
+    assert index.holds("r", "A", _m("2026-10-27T13:00:00+00:00"), _m("2026-10-27T15:00:00+00:00")) == (False, "REVOKED")
+    assert index.holds("r", "A", _m("2026-10-29T08:00:00+00:00"), _m("2026-10-29T12:00:00+00:00"))[0] is True
+    assert index.holds("r", "A", _m("2026-10-30T13:00:00+00:00"), _m("2026-10-30T15:00:00+00:00")) == (False, "REVOKED")
 
 
 def test_a13_perpetual_only_under_explicit_sentinel_policy(policy) -> None:

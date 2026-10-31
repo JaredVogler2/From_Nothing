@@ -2,7 +2,9 @@
 -- NOT executed by this build. PERCENTILE_CONT uses the same continuous definition as the application
 -- (h=(n-1)p, x_lo + (h-lo)(x_hi-x_lo)), so SQL and focus.data.duration_gauge.compute_statistics agree on
 -- P50/P55/P75/P90; the mean is AVG over the same admitted rows (it need not lie between P55 and P75).
--- Groups: exact (class, team) and the approved broader (class) fallback (duration.group_fallback).
+-- Groups: the exact context (class, team, model, crew), then the approved broader (class, team) and (class) groups
+-- (duration.group_fallback). Model and crew come from each observation's EvidencePayload; an episode with an unknown
+-- model or crew joins no exact group. Process and revision have no source column, so no group uses them.
 --
 -- Group key hashes equal the application's content_hash(list(group)) (lowercase SHA-256 of UTF-8 canonical JSON)
 -- for admitted ASCII class/team codes without JSON escapes; codes outside that set are rejected at admission.
@@ -23,20 +25,32 @@ IF NOT EXISTS (SELECT 1 FROM WEB_APP.FOCUS_FN_SourceRun WHERE RunId = @RunId AND
 BEGIN TRANSACTION;
 DELETE FROM WEB_APP.FOCUS_FN_DurationStatistics WHERE RunId = @RunId AND PolicyId = @PolicyId;
 
-WITH Grouped AS (
-    -- exact (class, team) group
-    SELECT o.GroupKeySha, o.Class, o.Team, o.ActiveElapsedMinutes, o.PersonEffortMinutes, o.CompletedAtUtc, o.Admitted
+WITH Context AS (
+    SELECT o.GroupKeySha, o.Class, o.Team, o.ActiveElapsedMinutes, o.PersonEffortMinutes, o.CompletedAtUtc, o.Admitted,
+           JSON_VALUE(CONVERT(nvarchar(max), o.EvidencePayload), '$.model') AS Model,
+           TRY_CONVERT(int, JSON_VALUE(CONVERT(nvarchar(max), o.EvidencePayload), '$.crew')) AS Crew
     FROM WEB_APP.FOCUS_FN_DurationObservation o
     WHERE o.RunId = @RunId
+), Grouped AS (
+    -- exact comparable context (class, team, model, crew)
+    SELECT LOWER(CONVERT(char(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), CONVERT(varchar(max),
+               CONCAT(N'["', x.Class, N'","', COALESCE(x.Team, N''), N'","MODEL=', x.Model, N'","CREW=', x.Crew, N'"]')
+               COLLATE Latin1_General_100_BIN2_UTF8))), 2)) AS GroupKeySha,
+           x.Class, x.Team, x.Model, x.Crew, x.ActiveElapsedMinutes, x.PersonEffortMinutes, x.CompletedAtUtc, x.Admitted
+    FROM Context x
+    WHERE x.Model IS NOT NULL AND x.Model <> N'' AND x.Crew IS NOT NULL
+    UNION ALL
+    -- approved broader (class, team) group
+    SELECT x.GroupKeySha, x.Class, x.Team, NULL, NULL, x.ActiveElapsedMinutes, x.PersonEffortMinutes, x.CompletedAtUtc, x.Admitted
+    FROM Context x
     UNION ALL
     -- approved broader (class) group
     SELECT LOWER(CONVERT(char(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), CONVERT(varchar(max),
-               CONCAT(N'["', o.Class, N'"]') COLLATE Latin1_General_100_BIN2_UTF8))), 2)),
-           o.Class, NULL, o.ActiveElapsedMinutes, o.PersonEffortMinutes, o.CompletedAtUtc, o.Admitted
-    FROM WEB_APP.FOCUS_FN_DurationObservation o
-    WHERE o.RunId = @RunId
+               CONCAT(N'["', x.Class, N'"]') COLLATE Latin1_General_100_BIN2_UTF8))), 2)),
+           x.Class, NULL, NULL, NULL, x.ActiveElapsedMinutes, x.PersonEffortMinutes, x.CompletedAtUtc, x.Admitted
+    FROM Context x
 ), Counts AS (
-    SELECT GroupKeySha, MIN(Class) AS Class, MIN(Team) AS Team, COUNT_BIG(*) AS RawCount,
+    SELECT GroupKeySha, MIN(Class) AS Class, MIN(Team) AS Team, MIN(Model) AS Model, MIN(Crew) AS Crew, COUNT_BIG(*) AS RawCount,
            SUM(CASE WHEN Admitted = 1 THEN 1 ELSE 0 END) AS AdmittedCount,
            MIN(CASE WHEN Admitted = 1 THEN CompletedAtUtc END) AS SampleStartUtc,
            MAX(CASE WHEN Admitted = 1 THEN CompletedAtUtc END) AS SampleEndUtc,
@@ -63,7 +77,7 @@ SELECT NEWID(), @RunId, c.GroupKeySha, 'ELAPSED_ACTIVE', c.RawCount, c.AdmittedC
        @MethodSha,
        @PolicyId,
        CONVERT(varbinary(max), CONVERT(nvarchar(max), (
-           SELECT c.Class AS class, c.Team AS team, c.AdmittedCount AS n, @MinimumSample AS minimum_sample,
+           SELECT c.Class AS class, c.Team AS team, c.Model AS model, c.Crew AS crew, c.AdmittedCount AS n, @MinimumSample AS minimum_sample,
                   CASE WHEN c.AdmittedCount >= @MinimumSample THEN 1 ELSE 0 END AS sufficient,
                   CONVERT(decimal(19,6), c.EffortMean) AS effort_mean_descriptive, 'minutes' AS unit
            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES)))

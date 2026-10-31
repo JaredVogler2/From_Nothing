@@ -1370,7 +1370,8 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
 
 def person_certificates(canon: Canon, person_id: str) -> list[dict[str, Any]]:
     return [{"cert": h.cert, "status": h.status, "validity": h.validity, "valid_from": h.valid_from, "valid_to": h.valid_to,
-             "revoked_at": h.revoked_at} for h in sorted(canon.snapshot.holdings, key=lambda x: (x.cert, str(x.valid_from)))
+             "revoked_at": h.revoked_at, "revoked_windows": [{"from": a, "to": b} for a, b in h.revoked_windows]}
+            for h in sorted(canon.snapshot.holdings, key=lambda x: (x.cert, str(x.valid_from)))
             if h.person == person_id]
 
 

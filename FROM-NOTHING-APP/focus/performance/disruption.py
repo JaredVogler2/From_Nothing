@@ -14,6 +14,11 @@ carry the same lists as the contract taxonomy, or nothing is admitted.
 * A REWORK_INJECTION origin team is admitted only from explicit defect-origin evidence: the
   admitted rework classification, or a ``defect_evidence`` row. It never comes from the DAG
   direction or the executing team.
+* CAPACITY_SHORTAGE and SKILL_SHORTAGE are attributed only from source records observed after the
+  plan's source cutoff: a planned crew member's call-off for that shift (``attendance_evidence``),
+  or the revocation of a certificate in the work's bundle that takes effect before the planned end
+  and is not reinstated by the planned start (``holding_evidence``). What the plan already knew is
+  not a disruption.
 * Duplicate and overlapping claims are kept as separate records.
 
 **Decisions are reviewed.**
@@ -384,6 +389,7 @@ def auto_attribute(services: Any, view: Any) -> list[DisruptionClaim]:
     graph = view.graph
     sat = Satisfaction(graph, view.lifecycles) if graph is not None else None
     starts = _phase_starts(view)
+    attendance = _latest_attendance(view)
     out: list[DisruptionClaim] = []
     for record in view.records():
         if record.window.credit_deadline > view.as_of:
@@ -401,6 +407,8 @@ def auto_attribute(services: Any, view: Any) -> list[DisruptionClaim]:
                 evidence = tuple(sorted(f"EVENT:{e}" for e in cycle.events if e in cancel_events))
                 groups[("PLAN_CHURN", None, None, evidence, "SUBMITTED")].append(f.unit_id)
                 continue
+            for cause, evidence in _crew_shortages(view, record, f, attendance):
+                groups[(cause, None, f.team, evidence, "SUBMITTED")].append(f.unit_id)
             if graph is None or sat is None:
                 continue
             for edge in graph.hard_in.get(f.phase, []):
@@ -475,6 +483,41 @@ def _auto_revisions(view: Any, record: Any, groups: dict[tuple[str, str | None, 
         out.append(DisruptionClaim(wid, view.scope, record.goal_id, prior.units, prior.cause, prior.origin_team, prior.executing_team, prior.evidence,
                                    "evidence no longer supports this automatic attribution", "WITHDRAWN", "AUTO", SYSTEM_ATTRIBUTOR,
                                    prior.reported_at, view.as_of, f"auto:{wid}", prior.id))
+    return out
+
+
+def _latest_attendance(view: Any) -> dict[tuple[str, str], Any]:
+    """The latest recorded attendance per (person, shift) known to the view: a later record corrects an earlier one."""
+    latest: dict[tuple[str, str], Any] = {}
+    for a in view.attendance:
+        held = latest.get((a.person, a.shift_id))
+        if held is None or (a.recorded_at, a.id) > (held.recorded_at, held.id):
+            latest[(a.person, a.shift_id)] = a
+    return latest
+
+
+def _crew_shortages(view: Any, record: Any, fact: Any, attendance: dict[tuple[str, str], Any]) -> list[tuple[str, tuple[str, ...]]]:
+    """(cause, evidence) for each planned crew member of a missed unit who was called off for the shift (CAPACITY_SHORTAGE)
+    or lost a certificate the work needs (SKILL_SHORTAGE) through evidence observed only after the plan's source cutoff."""
+    reg = view.registry
+    crew, known = reg.unit_crew.get(fact.unit_id, ()), reg.plan_knowledge.get(record.plan_id)
+    start, end = reg.unit_start.get(fact.unit_id), reg.unit_end.get(fact.unit_id)
+    if not crew or known is None or start is None or end is None:
+        return []
+    phase = view.graph.phases.get(fact.phase) if view.graph is not None else None
+    demands = [] if phase is None else [d for d in phase.role_demands if d.team == fact.team] or list(phase.role_demands)
+    codes = {c for d in demands for c in d.bundle.all_codes}
+    out: list[tuple[str, tuple[str, ...]]] = []
+    for person in crew:
+        a = attendance.get((person, record.shift_id))
+        if a is not None and not a.present and a.observed_at > known:
+            out.append(("CAPACITY_SHORTAGE", (f"ATTENDANCE:{a.evidence_ref}", a.id)))
+        for h in view.holding_events:
+            if h.person != person or h.cert not in codes or h.event != "REVOKED" or h.observed_at <= known or h.effective_at >= end:
+                continue
+            if not any(x.person == person and x.cert == h.cert and x.event == "REINSTATED" and h.effective_at <= x.effective_at <= start
+                       for x in view.holding_events):
+                out.append(("SKILL_SHORTAGE", (f"HOLDING:{h.evidence_ref}", h.id)))
     return out
 
 

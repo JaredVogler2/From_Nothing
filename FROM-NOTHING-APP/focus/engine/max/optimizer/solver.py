@@ -290,7 +290,7 @@ def improve(optimizer: Any, run: Any, *, enabled: str, bounds: dict[str, float] 
                 return SolverStatus(**base, **facts, probes=probes, status="CANCELLED", wall_seconds=round(time.monotonic() - began, 3),
                                     reason="cancel requested between probes; the validated baseline stands")
             t = time.monotonic()
-            candidate = optimizer.evaluate(optimizer.decode(PriorityState(ranks), weights))
+            candidate = optimizer.evaluate(optimizer.decode(PriorityState(ranks), run.urgency))
             valid = optimizer._valid(candidate, f"solver:{label}")
             level = optimizer.improved_level(candidate, best) if valid and optimizer.better(candidate, best) else None
             better = level not in (None, "signature")       # a tie on every substantive level is not an improvement

@@ -33,7 +33,113 @@ one process.
   building one plan.
 - **Memory:** peak 0.5 GB for 1 aircraft and 1.7 GB for 5 aircraft.
 
-## What changed in this work
+## Engine v2 (October 31, 2026)
+
+`python tools/benchmark_production.py --sizes 1,5 --purposes FORECAST --engines native,python --max-moves 0`; receipts in
+`evidence/production-scale/engine-v2/`. Both cores scheduled the same snapshot and produced identical plans at both sizes.
+
+| Aircraft | Native core before | Native core now | Python core now | Load before | Load now |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 25.5 s | **10.2 s** | 47.7 s | 33 s | 19 s |
+| 5 | 239 s | **55.9 s** | 1,141 s | 178 s | 103 s |
+
+What made the difference:
+- **The whole time-slot search for a phase runs in one Rust call**, and every opening is tried (the 48-start limit per
+  shift is gone in both cores).
+- **Exact start skipping.** Before a crew attempt, the search counts the people who could be booked alone (no conflict,
+  inside their open windows, a transfer slot into and out of the work, hours within caps) and are qualified, allowing at
+  most cap - active new heads. A start without enough of them is skipped. At 5 aircraft, crew attempts fell from 1.28
+  million to one per phase.
+- **No quadratic setup.** The search no longer lists every job's competitors (quadratic in fleet size).
+- **Faster records.** A faster canonical codec with identical bytes; datetime conversions cached by value; a snapshot
+  verified once per process; record hashes streamed item by item (same digest, about 1 MB instead of hundreds).
+
+Also in this version: cost-of-delay priority (the aircraft's daily penalty decayed by the phase's slack), half of the
+search moves aimed at the longest waits, and repeatability (stop on the move bound; a decision digest in every receipt;
+the same decisions across processes with different hash seeds).
+
+## 50 aircraft, one shift (October 31, 2026)
+
+`python -m focus.sim.runner --aircraft 50 --days 1 --shifts 2` on the full-scale synthetic fleet
+(`focus/data/fullscale_fixture.py`):
+- 298,009 jobs, 445,688 phases and 1,258,325 edges;
+- 2,178 people on 30 teams of 10-30 per shift, plus QA;
+- 23,301 open late parts.
+
+Forecast purpose; seed, cost-of-delay redispatch, two delay-repair boosts at most and three search moves. Same machine
+for both columns (4 cores, 16 GB). Both runs produced the same plan: 147,679 assignments and the same floor outcomes.
+
+| Step | First 50-aircraft trial | Now |
+| --- | --- | --- |
+| Admission (production snapshot builder) | 134.8 s | 79.5 s |
+| Seed: decode, evaluation, independent validation | 232.2 s | 154.6 s |
+| Cost-of-delay redispatch, with its validation | 163.7 s | 129.4 s |
+| Three search moves | 289.0 s | 135.8 s |
+| Final validation | 48.3 s | 44.1 s |
+| **Plan** | **784.0 s** | **494.4 s** |
+| **Admission + plan** | **15.3 min** | **9.6 min** |
+| Peak memory | 5.5 GB | 5.9 GB |
+
+What changed, all with identical results:
+- **Native canonical JSON** (`native/src/canon.rs`): snapshot and plan seals, lineage hashes, 2.1 million graph ids and
+  decision digests are written and hashed in Rust from the Python values. Before, this was about a third of
+  admission.
+- **V9 in one topological pass.** At 50 aircraft the previous version walked the network once per part release
+  (23,301 walks); it took minutes and about 4 GB. Every assignment the summary cannot clear, and every phase on or below a
+  cycle, still gets the exact walk.
+- **The Rust search releases the GIL, and three search moves decode together** on threads. The accepted sequence is the
+  one-at-a-time sequence (see `NATIVE_CORE.md`).
+- **FxHash** for the Rust core's maps (std's SipHash was about a fifth of the search).
+- Smaller changes:
+  - per-row work hoisted out of the graph builder's template-edge loop;
+  - shift instances cached in the validator;
+  - carry-in windows indexed by person;
+  - crew holding evidence memoized per person and bundle.
+
+The seed's independent validation now also runs while the redispatch decodes (measured in the 14-day run).
+
+Where the time goes now:
+- **Each full-fleet decode is about 85 s.** It places 286,024 phases, the whole remaining build; the Rust search is
+  about 70 % of that.
+- **Each independent validation is about 45 s.**
+
+At this scale the three search moves accepted nothing. Every candidate is a full decode of the fleet, because
+resources are shared across aircraft, so a move's effect cannot be judged locally.
+
+## Will it hold on the real data?
+
+The synthetic fleet has the program's stated size, so the method's cost drivers are measured at the right scale:
+- open phases placed per decode;
+- how many shifts and starts each search scans before a crew fits;
+- the number of full decodes;
+- the plan size the validator checks.
+
+Five things the synthetic run cannot show, each to measure on a real extract:
+
+1. **Source pulls.** The simulation captures sources in memory. Real pulls from IE SQL Server add each query's time:
+   about 300,000 task rows, 1.3 million dependency rows, and certificate, roster and attendance rows. Source-run receipts
+   record each query and its row count, not its time, so time one pull on the real server.
+2. **Crowding.** The synthetic work fills 90 % of regular hours. Overloaded teams make each phase scan more shifts
+   before a crew fits. Start skipping keeps that cheap, but it is not free.
+3. **Certificate bundles.** Real multi-certificate requirements and alternatives widen the crew search (capped at 2,000
+   combinations per attempt). The synthetic teams need one to three certificates.
+4. **Where it runs.** The schedule runs in the GitLab pipeline (`schedule_validate` in `.gitlab-ci.yml`), and Posit
+   Connect only displays the published results. The size therefore matters for that job's runner, not for Connect:
+   - The measured runs used 4 cores and peaked at 5.9-9.4 GB. Tag the job to a runner with at least 4 vCPU and 16 GB.
+   - The job also needs the native wheel and `FOCUS_NATIVE_CORE=true`; without them the Python core gives the same plan
+     but is far too slow at 50 aircraft.
+   - Build the wheel with `native_wheel`, or bake it into a prebuilt image so the job spends no time installing.
+   - With one core the search moves decode one at a time: the same plan, about 90 s more.
+   - Not yet measured at 50 aircraft: the draft pipeline passes the admitted snapshot from `acquire_admit` to
+     `schedule_validate` through the store. The simulation admits and plans in one process, so time that hand-off on
+     the real server. If it is slow, run admission and planning in one job (keeping each role's credentials).
+5. **Headroom.** 9.6 minutes fits the 10-minute target with little margin.
+   - The repeatable knobs are fewer search moves (they accepted nothing at this scale) and fewer repair boosts.
+   - The bigger lever would be a detailed horizon with a coarser projection beyond it, which changes how completions are
+     projected and needs a decision.
+   - The wall-clock budget also stops the search, but a run stopped by it is not repeatable.
+
+## What changed in the native-core trial
 
 - **Native core** (`native/`, `docs/execution/NATIVE_CORE.md`): the duty ledger and crew selection in Rust, with
   byte-identical plans. A crew choice now costs about 17-36 µs in Rust.

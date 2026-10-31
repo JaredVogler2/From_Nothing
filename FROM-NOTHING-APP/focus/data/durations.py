@@ -6,8 +6,10 @@
   negative counts are unavailable; they are never defaulted or clamped to 1, and
   TOTAL is never silently replaced by PRIMARY.
 * Rework (NC/PU/CI): the selected statistic (default P75) of comparable
-  completed elapsed-active episodes. Group fallback: exact (class, team), then the
-  approved broader (class) group, then unavailable. There is no flat 60 and no
+  completed elapsed-active episodes. Group fallback: the exact context (class,
+  team, model, crew), then the approved broader groups of ``duration.group_fallback``
+  ((class, team), then (class)), then unavailable. Process and revision have no
+  source column yet, so they are not matched. There is no flat 60 and no
   person-effort percentile divided by crew.
 * In-progress jobs: the remaining elapsed from sourced work progress. Actual
   performed work is preserved, never restarted.
@@ -23,7 +25,7 @@ from typing import Any, Iterable, Mapping
 from ..contracts.planning import DurationEstimate, FlowBudget, Job
 from ..domain import digest_id
 from ..policy import Policy
-from .duration_gauge import DurationStatistics, scheduled_ticks
+from .duration_gauge import DurationStatistics, exact_group, scheduled_ticks
 
 
 def _opt_int(value: Any) -> int | None:
@@ -125,10 +127,17 @@ def resolve(job: Job, *, status_class: str, policy: Policy, mode: str, stats: Ma
     stats_id = None
     method = "FOCUS_FLOW_BUDGET.CRITICAL_FLOW_MINUTES by exact JOB_NUMBER+LINE_NUMBER"
     uncertainty = "standard"
-    if job.rework_class in rework_classes:
+    if status_class == "IN_PROGRESS" and job.remaining_elapsed is not None and job.remaining_elapsed > 0:
+        # remaining actual work is preserved (S08), for rework as for any job: never the full estimate again
+        elapsed = job.remaining_elapsed
+        basis = "REMAINING_ELAPSED"
+        method = f"sourced remaining elapsed after performed {job.performed_elapsed} minutes"
+    elif job.rework_class in rework_classes:
         chosen = None
-        for level in fallback:
-            key = (job.rework_class, job.team or "") if level == "CLASS_TEAM" else (job.rework_class,)
+        exact = exact_group(job.rework_class, job.team or "", job.model, crew)
+        keys = [] if exact is None else [exact]
+        keys += [(job.rework_class, job.team or "") if level == "CLASS_TEAM" else (job.rework_class,) for level in fallback]
+        for key in keys:
             candidate = stats.get(key)
             if candidate is not None and candidate.usable:
                 chosen = candidate
@@ -140,7 +149,8 @@ def resolve(job: Job, *, status_class: str, policy: Policy, mode: str, stats: Ma
             elapsed = scheduled_ticks(precise)
             basis = "ELAPSED_ACTIVE_EPISODES"
             stats_id = chosen.id
-            method = f"{statistic} of {chosen.admitted_count} completed {'/'.join(chosen.group)} elapsed episodes"
+            method = (f"{statistic} of {chosen.admitted_count} completed {'/'.join(chosen.group)} elapsed episodes "
+                      f"({'exact context' if chosen.group == exact else 'approved broader group'})")
             ci = (f"; P75 {chosen.confidence_level} interval [{chosen.p75_ci_low}, {chosen.p75_ci_high}]"
                   if chosen.p75_ci_low is not None else "; P75 interval unavailable")
             uncertainty = (f"n={chosen.admitted_count} window {chosen.sample_start:%Y-%m-%d}..{chosen.sample_end:%Y-%m-%d}; "
@@ -148,12 +158,8 @@ def resolve(job: Job, *, status_class: str, policy: Policy, mode: str, stats: Ma
     elif status_class == "IN_PROGRESS":
         if job.remaining_elapsed is None:
             blocked.append("REMAINING_UNKNOWN: in-progress job without sourced remaining elapsed work")
-        elif job.remaining_elapsed <= 0:
-            blocked.append("REMAINING_NONPOSITIVE: sourced remaining work is not positive; completion needs verified evidence")
         else:
-            elapsed = job.remaining_elapsed
-            basis = "REMAINING_ELAPSED"
-            method = f"sourced remaining elapsed after performed {job.performed_elapsed} minutes"
+            blocked.append("REMAINING_NONPOSITIVE: sourced remaining work is not positive; completion needs verified evidence")
     else:
         flow = budget.critical_flow_minutes if budget else None
         if budget is not None and (flow is None or flow <= 0):

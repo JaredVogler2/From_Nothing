@@ -52,9 +52,13 @@ reproduces the same statistics in the database.
 - **Admission.** Episodes are admitted only when `verified_complete` with a positive elapsed value and
   a completion instant. Reopened or unverified episodes are censored and counted with reasons, so a
   survivor-only current view cannot leak in.
-- **Groups.** Exact `(class, team)` first, then the approved broader `(class)` group
-  (`duration.group_fallback`). A sourced engineered estimate would come next only with a sourced,
-  approved dataset; none exists, so the next step is **unavailable**.
+- **Groups.** The exact comparable context `(class, team, model, crew)` first, then the approved
+  broader `(class, team)` and `(class)` groups (`duration.group_fallback`). An episode with an
+  unknown model or crew joins no exact group. The spec's context also names process and revision,
+  but no source contract carries them (no column in `duration_episodes`, clock observations or the
+  job census), so they are not matched. The estimate's method says which group it used ("exact
+  context" or "approved broader group"). A sourced engineered estimate would come next only with a
+  sourced, approved dataset; none exists, so the next step is **unavailable**.
 - **Percentiles.** Continuous percentiles use h=(n−1)p, x_lo + (h−lo)(x_hi−x_lo), computed exactly
   with fractions. SQL `PERCENTILE_CONT` uses the same definition.
 - **Persisted fields.** P50, P55, mean, P75 and P90, plus:

@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
-from typing import Mapping
+from typing import Any, Mapping
 
 from ..calendar import CalendarService, ShiftInstance, ShiftPolicy, build_shift, shifts_between
 from ..contracts.planning import Edge, Phase, PlanningSnapshot, Pool
@@ -76,12 +76,13 @@ class EngineContext:
         # ---- hard typed edges between phases / milestones
         self.preds: dict[str, list[Edge]] = defaultdict(list)
         self.succs: dict[str, list[Edge]] = defaultdict(list)
-        self.unsupported_edges: list[Edge] = []
+        self.concurrency: dict[str, list[tuple[str, str | None, Edge]]] = defaultdict(list)   # phase -> (partner, policy mode, edge)
         for e in snapshot.edges:
             if not e.hard:
                 continue
             if e.type in CONCURRENCY_TYPES:
-                self.unsupported_edges.append(e)
+                self.concurrency[e.pred_phase].append((e.succ_phase, e.concurrency_mode, e))
+                self.concurrency[e.succ_phase].append((e.pred_phase, e.concurrency_mode, e))
                 continue
             self.preds[e.succ_phase].append(e)
             self.succs[e.pred_phase].append(e)
@@ -124,6 +125,7 @@ class EngineContext:
         self.team_certs = {t: frozenset(c) for t, c in demanded.items()}
         self.tails = self._tails()
         self._whole_window: dict[tuple, bool] = {}
+        self._reserve: dict[tuple[str, str], int] | None = None
 
     # ---------------------------------------------------------------- readiness
     def placeability(self, job_id: str) -> Placeability:
@@ -164,6 +166,13 @@ class EngineContext:
             floor = max(floor, to_minute(facts.earliest_at))
             notes.append(f"CS{facts.station} earliest")
         return floor, notes
+
+    def job_latest(self, job_id: str) -> int | None:
+        """The end no work of the job may pass: its station's CS hard latest, only where the policy declares one (S09
+        feasibility); None otherwise."""
+        job = self.jobs[job_id]
+        facts = self.cs.get((job.line, job.station))
+        return to_minute(facts.hard_latest_at) if facts is not None and facts.hard_latest_at is not None else None
 
     # ---------------------------------------------------------------- resources
     def line_shifts(self, line: int) -> list[ShiftInstance]:
@@ -208,6 +217,41 @@ class EngineContext:
                 return True
         return self.eligibility.index.check_bundle(person, bundle, start, end).allowed
 
+    def crew_reserve(self) -> dict[tuple[str, str], int]:
+        """(person, shift id) -> how many rare role bundles of ready work the person is one of few holders of (S11 SCARCITY).
+
+        A bundle is rare in a pool when 1 to ``crew.rare_holders_max`` of the pool's members hold it over the whole shift.
+        Ready work is every placeable phase whose hard predecessors are already satisfied or released at the cutoff (the
+        ready frontier), demanded of the pool's team. Crew choice uses these people last, so a specialist stays free for the
+        rare role coming up. The table comes from the snapshot alone, so both cores rank by the same numbers.
+        """
+        if self._reserve is not None:
+            return self._reserve
+        limit = self.policy.int("crew.rare_holders_max")
+        done = {p.key.id for job, plist in self.job_phases.items() if self.placeability(job).satisfied for p in plist}
+        released = {rid for rid in self.releases if self.release_floor(rid)[0] is not None}
+        demand: dict[str, set[Any]] = defaultdict(set)
+        for pid, phase in self.phases.items():
+            if not phase.role_demands or not phase.role_demands[0].bundle.groups or not self.placeability(phase.job).placeable:
+                continue
+            if all(e.pred_phase in done or e.pred_phase in released for e in self.preds.get(pid, ())):
+                demand[phase.role_demands[0].team].add(phase.role_demands[0].bundle)
+        out: dict[tuple[str, str], int] = defaultdict(int)
+        for pool in sorted(self.snapshot.pools, key=lambda p: p.id):
+            bundles = demand.get(pool.key.team)
+            members = self._members.get(pool.id, ())
+            if not bundles or not members:
+                continue
+            shift = self.shift(pool.key.start_date, pool.key.shift_number)
+            window = (shift.start, shift.end)
+            for bundle in sorted(bundles, key=repr):
+                holders = [m for m in members if self.qualifies_within(m, bundle, window, shift.start, shift.end)]
+                if 0 < len(holders) <= limit:
+                    for m in holders:
+                        out[(m, shift.id)] += 1
+        self._reserve = dict(out)
+        return self._reserve
+
     def usable_applicable(self, person: str, team: str, start: int, end: int) -> int:
         return len(self.eligibility.index.usable_certs(person, start, end, self.team_certs.get(team, frozenset())))
 
@@ -236,7 +280,17 @@ class EngineContext:
 
     # ---------------------------------------------------------------- CPM tails
     def _tails(self) -> dict[str, int]:
-        nodes = set(self.phases) | set(self.releases)
+        """Each node's CPM tail: its own work plus the longest hard chain after it. A tail depends only on the nodes after it,
+        so the walk covers what open work reaches. Verified-complete history that no open node leads into is never placed and
+        is left out (admitted graphs are acyclic: cycles are quarantined), so the build keeps pace with open work, not history."""
+        done = {job for job, d in self.dispositions.items() if d.disposition is Disposition.VERIFIED_COMPLETE}
+        stack = [n for n, p in self.phases.items() if p.job not in done] + list(self.releases)
+        nodes = set(stack)
+        while stack:
+            for e in self.succs.get(stack.pop(), ()):
+                if e.succ_phase not in nodes and (e.succ_phase in self.phases or e.succ_phase in self.releases):
+                    nodes.add(e.succ_phase)
+                    stack.append(e.succ_phase)
         indeg = {n: 0 for n in nodes}
         for n in nodes:
             for e in self.succs.get(n, ()):

@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from focus.codec import parse_utc
 from focus.config import Settings, SettingsError
 from focus.domain import DutyKind
 from focus.engine import native
@@ -207,3 +208,121 @@ def test_native_core_setting_is_strict() -> None:
     assert Settings.from_env({}).native_core is False
     with pytest.raises(SettingsError):
         Settings.from_env({"FOCUS_NATIVE_CORE": "maybe"})
+
+
+def test_revocation_windows_bind_both_cores_identically(app_root: Path) -> None:
+    """S07: a revocation holds until its reinstatement, in the Rust core as in the Python one; nobody works a job needing
+    the revoked certificate inside the window, and both cores make the same plan."""
+    pytest.importorskip("focus_native")
+    import json
+
+    from focus.clock import FIXTURE_CUTOFF, FixedClock
+    from focus.data.acquisition import acquire, load_snapshot
+    from focus.data.fixture_reader import FixtureSourceReader
+    from focus.data.repositories import Repositories
+    from focus.data.store import FixtureStore
+    from focus.domain import PersonKey, Purpose, to_minute
+    from focus.engine.max.optimizer.orchestrator import schedule_snapshot
+    from focus.runtime import build_services
+
+    inputs = app_root / "fixtures" / "inputs" / "manufacturing_demo"
+    events = json.loads((inputs / "holding_events.json").read_text())
+    window = ("2026-10-26T10:00:00Z", "2026-10-26T20:00:00Z")
+    events["rows"] += [
+        {"BEMS_ID": "DEMO-A1-01", "CERT_CODE": "A", "EVENT": "REVOKED", "EFFECTIVE_AT_UTC": window[0], "OBSERVED_AT_UTC": "2026-10-25T12:00:00Z",
+         "EVIDENCE_REF": "TEST-REVOKE-A101-A"},
+        {"BEMS_ID": "DEMO-A1-01", "CERT_CODE": "A", "EVENT": "REINSTATED", "EFFECTIVE_AT_UTC": window[1], "OBSERVED_AT_UTC": "2026-10-25T12:00:00Z",
+         "EVIDENCE_REF": "TEST-REINSTATE-A101-A"}]
+    with tempfile.TemporaryDirectory() as tmp:
+        clock = FixedClock(FIXTURE_CUTOFF)
+
+        def services(flag: bool):  # type: ignore[no-untyped-def]
+            settings = Settings.from_env({}, app_root=app_root, inprocess_worker=False, native_core=flag)
+            return build_services(settings, repositories=Repositories(FixtureStore(Path(tmp)), mode="fixture", scope_key=settings.scope_key,
+                                                                      clock=clock), clock=clock)
+
+        base = services(False)
+        snapshot_id = acquire(base, FixtureSourceReader(inputs, overrides={"holding_events": events}), cutoff=FIXTURE_CUTOFF,
+                              idempotency_key="native-revocation-window").snapshot_id
+        snapshot = load_snapshot(base.repositories, snapshot_id)
+        person = PersonKey("DEMO-A1-01", "fixture-demo").id
+        held = next(h for h in snapshot.holdings if h.person == person and h.cert == "A")
+        assert held.revoked_at is None and len(held.revoked_windows) == 1          # reinstated: a closed window, not erased
+        needs_a = {r.job for r in snapshot.requirements if r.bundle is not None and any("A" in g for g in r.bundle.groups)}
+        lo, hi = (to_minute(parse_utc(t)) for t in window)
+        out = {}
+        for flag in (False, True):
+            svc = services(flag)
+            plan, run = schedule_snapshot(svc, load_snapshot(svc.repositories, snapshot_id), purpose=Purpose.EXECUTABLE, budget_seconds=60,
+                                          max_moves=5)
+            out[flag] = (plan.id, plan.hash, run.native["engine"])
+            for a in plan.assignments:
+                if a.job in needs_a and person in {c.person for c in a.crew}:
+                    assert to_minute(a.end) <= lo or to_minute(a.start) >= hi, (flag, a.id, a.start, a.end)
+        assert out[False][:2] == out[True][:2] and out[True][2] == "native", out
+
+
+def test_a_wheel_built_for_another_protocol_is_refused(monkeypatch) -> None:
+    """A wheel from another commit is never fed rows it cannot read: the Python core runs and the receipt says why."""
+    import sys
+    import types
+
+    stale = types.ModuleType("focus_native")
+    stale.PROTOCOL = native.PROTOCOL - 1                  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "focus_native", stale)
+    monkeypatch.setattr(native, "_LOADED", {})
+    assert native.available() is False
+    receipt = native.status(True)
+    assert receipt["engine"] == "python" and "protocol" in receipt["reason"]
+
+
+def test_cs_hard_latest_defers_work_that_cannot_end_in_time_in_both_cores(app_root: Path) -> None:
+    """S09: where the policy declares a hard latest, no work of the station ends after it. The search defers what cannot fit
+    (its booking rolled back), the validator agrees, and both cores make the same plan."""
+    pytest.importorskip("focus_native")
+    import json
+
+    from focus.clock import FIXTURE_CUTOFF, FixedClock
+    from focus.data.acquisition import acquire, load_snapshot
+    from focus.data.fixture_reader import FixtureSourceReader
+    from focus.data.repositories import Repositories
+    from focus.data.store import FixtureStore
+    from focus.domain import Purpose, to_minute
+    from focus.engine.max.optimizer.orchestrator import schedule_snapshot
+    from focus.policy import load_policy
+    from focus.runtime import build_services
+
+    policy = load_policy(app_root / "config" / "policies", "rebuild-v1").with_overrides({"cs.hard_latest": "GATE_DAY_END"}, new_id="cs-hard-latest",
+                                                                                         reason="S09 hard latest test")
+    inputs = app_root / "fixtures" / "inputs" / "manufacturing_demo"
+    cs = json.loads((inputs / "cs_windows.json").read_text())
+    for r in cs["rows"]:
+        if r["LINE_NUMBER"] == 1301:
+            r.update({"CS_OP_LOAD": "2026-10-25", "CS_OP_UNLOAD": "2026-10-25"})    # hard latest before the cutoff: nothing fits
+    with tempfile.TemporaryDirectory() as tmp:
+        clock = FixedClock(FIXTURE_CUTOFF)
+
+        def services(flag: bool):  # type: ignore[no-untyped-def]
+            settings = Settings.from_env({}, app_root=app_root, inprocess_worker=False, native_core=flag)
+            return build_services(settings, repositories=Repositories(FixtureStore(Path(tmp)), mode="fixture", scope_key=settings.scope_key,
+                                                                      clock=clock), clock=clock, policy=policy)
+
+        base = services(False)
+        snapshot_id = acquire(base, FixtureSourceReader(inputs, overrides={"cs_windows": cs}), cutoff=FIXTURE_CUTOFF,
+                              idempotency_key="cs-hard-latest").snapshot_id
+        snapshot = load_snapshot(base.repositories, snapshot_id)
+        latest = {(f.line, f.station): f.hard_latest_at for f in snapshot.cs_facts}
+        jobs = {j.id: j for j in snapshot.jobs}
+        out = {}
+        for flag in (False, True):
+            svc = services(flag)
+            plan, run = schedule_snapshot(svc, load_snapshot(svc.repositories, snapshot_id), purpose=Purpose.EXECUTABLE, budget_seconds=60,
+                                          max_moves=5)
+            assert run.validation.valid, [v.code for v in run.validation.violations]
+            for a in plan.assignments:
+                bound = latest.get((jobs[a.job].line, jobs[a.job].station))
+                assert bound is None or to_minute(a.end) <= to_minute(bound), (flag, a.id, a.end, bound)
+            deferred = [o for o in plan.job_dispositions if any(r.startswith("AFTER_CS_HARD_LATEST") for r in o.reasons)]
+            assert deferred and all(jobs[o.job].line == 1301 for o in deferred), flag
+            out[flag] = (plan.id, plan.hash, run.native["engine"])
+        assert out[False][:2] == out[True][:2] and out[True][2] == "native", out

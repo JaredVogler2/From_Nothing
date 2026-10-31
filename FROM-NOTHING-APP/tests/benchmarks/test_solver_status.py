@@ -222,10 +222,12 @@ def test_a45_improvement_is_exact_and_never_a_proof(demo) -> None:
 
 
 def test_signature_only_difference_is_not_an_improvement() -> None:
-    base = (0, 0, 1, 5, 100, 60, 0, 0, "SIG-b")
-    ev = lambda key: types.SimpleNamespace(key=key)  # noqa: E731
+    # keys in the default objective order: defended, exact, unknown, cents, travel+wait, OT, breaks, deferred, signature
+    base = (0, 0, 1, 100, 60, 0, 0, 5, "SIG-b")
+    ev = lambda key: types.SimpleNamespace(key=key, levels=KEY_LEVELS, unknown=frozenset({1201}))  # noqa: E731
     assert MaxOptimizer.improved_level(ev(base[:-1] + ("SIG-a",)), ev(base)) == "signature"
-    assert MaxOptimizer.improved_level(ev((0, 0, 1, 4, 999, 99, 9, 9, "SIG-z")), ev(base)) == "deferred_phases"
+    assert MaxOptimizer.improved_level(ev((0, 0, 1, 100, 60, 0, 0, 4, "SIG-z")), ev(base)) == "deferred_phases"
+    assert MaxOptimizer.improved_level(ev((0, 0, 1, 99, 99, 9, 9, 9, "SIG-z")), ev(base)) == "controllable_known_cents"   # money first
     assert MaxOptimizer.improved_level(ev((0, 0, 2, 0, 0, 0, 0, 0, "SIG-a")), ev(base)) is None        # worse at a higher level
     assert MaxOptimizer.improved_level(ev(base), ev(base)) is None
 

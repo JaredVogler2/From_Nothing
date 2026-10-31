@@ -1,0 +1,351 @@
+{
+ "failures": [],
+ "note": "production-shaped synthetic fixtures; runtimes are this machine's; the independent validator decides validity",
+ "runs": [
+  {
+   "acquire_seconds": 19.09,
+   "aircraft": 1,
+   "budget_seconds": 600.0,
+   "engines": {
+    "FORECAST": {
+     "identical": true,
+     "runs": {
+      "native": {
+       "candidate_id": "CANDd049b4456d2917ab480c",
+       "engine": {
+        "available": true,
+        "engine": "native",
+        "requested": true
+       },
+       "plan_hash": "de2e919011313b52024829693aafa1afdbfe47049a5f26c2ce8dc9cbb74550f8",
+       "rss_mb_after": 487,
+       "schedule_digest": "8ddb9f36b4e5d80482b15c870e30a5a81be08409fb06c525397afae0f16efb0d",
+       "stages_ms": {
+        "delay_repair": 1,
+        "economic_redispatch": 1000,
+        "neighborhoods": 0,
+        "neutral_seed": 4699
+       },
+       "valid": true,
+       "wall_seconds": 10.24
+      },
+      "python": {
+       "candidate_id": "CANDd049b4456d2917ab480c",
+       "engine": {
+        "available": true,
+        "engine": "python",
+        "requested": false
+       },
+       "plan_hash": "de2e919011313b52024829693aafa1afdbfe47049a5f26c2ce8dc9cbb74550f8",
+       "rss_mb_after": 487,
+       "schedule_digest": "8ddb9f36b4e5d80482b15c870e30a5a81be08409fb06c525397afae0f16efb0d",
+       "stages_ms": {
+        "delay_repair": 2,
+        "economic_redispatch": 18748,
+        "neighborhoods": 1,
+        "neutral_seed": 23452
+       },
+       "valid": true,
+       "wall_seconds": 47.68
+      }
+     }
+    }
+   },
+   "inventory": {
+    "census_lines": 1,
+    "dispositions": {
+     "admitted": 5040,
+     "verified_complete": 360
+    },
+    "edges": 27312,
+    "jobs": 5400,
+    "people": 342,
+    "phase_kinds": {
+     "FINAL_QA": 326,
+     "RELEASE": 5400,
+     "WORK": 5040
+    },
+    "phases": 10766,
+    "pools": 2898,
+    "releases": 41,
+    "rework_links": 900,
+    "shortages": 41,
+    "source_task_rows": 5400,
+    "virtual_people": 90
+   },
+   "label": "PRODUCTION_SHAPED_SYNTHETIC_FIXTURE (real readiness not established)",
+   "max_moves": 0,
+   "max_rss_mb": 487,
+   "plans": {
+    "FORECAST": {
+     "accepted_moves": 0,
+     "assignments": 5366,
+     "baseline": {
+      "conditional_cents": "{'num': 713125, 'den': 3}",
+      "deferred_phases": 0,
+      "known_cents": "{'num': 0, 'den': 1}",
+      "unknown_lines": 0
+     },
+     "candidate_id": "CANDd049b4456d2917ab480c",
+     "commitment_outcomes": {},
+     "complete_cost": true,
+     "conditional_assignments": 3600,
+     "conditional_cost_cents": "713125/3",
+     "controllable_known_cents": "713125/3",
+     "deadline_reached": false,
+     "dispositions": {
+      "conditional": 3335,
+      "scheduled": 1705,
+      "verified_complete": 360
+     },
+     "duty_minutes": {
+      "WORK": 912885
+     },
+     "final_deferred_phases": 0,
+     "global_optimality_proven": false,
+     "inventory_complete": true,
+     "jobs": 5400,
+     "known_cost_cents": "0",
+     "moves": 0,
+     "ot_minutes": 23627,
+     "proof_status": "HEURISTIC_NO_PROOF",
+     "search_validation": {
+      "rolled_back": 0,
+      "seed_valid": true,
+      "validated": 1
+     },
+     "solver": {
+      "available": null,
+      "budgets": {},
+      "enabled_by": "",
+      "global_optimality_proven": false,
+      "model": {},
+      "name": "CP-SAT",
+      "probes": [],
+      "proof_scope": "POOLED_RELAXATION_ORDER_ONLY: no named roles, qualifications, travel, budgets or shift windows; never an executable plan",
+      "reason": "optional solver is off (policy solver.enabled=false, FOCUS_SOLVER_ENABLED unset)",
+      "relaxation_bound": null,
+      "relaxation_objective": null,
+      "relaxation_status": null,
+      "solve_seconds": 0.0,
+      "status": "DISABLED",
+      "version": null,
+      "wall_seconds": 0.0
+     },
+     "stages_ms": {
+      "delay_repair": 1,
+      "economic_redispatch": 1000,
+      "neighborhoods": 0,
+      "neutral_seed": 4699
+     },
+     "travel_minutes": 0,
+     "unknown_cost_lines": 0,
+     "validation": {
+      "check_counts": {
+       "E_CAPABILITY": 5366,
+       "E_COMMITMENT": 0,
+       "E_CS": 5040,
+       "E_ECONOMICS": 2,
+       "E_INVENTORY": 5400,
+       "E_LINEAGE": 8,
+       "V1": 10406,
+       "V2": 20270,
+       "V3": 5366,
+       "V4": 20224,
+       "V5": 5366,
+       "V6": 14647,
+       "V7": 9744,
+       "V8": 696,
+       "V9": 5366
+      },
+      "required_skips": [],
+      "valid": true,
+      "violations": 0
+     },
+     "virtual_people_with_duty": 0,
+     "wait_minutes": 0,
+     "wall_seconds": 10.24
+    }
+   },
+   "shape": "production",
+   "shape_options": {},
+   "solver_budget_seconds": null,
+   "solver_requested": false,
+   "status": "COMPLETE"
+  },
+  {
+   "acquire_seconds": 103.14,
+   "aircraft": 5,
+   "budget_seconds": 600.0,
+   "engines": {
+    "FORECAST": {
+     "identical": true,
+     "runs": {
+      "native": {
+       "candidate_id": "CAND0752d8f0e9519f3788b3",
+       "engine": {
+        "available": true,
+        "engine": "native",
+        "requested": true
+       },
+       "plan_hash": "8261eac5e800808b861e122656aee57255a9ff2c4c70698bb4d41c240aef8fc7",
+       "rss_mb_after": 1624,
+       "schedule_digest": "be422c0a67408b4ed4d2ce0cc9d86a667dca00bf50fefe5809c18be428055f7b",
+       "stages_ms": {
+        "delay_repair": 7,
+        "economic_redispatch": 12880,
+        "neighborhoods": 42,
+        "neutral_seed": 24220
+       },
+       "valid": true,
+       "wall_seconds": 55.9
+      },
+      "python": {
+       "candidate_id": "CAND0752d8f0e9519f3788b3",
+       "engine": {
+        "available": true,
+        "engine": "python",
+        "requested": false
+       },
+       "plan_hash": "8261eac5e800808b861e122656aee57255a9ff2c4c70698bb4d41c240aef8fc7",
+       "rss_mb_after": 1624,
+       "schedule_digest": "be422c0a67408b4ed4d2ce0cc9d86a667dca00bf50fefe5809c18be428055f7b",
+       "stages_ms": {
+        "delay_repair": 7,
+        "economic_redispatch": 527859,
+        "neighborhoods": 8,
+        "neutral_seed": 594173
+       },
+       "valid": true,
+       "wall_seconds": 1141.48
+      }
+     }
+    }
+   },
+   "inventory": {
+    "census_lines": 5,
+    "dispositions": {
+     "admitted": 16200,
+     "verified_complete": 10800
+    },
+    "edges": 126848,
+    "jobs": 27000,
+    "people": 710,
+    "phase_kinds": {
+     "FINAL_QA": 948,
+     "RELEASE": 27000,
+     "WORK": 16200
+    },
+    "phases": 44148,
+    "pools": 2898,
+    "releases": 115,
+    "rework_links": 4500,
+    "shortages": 115,
+    "source_task_rows": 27000,
+    "virtual_people": 90
+   },
+   "label": "PRODUCTION_SHAPED_SYNTHETIC_FIXTURE (real readiness not established)",
+   "max_moves": 0,
+   "max_rss_mb": 1624,
+   "plans": {
+    "FORECAST": {
+     "accepted_moves": 0,
+     "assignments": 17148,
+     "baseline": {
+      "conditional_cents": "{'num': 13401125, 'den': 36}",
+      "deferred_phases": 0,
+      "known_cents": "{'num': 0, 'den': 1}",
+      "unknown_lines": 0
+     },
+     "candidate_id": "CAND0752d8f0e9519f3788b3",
+     "commitment_outcomes": {},
+     "complete_cost": true,
+     "conditional_assignments": 9229,
+     "conditional_cost_cents": "13401125/36",
+     "controllable_known_cents": "13401125/36",
+     "deadline_reached": false,
+     "dispositions": {
+      "conditional": 8542,
+      "scheduled": 7658,
+      "verified_complete": 10800
+     },
+     "duty_minutes": {
+      "TRAVEL": 88950,
+      "WORK": 2941050
+     },
+     "final_deferred_phases": 0,
+     "global_optimality_proven": false,
+     "inventory_complete": true,
+     "jobs": 27000,
+     "known_cost_cents": "0",
+     "moves": 0,
+     "ot_minutes": 88936,
+     "proof_status": "HEURISTIC_NO_PROOF",
+     "search_validation": {
+      "rolled_back": 0,
+      "seed_valid": true,
+      "validated": 1
+     },
+     "solver": {
+      "available": null,
+      "budgets": {},
+      "enabled_by": "",
+      "global_optimality_proven": false,
+      "model": {},
+      "name": "CP-SAT",
+      "probes": [],
+      "proof_scope": "POOLED_RELAXATION_ORDER_ONLY: no named roles, qualifications, travel, budgets or shift windows; never an executable plan",
+      "reason": "optional solver is off (policy solver.enabled=false, FOCUS_SOLVER_ENABLED unset)",
+      "relaxation_bound": null,
+      "relaxation_objective": null,
+      "relaxation_status": null,
+      "solve_seconds": 0.0,
+      "status": "DISABLED",
+      "version": null,
+      "wall_seconds": 0.0
+     },
+     "stages_ms": {
+      "delay_repair": 7,
+      "economic_redispatch": 12880,
+      "neighborhoods": 42,
+      "neutral_seed": 24220
+     },
+     "travel_minutes": 88950,
+     "unknown_cost_lines": 0,
+     "validation": {
+      "check_counts": {
+       "E_CAPABILITY": 17148,
+       "E_COMMITMENT": 0,
+       "E_CS": 16200,
+       "E_ECONOMICS": 6,
+       "E_INVENTORY": 27000,
+       "E_LINEAGE": 8,
+       "V1": 33348,
+       "V2": 60624,
+       "V3": 17148,
+       "V4": 71524,
+       "V5": 17148,
+       "V6": 53860,
+       "V7": 31607,
+       "V8": 743,
+       "V9": 17148
+      },
+      "required_skips": [],
+      "valid": true,
+      "violations": 0
+     },
+     "virtual_people_with_duty": 0,
+     "wait_minutes": 0,
+     "wall_seconds": 55.9
+    }
+   },
+   "shape": "production",
+   "shape_options": {},
+   "solver_budget_seconds": null,
+   "solver_requested": false,
+   "status": "COMPLETE"
+  }
+ ],
+ "sizes": "1,5",
+ "status": "ok"
+}

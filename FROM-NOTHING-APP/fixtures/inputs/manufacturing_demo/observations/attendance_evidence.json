@@ -1,0 +1,23 @@
+{
+ "columns": [
+  "SOURCE_EVENT_KEY",
+  "PERSON_KEY",
+  "SHIFT_DATE",
+  "SHIFT_NUMBER",
+  "PRESENT",
+  "REASON",
+  "RECORDED_AT_UTC",
+  "OBSERVED_AT_UTC",
+  "EVIDENCE_REF"
+ ],
+ "dataset": "attendance_evidence",
+ "receipt": {
+  "certified_empty": true,
+  "complete": true,
+  "covered_through_utc": "2026-10-28T23:59:59Z",
+  "producer": "fixture:manufacturing_demo",
+  "upstream_revision": "fixture-v1"
+ },
+ "rows": [],
+ "schema_version": 1
+}

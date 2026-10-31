@@ -155,6 +155,13 @@ def test_a63_replays_month_transition_and_named_lineage(world) -> None:
         assert e.dedupe_key == f"{e.base_key}#r{e.revision}"
     steward = [b for b in badges(services) if b.badge == "SkillSteward"]
     assert all("not a certification" in b.statement for b in steward)
+    # S14: each award names its exact earning units and the policy it was decided under; its badge event carries the units
+    awards = [b for b in badges(services) if not b.revoked]
+    assert awards and all(b.policy_id == services.policy.id for b in awards)
+    assert all(b.earning_unit_ids for b in awards if b.badge in ("CommitmentKeeper", "SkillSteward", "Recovery", "MonthlyChampion"))
+    for b in awards:
+        badge_events = [e for e in events(services) if e.event_type == "badge_earned" and b.id in e.evidence]
+        assert badge_events and all(e.earning_unit_ids == b.earning_unit_ids for e in badge_events), b.badge
     assert {r["team"] for r in inflation_monitor(services)} <= {"PROD-A", "PROD-B", "QA"} and not any(r["alert"] for r in inflation_monitor(services))
 
 
@@ -206,11 +213,11 @@ def test_steady_shift_needs_three_consecutive_scored_shifts(policy) -> None:
     for i, earned in enumerate((100, 90, 90, 50, 100, 100)):
         start = datetime(2026, 10, 26 + i, 10, 0, tzinfo=UTC)
         goal = f"GOAL{i}"
-        records.append(SimpleNamespace(goal_id=goal, team="PROD-A", window=SimpleNamespace(start=start, start_date=start.date())))
+        records.append(SimpleNamespace(goal_id=goal, team="PROD-A", window=SimpleNamespace(start=start, start_date=start.date()), units=()))
         parts = components(facts(100, earned), [], [], policy)
         evals[goal] = build_evaluation(scope="S", kind="GOAL", label=goal, goal_ids=[goal], cutoff=start, policy=policy, parts=parts,
                                        extra_reasons=[], evidence_hash=goal)
-    view = SimpleNamespace(records=lambda: records)
+    view = SimpleNamespace(records=lambda: records, credits={})
     desired = progression._steady_shift(services, view, evals)
     scores = [str(evals[r.goal_id].score) for r in records]
     assert scores == ["100.0", "93.0", "93.0", "65.0", "100.0", "100.0"]

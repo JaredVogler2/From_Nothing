@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}FOCUS — Fleet simulation{% endblock %}
+{% block body_class %}workspace layout-{{ layout }} simulation{% endblock %}
+{% block body %}
+<header class="app-header">
+  <div class="brand"><a href="{{ url_for('focus.landing') }}">FOCUS</a> <span class="muted">Fleet simulation</span></div>
+  <nav class="header-links" aria-label="Workspaces">
+    <a href="{{ url_for('focus.dashboard_ios') if layout == 'ios' else url_for('focus.dashboard_classic') }}">Workspace</a>
+    <a href="{{ url_for('focus.api_docs') }}">API</a>
+    <a class="sim-layout-switch" id="sim-layout-switch"
+       href="{{ url_for('focus.simulation') if layout == 'ios' else url_for('focus.simulation_ios') }}">{{ 'Classic View' if layout == 'ios' else 'New iOS Design' }}</a>
+  </nav>
+</header>
+<div class="sim-bar" id="sim-bar" aria-label="Simulation controls"></div>
+<nav class="sim-tabs" id="sim-tabs" aria-label="Simulation modules"></nav>
+<main id="main" class="sim-host" aria-live="polite"></main>
+{% if layout == 'ios' %}<nav class="bottom-nav" id="sim-bottom" aria-label="Primary"></nav>{% endif %}
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/simulation.js') }}"></script>
+{% endblock %}
