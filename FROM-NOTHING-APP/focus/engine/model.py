@@ -76,12 +76,13 @@ class EngineContext:
         # ---- hard typed edges between phases / milestones
         self.preds: dict[str, list[Edge]] = defaultdict(list)
         self.succs: dict[str, list[Edge]] = defaultdict(list)
-        self.unsupported_edges: list[Edge] = []
+        self.concurrency: dict[str, list[tuple[str, str | None, Edge]]] = defaultdict(list)   # phase -> (partner, policy mode, edge)
         for e in snapshot.edges:
             if not e.hard:
                 continue
             if e.type in CONCURRENCY_TYPES:
-                self.unsupported_edges.append(e)
+                self.concurrency[e.pred_phase].append((e.succ_phase, e.concurrency_mode, e))
+                self.concurrency[e.succ_phase].append((e.pred_phase, e.concurrency_mode, e))
                 continue
             self.preds[e.succ_phase].append(e)
             self.succs[e.pred_phase].append(e)

@@ -259,12 +259,15 @@ def _v2(run: _Run) -> None:
             run.bad("V2", "PRECEDENCE_CYCLE", node, "a placed phase lies on or behind a hard-edge cycle")
     for e in inp.concurrency:
         a, b = run.times.get(e.pred_phase), run.times.get(e.succ_phase)
-        if a is None or b is None or "PLACED" not in (a.basis, b.basis):
-            continue
+        if a is None or b is None or a.basis != "PLACED" or b.basis != "PLACED":
+            continue                                    # a pair constrains only work both of whose phases are planned (S10)
         run.count("V2")
         overlaps = a.start < b.end and b.start < a.end
-        if (e.type is EdgeType.CONCURRENT) != overlaps:
-            run.bad("V2", "CONCURRENCY_VIOLATION", e.id, f"{e.type.value}: overlap={overlaps}")
+        ok = {"REQUIRED_OVERLAP": overlaps, "NO_OVERLAP": not overlaps, "SAME_START": a.start == b.start}.get(e.concurrency_mode or "")
+        if ok is None:
+            run.bad("V2", "CONCURRENCY_MODE_UNSUPPORTED", e.id, f"{e.type.value} has no admitted meaning ({e.concurrency_mode!r})")
+        elif not ok:
+            run.bad("V2", "CONCURRENCY_VIOLATION", e.id, f"{e.concurrency_mode}: [{a.start},{a.end}) and [{b.start},{b.end}) overlap={overlaps}")
 
 
 def _v3(run: _Run) -> None:

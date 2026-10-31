@@ -567,7 +567,7 @@ def precedence_violations(edges: Iterable[Edge], placed: Mapping[str, tuple[int,
     anchors. A placed successor whose incomplete predecessor is missing from the candidate is a
     violation: absence never satisfies a prerequisite. Equations keep the signed lag:
     FS pred.end+lag<=succ.start, SS pred.start+lag<=succ.start, FF pred.end+lag<=succ.end,
-    SF pred.start+lag<=succ.end. CONCURRENT/NONCONCURRENT modes are checked by their policy owner.
+    SF pred.start+lag<=succ.end. CONCURRENT/NONCONCURRENT pairs carry their admitted policy mode; the decoder and V2 enforce it.
     """
     done = set(satisfied)
     out: list[tuple[str, str]] = []

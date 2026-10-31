@@ -7,6 +7,11 @@ economic redispatch or a neighbourhood perturbation). For each phase it does the
 * **Floors.** The earliest start is the maximum of the cutoff, the job's sourced earliest,
   the same-run CS earliest, every hard typed predecessor (FS/SS on the start, FF/SF on the
   end, signed lag kept) and every part-release floor allowed for the purpose.
+* **Concurrency (S10).** A hard CONCURRENT / NON-CONCURRENT pair takes its admitted policy
+  mode when the second of its phases is placed: NO_OVERLAP starts after the partner ends,
+  REQUIRED_OVERLAP starts with or after the partner and before it ends, SAME_START starts
+  with it. A start the bound cannot meet defers the phase (CONCURRENCY_UNMET); a mode the
+  policy did not admit defers it too. This is a conservative order, not a proof.
 * **Shift scan.** Only the line's eligible shifts within admitted calendar bounds are
   scanned (no extension). Candidate starts are the floor and every instant when a pool member
   finishes a duty, with and without a transfer; every opening is tried, in time order. Each
@@ -41,6 +46,17 @@ from ...model import EngineContext
 
 LEAD_DEFENDED, LEAD_CONE, LEAD_OTHER = 0, 1, 2       # dispatch classes ahead of the caller's priority key
 REQUEUE = "DEFENSE_FAILED_REQUEUED"
+
+
+CONCURRENCY_MODES = ("REQUIRED_OVERLAP", "NO_OVERLAP", "SAME_START")     # the admitted policy meanings of CONCURRENT / NON-CONCURRENT (S10)
+
+
+class _NotBefore(Exception):
+    """The earliest feasible start is too late for a concurrency partner: the booking is undone."""
+
+    def __init__(self, start: int, before: int):
+        super().__init__(start, before)
+        self.start, self.before = start, before
 
 
 class _AfterLatest(Exception):
@@ -266,42 +282,77 @@ class Decoder:
                                   tuple(notes)), "RELEASE"
         if not phase.role_demands:
             return None, "ROLE_DEMAND_MISSING"
+        start_floor, before, unmet = self._concurrency(phase, result, start_floor)
+        if unmet:
+            return None, unmet
         defended = self.defended.get(phase.key.id)
         if defended is None:
-            placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result)
+            placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result, before=before)
             if placement is not None:
                 result.waits[phase.key.id] = placement.start - start_floor
             return placement, reason
         if phase.key.id not in self._requeued:
-            placement = self._defend(phase, defended, start_floor, end_floor, conditional, result)
+            placement = self._defend(phase, defended, start_floor, end_floor, conditional, result, before=before)
             if placement is not None:
                 return placement, "DEFENDED"
             return None, REQUEUE                 # feasible commitments first; the move happens at ordinary priority
         # minimal audited move: the nearest later slot first, then the earliest safe slot; else defer
         pending = result.commitment_results[self._result_index(defended, result)]
         not_before = defended.start if pending.outcome == "PENDING_MOVE" else None
-        placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result, not_before=not_before)
+        placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result, not_before=not_before, before=before)
         if placement is None and not_before is not None:
-            placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result)
+            placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result, before=before)
         self._finish_defense(defended, placement, reason, result)
         return result.placements.get(phase.key.id, placement), reason
 
     def _search_bounded(self, phase: Phase, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
-                        not_before: int | None = None) -> tuple[PhasePlacement | None, str]:
-        """The earliest feasible placement (``_search``). Where a CS hard latest applies (S09) it must end by then. The earliest feasible
-        placement also ends earliest, so when it ends later nothing fits: its booking is undone and the phase is deferred."""
+                        not_before: int | None = None, before: int | None = None) -> tuple[PhasePlacement | None, str]:
+        """The earliest feasible placement (``_search``). Where a CS hard latest applies (S09) it must end by then, and where a placed
+        concurrency partner bounds it (``before``) it must start before that. The earliest feasible placement also starts and ends
+        earliest, so when it misses a bound nothing fits: its booking is undone and the phase is deferred."""
         latest = self.ctx.job_latest(phase.job)
-        if latest is None:
+        if latest is None and before is None:
             return self._search(phase, start_floor, end_floor, conditional, result, not_before)
         try:
             with result.ledger.transaction():
                 placement, reason = self._search(phase, start_floor, end_floor, conditional, result, not_before)
-                if placement is not None and placement.end > latest:
+                if placement is not None and latest is not None and placement.end > latest:
                     raise _AfterLatest(placement.end)
+                if placement is not None and before is not None and placement.start >= before:
+                    raise _NotBefore(placement.start, before)
         except _AfterLatest as exc:
             return None, (f"AFTER_CS_HARD_LATEST: the earliest feasible end {from_minute(exc.end).isoformat()} is after the CS hard latest "
-                          f"{from_minute(latest).isoformat()}")
+                          f"{from_minute(latest).isoformat()}")   # type: ignore[arg-type]
+        except _NotBefore as exc:
+            return None, (f"CONCURRENCY_UNMET: the earliest feasible start {from_minute(exc.start).isoformat()} is not before "
+                          f"{from_minute(exc.before).isoformat()}, which the concurrency partner requires")
         return placement, reason
+
+    def _concurrency(self, phase: Phase, result: DecodeResult, start_floor: int) -> tuple[int, int | None, str | None]:
+        """(start floor, exclusive latest start or None, unmet reason) from this phase's placed concurrency partners (S10).
+
+        Whichever phase of a pair is placed second takes the constraint, so the placement order is the disjunctive choice for
+        NO_OVERLAP (start after the partner ends). REQUIRED_OVERLAP starts no earlier than the partner and before it ends;
+        SAME_START starts exactly with it. A partner not placed (unplaced yet, deferred or already complete) constrains
+        nothing; a mode the policy did not admit defers the phase.
+        """
+        before: int | None = None
+        for partner, mode, edge in self.ctx.concurrency.get(phase.key.id, ()):
+            if mode not in CONCURRENCY_MODES:
+                return start_floor, None, f"CONCURRENCY_MODE_UNSUPPORTED: {edge.type.value} edge {edge.id} has no admitted meaning ({mode!r})"
+            p = result.placements.get(partner)
+            if p is None:
+                continue
+            if mode == "NO_OVERLAP":
+                start_floor = max(start_floor, p.end)
+                continue
+            start_floor = max(start_floor, p.start)
+            bound = p.end if mode == "REQUIRED_OVERLAP" else p.start + 1
+            before = bound if before is None else min(before, bound)
+        if before is not None and start_floor >= before:
+            return start_floor, before, (f"CONCURRENCY_UNMET: a placed partner requires a start before {from_minute(before).isoformat()}, "
+                                         f"but the earliest start is {from_minute(start_floor).isoformat()}")
+        return start_floor, before, None
 
     def _search(self, phase: Phase, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
                 not_before: int | None = None) -> tuple[PhasePlacement | None, str]:
@@ -395,7 +446,7 @@ class Decoder:
 
     # ---------------------------------------------------------------- defense (P14)
     def _defend(self, phase: Phase, d: DefendedTask, start_floor: int, end_floor: int, conditional: bool,
-                result: DecodeResult) -> PhasePlacement | None:
+                result: DecodeResult, before: int | None = None) -> PhasePlacement | None:
         ctx = self.ctx
         result.paths_used.add("commitment_defense")
         shift = next((s for s in ctx.line_shifts(ctx.jobs[phase.job].line) if s.id == d.shift_id), None)
@@ -409,6 +460,10 @@ class Decoder:
             return None
         if not shift.valid_start(d.start):
             self._record(d, phase, "UNSAFE", "NO_START_RULE: committed start is no longer a valid start", "not attempted", "invalid start", None, result)
+            return None
+        if before is not None and d.start >= before:
+            self._record(d, phase, "UNSAFE", f"CONCURRENCY_UNMET: committed start is not before {from_minute(before).isoformat()}, which a placed "
+                         "concurrency partner requires", "not attempted", "concurrency partner moved", None, result)
             return None
         fit = shift.advance(d.start, phase.work_minutes, 0) or shift.advance(d.start, phase.work_minutes, ctx.shift_policy.ot_minutes)
         if fit is None or fit[0] < end_floor:
