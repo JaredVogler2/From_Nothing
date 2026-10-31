@@ -250,7 +250,8 @@ That is 11.7 hours in all, with a peak of 8.9 GB.
 
 **Throughput.** 96,984 dispatched tasks completed and 2,642 slipped (2.7%); 96,450 jobs completed. Open jobs fell from
 138,345 to 102,618 and the executable plan from 38,626 to 16,828 assignments, while verified-complete jobs rose from
-159,664 to 254,277.
+159,664 to 254,277. Open work fell by less than the completions because the floor found 58,886 rework jobs over the run
+(all jobs: 298,009 to 356,895), and the counts reconcile: 138,345 + 58,886 − 94,613 = 102,618.
 
 **Carry-over.** Each shift planned only what the earlier shifts left open. Across all 41 shift transitions, the 94,613 jobs
 the floor finished were written back COMPLETE before the next cutoff, matching each shift's count. Every one had been open
