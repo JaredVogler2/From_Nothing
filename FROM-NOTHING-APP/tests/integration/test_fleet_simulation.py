@@ -86,3 +86,28 @@ def test_without_a_database_the_operations_say_how_to_build_one(tmp_path, app_ro
     body = client.get("/api/v1/sim/overview").get_json()
     assert body["status"] == "empty"
     assert body["reasons"][0]["code"] == "SIMULATION_NOT_RUN" and "focus.sim.runner" in body["reasons"][0]["next_action"]
+
+
+def test_the_redispatch_keeps_the_seeds_commitment_outcomes(tmp_path, monkeypatch) -> None:
+    """With the previous shift's plan defended, cost of delay must not reorder committed work: the redispatch keeps
+    every commitment outcome of the seed, so it is judged on the uncommitted work it reorders (otherwise one changed
+    crew among thousands of commitments would reject the whole redispatch)."""
+    from dataclasses import replace
+
+    from focus.engine.max.optimizer import orchestrator
+
+    seen: list[tuple[dict, dict, bool]] = []
+    original = orchestrator.MaxOptimizer._admit
+
+    def admit(self, cand, best, best_valid, path):  # type: ignore[no-untyped-def]
+        verdict = original(self, cand, best, best_valid, path)
+        if path == "economic_redispatch":
+            outcomes = lambda ev: {r.incumbent_assignment_id: r.outcome for r in ev.decode.commitment_results}  # noqa: E731
+            seen.append((outcomes(best), outcomes(cand), verdict))
+        return verdict
+
+    monkeypatch.setattr(orchestrator.MaxOptimizer, "_admit", admit)
+    run(replace(SPEC, shifts=2), tmp_path / "commit.db", log=lambda message: None)
+    assert len(seen) == 2
+    seed, econ, _ = seen[1]                                                   # the shift with an incumbent
+    assert seed and seed == econ

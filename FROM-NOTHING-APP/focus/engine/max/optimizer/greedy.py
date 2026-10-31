@@ -139,9 +139,11 @@ def _candidate_starts(ctx: EngineContext, ledger: DutyLedger, shift, pool_id: st
 
 
 class Decoder:
-    def __init__(self, ctx: EngineContext, priority: Callable[[str], tuple], *, defended: Mapping[str, DefendedTask] | None = None):
+    def __init__(self, ctx: EngineContext, priority: Callable[[str], tuple], *, defended: Mapping[str, DefendedTask] | None = None,
+                 committed: Callable[[str], tuple] | None = None):
         self.ctx = ctx
         self.priority = priority
+        self.committed = committed or priority       # order of defended phases and their prerequisites (the first classes)
         self.defended = dict(defended or {})
         self._cone = self._commitment_cone()
         self._requeued: set[str] = set()
@@ -159,12 +161,10 @@ class Decoder:
 
     def _key(self, pid: str) -> tuple:
         if pid in self.defended and pid not in self._requeued:
-            lead = LEAD_DEFENDED
-        elif pid in self._cone:
-            lead = LEAD_CONE
-        else:
-            lead = LEAD_OTHER
-        return (lead, *self.priority(pid))
+            return (LEAD_DEFENDED, *self.committed(pid))
+        if pid in self._cone:
+            return (LEAD_CONE, *self.committed(pid))
+        return (LEAD_OTHER, *self.priority(pid))
 
     # ---------------------------------------------------------------- driver
     def run(self) -> DecodeResult:

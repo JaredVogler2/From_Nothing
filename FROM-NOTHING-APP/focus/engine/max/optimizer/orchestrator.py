@@ -8,7 +8,11 @@
    CPM tails as urgency).
 4. Redispatch economically by the cost of delaying each phase (``urgency.cost_of_delay``: the
    aircraft's daily penalty, decayed by the phase's slack in the seed). The marginal weights of
-   ``EconomicsRegistry`` are still recorded in the receipt.
+   ``EconomicsRegistry`` are still recorded in the receipt. Defended commitments and their
+   prerequisites, which the decoder dispatches first, keep the seed's order in every candidate
+   (redispatch, repairs, search moves), so a candidate keeps the seed's commitment outcomes and is
+   judged on the uncommitted work it reorders. A commitment that loses its slot is requeued with
+   the candidate's own priority, so its minimal move still follows the cost of delay.
 5. Run bounded delay repair for resource-deferred jobs.
 6. Search seeded neighbourhoods (swap, boost, aircraft advance; half of the moves boost the
    jobs with the longest waits when there are any), stopping at the move bound, the wall-clock
@@ -168,7 +172,9 @@ class MaxOptimizer:
 
     # ------------------------------------------------------------------ evaluation
     def decode(self, state: PriorityState, urgency: Mapping[str, int] | None) -> DecodeResult:
-        return Decoder(self.ctx, make_priority(self.ctx, state, urgency, self.fixed_ranks), defended=self.defended).run()
+        # committed work (defended phases and their prerequisites) is dispatched in the seed's order by every candidate
+        return Decoder(self.ctx, make_priority(self.ctx, state, urgency, self.fixed_ranks), defended=self.defended,
+                       committed=make_priority(self.ctx, PriorityState(), None, self.fixed_ranks)).run()
 
     def _decode_all(self, states: list[PriorityState], urgency: Mapping[str, int] | None) -> list[Evaluation]:
         """Decode and evaluate each state, results in order. With the native core the decodes run on threads: the Rust
