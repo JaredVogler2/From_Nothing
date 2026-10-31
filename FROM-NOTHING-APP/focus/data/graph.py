@@ -232,25 +232,34 @@ def build_graph(*, census: CensusBuild, durations: Mapping[str, DurationResoluti
     job_adj: dict[str, set[str]] = defaultdict(set)
     job_edge_types: dict[tuple[str, str], set[EdgeType]] = defaultdict(set)
     seen_template: set[tuple[str, str, str, int]] = set()
+    lines_of: dict[str, set[int]] = {}                  # SOI -> lines carrying it (one set per SOI, not per template row)
+    carriers: dict[str, list[tuple[int, str, Any]]] = {}  # SOI -> (line, job id, census job) in census order
+    job_index, jobs = census.job_index, census.jobs
     for ordinal, row in enumerate(pnet_rows):
         pred_soi, succ_soi = str(row["PREDECESSOR_SOI"]), str(row["SUCCESSOR_SOI"])
-        pred_lines = {line for line, _ in by_soi.get(pred_soi, ())}
+        pred_lines = lines_of.get(pred_soi)
+        if pred_lines is None:
+            pred_lines = lines_of[pred_soi] = {line for line, _ in by_soi.get(pred_soi, ())}
         out.template_pred_absent += sum(1 for line, _ in by_soi.get(succ_soi, ()) if line not in pred_lines)
         raw_type, raw_hard = row.get("RELATIONSHIP_TYPE"), row.get("IS_HARD")
         lag = int(row["OFFSET_MINUTES"]) if row.get("OFFSET_MINUTES") is not None else 0
         etype = rel_map.get(str(raw_type)) if raw_type is not None else None
         hardness = hard_map.get(str(raw_hard)) if raw_hard is not None else None
         evidence = (EvidenceRef(dataset_ids.get("pnet_dag", ""), f"pnet_dag#{ordinal}", source_run_id=run_id),)
-        for line, pred_job in by_soi.get(pred_soi, ()):
-            succ_job = census.job_index.get((line, succ_soi))
+        pm, sm = row.get("PRED_MINOR_MODEL"), row.get("SUC_MINOR_MODEL")
+        pm, sm = (None if pm is None else str(pm)), (None if sm is None else str(sm))
+        preds = carriers.get(pred_soi)
+        if preds is None:
+            preds = carriers[pred_soi] = [(line, job_id, jobs.get(job_id)) for line, job_id in by_soi.get(pred_soi, ())]
+        for line, pred_job, pjob in preds:
+            succ_job = job_index.get((line, succ_soi))
             if succ_job is None:
                 out.template_absent += 1
                 continue
-            pjob, sjob = census.jobs.get(pred_job), census.jobs.get(succ_job)
+            sjob = jobs.get(succ_job)
             if pjob is None or sjob is None:
                 continue
-            pm, sm = row.get("PRED_MINOR_MODEL"), row.get("SUC_MINOR_MODEL")
-            if (pm is not None and pjob.model is not None and str(pm) != pjob.model) or (sm is not None and sjob.model is not None and str(sm) != sjob.model):
+            if (pm is not None and pjob.model is not None and pm != pjob.model) or (sm is not None and sjob.model is not None and sm != sjob.model):
                 continue  # template effectivity does not match this aircraft
             if pred_job == succ_job:
                 census.quarantined[succ_job].append(f"CYCLE_SELF_EDGE: template edge {pred_soi}->{succ_soi} on line {line}")
@@ -463,7 +472,8 @@ def _topological(nodes: Iterable[str], adj: Mapping[str, set[str]]) -> list[str]
             if indeg[b] == 0:
                 heapq.heappush(ready, b)
     # cycle members never reach indegree 0; append them for completeness (already quarantined)
-    remaining = sorted(n for n in nodes if n not in set(out))
+    placed = set(out)
+    remaining = sorted(n for n in nodes if n not in placed)
     return out + remaining
 
 

@@ -246,6 +246,11 @@ _ENCODERS: dict[type, Any] = {}
 
 def canonical_dumps(value: Any) -> bytes:
     """Canonical UTF-8 JSON bytes for hashing and storage."""
+    if _CANON is not None:
+        try:
+            return _CANON.dumps(value)
+        except Exception:  # noqa: BLE001 - the Python path decides: it returns the same bytes or raises the exact error
+            pass
     return json.dumps(
         to_jsonable(value),
         sort_keys=True,
@@ -253,6 +258,71 @@ def canonical_dumps(value: Any) -> bytes:
         ensure_ascii=False,
         allow_nan=False,
     ).encode("utf-8")
+
+
+# ---------------------------------------------------------------------------
+# native canonical encoder (optional; byte-identical)
+# ---------------------------------------------------------------------------
+
+_CANON: Any = None          # focus_native.Canon while enabled
+
+
+def _native_kind(tp: type) -> tuple[int, tuple[str, ...] | None]:
+    """The encoding rule ``_encoder_for`` picks for exact type ``tp``, as the native encoder's code, with a dataclass's
+    field names in the order ``sort_keys`` writes them. Same order of checks: a str, int or bool subclass (an enum
+    included) is written as JSON writes the base type."""
+    if tp is type(None):
+        return 0, None
+    if issubclass(tp, str):
+        return 1, None
+    if issubclass(tp, bool):
+        return 2, None
+    if issubclass(tp, int):
+        return 3, None
+    if issubclass(tp, float):
+        return 4, None
+    if issubclass(tp, enum.Enum):
+        return 5, None
+    if issubclass(tp, datetime):
+        return 6, None
+    if issubclass(tp, date):
+        return 7, None
+    if issubclass(tp, (Decimal, Fraction)):
+        return 8, None
+    if dataclasses.is_dataclass(tp) and not issubclass(tp, type):
+        return 9, tuple(sorted(f.name for f in dataclasses.fields(tp)))
+    if issubclass(tp, (dict, types.MappingProxyType)):
+        return 10, None
+    if issubclass(tp, (list, tuple)):
+        return 11, None
+    if issubclass(tp, (set, frozenset)):
+        return 12, None
+    return 13, None
+
+
+def enable_native_codec(on: bool = True) -> bool:
+    """Route canonical JSON, content hashes and digest ids through the native core when it is installed.
+
+    The native encoder writes exactly the bytes of the Python path (``tests/unit/test_native_codec.py``). Values it does
+    not handle natively, and every error, go through the Python path, so results and error codes never change. Returns
+    whether the native encoder is now active.
+    """
+    global _CANON
+    _CANON = None
+    if on:
+        try:
+            import focus_native  # type: ignore[import-not-found]
+        except ImportError:
+            return False
+        canon = getattr(focus_native, "Canon", None)
+        if canon is not None:
+            _CANON = canon(_native_kind, to_jsonable, format_utc)
+    return _CANON is not None
+
+
+def native_codec() -> Any:
+    """The active native encoder, or None."""
+    return _CANON
 
 
 def _native_dumps(value: Any) -> bytes:
@@ -267,7 +337,52 @@ def sha256_hex(data: bytes | str) -> str:
 
 
 def content_hash(value: Any) -> str:
+    if _CANON is not None:
+        try:
+            return _CANON.sha256(value)
+        except Exception:  # noqa: BLE001 - see canonical_dumps
+            pass
     return sha256_hex(canonical_dumps(value))
+
+
+def canonical_stream(value: Any, write: Any, chunk: int = 256) -> None:
+    """Write exactly ``canonical_dumps(value)`` to ``write`` in pieces, for a dict with string keys at the top.
+
+    Keys go in sorted order and every list or tuple value is written item by item, so a record with hundreds of
+    thousands of items is never held as one JSON structure or string. JSON joins list items with "," and wraps them in
+    "[]" with each item encoded alone, so the bytes are the same as one ``canonical_dumps`` call.
+    """
+    if not isinstance(value, dict) or not all(type(k) is str for k in value):
+        write(canonical_dumps(value))
+        return
+    write(b"{")
+    for n, key in enumerate(sorted(value)):
+        if n:
+            write(b",")
+        write(_native_dumps(key))
+        write(b":")
+        item = value[key]
+        if isinstance(item, (list, tuple)) and len(item) > chunk:
+            write(b"[")
+            for i in range(0, len(item), chunk):
+                part = _native_dumps([to_jsonable(x) for x in item[i:i + chunk]])
+                write(part[1:-1] if i == 0 else b"," + part[1:-1])
+            write(b"]")
+        else:
+            write(canonical_dumps(item))
+    write(b"}")
+
+
+def streamed_content_hash(value: Any) -> str:
+    """``content_hash`` computed with ``canonical_stream`` (same digest, bounded memory; the native encoder streams too)."""
+    if _CANON is not None:
+        try:
+            return _CANON.sha256(value)
+        except Exception:  # noqa: BLE001 - see canonical_dumps
+            pass
+    digest = hashlib.sha256()
+    canonical_stream(value, digest.update)
+    return digest.hexdigest()
 
 
 # ---------------------------------------------------------------------------

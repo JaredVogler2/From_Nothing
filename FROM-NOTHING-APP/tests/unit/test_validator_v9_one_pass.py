@@ -108,3 +108,28 @@ def test_one_pass_v9_equals_the_reference_behind_blocking_shortages(app_root, tm
         assert new == old and n_new == n_old, purpose
     new, *_ = both(snapshot, services.policy, replace(plan, assignments=tuple(forged)), Purpose.EXECUTABLE)
     assert any(v.code == "PART_SHORTAGE_BLOCKED" for v in new)
+
+
+def test_one_pass_v9_equals_the_reference_on_a_cyclic_graph(base) -> None:  # noqa: F811
+    """A hard-edge cycle through placed work (a corrupt graph the topological pass cannot order): the phases on and
+    below the cycle take the exact walk, and both implementations still agree, on forecast and executable judgement."""
+    plan = base.plans[Purpose.FORECAST]
+    checked = 0
+    for purpose in (Purpose.FORECAST, Purpose.EXECUTABLE):
+        inp = ValidationInput.build(base.snapshot, base.policy, purpose)
+        memo: dict[str, frozenset[str]] = {}
+        parts = {rid for rid, rel in inp.releases.items() if rel.kind is ReleaseKind.PART}
+        placed = sorted({a.phase for a in plan.assignments if a.phase in inp.phases})
+        phase, edge = next((pid, e) for pid in placed if inp.ancestors(pid, memo) & parts
+                           for e in inp.hard_out.get(pid, ()) if e.succ_phase in inp.phases)
+        back = replace(edge, pred_phase=edge.succ_phase, succ_phase=phase)       # successor -> phase closes the loop
+        inp.hard_out.setdefault(back.pred_phase, []).append(back)
+        inp.hard_in.setdefault(phase, []).append(back)
+        new, old = vplan._Run(inp, plan), vplan._Run(inp, plan)
+        vplan._v9(new)
+        v9_reference(old)
+        key = lambda v: (v.check, v.code, v.entity, v.detail)  # noqa: E731
+        assert sorted(new.violations, key=key) == sorted(old.violations, key=key), purpose
+        assert new.counts["V9"] == old.counts["V9"]
+        checked += bool(old.violations)
+    assert checked                                                              # executable judgement draws real findings

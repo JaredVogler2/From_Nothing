@@ -421,34 +421,98 @@ def _reached(inp: ValidationInput, seeds: Iterable[str]) -> set[str]:
 def _v9(run: _Run) -> None:
     """Part release floors and blocking shortages on every placed phase's hard-edge ancestors.
 
-    Each assignment needs only two facts about its ancestors: which part releases are among them, and whether one
-    belongs to a job a blocking shortage affects. Both come from one forward pass per part release and per blocking
-    shortage, instead of materializing and sorting every assignment's whole ancestor set (the same decisions, the same
-    violations; pinned against the per-assignment reference in ``tests/unit/test_native_core.py``).
+    One forward pass in topological order carries to every node a summary of what lies above it: the latest part
+    floor (a receipt, or a forecast on conditional work), whether some part release above it can never be met (no
+    receipt on executable work, or a blocked release), whether one is a forecast that needs a conditional label, and
+    whether a phase of a job a blocking shortage affects is at or above it. An assignment the summary clears has no
+    V9 finding. Every other assignment, and any phase on or below a cycle, gets the exact walk over its own ancestors,
+    so the decisions, the violations and their order are those of the per-assignment reference pinned in
+    ``tests/unit/test_validator_v9_one_pass.py``. The pass costs one visit per edge instead of one walk per release.
     """
     inp = run.inp
+    executable = inp.purpose is Purpose.EXECUTABLE
     blocking = [s for s in inp.snapshot.shortages if s.status in ("UNKNOWN_ECD", "REOPENED")]
-    part_ancestors: dict[str, list[str]] = defaultdict(list)
-    for rid in sorted(inp.releases):
-        if inp.releases[rid].kind is ReleaseKind.PART:
-            for node in _reached(inp, (rid,)):
-                part_ancestors[node].append(rid)
-    shortage_reach = []
-    for s in blocking:
-        affected = set(s.affected_jobs)
-        shortage_reach.append((s, affected, _reached(inp, [pid for pid, ph in inp.phases.items() if ph.job in affected])))
+    affected_any = {job for s in blocking for job in s.affected_jobs}
+    # What each part release imposes on the work below it: (floor minute or None, never met, needs a label).
+    own: dict[str, tuple[int | None, bool, bool]] = {}
+    for rid, rel in inp.releases.items():
+        if rel.kind is not ReleaseKind.PART:
+            continue
+        if rel.status is ReleaseStatus.CONFIRMED and rel.ready_at is not None:
+            own[rid] = (minute_ceil(rel.ready_at), False, False)
+        elif executable:
+            own[rid] = (None, True, False)
+        elif rel.status is ReleaseStatus.CONDITIONAL and rel.forecast_at is not None:
+            own[rid] = (minute_ceil(rel.forecast_at), False, True)
+        else:
+            own[rid] = (None, True, False)
+    indeg: dict[str, int] = defaultdict(int)
+    for edges in inp.hard_out.values():
+        for e in edges:
+            indeg[e.succ_phase] += 1
+    ready = [n for n in inp.hard_out if not indeg.get(n)]
+    floor_in: dict[str, int] = {}
+    never_in: set[str] = set()
+    label_in: set[str] = set()
+    shortage_in: set[str] = set()                       # a phase of an affected job lies strictly above
+    while ready:
+        n = ready.pop()
+        floor, never, label = floor_in.get(n), n in never_in, n in label_in
+        mine = own.get(n)
+        if mine is not None:
+            if mine[0] is not None and (floor is None or mine[0] > floor):
+                floor = mine[0]
+            never, label = never or mine[1], label or mine[2]
+        phase = inp.phases.get(n)
+        shortage = n in shortage_in or (phase is not None and phase.job in affected_any)
+        for e in inp.hard_out.get(n, ()):
+            s = e.succ_phase
+            if floor is not None and floor > floor_in.get(s, floor - 1):
+                floor_in[s] = floor
+            if never:
+                never_in.add(s)
+            if label:
+                label_in.add(s)
+            if shortage:
+                shortage_in.add(s)
+            indeg[s] -= 1
+            if not indeg[s]:
+                ready.append(s)
+    reach_cache: list[tuple[Any, set[str], set[str]]] = []
+
+    def shortage_reach() -> list[tuple[Any, set[str], set[str]]]:
+        if blocking and not reach_cache:
+            by_job: dict[str, list[str]] = defaultdict(list)
+            for pid, ph in inp.phases.items():
+                by_job[ph.job].append(pid)
+            for s in blocking:
+                affected = set(s.affected_jobs)
+                reach_cache.append((s, affected, _reached(inp, [pid for job in affected for pid in by_job.get(job, ())])))
+        return reach_cache
+
     for a in run.plan.assignments:
         phase = inp.phases.get(a.phase)
         if phase is None:
             continue
         run.count("V9")
         start = to_minute(a.start)
-        for node in part_ancestors.get(a.phase, ()):
+        n = a.phase
+        if not indeg.get(n) and n not in never_in and start >= floor_in.get(n, start) \
+                and (a.conditional_reasons or n not in label_in) and n not in shortage_in and phase.job not in affected_any:
+            continue                                    # nothing above this assignment can draw a V9 finding
+        above: set[str] = set()
+        stack = [e.pred_phase for e in inp.hard_in.get(n, ())]
+        while stack:
+            m = stack.pop()
+            if m not in above:
+                above.add(m)
+                stack.extend(e.pred_phase for e in inp.hard_in.get(m, ()))
+        for node in sorted(above & own.keys()):
             rel = inp.releases[node]
             if rel.status is ReleaseStatus.CONFIRMED and rel.ready_at is not None:
                 if start < minute_ceil(rel.ready_at):
                     run.bad("V9", "BEFORE_PART_RELEASE", a.id, f"{rel.label} received {rel.ready_at.isoformat()}")
-            elif inp.purpose is Purpose.EXECUTABLE:
+            elif executable:
                 run.bad("V9", "PART_NOT_RECEIVED", a.id, f"{rel.label} has no confirmed receipt: not executable")
             elif rel.status is ReleaseStatus.CONDITIONAL and rel.forecast_at is not None:
                 if start < minute_ceil(rel.forecast_at):
@@ -457,8 +521,8 @@ def _v9(run: _Run) -> None:
                     run.bad("V9", "PART_CONDITIONAL_UNLABELLED", a.id, f"{rel.label} is a forecast ETA: the assignment must be conditional")
             else:
                 run.bad("V9", "PART_RELEASE_BLOCKED", a.id, f"{rel.label} is {rel.status.value}")
-        for s, affected, reach in shortage_reach:
-            if phase.job in affected or a.phase in reach:
+        for s, affected, reach in shortage_reach():
+            if phase.job in affected or n in reach:
                 run.bad("V9", "PART_SHORTAGE_BLOCKED", a.id, f"shortage {s.record_id} is {s.status}")
 
 

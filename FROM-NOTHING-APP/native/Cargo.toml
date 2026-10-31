@@ -13,6 +13,7 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py312"] }
 sha2 = "0.10"
+rustc-hash = "2"
 
 [profile.release]
 opt-level = 3

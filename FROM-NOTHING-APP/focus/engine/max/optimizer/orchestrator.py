@@ -13,7 +13,11 @@
 6. Search seeded neighbourhoods (swap, boost, aircraft advance; half of the moves boost the
    jobs with the longest waits when there are any), stopping at the move bound, the wall-clock
    budget or cancellation. Only the move bound keeps a run repeatable: the receipt's
-   ``stop_reason`` says which one ended the search.
+   ``stop_reason`` says which one ended the search. Moves are drawn and judged in exactly the
+   sequential order, but up to ``SPECULATION`` of them are decoded at once from the same best (on
+   threads with the native core, whose search releases the GIL): the draws a sequential run would
+   make while no move is accepted. After an accepted move, the rest of the batch is discarded
+   and drawing resumes from the random state that followed the accepted move.
 7. Keep a candidate only when it is strictly better under the exact lexicographic comparison
    (S12), with no monetary tolerance, and it keeps every commitment the current best keeps
    (a later move can never silently undo a feasible defended task). The independent validator
@@ -43,11 +47,12 @@ from __future__ import annotations
 import random
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any, Callable, Mapping
 
-from ....codec import to_jsonable
+from ....codec import native_codec, to_jsonable
 from ....contracts.planning import (AlgorithmStatus, Assignment, CandidatePlan, CostSummary, CrewRole, Duty, JobOutcome, StageMetric,
                                     seal_candidate)
 from ....domain import Disposition, DutyKind, Interval, PhaseKind, Purpose, digest_id, from_minute
@@ -60,6 +65,8 @@ from .greedy import DecodeResult, Decoder, DefendedTask
 from .neighborhoods import Competition, Move, PriorityState, generate
 from .repair import repairable_jobs
 from .urgency import cost_of_delay, long_waits, urgency_summary
+
+SPECULATION = 3              # search moves decoded at once from the same best (identical results to one at a time)
 
 ALGORITHM = "FOCUS-rich-MAX"
 VERSION = "1.0"
@@ -128,7 +135,7 @@ class MaxOptimizer:
     def __init__(self, ctx: EngineContext, *, defended: Mapping[str, DefendedTask] | None = None, budget_seconds: float | None = None,
                  seed: int | None = None, max_moves: int | None = None, cancel: Callable[[], bool] | None = None,
                  clock: Callable[[], float] = time.monotonic, gate: bool = True, incumbent_id: str | None = None,
-                 fixed_ranks: Mapping[str, int] | None = None):
+                 fixed_ranks: Mapping[str, int] | None = None, max_repairs: int = 20):
         self.ctx = ctx
         self.fixed_ranks = dict(fixed_ranks or {})
         self.gate = gate
@@ -143,6 +150,7 @@ class MaxOptimizer:
         self.max_moves = int(max_moves if max_moves is not None else ctx.policy.int("optimizer.max_neighborhood_moves"))
         self.cancel = cancel or (lambda: False)
         self.clock = clock
+        self.max_repairs = max_repairs                 # delay-repair boosts (each a full re-decode)
         self.lines = sorted({j.line for j in ctx.jobs.values()})
         placeable = [j for j in ctx.jobs if ctx.placeability(j).placeable]
         self.team_jobs: dict[str, list[str]] = defaultdict(list)
@@ -156,10 +164,19 @@ class MaxOptimizer:
                         self.team_jobs[d.team].append(job)
             self.line_jobs[ctx.jobs[job].line].append(job)
         self.peers = Competition(self.team_jobs)
+        self.workers = SPECULATION if ctx.native else 1    # threads overlap only when the search runs without the GIL
 
     # ------------------------------------------------------------------ evaluation
     def decode(self, state: PriorityState, urgency: Mapping[str, int] | None) -> DecodeResult:
         return Decoder(self.ctx, make_priority(self.ctx, state, urgency, self.fixed_ranks), defended=self.defended).run()
+
+    def _decode_all(self, states: list[PriorityState], urgency: Mapping[str, int] | None) -> list[Evaluation]:
+        """Decode and evaluate each state, results in order. With the native core the decodes run on threads: the Rust
+        search releases the GIL, each decode has its own ledger, and the shared context is only read."""
+        if self.workers <= 1 or len(states) <= 1:
+            return [self.evaluate(self.decode(state, urgency)) for state in states]
+        with ThreadPoolExecutor(max_workers=min(self.workers, len(states))) as pool:
+            return list(pool.map(lambda state: self.evaluate(self.decode(state, urgency)), states))
 
     def evaluate(self, decode: DecodeResult) -> Evaluation:
         ctx = self.ctx
@@ -230,23 +247,46 @@ class MaxOptimizer:
         t = self.clock()
         neutral = PriorityState()
         baseline = self.evaluate(self.decode(neutral, None))
-        seed_valid = self._valid(baseline, "neutral_seed")
-        stages.append(stage("neutral_seed", t, 1, 1, f"{len(baseline.decode.placements)} placed, {len(baseline.decode.deferred)} deferred; "
-                                                    f"independent validation {'passed' if seed_valid else 'FAILED'}"))
-        best, best_state, best_valid = baseline, neutral, seed_valid
-        t = self.clock()
+        seed_decoded = self.clock()
         weight_records = self.registry.derive_priority_weights(completion_minutes(baseline.completions))
         urgency = cost_of_delay(self.ctx, self.registry, baseline.decode)
-        econ = self.evaluate(self.decode(neutral, urgency))
+        timed: dict[str, float] = {}
+
+        def validate_seed() -> bool:
+            began = self.clock()
+            try:
+                return self._valid(baseline, "neutral_seed")
+            finally:
+                timed["seed_validation"] = self.clock() - began
+
+        t_econ = self.clock()
+        if self.workers > 1:
+            # the seed's independent validation runs while the redispatch decodes (the native search releases the GIL);
+            # the redispatch is judged only after the seed's verdict, exactly as in sequence
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                verdict = pool.submit(validate_seed)
+                econ = self.evaluate(self.decode(neutral, urgency))
+                seed_valid = verdict.result()
+        else:
+            seed_valid = validate_seed()
+            t_econ = self.clock()
+            econ = self.evaluate(self.decode(neutral, urgency))
+        econ_decoded = self.clock()
+        overlap = "; validated while the redispatch decoded" if self.workers > 1 else ""
+        stages.append(StageMetric("neutral_seed", int((seed_decoded - t + timed["seed_validation"]) * 1000), 1, 1,
+                                  f"{len(baseline.decode.placements)} placed, {len(baseline.decode.deferred)} deferred; "
+                                  f"independent validation {'passed' if seed_valid else 'FAILED'}{overlap}"))
+        best, best_state, best_valid = baseline, neutral, seed_valid
         accepted = self._admit(econ, best, best_valid, "economic_redispatch")
         if accepted:
             best, best_valid = econ, True
-        stages.append(stage("economic_redispatch", t, 1, int(accepted), f"{urgency_summary(urgency)}; exact complete-candidate comparison"))
+        stages.append(StageMetric("economic_redispatch", int((econ_decoded - t_econ + self.clock() - econ_decoded) * 1000), 1, int(accepted),
+                                  f"{urgency_summary(urgency)}; exact complete-candidate comparison"))
         run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages, seed_valid=seed_valid, urgency=urgency)
         t = self.clock()
         phase_job = {pid: p.job for pid, p in self.ctx.phases.items()}
         repaired = 0
-        for job in repairable_jobs(best.decode.deferred, phase_job)[:20]:
+        for job in repairable_jobs(best.decode.deferred, phase_job)[:self.max_repairs]:
             if self._out_of_time(start):
                 run.deadline_reached = True
                 run.stop_reason = "cancelled" if self.cancel() else "deadline"
@@ -267,19 +307,31 @@ class MaxOptimizer:
                 run.deadline_reached = True
                 run.stop_reason = "cancelled" if self.cancel() else "deadline"
                 break
+            # the next draws of a sequential run while no move is accepted: same best, same focus, the rng in order
             focus = repairable_jobs(best.decode.deferred, phase_job) + sorted(j for j, n in continuity_breaks(best.decode.placements).items() if n)
-            move = generate(rng, team_jobs=self.team_jobs, line_jobs=self.line_jobs, focus_jobs=focus, wait_jobs=waits)
-            if move is None:
+            batch: list[tuple[Move, Any]] = []
+            exhausted = False
+            while len(batch) < min(SPECULATION, self.max_moves - moves):
+                move = generate(rng, team_jobs=self.team_jobs, line_jobs=self.line_jobs, focus_jobs=focus, wait_jobs=waits)
+                if move is None:
+                    exhausted = True
+                    break
+                batch.append((move, rng.getstate()))
+            states = [best_state.apply(move, self.peers) for move, _ in batch]
+            accepted = False
+            for (move, after), state, cand in zip(batch, states, self._decode_all(states, urgency)):
+                moves += 1
+                if self._admit(cand, best, best_valid, f"neighborhoods:{move.kind}"):
+                    best, best_state, best_valid = cand, state, True
+                    accepted_n += 1
+                    run.accepted_moves.append(f"{move.kind} {','.join(move.jobs)}")
+                    waits = long_waits(best.decode)
+                    rng.setstate(after)                 # later draws in the batch came from the old best: redraw them
+                    accepted = True
+                    break
+            if exhausted and not accepted:
                 run.stop_reason = "no_moves"
                 break
-            moves += 1
-            state = best_state.apply(move, self.peers)
-            cand = self.evaluate(self.decode(state, urgency))
-            if self._admit(cand, best, best_valid, f"neighborhoods:{move.kind}"):
-                best, best_state, best_valid = cand, state, True
-                accepted_n += 1
-                run.accepted_moves.append(f"{move.kind} {','.join(move.jobs)}")
-                waits = long_waits(best.decode)
         stages.append(stage("neighborhoods", t, moves, accepted_n, f"seed {self.seed}; bound {self.max_moves} moves, {self.budget}s; "
                                                                   f"{self._gate_count} candidates independently validated, "
                                                                   f"{len(self._gate_log)} rolled back"))
@@ -337,15 +389,21 @@ def build_candidate(ctx: EngineContext, run: MaxRun, *, created_at: datetime, in
     for h in snapshot.holdings:
         holdings[h.person].append(h)
     assignments: list[Assignment] = []
+    evidence: dict[tuple[str, frozenset[str]], tuple[str, ...]] = {}      # (person, bundle codes) -> holding rows
+
+    def held(person: str, codes: frozenset[str]) -> tuple[str, ...]:
+        found = evidence.get((person, codes))
+        if found is None:
+            found = evidence[(person, codes)] = tuple(sorted({e.row_id for h in holdings.get(person, []) if h.cert in codes for e in h.evidence}))
+        return found
+
     for p in sorted(decode.placements.values(), key=lambda x: (x.start, x.phase_id)):
         if not p.crew or p.assignment_id is None:
             continue
         phase = ctx.phases[p.phase_id]
         demand = phase.role_demands[0]
-        codes = set(demand.bundle.all_codes)
-        crew = tuple(CrewRole(person, demand.bundle.role,
-                              tuple(sorted({e.row_id for h in holdings.get(person, []) if h.cert in codes for e in h.evidence})),
-                              availability.get((person, p.pool_id), "")) for person in p.crew)
+        codes = frozenset(demand.bundle.all_codes)
+        crew = tuple(CrewRole(person, demand.bundle.role, held(person, codes), availability.get((person, p.pool_id), "")) for person in p.crew)
         releases = tuple(sorted(e.pred_phase for e in ctx.preds.get(p.phase_id, ()) if e.pred_phase in ctx.releases))
         disp = ctx.dispositions.get(p.job)
         assignments.append(Assignment(
@@ -433,9 +491,15 @@ def decision_digest(plan: CandidatePlan) -> str:
         if isinstance(value, list):
             return [strip(v) for v in value]
         return value
-    body = to_jsonable({"assignments": plan.assignments, "duties": plan.duties, "dispositions": plan.job_dispositions,
-                        "completions": plan.aircraft_completion, "costs": plan.costs, "commitments": plan.commitment_results})
-    return digest_id("DEC", strip(body), length=64)
+    record = {"assignments": plan.assignments, "duties": plan.duties, "dispositions": plan.job_dispositions,
+              "completions": plan.aircraft_completion, "costs": plan.costs, "commitments": plan.commitment_results}
+    canon = native_codec()
+    if canon is not None:
+        try:
+            return canon.digest_excluding("DEC", record, RUN_REFERENCES, 64)     # the same bytes, keys dropped while writing
+        except Exception:  # noqa: BLE001 - the Python path gives the same digest or raises the exact error
+            pass
+    return digest_id("DEC", strip(to_jsonable(record)), length=64)
 
 
 def receipt(plan: CandidatePlan) -> dict[str, Any]:

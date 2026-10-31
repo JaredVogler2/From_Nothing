@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Iterable
+from typing import Any, Iterable
 
 from ..contracts.planning import CandidatePlan, PlanningSnapshot, Violation
 from ..domain import DutyKind, to_minute
@@ -91,9 +91,13 @@ def reconstruct(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan,
                                   duty.assignment_id or duty.id)
             located[(d.person, d.shift_id)].append(d)
             everything[d.person].append(d)
+    windows_of: dict[str, list[tuple[str, Any]]] = defaultdict(list)      # person -> (shift id, window), in window order
+    if snapshot.carry_in:
+        for (p, s), w in windows.items():
+            windows_of[p].append((s, w))
     for ci in snapshot.carry_in:
         start, end = to_minute(ci.start), to_minute(ci.end)
-        sid = next((s for (p, s), w in windows.items() if p == ci.person and min(x for x, _ in w[0] + w[1]) <= start < max(y for _, y in w[0] + w[1])),
+        sid = next((s for s, w in windows_of.get(ci.person, ()) if min(x for x, _ in w[0] + w[1]) <= start < max(y for _, y in w[0] + w[1])),
                    f"carry:{ci.id}")
         d = ReconstructedDuty(ci.person, sid, start, end, "OTHER", ci.line, f"carry-in {ci.id}")
         located[(ci.person, sid)].append(d)

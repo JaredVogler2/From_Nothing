@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable
 
+from . import codec as _codec
 from .codec import canonical_dumps, sha256_hex
 
 UTC = timezone.utc
@@ -193,6 +194,12 @@ def _digest(prefix: str, payload: bytes, length: int) -> str:
 
 
 def digest_id(prefix: str, *parts: Any, length: int = 20) -> str:
+    canon = _codec._CANON
+    if canon is not None:
+        try:
+            return canon.digest(prefix, parts, length)
+        except Exception:  # noqa: BLE001 - the Python path returns the same id or raises the exact error
+            pass
     return _digest(prefix, canonical_dumps(list(parts)), length)
 
 

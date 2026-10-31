@@ -198,13 +198,16 @@ class ValidationInput:
     def shift(self, shift_id: str | None) -> ShiftInstance | None:
         if not shift_id:
             return None
+        cache = self.__dict__.setdefault("_shift_cache", {})     # ShiftInstance is immutable: one per id per input
+        if shift_id in cache:
+            return cache[shift_id]
         try:
             site, day, number = parse_shift_id(shift_id)
-            if site != self.snapshot.site:
-                return None
-            return build_shift(day, number, self.shift_policy, site)
+            found = build_shift(day, number, self.shift_policy, site) if site == self.snapshot.site else None
         except (ValueError, TypeError):
-            return None
+            found = None
+        cache[shift_id] = found
+        return found
 
     def _status(self, line: int, day: date) -> str | None:
         cal = self.calendars.get(line)

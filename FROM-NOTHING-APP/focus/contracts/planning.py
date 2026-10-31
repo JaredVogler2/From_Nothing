@@ -9,7 +9,7 @@ from decimal import Decimal
 from fractions import Fraction
 from typing import Any
 
-from ..codec import content_hash
+from ..codec import streamed_content_hash
 from ..domain import (
     AvailabilityBasis,
     DomainError,
@@ -35,9 +35,10 @@ from ..domain import (
 
 
 def record_hash(record: Any, exclude: tuple[str, ...] = ("hash",)) -> str:
-    """Canonical hash of a dataclass record excluding its own hash/signature fields."""
+    """Canonical hash of a dataclass record excluding its own hash/signature fields (streamed: the same digest as hashing
+    the record's canonical JSON, without building it whole)."""
     body = {f.name: getattr(record, f.name) for f in fields(record) if f.name not in exclude}
-    return content_hash(body)
+    return streamed_content_hash(body)
 
 
 # ---------------------------------------------------------------------------

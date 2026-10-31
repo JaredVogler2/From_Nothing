@@ -15,11 +15,13 @@
 //!   people are free than the crew needs is skipped without a full crew attempt; that attempt would fail anyway, and the
 //!   failure reason the decoder reports is recomputed exactly when it is owed.
 
+mod canon;
+
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use std::fmt::Write as _;
 use std::sync::{Arc, Mutex};
 
@@ -458,7 +460,7 @@ impl Context {
         let mut persons = Interner::default();
         let mut shifts = Interner::default();
         let mut pools = Interner::default();
-        let mut win = HashMap::with_capacity(windows.len());
+        let mut win = HashMap::with_capacity_and_hasher(windows.len(), Default::default());
         for (person, shift, pool, regular, ot, regular_cap, ot_cap) in windows {
             let mut open: Vec<(i64, i64)> = regular.iter().chain(ot.iter()).copied().collect();
             open.sort();
@@ -469,7 +471,7 @@ impl Context {
             let key = (persons.intern(&person), shifts.intern(&shift));
             win.insert(key, Window { pool: pools.intern(&pool), regular, ot, regular_cap, ot_cap, open, span });
         }
-        let mut caps = HashMap::new();
+        let mut caps = HashMap::default();
         for (pool, cap) in pool_caps {
             caps.insert(pools.intern(&pool), cap);
         }
@@ -477,13 +479,13 @@ impl Context {
         for k in counted {
             counted_mask[kind_of(&k)? as usize] = true;
         }
-        let mut mem = HashMap::new();
+        let mut mem = HashMap::default();
         for (pool, people) in members {
             let pid = pools.intern(&pool);
             let ids = people.iter().map(|p| persons.intern(p)).collect();
             mem.insert(pid, ids);
         }
-        let mut held: HashMap<u32, HashMap<Arc<str>, Vec<Hold>>> = HashMap::new();
+        let mut held: HashMap<u32, HashMap<Arc<str>, Vec<Hold>>> = HashMap::default();
         for (person, cert, active, known, start, end, revoked) in holdings {
             let pid = persons.intern(&person);
             held.entry(pid).or_default().entry(Arc::from(cert.as_str())).or_default().push(Hold { active, known, start, end, revoked });
@@ -510,8 +512,8 @@ impl Context {
         Ok(Context {
             shared: Arc::new(Shared {
                 data,
-                bundles: Mutex::new((Vec::new(), HashMap::new())),
-                memo: Mutex::new(HashMap::new()),
+                bundles: Mutex::new((Vec::new(), HashMap::default())),
+                memo: Mutex::new(HashMap::default()),
                 calendar: Mutex::new(None),
             }),
         })
@@ -528,7 +530,7 @@ impl Context {
         shifts: Vec<(String, String, i64, i64, Vec<(i64, i64)>, i64, i64, Option<(i64, i64)>, Vec<(String, String)>)>,
         lines: Vec<(i64, Vec<String>)>,
     ) -> PyResult<()> {
-        let mut by_id: HashMap<String, Arc<ShiftRec>> = HashMap::with_capacity(shifts.len());
+        let mut by_id: HashMap<String, Arc<ShiftRec>> = HashMap::with_capacity_and_hasher(shifts.len(), Default::default());
         for (id, label, start, end, regular, cutoff_coord, cutoff_instant, ot_window, pools) in shifts {
             let rec = ShiftRec {
                 id: Arc::from(id.as_str()),
@@ -543,7 +545,7 @@ impl Context {
             };
             by_id.insert(id, Arc::new(rec));
         }
-        let mut by_line = HashMap::with_capacity(lines.len());
+        let mut by_line = HashMap::with_capacity_and_hasher(lines.len(), Default::default());
         for (line, ids) in lines {
             let mut list = Vec::with_capacity(ids.len());
             for id in ids {
@@ -576,16 +578,18 @@ impl Context {
             persons: d.persons.clone(),
             shifts: d.shifts.clone(),
             pools: d.pools.clone(),
-            shift_items: HashMap::new(),
-            rows: HashMap::new(),
-            bookings: HashMap::new(),
-            active: HashMap::new(),
+            shift_items: HashMap::default(),
+            rows: HashMap::default(),
+            bookings: HashMap::default(),
+            active: HashMap::default(),
             tool_res,
             problems: Vec::new(),
             undo: Vec::new(),
             marks: Vec::new(),
-            pending: HashMap::new(),
+            pending: HashMap::default(),
             next_handle: 1,
+            free_cache: HashMap::default(),
+            pool_free: HashMap::default(),
         }
     }
 }
@@ -607,6 +611,8 @@ struct Ledger {
     undo: Vec<Undo>,
     marks: Vec<usize>,
     pending: HashMap<u64, Planned>,
+    free_cache: HashMap<(u32, u32), i64>,
+    pool_free: HashMap<(u32, u32), Arc<Vec<i64>>>,
     next_handle: u64,
 }
 
@@ -682,12 +688,52 @@ impl Ledger {
     }
 
     fn active_set(&self, pool: u32) -> HashSet<u32> {
-        self.active.get(&pool).map_or_else(HashSet::new, |c| c.iter().filter(|(_, &n)| n > 0).map(|(&p, _)| p).collect())
+        self.active.get(&pool).map_or_else(HashSet::default, |c| c.iter().filter(|(_, &n)| n > 0).map(|(&p, _)| p).collect())
     }
 
     // -------------------------------------------------------------- internals (ledger.py)
 
+    /// Forget the cached free minutes of a person's shift and of their pool in it (their items changed).
+    fn invalidate_free(&mut self, person: u32, shift: u32) {
+        self.free_cache.remove(&(person, shift));
+        if let Some(w) = self.shared.data.windows.get(&(person, shift)) {
+            self.pool_free.remove(&(w.pool, shift));
+        }
+    }
+
+    /// Minutes of the person's open windows in the shift not covered by any duty (work, transfer, wait, carry-in).
+    /// New work has to fit inside those windows without overlapping a duty, so it can never exceed this.
+    fn person_free(&mut self, person: u32, shift: u32) -> i64 {
+        if let Some(&v) = self.free_cache.get(&(person, shift)) {
+            return v;
+        }
+        let v = match self.shared.data.windows.get(&(person, shift)) {
+            None => 0,
+            Some(w) => {
+                let open: i64 = w.open.iter().map(|&(a, b)| b - a).sum();
+                let used: i64 = self.items_of(person, shift).iter().map(|i| overlap(i.start, i.end, &w.open)).sum();
+                open - used
+            }
+        };
+        self.free_cache.insert((person, shift), v);
+        v
+    }
+
+    /// Every pool member's free minutes in the shift, largest first.
+    fn pool_free_sorted(&mut self, pool: u32, shift: u32) -> Arc<Vec<i64>> {
+        if let Some(v) = self.pool_free.get(&(pool, shift)) {
+            return v.clone();
+        }
+        let members = self.shared.data.members.get(&pool).cloned().unwrap_or_default();
+        let mut frees: Vec<i64> = members.iter().map(|&m| self.person_free(m, shift)).collect();
+        frees.sort_unstable_by(|a, b| b.cmp(a));
+        let v = Arc::new(frees);
+        self.pool_free.insert((pool, shift), v.clone());
+        v
+    }
+
     fn replace(&mut self, person: u32, shift: u32, items: Arc<Vec<Item>>) {
+        self.invalidate_free(person, shift);
         let key = (person, shift);
         let old = if items.is_empty() { self.shift_items.remove(&key) } else { self.shift_items.insert(key, items.clone()) };
         self.log(Undo::Shift(key, old));
@@ -1302,6 +1348,12 @@ impl Ledger {
     }
 }
 
+/// A start or a whole shift the search skipped because a crew could not be found there.
+enum Owed {
+    Start(u32, u32, Option<(i64, i64)>, Vec<(i64, i64, bool)>),
+    Shift(Arc<ShiftRec>, u32, u32, Option<(i64, i64)>, i64),
+}
+
 struct Chosen {
     crew: Vec<u32>,
     planned: Planned,
@@ -1528,6 +1580,7 @@ impl Ledger {
                         Some(v) => self.shift_items.insert(key, v),
                         None => self.shift_items.remove(&key),
                     };
+                    self.invalidate_free(key.0, key.1);
                 }
                 Undo::Rows(person, old) => {
                     match old {
@@ -1601,12 +1654,38 @@ impl Ledger {
     /// the line from the floor on, every candidate start, regular time before overtime, the crew choice and the booking
     /// (with the WAIT duty of `wait`, when given). Returns (placement, reason, crew attempts, starts skipped).
     ///
-    /// A start where fewer qualified people are free than the crew needs is skipped: the crew attempt there is certain to
-    /// fail. When the search fails and the last failure the reference would report came from a skipped start, that
-    /// attempt is made in full at the end to recover its exact reason; the ledger has not changed in between.
+    /// The search is pure Rust, so it runs without the GIL: decodes on other Python threads proceed meanwhile.
     #[pyo3(signature = (phase_id, line, team, count, bundle, work_minutes, floor, end_floor, tools, wait))]
     #[allow(clippy::too_many_arguments)]
     fn search(
+        &mut self,
+        py: Python<'_>,
+        phase_id: &str,
+        line: i64,
+        team: &str,
+        count: i64,
+        bundle: usize,
+        work_minutes: i64,
+        floor: i64,
+        end_floor: i64,
+        tools: Vec<String>,
+        wait: Option<(Vec<String>, String, String, i64)>,
+    ) -> PyResult<SearchTuple> {
+        let (phase_id, team) = (phase_id.to_owned(), team.to_owned());
+        py.allow_threads(|| self.search_impl(&phase_id, line, &team, count, bundle, work_minutes, floor, end_floor, tools, wait))
+    }
+}
+
+impl Ledger {
+    /// The decoder's whole time-slot search for one phase (`greedy.Decoder._search` and `_book`): every eligible shift of
+    /// the line from the floor on, every candidate start, regular time before overtime, the crew choice and the booking
+    /// (with the WAIT duty of `wait`, when given). Returns (placement, reason, crew attempts, starts skipped).
+    ///
+    /// A start where fewer qualified people are free than the crew needs is skipped: the crew attempt there is certain to
+    /// fail. When the search fails and the last failure the reference would report came from a skipped start, that
+    /// attempt is made in full at the end to recover its exact reason; the ledger has not changed in between.
+    #[allow(clippy::too_many_arguments)]
+    fn search_impl(
         &mut self,
         phase_id: &str,
         line: i64,
@@ -1629,7 +1708,9 @@ impl Ledger {
         let travel = self.data().travel_changed;
         let need = count.max(0) as usize;
         let mut last_reason = String::from("NO_ELIGIBLE_SHIFT: no eligible shift within admitted calendar bounds after the floor");
-        let mut owed: Option<(u32, u32, Option<(i64, i64)>, Vec<(i64, i64, bool)>)> = None;
+        // Starts and whole shifts skipped since the last reason the reference would have set, in order; if the search
+        // fails, the latest one that the reference would have attempted supplies the reason.
+        let mut owed: Vec<Owed> = Vec::new();
         let (mut attempts, mut skipped) = (0u64, 0u64);
         let none: Vec<Arc<ShiftRec>> = Vec::new();
         for shift in cal.lines.get(&line).unwrap_or(&none) {
@@ -1638,7 +1719,7 @@ impl Ledger {
             }
             let Some(pool_name) = shift.pools.get(team) else {
                 last_reason = format!("POOL_MISSING: no {} pool for {}", team, shift.label);
-                owed = None;
+                owed.clear();
                 continue;
             };
             let first = match shift.next_open(floor.max(shift.start)) {
@@ -1648,6 +1729,15 @@ impl Ledger {
             let s = self.shifts.intern(&shift.id);
             let q = self.pools.intern(pool_name);
             let window = Some((shift.start, shift.end.max(shift.ot_window.map_or(shift.end, |w| w.1))));
+            if need > 0 {
+                // each crew member needs the whole work inside their open windows, clear of their duties
+                let frees = self.pool_free_sorted(q, s);
+                if frees.len() < need || frees[need - 1] < work_minutes {
+                    skipped += 1;
+                    owed.push(Owed::Shift(shift.clone(), s, q, window, first));
+                    continue;
+                }
+            }
             for t in self.candidates(s, q, first, shift.cutoff_instant, travel) {
                 let Some(t2) = shift.next_open(t) else { continue };
                 if !shift.valid_start(t2) {
@@ -1660,7 +1750,7 @@ impl Ledger {
                     }
                     if !self.enough_free(s, q, need, bundle, &groups, window, line, &segs) {
                         skipped += 1;
-                        owed = Some((s, q, window, segs));
+                        owed.push(Owed::Start(s, q, window, segs));
                         break;
                     }
                     attempts += 1;
@@ -1672,19 +1762,42 @@ impl Ledger {
                         }
                         Err(reason) => {
                             last_reason = reason;
-                            owed = None;
+                            owed.clear();
                         }
                     }
                     break;
                 }
             }
         }
-        if let Some((s, q, window, segs)) = owed {
+        while let Some(item) = owed.pop() {
+            let found = match item {
+                Owed::Start(s, q, window, segs) => Some((s, q, window, segs)),
+                Owed::Shift(shift, s, q, window, first) => {
+                    // the start the reference would have attempted last in this shift, if any
+                    let mut last = None;
+                    for t in self.candidates(s, q, first, shift.cutoff_instant, travel) {
+                        let Some(t2) = shift.next_open(t) else { continue };
+                        if !shift.valid_start(t2) {
+                            continue;
+                        }
+                        for ot_allowed in [0, cal.ot_minutes] {
+                            let Some((end, segs)) = shift.advance(t2, work_minutes, ot_allowed) else { continue };
+                            if end >= end_floor {
+                                last = Some(segs);
+                            }
+                            break;
+                        }
+                    }
+                    last.map(|segs| (s, q, window, segs))
+                }
+            };
+            let Some((s, q, window, segs)) = found else { continue };
             let aid = assignment_id(phase_id, segs[0].0, &cal.purpose);
             last_reason = match self.choose_inner(&aid, line, team, s, q, count, bundle, &groups, window, &segs, WORK, &tools) {
                 Err(f) => f.reason,
                 Ok(_) => return Err(PyValueError::new_err(format!("{phase_id}: a skipped start at {} was feasible", segs[0].0))),
             };
+            break;
         }
         Ok((None, format!("NO_FEASIBLE_PLACEMENT: {last_reason}"), attempts, skipped))
     }
@@ -1694,6 +1807,7 @@ impl Ledger {
 fn focus_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Context>()?;
     m.add_class::<Ledger>()?;
-    m.add("PARITY_REFERENCE", "focus/engine/ledger.py, focus/engine/crew_selection.py, focus/eligibility.py")?;
+    m.add_class::<canon::Canon>()?;
+    m.add("PARITY_REFERENCE", "focus/engine/ledger.py, focus/engine/crew_selection.py, focus/eligibility.py, focus/codec.py")?;
     Ok(())
 }
