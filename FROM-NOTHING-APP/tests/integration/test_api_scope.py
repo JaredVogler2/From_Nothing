@@ -455,7 +455,13 @@ def test_a68_schedule_and_other_commands_report_honest_worker_status(published, 
     review = ie.post("/api/v1/ie-reviews", json={"job_id": job, "standard_revision": "fixture-v1", "proposed_correction": "raise the P75 duration",
                                                  "reason": "five observed overruns", "idempotency_key": "ie-test-0001"}, headers={"X-CSRF-Token": itoken})
     mechanic, _, mtoken = client_on(root, app_root, "mechanic-a05")
-    report = mechanic.post("/api/v1/reported-observations", json={"job_id": job, "kind": "COMPLETED", "effective_at": "2026-10-26T09:00:00Z",
+    # a report on another team's job is refused like a missing job, before anything is queued
+    r = mechanic.post("/api/v1/reported-observations", json={"job_id": job, "kind": "COMPLETED", "effective_at": "2026-10-26T09:00:00Z",
+                                                            "notes": "done before lunch", "idempotency_key": "rep-test-0000"},
+                      headers={"X-CSRF-Token": mtoken})
+    assert r.status_code == 404 and error(r) == "JOB_NOT_FOUND"
+    own = next(j.id for j in published.snap.jobs if j.team == "PROD-A")
+    report = mechanic.post("/api/v1/reported-observations", json={"job_id": own, "kind": "COMPLETED", "effective_at": "2026-10-26T09:00:00Z",
                                                                  "notes": "done before lunch", "idempotency_key": "rep-test-0001"},
                            headers={"X-CSRF-Token": mtoken})
     assert review.status_code == report.status_code == 202
