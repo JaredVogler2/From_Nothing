@@ -227,6 +227,67 @@ def test_twin_drilldowns_give_the_same_canonical_totals_and_revisions(observed, 
     assert r.status_code == 403 and r.get_json()["error"]["code"] == "OUT_OF_SCOPE"
 
 
+def test_twin_shows_frozen_recognition_and_each_station_behind_value_with_its_date_basis(observed, app_root) -> None:
+    from datetime import date
+    from fractions import Fraction
+    from zoneinfo import ZoneInfo
+
+    from focus.performance.actuals import knowledge_time
+
+    def q(x: dict[str, int] | None) -> Fraction | None:
+        return None if x is None else Fraction(x["num"], x["den"])
+
+    c, services, _ = client(observed, app_root, "manager")
+    d = twin(c)["data"]
+    assert d["reconciliation"]["ok"]
+    cn, policy = canon(services), services.policy
+    # each cell's recognition is the goal's frozen gate contexts (signed artifact), summed by line and never revalued
+    expected: dict[tuple[str, str], list[Fraction]] = {}
+    for g in cn.executable.artifact.frozen_goals:
+        expected[(g.team, g.shift_id)] = [sum((x.base_value for x in g.gate_contexts.values()), Fraction(0)),
+                                          sum((x.bonus_value or 0 for x in g.gate_contexts.values()), Fraction(0))]
+        assert expected[(g.team, g.shift_id)][0] == Fraction(g.standard_person_minutes, policy.int("recognition.base_divisor"))
+    got: dict[tuple[str, str], list[Fraction]] = defaultdict(lambda: [Fraction(0), Fraction(0)])
+    for cell in d["cells"]:
+        r, k = cell["recognition"], cell["key"]
+        if r is not None:
+            assert r["basis"] == "FROZEN_AT_PUBLICATION" and set(r["date_bases"]) <= {"ACTUAL_CS_GATE", "UNAVAILABLE"}
+            got[(k["team"], f"DEMO:{k['shift_start_date']}:S{k['shift_number']}")][0] += q(r["base_value"])
+            got[(k["team"], f"DEMO:{k['shift_start_date']}:S{k['shift_number']}")][1] += q(r["bonus_value"])
+    assert expected and dict(got) == expected
+    assert sum(1 for x in d["reconciliation"]["checks"] if x["check"] == "RECOGNITION_EQUALS_FROZEN_EFFORT") == len(expected)
+    # each line and station gate, valued on the local knowledge date by the policy's weight, cap, grace and explicit basis
+    b = d["behind_station"]
+    today = knowledge_time(services).astimezone(ZoneInfo(policy.str("shift.timezone"))).date()
+    assert (b["valuation_date"], b["valuation_basis"], b["date_basis"]) == (today.isoformat(), "KNOWLEDGE_DATE", policy.str("gate.date_basis"))
+    assert (b["weight"], b["cap_days"], b["proxy_grace_days"]) == (35, 5, 2)
+    facts = {(f.line, f.station): f for f in cn.snapshot.cs_facts}
+    census = Counter((j.key.line, j.station) for j in cn.snapshot.jobs)
+    assert {(r["line"], r["station"]): r["jobs"] for r in b["stations"]} == dict(census)
+
+    def check(stations: list[dict[str, Any]], on: date) -> int:
+        behind = 0
+        for r in stations:
+            f = facts.get((r["line"], r["station"]))
+            assert r["valuation_date"] == on.isoformat()
+            if f is None or f.status != "ADMITTED" or f.gate_date is None:
+                assert r["basis"] == "UNAVAILABLE" and r["bonus_factor"] is None and r["behind_days"] is None
+                continue
+            days = max((on - f.gate_date).days, 0)                    # a future gate is 0, never negative
+            assert (r["gate_date"], r["effective_gate_date"], r["grace_days"], r["behind_days"]) == \
+                (f.gate_date.isoformat(), f.gate_date.isoformat(), 0, days)
+            assert q(r["behind_raw"]) == min(Fraction(days, 5), 1) and q(r["bonus_factor"]) == Fraction(35, 100) * min(Fraction(days, 5), 1)
+            behind += days > 0
+        return behind
+
+    assert check(b["stations"], today) == 0                           # the fixture's gates (10-28) are still ahead on the knowledge date
+    # a selected shift date values every gate on that date instead: three days past a 10-28 gate is 3/5 of the cap
+    picked = twin(c, "?date=2026-10-31")["data"]["behind_station"]
+    assert (picked["valuation_date"], picked["valuation_basis"]) == ("2026-10-31", "SELECTED_SHIFT_DATE")
+    assert check(picked["stations"], date(2026, 10, 31)) == len(picked["stations"]) and \
+        {q(r["bonus_factor"]) for r in picked["stations"]} == {Fraction(21, 100)}
+
+
 def test_twin_correction_appends_an_evaluation_revision_and_still_reconciles(observed, app_root, tmp_path) -> None:
     from focus.performance import history
     from focus.performance.actuals import knowledge_time
