@@ -34,7 +34,8 @@ Extended checks:
 * **E_INVENTORY**: complete WIP reconciliation.
 * **E_LINEAGE**: snapshot, source run, scope, policy, purpose and hashes.
 * **E_CS**: the same-run raw CS row, load and offsets behind each placed job's station fact.
-* **E_COMMITMENT**: every incumbent task's reported defense outcome.
+* **E_COMMITMENT**: every incumbent task's reported defense outcome, with the incumbent's work located by its position in
+  the job's remaining work (PERFORMED when that work is done, MERGED when an earlier slot already defends it).
 * **E_ECONOMICS**: exact recomputation of completions and costs.
 * **E_CAPABILITY**: the purpose's placeability and conditional labels.
 
@@ -47,11 +48,11 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime
 from typing import Any, Iterable
 
-from ..contracts.planning import CandidatePlan, IncumbentPlan, PlanningSnapshot, ValidationReceipt, Violation
-from ..data.sourcetime import local_to_utc
+from ..calendar import shift_local_minute
+from ..contracts.planning import CandidatePlan, IncumbentPlan, PlanningSnapshot, ValidationReceipt, Violation, locate_position
 from ..domain import (Disposition, DomainError, EdgeType, PersonKey, PhaseKind, Purpose, ReleaseKind, ReleaseStatus, RequirementStatus, digest_id,
                       minute_ceil, to_minute)
 from ..economics.evaluator import JobRelease, aircraft_completions, line_costs, summarize
@@ -66,7 +67,7 @@ GATE_CHECKS = tuple(c for c in REQUIRED_CHECKS if c != "E_COMMITMENT")   # in-se
 VALIDATIONS = "validations"
 CANDIDATES = "candidates"                 # repository contract shared with the optimizer
 ACCEPTED_PLANS = "accepted_plans"         # repository contract shared with commitments (P14)
-DEFENSE_OUTCOMES = ("KEPT", "CREW_CHANGED", "MOVED", "DEFERRED", "UNSAFE", "OUT_OF_HORIZON", "COMPLETED")
+DEFENSE_OUTCOMES = ("KEPT", "CREW_CHANGED", "MOVED", "DEFERRED", "UNSAFE", "OUT_OF_HORIZON", "COMPLETED", "PERFORMED", "MERGED")
 
 
 @dataclass
@@ -639,21 +640,37 @@ def _e_commitment(run: _Run, incumbent: IncumbentPlan | None) -> None:
     results = {r.incumbent_assignment_id: r for r in plan.commitment_results}
     by_id = {a.id: a for a in plan.assignments}
     jobs = {(j.line, j.key.native_id): j for j in inp.jobs.values()}
+    positions = incumbent.positions if len(incumbent.positions) == len(incumbent.assignments) else ()
+    claimed: set[str] = set()                              # current phases an earlier incumbent slot defends
     for n, ia in enumerate(incumbent.assignments):
         run.count("E_COMMITMENT")
         aid = digest_id("INCA", incumbent.id, n)
         r = results.get(aid)
+        offset = (ia.day - today).days
+        job = jobs.get((ia.line, ia.soi))
+        # where the incumbent's work is now: by its position in the job's remaining work, else by ordinal
+        mapped, performed = None, False
+        if job is not None:
+            kind = PhaseKind(ia.phase)
+            located = (locate_position(inp.job_phases.get(job.id, ()), kind, positions[n]) if positions and positions[n] is not None
+                       else None)
+            if located is not None:
+                mapped, performed = located
+            else:
+                mapped = next((p for p in inp.job_phases.get(job.id, ()) if p.kind is kind and p.ordinal == ia.ordinal), None)
+        completed = job is not None and inp.dispositions[job.id].disposition is Disposition.VERIFIED_COMPLETE
+        merged = not completed and not performed and mapped is not None and 0 <= offset < horizon and mapped.key.id in claimed
+        if not completed and not performed and mapped is not None and 0 <= offset < horizon:
+            claimed.add(mapped.key.id)
         if r is None:
             run.bad("E_COMMITMENT", "COMMITMENT_RESULT_MISSING", aid, f"{ia.line}/{ia.soi} {ia.day} has no defense outcome")
             continue
-        offset = (ia.day - today).days
         a = by_id.get(r.new_assignment_id) if r.new_assignment_id else None
-        start = to_minute(local_to_utc(datetime.combine(ia.day, time.fromisoformat(ia.start_local)), inp.shift_policy.tz))
+        start = shift_local_minute(ia.day, ia.shift, ia.start_local, inp.shift_policy, inp.snapshot.site)
         crew = {PersonKey(c, incumbent.namespace).id for c in ia.crew}
         sid = f"{inp.snapshot.site}:{ia.day.isoformat()}:S{ia.shift}"
         same_slot = a is not None and to_minute(a.start) == start and a.shift_id == sid
         actual = {x.person for x in a.crew} if a is not None else set()
-        job = jobs.get((ia.line, ia.soi))
         expected_ok = {
             "KEPT": same_slot and actual == crew and a.committed and 0 <= offset < horizon,
             "CREW_CHANGED": same_slot and actual != crew and a.committed and 0 <= offset < horizon,
@@ -661,7 +678,9 @@ def _e_commitment(run: _Run, incumbent: IncumbentPlan | None) -> None:
             "DEFERRED": a is None and 0 <= offset < horizon,
             "UNSAFE": bool(r.reason),
             "OUT_OF_HORIZON": offset < 0 or offset >= horizon,
-            "COMPLETED": job is not None and inp.dispositions[job.id].disposition is Disposition.VERIFIED_COMPLETE,
+            "COMPLETED": completed,
+            "PERFORMED": performed and not completed,
+            "MERGED": merged,
         }
         if r.outcome not in expected_ok:
             run.bad("E_COMMITMENT", "COMMITMENT_OUTCOME_UNKNOWN", aid, r.outcome)

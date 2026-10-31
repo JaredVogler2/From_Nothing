@@ -43,7 +43,7 @@ from datetime import datetime
 from typing import Any, Callable
 
 from ..contracts.planning import (AcceptanceReceipt, CandidatePlan, IncumbentAssignment, IncumbentPlan, PlanArtifact, PlanningSnapshot,
-                                  PublishedPlan)
+                                  PublishedPlan, work_to_go)
 from ..domain import Purpose, digest_id
 from ..validation.plan import CANDIDATES, load_incumbent, persist_receipt, validate
 from ..validation.publication import publication_capability, validate_artifact
@@ -84,7 +84,11 @@ def incumbent_from(snapshot: PlanningSnapshot, published: PublishedPlan, plan: C
     people = {p.id: p for p in snapshot.people}
     namespaces = {p.namespace for p in snapshot.people if not p.synthetic}
     namespace = sorted(namespaces)[0] if namespaces else "unknown"
-    items = []
+    job_phases: dict[str, list[Any]] = {}
+    for p in snapshot.phases:                                    # chain order within each job
+        job_phases.setdefault(p.job, []).append(p)
+    to_go: dict[str, dict[str, int]] = {}
+    items, positions = [], []
     for a in sorted(plan.assignments, key=lambda x: (x.start, x.id)):
         phase, job = phases.get(a.phase), jobs.get(a.job)
         crew = [people.get(r.person) for r in a.crew]
@@ -93,8 +97,12 @@ def incumbent_from(snapshot: PlanningSnapshot, published: PublishedPlan, plan: C
         _, day, label = a.shift_id.rsplit(":", 2)
         items.append(IncumbentAssignment(job.line, job.key.native_id, phase.kind.value, phase.ordinal, datetime.fromisoformat(day).date(),
                                          int(label[1:]), a.start.astimezone(tz).strftime("%H:%M"), tuple(p.key.native_id for p in crew)))
+        if job.id not in to_go:
+            to_go[job.id] = work_to_go(job_phases.get(job.id, ()))
+        position = to_go[job.id].get(phase.key.id)
+        positions.append(position if position and (phase.kind.value != "WORK" or phase.work_minutes > 0) else None)
     return IncumbentPlan(digest_id("INC", published.id), published.scope, published.purpose.value, snapshot.policy_id, "PUBLISHED",
-                         published.accepted_at, snapshot.cutoff, namespace, tuple(items))
+                         published.accepted_at, snapshot.cutoff, namespace, tuple(items), tuple(positions))
 
 
 def _post_acceptance(services: Any, snapshot: PlanningSnapshot, published: PublishedPlan, plan: CandidatePlan) -> list[str]:

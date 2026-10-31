@@ -9,13 +9,14 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from focus.calendar import build_shift
 from focus.codec import parse_utc
-from focus.contracts.planning import CandidatePlan
+from focus.contracts.planning import CandidatePlan, work_to_go
 from focus.data.acquisition import snapshot_for_run
 from focus.data.fixture_reader import FixtureSourceReader
 from focus.domain import DutyKind, PersonKey, PhaseKind, Purpose, to_minute
-from focus.engine.commitments import (DeliveryCommitments, IncumbentAssignment, IncumbentPlan, import_fixture_incumbent, incumbent_head,
-                                      record_accepted_incumbent)
+from focus.engine.commitments import (DeliveryCommitments, IncumbentAssignment, IncumbentPlan, defense_for, import_fixture_incumbent,
+                                      incumbent_head, record_accepted_incumbent)
 from focus.engine.max.optimizer.greedy import Decoder, DefendedTask
 from focus.engine.max.optimizer.orchestrator import CANDIDATES, schedule
 from focus.engine.model import EngineContext
@@ -254,3 +255,19 @@ def test_accepted_forecast_plan_feeds_delivery_commitments_once(services_factory
     assert record_accepted(services, eplan, snapshot).status == "NOT_APPLICABLE"    # dispatch plans never move delivery dates
     state, _ = DeliveryCommitments(services.repositories, fplan.scope, services.policy).get(1302)
     assert state.alert.startswith("COMMITMENT_UNSAFE") and state.counted == ((fplan.id, decisions[1302]),)
+
+
+def test_s3_commitment_after_local_midnight_is_defended_at_its_real_start(demo) -> None:
+    services, _, snapshot = demo
+    ctx = EngineContext(snapshot, services.policy, Purpose.EXECUTABLE)
+    a1 = job_id(snapshot, 1301, "A1")
+    phase = next(p for p in ctx.job_phases[a1] if p.kind is PhaseKind.WORK)
+    day = snapshot.cutoff.astimezone(_tz(services)).date()
+    incumbent = IncumbentPlan("INC-S3-MIDNIGHT", snapshot.scope_key, "EXECUTABLE", services.policy.id, "PUBLISHED", snapshot.cutoff,
+                              snapshot.cutoff, "fixture-demo",
+                              (IncumbentAssignment(1301, "A1", "WORK", phase.ordinal, day, 3, "01:00", ("DEMO-A1-05", "DEMO-A1-06")),),
+                              (work_to_go(ctx.job_phases[a1])[phase.key.id],))
+    task = defense_for(ctx, incumbent, status="LOADED", detail="test").defended[phase.key.id]
+    s3 = build_shift(day, 3, ctx.shift_policy, ctx.site)
+    assert task.start == to_minute(_at(_tz(services), day + timedelta(days=1), "01:00"))   # not 24 hours before the shift
+    assert s3.start <= task.start < s3.end and s3.valid_start(task.start)

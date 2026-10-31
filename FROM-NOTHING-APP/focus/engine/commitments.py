@@ -22,6 +22,12 @@ offsets 0/1/2. For each one the decoder tries:
 
 Day 3 and later are freely repacked.
 
+An incumbent task is found in the new snapshot by its position: the production minutes still to go in its job from
+that phase (``IncumbentPlan.positions``). Written-back progress re-splits a job's remaining work and renumbers it from
+ordinal 0, so an ordinal would point at the wrong piece. A position beyond the job's remaining work was PERFORMED since
+acceptance. When the re-split folds two committed pieces into one phase, the earlier slot defends it and the later one
+is MERGED. Incumbents recorded without positions (the fixture incumbent) are matched by ordinal.
+
 Delivery hysteresis
 -------------------
 Per aircraft the repository keeps the original and current committed date, the raw projection,
@@ -47,15 +53,15 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field, replace
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+from ..calendar import shift_local_minute
 from ..codec import parse_utc, to_jsonable
-from ..contracts.planning import CommitmentResult, IncumbentAssignment, IncumbentPlan
-from ..data.sourcetime import local_to_utc
+from ..contracts.planning import CommitmentResult, IncumbentAssignment, IncumbentPlan, locate_position
 from ..data.store import VersionConflict
-from ..domain import Disposition, PersonKey, PhaseKind, digest_id, to_minute
+from ..domain import Disposition, PersonKey, PhaseKind, digest_id
 from ..policy import Policy
 from .max.optimizer.greedy import DefendedTask
 from .model import EngineContext, shift_id_of
@@ -171,19 +177,30 @@ def defense_for(ctx: EngineContext, plan: IncumbentPlan, *, status: str, detail:
     horizon = ctx.policy.int("commitment.horizon_calendar_days")
     today = ctx.snapshot.cutoff.astimezone(ctx.shift_policy.tz).date()
     by_key = {(j.line, j.key.native_id): j for j in ctx.jobs.values()}
+    positions = plan.positions if len(plan.positions) == len(plan.assignments) else ()
     out = Defense(incumbent_id=plan.id, status=status, detail=detail)
     others: list[CommitmentResult] = []
     for n, a in enumerate(plan.assignments):
         aid = digest_id("INCA", plan.id, n)
         offset = (a.day - today).days
         job = by_key.get((a.line, a.soi))
-        phase = None
+        phase, performed = None, False
         if job is not None:
+            # by position in the job's remaining work: written-back progress re-splits and renumbers what is left
             kind = PhaseKind(a.phase)
-            phase = next((p for p in ctx.job_phases[job.id] if p.kind is kind and p.ordinal == a.ordinal), None)
+            located = locate_position(ctx.job_phases[job.id], kind, positions[n]) if positions and positions[n] is not None else None
+            if located is not None:
+                phase, performed = located
+            else:
+                phase = next((p for p in ctx.job_phases[job.id] if p.kind is kind and p.ordinal == a.ordinal), None)
         if job is not None and ctx.dispositions[job.id].disposition is Disposition.VERIFIED_COMPLETE:
             others.append(CommitmentResult(phase.key.id if phase else job.id, job.id, aid, offset, "COMPLETED", "not needed", "not needed",
                                            "verified complete since acceptance", None))
+            continue
+        if performed:
+            others.append(CommitmentResult(job.id, job.id, aid, offset, "PERFORMED", "not needed", "not needed",
+                                           f"performed since acceptance: {positions[n]} production minutes to go lies beyond the job's "
+                                           f"remaining work", None))
             continue
         if job is None or phase is None:
             others.append(CommitmentResult(f"{a.line}/{a.soi}", job.id if job else f"{a.line}/{a.soi}", aid, offset, "UNSAFE",
@@ -193,7 +210,12 @@ def defense_for(ctx: EngineContext, plan: IncumbentPlan, *, status: str, detail:
             others.append(CommitmentResult(phase.key.id, job.id, aid, offset, "OUT_OF_HORIZON", "not attempted", "not attempted",
                                            f"day offset {offset} is outside 0..{horizon - 1}: freely repacked", None))
             continue
-        start = to_minute(local_to_utc(datetime.combine(a.day, time.fromisoformat(a.start_local)), ctx.shift_policy.tz))
+        if phase.key.id in out.defended:
+            others.append(CommitmentResult(phase.key.id, job.id, aid, offset, "MERGED", "not attempted", "not attempted",
+                                           f"REMAINING_WORK_RESPLIT: this slot's work is now part of {phase.label}, defended from an earlier "
+                                           f"slot", None))
+            continue
+        start = shift_local_minute(a.day, a.shift, a.start_local, ctx.shift_policy, ctx.site)     # S3 starts after midnight: next day
         crew = tuple(PersonKey(native, plan.namespace).id for native in a.crew)
         out.defended[phase.key.id] = DefendedTask(phase.key.id, aid, shift_id_of(ctx.site, a.day, a.shift), start, crew, offset)
     out.other_results = tuple(others)
