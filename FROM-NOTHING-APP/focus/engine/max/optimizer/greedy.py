@@ -43,6 +43,14 @@ LEAD_DEFENDED, LEAD_CONE, LEAD_OTHER = 0, 1, 2       # dispatch classes ahead of
 REQUEUE = "DEFENSE_FAILED_REQUEUED"
 
 
+class _AfterLatest(Exception):
+    """The earliest feasible placement ends after the CS hard latest: its booking is rolled back."""
+
+    def __init__(self, end: int):
+        super().__init__(end)
+        self.end = end
+
+
 @dataclass(frozen=True)
 class DefendedTask:
     """A committed incumbent phase inside the commitment horizon (day offsets 0..horizon-1)."""
@@ -280,6 +288,23 @@ class Decoder:
 
     def _search(self, phase: Phase, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
                 not_before: int | None = None) -> tuple[PhasePlacement | None, str]:
+        """The earliest feasible placement. Where a CS hard latest applies (S09) it must end by then. The earliest feasible
+        placement also ends earliest, so when it ends later nothing fits: its booking is undone and the phase is deferred."""
+        latest = self.ctx.job_latest(phase.job)
+        if latest is None:
+            return self._search_any(phase, start_floor, end_floor, conditional, result, not_before)
+        try:
+            with result.ledger.transaction():
+                placement, reason = self._search_any(phase, start_floor, end_floor, conditional, result, not_before)
+                if placement is not None and placement.end > latest:
+                    raise _AfterLatest(placement.end)
+        except _AfterLatest as exc:
+            return None, (f"AFTER_CS_HARD_LATEST: the earliest feasible end {from_minute(exc.end).isoformat()} is after the CS hard latest "
+                          f"{from_minute(latest).isoformat()}")
+        return placement, reason
+
+    def _search_any(self, phase: Phase, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
+                    not_before: int | None = None) -> tuple[PhasePlacement | None, str]:
         ctx = self.ctx
         ledger = result.ledger
         job = ctx.jobs[phase.job]
@@ -388,6 +413,11 @@ class Decoder:
         fit = shift.advance(d.start, phase.work_minutes, 0) or shift.advance(d.start, phase.work_minutes, ctx.shift_policy.ot_minutes)
         if fit is None or fit[0] < end_floor:
             self._record(d, phase, "UNSAFE", "FINISH_FIT: committed slot can no longer hold the work", "not attempted", "finish fit", None, result)
+            return None
+        latest = ctx.job_latest(phase.job)
+        if latest is not None and fit[0] > latest:
+            self._record(d, phase, "UNSAFE", f"AFTER_CS_HARD_LATEST: committed slot ends after {from_minute(latest).isoformat()}", "not attempted",
+                         "CS hard latest", None, result)
             return None
         end, segments = fit
         pool = ctx.pool_for(phase.role_demands[0].team, shift)

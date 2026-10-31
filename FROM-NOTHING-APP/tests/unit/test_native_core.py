@@ -274,3 +274,55 @@ def test_a_wheel_built_for_another_protocol_is_refused(monkeypatch) -> None:
     assert native.available() is False
     receipt = native.status(True)
     assert receipt["engine"] == "python" and "protocol" in receipt["reason"]
+
+
+def test_cs_hard_latest_defers_work_that_cannot_end_in_time_in_both_cores(app_root: Path) -> None:
+    """S09: where the policy declares a hard latest, no work of the station ends after it. The search defers what cannot fit
+    (its booking rolled back), the validator agrees, and both cores make the same plan."""
+    pytest.importorskip("focus_native")
+    import json
+
+    from focus.clock import FIXTURE_CUTOFF, FixedClock
+    from focus.data.acquisition import acquire, load_snapshot
+    from focus.data.fixture_reader import FixtureSourceReader
+    from focus.data.repositories import Repositories
+    from focus.data.store import FixtureStore
+    from focus.domain import Purpose, to_minute
+    from focus.engine.max.optimizer.orchestrator import schedule_snapshot
+    from focus.policy import load_policy
+    from focus.runtime import build_services
+
+    policy = load_policy(app_root / "config" / "policies", "rebuild-v1").with_overrides({"cs.hard_latest": "GATE_DAY_END"}, new_id="cs-hard-latest",
+                                                                                         reason="S09 hard latest test")
+    inputs = app_root / "fixtures" / "inputs" / "manufacturing_demo"
+    cs = json.loads((inputs / "cs_windows.json").read_text())
+    for r in cs["rows"]:
+        if r["LINE_NUMBER"] == 1301:
+            r.update({"CS_OP_LOAD": "2026-10-25", "CS_OP_UNLOAD": "2026-10-25"})    # hard latest before the cutoff: nothing fits
+    with tempfile.TemporaryDirectory() as tmp:
+        clock = FixedClock(FIXTURE_CUTOFF)
+
+        def services(flag: bool):  # type: ignore[no-untyped-def]
+            settings = Settings.from_env({}, app_root=app_root, inprocess_worker=False, native_core=flag)
+            return build_services(settings, repositories=Repositories(FixtureStore(Path(tmp)), mode="fixture", scope_key=settings.scope_key,
+                                                                      clock=clock), clock=clock, policy=policy)
+
+        base = services(False)
+        snapshot_id = acquire(base, FixtureSourceReader(inputs, overrides={"cs_windows": cs}), cutoff=FIXTURE_CUTOFF,
+                              idempotency_key="cs-hard-latest").snapshot_id
+        snapshot = load_snapshot(base.repositories, snapshot_id)
+        latest = {(f.line, f.station): f.hard_latest_at for f in snapshot.cs_facts}
+        jobs = {j.id: j for j in snapshot.jobs}
+        out = {}
+        for flag in (False, True):
+            svc = services(flag)
+            plan, run = schedule_snapshot(svc, load_snapshot(svc.repositories, snapshot_id), purpose=Purpose.EXECUTABLE, budget_seconds=60,
+                                          max_moves=5)
+            assert run.validation.valid, [v.code for v in run.validation.violations]
+            for a in plan.assignments:
+                bound = latest.get((jobs[a.job].line, jobs[a.job].station))
+                assert bound is None or to_minute(a.end) <= to_minute(bound), (flag, a.id, a.end, bound)
+            deferred = [o for o in plan.job_dispositions if any(r.startswith("AFTER_CS_HARD_LATEST") for r in o.reasons)]
+            assert deferred and all(jobs[o.job].line == 1301 for o in deferred), flag
+            out[flag] = (plan.id, plan.hash, run.native["engine"])
+        assert out[False][:2] == out[True][:2] and out[True][2] == "native", out

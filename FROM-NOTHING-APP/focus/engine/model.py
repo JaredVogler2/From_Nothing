@@ -165,6 +165,13 @@ class EngineContext:
             notes.append(f"CS{facts.station} earliest")
         return floor, notes
 
+    def job_latest(self, job_id: str) -> int | None:
+        """The end no work of the job may pass: its station's CS hard latest, only where the policy declares one (S09
+        feasibility); None otherwise."""
+        job = self.jobs[job_id]
+        facts = self.cs.get((job.line, job.station))
+        return to_minute(facts.hard_latest_at) if facts is not None and facts.hard_latest_at is not None else None
+
     # ---------------------------------------------------------------- resources
     def line_shifts(self, line: int) -> list[ShiftInstance]:
         cached = self._line_shifts.get(line)
