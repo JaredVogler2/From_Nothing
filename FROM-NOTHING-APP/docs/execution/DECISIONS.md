@@ -13,7 +13,8 @@ carries an authority label:
 | `manual_specified` | A value the manual fixes explicitly. |
 | `fixture_default` | An explicit demonstration choice, valid in fixture mode only. |
 | `demo_default` | A proposed S14 grading/recognition demo default, never an approved labor grade. |
-| `open_decision` | A live semantic with no owner decision yet. The fixture choice is recorded and the live effect is a precise readiness gap (OD-01..OD-14 in the policy file). |
+| `open_decision` | A live semantic with no owner decision yet. The fixture choice is recorded and the live effect is a precise readiness gap (OD-02..OD-17 in the policy file). |
+| `owner_decision` | A live semantic the owner has decided. The value's ref records the decision and its date, and the decision leaves the open list (`decided_decisions` in the policy file). |
 
 ## Capabilities (P01 step 3)
 
@@ -157,7 +158,8 @@ These are the policy file's `open_decisions`. None of them blocks local
 fixture implementation (S00). Each one blocks the matching live executable
 capability until the owner admits the semantic:
 
-- OD-01 TOTAL_MECHANICS simultaneity
+- OD-01 TOTAL_MECHANICS simultaneity: **decided by the owner on 2026-10-31.** TOTAL_MECHANICS is the number of mechanics
+  that must be on the job at once to work it (SIMULTANEOUS). It no longer withholds live jobs.
 - OD-02 raw clock intervals for elapsed P75
 - OD-03 QA hold locations/inspector roles
 - OD-04 labor breaks and OT authority

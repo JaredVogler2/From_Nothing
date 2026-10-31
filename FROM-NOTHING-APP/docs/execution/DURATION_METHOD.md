@@ -10,8 +10,8 @@ reproduces the same statistics in the database.
   The same job number on two lines is two standards (fixture `FGI`: 30 min on 1301, 40 min on 1302).
 - **Fields kept.** Every field is retained: `CRITICAL_FLOW_MINUTES`, `TOTAL_MECHANICS`, primary
   count/duration, assist count/labor, total labor, source and load time.
-- **Crew demand is `TOTAL_MECHANICS`.** It applies under the admitted SIMULTANEOUS semantics (open
-  decision OD-01; live use is executable-gated until the producer confirms). `PRIMARY_MECHANIC_COUNT`
+- **Crew demand is `TOTAL_MECHANICS`.** It is the number of mechanics that must be on the job at once to work it: the
+  SIMULTANEOUS semantics, decided by the owner on 2026-10-31 (OD-01). `PRIMARY_MECHANIC_COUNT`
   never replaces it (`ROOT5`: TOTAL 3, PRIMARY 2 → crew 3, 270 person-minutes).
 - **Sequential counts are blocked.** A SEQUENTIAL semantics policy blocks the job
   (`FLOW_SEMANTICS_SEQUENTIAL`) until explicit role phases exist.
@@ -113,5 +113,5 @@ The production SQL is written but has never been installed or run against a live
   `sql/migrations/005_duration_statistics.sql` are drafted but **not installed**.
 - No live clock or completion source was read. `FOCUS_ACTUAL_LABOR` holds only aggregate person
   effort with no raw intervals, so it cannot calibrate elapsed episodes.
-- Real cohort calibration of the minimum sample, staleness, comparable grouping and the
-  TOTAL_MECHANICS semantics (OD-01) remains open.
+- Real cohort calibration of the minimum sample, staleness and comparable grouping remains open. The
+  TOTAL_MECHANICS semantics (OD-01) was decided by the owner on 2026-10-31.

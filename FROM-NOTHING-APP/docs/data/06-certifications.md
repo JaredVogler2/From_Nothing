@@ -32,7 +32,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 | --- | --- |
 | Kind | SOURCE: reference object `WEB_APP.NEO_SOI_CERT_REQUIREMENTS`, query `queries/source_inputs/soi_cert_requirements.sql`. |
 | Grain and key | One row per job and certificate, possibly repeated; no S04 primary key. The code groups rows by (`LINE_NUMBER`, `SOI_ID`) and drops repeated codes per job. |
-| Required | Yes: a capture failure FOCUS recognizes (for example `SCHEMA_DRIFT`) rejects the whole run with `MANDATORY_DATASET_FAILED`. An empty result without a certificate does not reject the run; it adds `DATASET_EMPTY_UNCERTIFIED`. |
+| Required | Yes: a failed capture (for example `SCHEMA_DRIFT` or a database error) rejects the whole run with `MANDATORY_DATASET_FAILED`. An empty result without a certificate rejects it too (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
 | If missing or empty | Every job without an affirmative census row is BLOCKED with `REQUIREMENTS_UNKNOWN`, and the validator flags any assignment to such a job (`REQUIREMENTS_UNKNOWN`, V5). |
 | Time and cutoff | `SNAPSHOT_TS` is the freshness clock (limit 48 h), read in this dataset's time zone. No cutoff column. |
@@ -147,7 +147,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 | --- | --- |
 | Kind | SOURCE: reference object `WEB_APP.FOCUS_MECHANIC_CERTS`, query `queries/source_inputs/mechanic_certs.sql`. |
 | Grain and key | One row per person and certificate is expected; there is no S04 primary key. The code keeps every row, and any one row that covers the interval qualifies. |
-| Required | Yes: a capture failure FOCUS recognizes (for example `SCHEMA_DRIFT`) rejects the whole run with `MANDATORY_DATASET_FAILED`. An empty result without a certificate does not reject the run; it adds `DATASET_EMPTY_UNCERTIFIED`. |
+| Required | Yes: a failed capture (for example `SCHEMA_DRIFT` or a database error) rejects the whole run with `MANDATORY_DATASET_FAILED`. An empty result without a certificate rejects it too (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
 | If missing or empty | No real person holds any certificate, so a job with certificate groups gets no qualified crew (`CREW_UNQUALIFIED` in the engine, `NOT_QUALIFIED` in the validator). Problem rows are reported as acquisition notes, not snapshot gaps: `HOLDING_PERSON_UNKNOWN`, `HOLDING_CERT_BLANK`, `HOLDING_START_` or `HOLDING_EXPIRY_` plus `BLANK`, `MALFORMED`, `OUT_OF_RANGE` or `TIMEZONE_MISSING`, `HOLDING_RANGE_INVALID`, `HOLDING_EXPIRY_UNREPRESENTABLE` and `HOLDING_SOURCE_TIMEZONE_MISSING`. |
 | Time and cutoff | Dates become local midnight in this dataset's time zone, then UTC; with no time zone policy every validity is `UNKNOWN`. `SNAPSHOT_TS` is the freshness clock (limit 48 h). No cutoff column. |
@@ -196,7 +196,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 **Rules and pitfalls.**
 - Effective time and observed time differ. A revocation observed before the cutoff but effective later already blocks intervals after its effective time (fixture: observed 2026-10-25, effective 2026-10-29).
 - An open revocation fails any interval that ends after its effective instant. A closed window fails any interval that overlaps it.
-- Write every timestamp in UTC with the same text format (for example `2026-10-29T12:00:00Z`). Events are ordered by raw text, and a value without an offset stops admission.
+- Write every timestamp in UTC with the same text format (for example `2026-10-29T12:00:00Z`). Events are ordered by raw text. In a fixture file a value without an offset rejects the run (`SOURCE_VALUE_INVALID`); from the database, a naive `..._UTC` value is read as UTC.
 - A `REINSTATED` with no open revocation is ignored, and no event creates a holding.
 - The live producer must apply the observed-at cutoff. An event observed after the cutoff must not enter the run (crosswalk section C).
 - Dispatch rechecks current certificates before release (`CERT_NOT_HELD` in `focus/publication/dispatch.py`).

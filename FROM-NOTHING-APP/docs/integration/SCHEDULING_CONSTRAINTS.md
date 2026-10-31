@@ -83,7 +83,7 @@ The following values are in the checked-in configuration and are tagged by autho
 | Team activation | floor(0.85*N), no minimum-one exception | user_requirement; N exact admitted people |
 | IP and FINAL QA | 45 minutes each | user_requirement; hold location source required |
 | Other buyoff | 20 minutes | fixture_default |
-| Total Mechanics demand | TOTAL, simultaneous crew | open_decision OD-01 |
+| Total Mechanics demand | TOTAL, simultaneous crew: the mechanics that must be on the job at once | owner_decision OD-01 (2026-10-31) |
 | P75 elapsed duration | Default P75; P50/P55/MEAN/P90 available | user_requirement; live episodes source gap |
 | Rework cohort minimum / stale | 30 / 365 days | manual_specified / fixture_default |
 | Duration segments | Max 240 minutes | fixture_default |

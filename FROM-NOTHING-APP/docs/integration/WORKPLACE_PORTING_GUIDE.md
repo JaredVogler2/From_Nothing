@@ -84,7 +84,7 @@ For EACH dataset in SOURCE_REPLACEMENT_CROSSWALK.md:
 
 ### Gate C — source readiness and owner decisions
 - Run read-only schema drift against the existing reference contracts using queries/discovery/schema_reference.sql and related diagnostic queries, but adapt table location inside company and avoid exporting results.
-- Have approved owners resolve OD-01 through OD-17 in config/policies/rebuild-v1.json. **Fixture defaults are not live approvals.**
+- Have approved owners resolve OD-02 through OD-17 in config/policies/rebuild-v1.json (the owner decided OD-01, simultaneous crew, on 2026-10-31). **Fixture defaults are not live approvals.**
 - Critical live blockers include: simultaneous crew semantics, actual clock/elapsed rework calibration, in-process QA hold locations, OT and protected breaks, CS offset reference, true due date/commercial authority, hard concurrency semantics, verified rework class, affirmative no-cert census, effective roster/attendance, travel origin, economics terms, statuses, delivery-commitment purpose, lifecycle actual feeds, grading approval and excusal reviewer grants.
 - Preserve exact date precision, day/night shift and DST policy.
 

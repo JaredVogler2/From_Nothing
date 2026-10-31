@@ -40,7 +40,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 **Rules and pitfalls.**
 - Union method (running maximum): sort by start; an interval that starts at or before the island's furthest end joins it. Gaps are kept, long clocks are not capped and short clocks are not dropped. Fixture episode `UNION-DEMO`: active 100, effort 110, cycle 110 minutes, one 10-minute gap, one voided clock excluded.
 - Send every revision and void as raw rows; FOCUS picks the latest revision itself. Do not merge or sum intervals before delivery.
-- Timestamps must carry an explicit offset. The live query selects `datetime2` columns, which arrive without one, and the parser rejects them (`NAIVE_DATETIME`), so `duration-stats` fails on live rows as written.
+- The timestamps are UTC. The live reader writes the `datetime2` values of these `_UTC` columns with their offset, so live rows parse.
 - These rows do not feed the planner. Filling `FOCUS_FN_ClockObservation` alone does not make a live P75 available (see `duration_episodes`).
 - In live mode this query runs on every acquisition. `FOCUS_FN_ClockObservation` and `FOCUS_FN_SourceHead` must exist first, or the acquisition stops.
 
@@ -77,7 +77,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 - Send reopened and unverified episodes too. FOCUS censors them with reasons, so the sample is not survivors only.
 - Send one row per episode, not per person or per clock; duplicates count twice.
 - The exact group needs team, model and crew to match the job's master `TEAM`, `MINOR_MODEL_IDENT` and `TOTAL_MECHANICS`. A group needs at least 30 admitted episodes (`duration.minimum_fixture_sample`) and a newest completion within 365 days of the cutoff, or FOCUS tries the next group.
-- Timestamps need an explicit offset: a `COMPLETED_AT_UTC` without one raises `NAIVE_DATETIME` and stops the acquisition. Leave out episodes completed after the cutoff, because FOCUS does not.
+- Timestamps are UTC: in a fixture file a `COMPLETED_AT_UTC` without an offset rejects the run (`SOURCE_VALUE_INVALID`); from the database a naive value is read as UTC. Leave out episodes completed after the cutoff, because FOCUS does not.
 - An in-progress rework job with sourced remaining minutes (`work_progress`) keeps those minutes instead of a fresh P75.
 
 ## `actual_labor`

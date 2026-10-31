@@ -71,8 +71,8 @@ into exactly one disposition, and the run is rejected if the counts do not add u
   plan that places the job (`CS_RAW_ROW_MISSING`).
 - Statuses must match the policy vocabulary exactly. An unknown status quarantines the job and blocks its successors
   (`PREDECESSOR_NOT_SCHEDULABLE`). Live status meanings are open decision OD-13 in the policy file.
-- Every `IN WORK` job needs a `work_progress` row. Without one it is blocked (`REMAINING_UNKNOWN`), except an NC/PU/CI
-  rework job, which is planned again from its full rework estimate. Duplicate line + SOI rows are quarantined
+- Every `IN WORK` job needs a `work_progress` row. Without one it is blocked (`REMAINING_UNKNOWN`), NC/PU/CI rework
+  included. Duplicate line + SOI rows are quarantined
   (`DUPLICATE_SOURCE_KEY`) and still counted, so fix them at the source.
 
 ## `scope_receipt`
@@ -123,9 +123,9 @@ validator checks every hard one (check V2).
 | --- | --- |
 | Kind | SOURCE: reference object `WEB_APP.FOCUS_PNET_DAG`, query `queries/source_inputs/pnet_dag.sql`. Profile query: `queries/graph/template_edge_profile.sql`. |
 | Grain and key | One row per template edge (predecessor SOI, successor SOI, model effectivity). No S04 primary key. FOCUS drops repeats per line by predecessor job, successor job, type and lag. |
-| Required | Yes. A failed capture rejects the run (`MANDATORY_DATASET_FAILED`). An uncertified empty result does not reject it (see "If missing or empty"). |
+| Required | Yes. A failed capture, a database error included, rejects the run (`MANDATORY_DATASET_FAILED`). So does an empty result without a certified-empty receipt (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
-| If missing or empty | No rows without a certified-empty receipt gives only the gap `DATASET_EMPTY_UNCERTIFIED`. The run completes with no template edges, and executable plans still pass validation, so work is ordered with no template precedence. Edge problems: `EDGE_HARDNESS_UNKNOWN`, `EDGE_TYPE_UNSUPPORTED`, `CYCLE_SELF_EDGE` (successor quarantined), `CYCLE`, `CONCURRENCY_SEMANTICS_UNRESOLVED` (jobs quarantined). Successors of jobs that cannot be scheduled get `PREDECESSOR_NOT_SCHEDULABLE` or `PREDECESSOR_NOT_EXECUTABLE`. |
+| If missing or empty | No rows without a certified-empty receipt rejects the run (`MANDATORY_DATASET_EMPTY`). Edge problems: `EDGE_HARDNESS_UNKNOWN`, `EDGE_TYPE_UNSUPPORTED`, `CYCLE_SELF_EDGE` (successor quarantined), `CYCLE`, `CONCURRENCY_SEMANTICS_UNRESOLVED` (jobs quarantined). Successors of jobs that cannot be scheduled get `PREDECESSOR_NOT_SCHEDULABLE` or `PREDECESSOR_NOT_EXECUTABLE`. |
 | Time and cutoff | Row clock `LOAD_TIMESTAMP`, stale after 36 h (`SOURCE_STALE`). No cutoff column. |
 | Read by | `focus/data/graph.py` (`build_graph`), `focus/data/freshness.py`. The edges are then read by `focus/engine/model.py`, `focus/engine/max/optimizer/greedy.py` and `focus/validation/plan.py`. |
 
@@ -166,9 +166,9 @@ line, and the child's status. FOCUS uses it to make the root job wait for the re
 | --- | --- |
 | Kind | SOURCE: reference object `WEB_APP.NEO_GRAPH_REWORK`, query `queries/source_inputs/neo_graph_rework.sql`. Profile query: `queries/graph/rework_linkage.sql`. |
 | Grain and key | One row per rework child per line; key `LINE_NUMBER` + `CHILD_SOI` (S04 primary key; the code keys on the same pair and keeps the last row if one repeats). |
-| Required | Yes. A failed capture rejects the run (`MANDATORY_DATASET_FAILED`). An uncertified empty result does not reject it (see "If missing or empty"). |
+| Required | Yes. A failed capture, a database error included, rejects the run (`MANDATORY_DATASET_FAILED`). So does an empty result without a certified-empty receipt (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
-| If missing or empty | No rows without a certified-empty receipt gives only `DATASET_EMPTY_UNCERTIFIED`; rework links then come only from `rework_classification` roots. Link problems: `REWORK_ROOT_UNRESOLVED`, `REWORK_LINK_CONFLICT`, `REWORK_CYCLE` (quarantined); `REWORK_STATUS_CONFLICT` (root withheld from executable plans); `ROOT_CLOSURE_REOPENED` (information gap). A child that is not in the census is only listed in the admission notes. |
+| If missing or empty | No rows without a certified-empty receipt rejects the run (`MANDATORY_DATASET_EMPTY`). With a certified-empty receipt, rework links come only from `rework_classification` roots. Link problems: `REWORK_ROOT_UNRESOLVED`, `REWORK_LINK_CONFLICT`, `REWORK_CYCLE` (quarantined); `REWORK_STATUS_CONFLICT` (root withheld from executable plans); `ROOT_CLOSURE_REOPENED` (information gap). A child that is not in the census is only listed in the admission notes. |
 | Time and cutoff | Row clock `SNAPSHOT_TS`, stale after 48 h (`SOURCE_STALE`). If no row has a readable value, `SOURCE_CLOCK_UNKNOWN`. No cutoff column. |
 | Read by | `focus/data/graph.py`, `focus/data/snapshot_builder.py`, `focus/data/freshness.py`. |
 
@@ -240,9 +240,9 @@ job needs a row, including rework and in-progress jobs, because crew demand alwa
 | --- | --- |
 | Kind | SOURCE: reference object `WEB_APP.FOCUS_FLOW_BUDGET`, query `queries/source_inputs/flow_budget.sql`. |
 | Grain and key | One row per job per line; key `JOB_NUMBER` + `LINE_NUMBER` (S04 primary key). The code looks up line + SOI, so the same job number on two lines is two standards. Identical repeats collapse; repeats that differ in any standard field are dropped and reported (`FLOW_CONFLICT`). |
-| Required | Yes. A failed capture rejects the run (`MANDATORY_DATASET_FAILED`). An uncertified empty result does not reject it (see "If missing or empty"). |
+| Required | Yes. A failed capture, a database error included, rejects the run (`MANDATORY_DATASET_FAILED`). So does an empty result without a certified-empty receipt (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
-| If missing or empty | Blocked job reasons: `STANDARD_MISSING` (no row), `FLOW_CREW_INVALID` (`TOTAL_MECHANICS` null, 0 or negative), `STANDARD_INVALID` (`CRITICAL_FLOW_MINUTES` null or not positive where it is the duration), `FLOW_CONFLICT`. In live mode every job also gets `FLOW_SEMANTICS_UNCONFIRMED` (withheld from executable plans) until open decision OD-01 is settled. An empty uncertified result adds `DATASET_EMPTY_UNCERTIFIED` and blocks every open job. |
+| If missing or empty | Blocked job reasons: `STANDARD_MISSING` (no row), `FLOW_CREW_INVALID` (`TOTAL_MECHANICS` null, 0 or negative), `STANDARD_INVALID` (`CRITICAL_FLOW_MINUTES` null or not positive where it is the duration), `FLOW_CONFLICT`. An empty result without a certified-empty receipt rejects the run (`MANDATORY_DATASET_EMPTY`). |
 | Time and cutoff | Row clock `LOAD_TIMESTAMP`, stale after 36 h (`SOURCE_STALE`). No cutoff column. |
 | Read by | `focus/data/durations.py` (`flow_index`, `resolve`), `focus/data/scope.py` (attaches the row to its job), `focus/data/graph.py`, `focus/data/freshness.py`, `focus/web/serializers.py` (Schedule Budget view). |
 
@@ -251,7 +251,7 @@ job needs a row, including rework and in-progress jobs, because crew demand alwa
 | `JOB_NUMBER` | varchar(30), not null | The job's SOI. | Matched exactly to `SHOP_ORDER_IDENTIFIER` on the same line. |
 | `LINE_NUMBER` | int, not null | Aircraft line. | Second half of the lookup key. |
 | `CRITICAL_FLOW_MINUTES` | int, nullable | Elapsed minutes the job's work takes (elapsed time, not person-minutes). | The duration of an open job that is neither in work nor NC/PU/CI rework; null or not positive blocks it (`STANDARD_INVALID`). Shown as flow minutes in the Schedule Budget view. |
-| `TOTAL_MECHANICS` | int, nullable | The job's requested number of mechanics. Whether the source counts people working at the same time or sequential assignments is open decision OD-01; policy `duration.total_mechanics_semantics` reads it as a simultaneous crew. | Crew demand of every work phase: that many distinct qualified people at the same time, and standard effort = elapsed × this number. Null, 0 or negative blocks the job (`FLOW_CREW_INVALID`); there is no default of 1. |
+| `TOTAL_MECHANICS` | int, nullable | The number of mechanics that must be on the job at once to work it (owner decision OD-01, 2026-10-31; policy `duration.total_mechanics_semantics` = `SIMULTANEOUS`). | Crew demand of every work phase: that many distinct qualified people at the same time, and standard effort = elapsed × this number. Null, 0 or negative blocks the job (`FLOW_CREW_INVALID`); there is no default of 1. |
 | `PRIMARY_MECHANIC_COUNT` | int, nullable | Number of mechanics in the primary role. The docs say it must never replace `TOTAL_MECHANICS` as crew demand. | Compared between repeated rows (`FLOW_CONFLICT`) and kept on the job; never used as crew demand. |
 | `PRIMARY_MECHANIC_DURATION` | int, nullable | Minutes for the primary role. The docs list it among the role and effort fields but do not define it further. | Compared between repeated rows and kept on the job; nothing else reads it. |
 | `ASSIST_COUNT` | int, nullable | Number of mechanics in the assist role. | Compared between repeated rows and kept on the job; never used as crew demand. |
@@ -263,9 +263,9 @@ job needs a row, including rework and in-progress jobs, because crew demand alwa
 **Rules and pitfalls.**
 - Every open job needs a row with `TOTAL_MECHANICS` above 0, including NC/PU/CI and `IN WORK` jobs. Their durations come
   from elsewhere, but their crew does not (`STANDARD_MISSING`, `FLOW_CREW_INVALID`).
-- `TOTAL_MECHANICS` must count people who work at the same time. If the source counts sequential assignments, the spec
-  requires explicit role phases, which FOCUS does not build: any policy value other than `SIMULTANEOUS` blocks every
-  job (`FLOW_SEMANTICS_<value>`).
+- `TOTAL_MECHANICS` counts the people who must work the job at the same time (owner, 2026-10-31). If a source ever
+  counted sequential assignments, the spec would require explicit role phases, which FOCUS does not build: any policy
+  value other than `SIMULTANEOUS` blocks every job (`FLOW_SEMANTICS_<value>`).
 - `CRITICAL_FLOW_MINUTES` is elapsed time. Do not put labor (person) minutes there.
 - For jobs that need inspection, FOCUS adds QA phases on top of the standard. If the standard already includes
   inspection minutes, the owner must set policy `qa.standard_includes_inspection_minutes` (today false), or QA time is
@@ -286,7 +286,7 @@ tell FOCUS which in-process (IP) QA hold points the job has already passed.
 | Grain and key | One row per in-progress job; keyed by `LINE_NUMBER` + `SOI` in code. A repeated pair silently replaces the earlier row. |
 | Required | No. |
 | Capabilities | forecast, executable |
-| If missing or empty | An `IN WORK` job with no row is blocked (`REMAINING_UNKNOWN`), except an NC/PU/CI rework job: that one is not blocked and gets its full rework statistic again. A remaining value of 0 or less is blocked (`REMAINING_NONPOSITIVE`). A failed capture lists `DATASET_FAILED`; in live mode the snapshot lists `DATASET_NOT_PROBED`. |
+| If missing or empty | An `IN WORK` job with no row is blocked (`REMAINING_UNKNOWN`), NC/PU/CI rework included: work already done is never planned again at full length. A remaining value of 0 or less is blocked (`REMAINING_NONPOSITIVE`). A failed capture lists `DATASET_FAILED`; in live mode the snapshot lists `DATASET_NOT_PROBED`. |
 | Time and cutoff | Cutoff column `AS_OF_UTC`: rows whose as-of time is after the run cutoff must not be visible. The fixture reader drops them; a live producer must apply the same rule. Not checked for freshness. |
 | Read by | `focus/data/snapshot_builder.py`, `focus/data/scope.py`, `focus/data/durations.py`, `focus/data/graph.py` with `focus/data/inspections.py`, `focus/validation/plan.py` (check V1), `focus/web/serializers.py` (job detail). |
 
@@ -304,7 +304,7 @@ tell FOCUS which in-process (IP) QA hold points the job has already passed.
   rework statistic, as if it had not started.
 - Send rows only for `IN WORK` jobs. A row for a job in any other status does not change its duration, but the
   validator then expects the remaining minutes and fails every plan on that snapshot (V1 `PARENT_NOT_CONSERVED`).
-- Both minute columns are required on every row. A null value stops admission with an error instead of a coded gap.
+- Both minute columns are required on every row. A null value rejects the run (`SOURCE_VALUE_INVALID`).
 - A finished job should arrive as COMPLETE in the master list, not as a progress row with 0 remaining.
 - Give `AS_OF_UTC` with an offset or `Z`. The fixture reader fails the capture on a naive value, and the in-progress job
   is then blocked (`DATASET_FAILED`, `REMAINING_UNKNOWN`).
