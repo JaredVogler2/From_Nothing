@@ -75,9 +75,24 @@ SPECULATION = 3              # search moves decoded at once from the same best (
 ALGORITHM = "FOCUS-rich-MAX"
 VERSION = "1.0"
 DEFENDED = frozenset({"KEPT", "CREW_CHANGED"})
-# the exact comparison key, level by level (``Evaluation.key``); the signature only breaks ties deterministically
-KEY_LEVELS = ("commitments_defended", "commitments_exact", "unknown_completion_aircraft", "deferred_phases", "controllable_known_cents",
-              "travel_plus_wait_minutes", "ot_minutes", "continuity_breaks", "signature")
+# The exact comparison key follows the policy's lexicographic order (``objective.order``, S12): each level contributes
+# these fields. FEASIBILITY is the independent validation every accepted candidate passes, so it adds none; raw job
+# counts never outrank money (the deferred-phase count is a last backlog tie); the signature only breaks ties.
+OBJECTIVE_FIELDS = {
+    "FEASIBILITY": (),
+    "COMMITMENT_DEFENSE": ("commitments_defended", "commitments_exact"),
+    "CONTROLLABLE_COST": ("unknown_completion_aircraft", "controllable_known_cents"),
+    "NVA_MINUTES": ("travel_plus_wait_minutes",),
+    "OT_AND_CHURN": ("ot_minutes", "continuity_breaks"),
+    "SCARCITY_AFFINITY_GATE": ("deferred_phases",),
+}
+
+
+def key_levels(policy: Any) -> tuple[str, ...]:
+    order = tuple(policy.seq("objective.order"))
+    if sorted(order) != sorted(OBJECTIVE_FIELDS):
+        raise ValueError(f"objective.order must order exactly {sorted(OBJECTIVE_FIELDS)}, got {list(order)}")
+    return tuple(f for level in order for f in OBJECTIVE_FIELDS[level]) + ("signature",)
 
 
 @dataclass
@@ -95,6 +110,8 @@ class Evaluation:
     breaks: int
     signature: str
     key: tuple = ()
+    levels: tuple[str, ...] = ()                # the field name of each key element, in order
+    unknown: frozenset[int] = frozenset()       # aircraft whose completion (so whose cost) is unknown
 
 
 @dataclass
@@ -148,6 +165,7 @@ class MaxOptimizer:
         self._gate_log: list[str] = []
         self._gate_count = 0
         self.registry = EconomicsRegistry(ctx.economics, ctx.policy)
+        self.key_levels = key_levels(ctx.policy)
         self.defended = dict(defended or {})
         self.budget = float(budget_seconds if budget_seconds is not None else ctx.policy.int("optimizer.budget_seconds"))
         self.seed = int(seed if seed is not None else ctx.policy.int("optimizer.seed"))
@@ -217,22 +235,31 @@ class MaxOptimizer:
         breaks = sum(continuity_breaks(decode.placements).values())
         signature = digest_id("SIG", sorted((p.phase_id, p.start, p.crew) for p in decode.placements.values()))
         ev = Evaluation(decode, releases, completions, costs, summary, defended, exact, travel, wait, ot, breaks, signature)
-        ev.key = (-defended, -exact, len(summary.unknown_lines), len(decode.deferred), summary.controllable_known_cents, travel + wait, ot,
-                  breaks, signature)
+        fields = {"commitments_defended": -defended, "commitments_exact": -exact, "unknown_completion_aircraft": len(summary.unknown_lines),
+                  "controllable_known_cents": summary.controllable_known_cents, "travel_plus_wait_minutes": travel + wait, "ot_minutes": ot,
+                  "continuity_breaks": breaks, "deferred_phases": len(decode.deferred), "signature": signature}
+        ev.key = tuple(fields[f] for f in self.key_levels)
+        ev.levels, ev.unknown = self.key_levels, frozenset(summary.unknown_lines)
         return ev
 
     @staticmethod
     def improved_level(candidate: Evaluation, best: Evaluation) -> str | None:
         """The first key level where ``candidate`` is strictly better than ``best`` (None when it is not better)."""
-        for name, a, b in zip(KEY_LEVELS, candidate.key, best.key):
+        for name, a, b in zip(candidate.levels, candidate.key, best.key):
             if a != b:
                 return name if a < b else None
         return None
 
     @staticmethod
     def better(candidate: Evaluation, best: Evaluation) -> bool:
-        """Strictly better under the exact key and no commitment kept by ``best`` is lost or downgraded."""
-        if not candidate.key < best.key:
+        """Strictly better under the exact key, no commitment kept by ``best`` is lost or downgraded, and a cost decided at
+        or after the cost level compares the same aircraft: a candidate whose unknown aircraft differ is better only by
+        making some of best's unknown aircraft known and losing none (S12: never cheaper by ignoring missing lines)."""
+        level = MaxOptimizer.improved_level(candidate, best)
+        if level is None:
+            return False
+        if (level in candidate.levels[candidate.levels.index("unknown_completion_aircraft"):] and candidate.unknown != best.unknown
+                and not candidate.unknown < best.unknown):
             return False
         outcome = {r.incumbent_assignment_id: r.outcome for r in candidate.decode.commitment_results}
         for r in best.decode.commitment_results:

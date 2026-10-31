@@ -39,7 +39,7 @@ are FIXED (in this branch), NEXT (being fixed now), OPEN (planned) and DECISION 
 
 | # | Sev. | Requirement | Deviation | Verified | Status |
 | --- | --- | --- | --- | --- | --- |
-| B1 | major | S12 l.1564-1575; policy `objective.order` | The acceptance key ranks the deferred-phase count above money and compares known cost across different sets of unknown aircraft. The policy order is never read. | code | OPEN |
+| B1 | major | S12 l.1564-1575; policy `objective.order` | The acceptance key ranks the deferred-phase count above money and compares known cost across different sets of unknown aircraft. The policy order is never read. | code | FIXED: the key follows `objective.order`; the deferred count is a last backlog tie; a cost win needs the same unknown aircraft (or a strict subset of them) |
 | B2 | major | S10 l.1400-1410 | Hard CONCURRENT/NONCONCURRENT edges are dropped before placement (`model.unsupported_edges`); only the validator rejects them. | code | OPEN |
 | B3 | major | S01 l.126, S11 l.1514-1516, P11 l.3226 | Crew choice has no rare-certification preservation or opportunity cost (both cores). | code | OPEN |
 | B4 | major | S07 l.1203 "latest revocation … wins" | A later reinstatement erases the revocation window; a unit test asserts this behavior. A second revocation while revoked also moved the start later. | code | FIXED: closed windows kept on the holding (`revoked_windows`) and checked by the index, the validator and the Rust core; both cores tested on a window |
