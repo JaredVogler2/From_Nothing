@@ -74,7 +74,8 @@ def test_dashboard_operations_answer_from_the_tables(sims, tmp_path, app_root, m
     line = _all(first, "SELECT MIN(line) FROM calc_aircraft")[0][0]
     team = _all(first, "SELECT team FROM plan_assignment GROUP BY team ORDER BY COUNT(*) DESC LIMIT 1")[0][0]
     for path in ("overview", "performance", "supply", "capacity", "methods", "profile", f"aircraft?line={line}", f"dispatch?team={team}",
-                 f"gantt?team={team}", "overview?shift=0", "performance?shift=1", "excusals", f"excusals?team={team}&shift=1"):
+                 f"gantt?team={team}", "overview?shift=0", "performance?shift=1", "excusals", f"excusals?team={team}&shift=1", "recognition",
+                 "recognition?shift=1"):
         response = client.get(f"/api/v1/sim/{path}")
         assert response.status_code == 200, (path, response.get_data(as_text=True)[:300])
         assert response.get_json()["status"] == "ready", path
@@ -187,3 +188,56 @@ def test_only_verified_excusable_causes_relieve_a_team(sims, app_root) -> None:
     # no unit is earned twice: within a production day each phase is EARNED in one shift's goal at most
     assert not _all(first, "SELECT u.phase FROM perf_unit u JOIN sim_shift s ON s.shift_no = u.shift_no WHERE u.status = 'EARNED' "
                            "GROUP BY s.production_day, u.phase HAVING COUNT(DISTINCT u.shift_no) > 1")
+
+
+def test_recognition_is_the_frozen_value_of_earned_goal_units(sims, app_root) -> None:
+    """A13: XP is effort / base divisor for each earned goal unit, plus the gate bonus frozen for a behind-gate original unit
+    (valued on its goal's date against its station gate in the snapshot that froze the goals). Offplan output, NEUTRAL goals
+    and emergency additions' gate bonus earn nothing; badges follow their conditions; levels follow the level size."""
+    from datetime import date
+    from fractions import Fraction
+
+    from focus.analytics.points import gate_context
+    from focus.policy import load_policy
+    from focus.sim.recognition import derive
+
+    first, _ = sims
+    policy = load_policy(app_root / "config" / "policies", "rebuild-v1")
+    con = sqlite3.connect(first)
+    try:
+        data = derive(con, policy)
+    finally:
+        con.close()
+    divisor = policy.int("recognition.base_divisor")
+    frozen = {(d, t, n): f for f, d, t, n in _all(first, "SELECT frozen_shift_no, production_day, team, shift_number FROM perf_goal_day")}
+    expected: dict[tuple[int, str], tuple[Fraction, Fraction, int]] = {}
+    for shift_no, team, day, number, status in _all(first, "SELECT shift_no, team, production_day, shift_number, status FROM perf_team_shift"):
+        base = bonus = Fraction(0)
+        behind = 0
+        if status != "NEUTRAL":
+            f = frozen[(day, team, number)]
+            gates = dict(_all(first, f"SELECT job_id, cs_end FROM calc_job WHERE shift_no = {f} AND cs_end IS NOT NULL"))
+            for job, effort, origin in _all(first, f"SELECT job_id, effort, origin FROM perf_unit WHERE shift_no = {shift_no} AND team = '{team}' "
+                                                   "AND status = 'EARNED'"):
+                base += Fraction(effort, divisor)
+                if origin == "ORIGINAL":
+                    gate = gates.get(job)
+                    ctx = gate_context(policy, date.fromisoformat(gate) if gate else None, date.fromisoformat(day), effort)
+                    if ctx.bonus_value:
+                        bonus += ctx.bonus_value
+                        behind += 1
+        expected[(shift_no, team)] = (base, bonus, behind)
+    got = {(s["shift_no"], s["team"]): s for s in data["shifts"]}
+    assert set(got) == set(expected) and data["streams"]["completion_credited"] > 0
+    for key, (base, bonus, behind) in expected.items():
+        assert (got[key]["base"], got[key]["gate_bonus"], got[key]["behind_units"]) == (round(float(base), 2), round(float(bonus), 2), behind), key
+    size = policy.int("xp.level_size")
+    for t in data["teams"]:
+        xp = sum((b + g for (_, team), (b, g, _) in expected.items() if team == t["team"]), Fraction(0))
+        assert t["xp"] == round(float(xp), 2) and t["level"] == 1 + int(xp) // size
+    recovery = {(b["shift_no"], b["team"]) for b in data["badges"] if b["badge"] == "Recovery"}
+    assert recovery == {key for key, (_, _, behind) in expected.items() if behind}
+    assert data["streams"].get("gate_recovery", 0) == sum(behind for _, _, behind in expected.values())
+    decided = _all(first, "SELECT COUNT(*) FROM perf_claim WHERE decision IN ('APPROVED', 'REJECTED')")[0][0]
+    assert data["streams"].get("excusal_decided", 0) == decided
+    assert set(data["not_derived"]) == {"dependency_unlocked", "Firebreak", "SkillSteward"}

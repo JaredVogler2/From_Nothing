@@ -1,9 +1,10 @@
-// Fleet simulation dashboard: one page, ten modules over the read-only /api/v1/sim/* operations (synthetic data).
+// Fleet simulation dashboard: one page, twelve modules over the read-only /api/v1/sim/* operations (synthetic data).
 import { api, h, mount, loadingCard, errorCard, metric, table, stateCard, setCsrf } from "./core.js";
 import { barChart, lineChart, stackedBars, heatmap, gantt, PALETTE, fmtShort } from "./charts.js";
 
 const TABS = [
   ["overview", "Fleet overview"], ["economics", "Economics"], ["aircraft", "Aircraft"], ["performance", "Shift performance"], ["excusals", "Excusals"],
+  ["recognition", "Recognition"],
   ["dispatch", "Dispatch"], ["gantt", "Worker Gantt"], ["capacity", "Capacity"], ["supply", "Supply chain"],
   ["methods", "How the plan was made"], ["profile", "Data profile"],
 ];
@@ -285,6 +286,47 @@ const RENDER = {
         d.amendments, { empty: "No emergency additions this shift." })));
   },
 
+  async recognition(body) {
+    const d = await get("recognition", { shift: null });                     // the whole run; the selected shift is picked below
+    const p = d.policy;
+    const teams = d.teams || [];
+    const here = (d.shifts || []).filter((x) => x.shift_no === ui.shift);
+    const total = (key) => teams.reduce((a, t) => a + (t[key] || 0), 0);
+    const st = d.streams || {};
+    mount(body,
+      h("div", { class: "view-title" }, h("h1", {}, "Recognition"), h("p", { class: "muted" },
+        "Gate points, XP and badges by the production progression rules, applied to this run's stored goal units. Recognition never changes a score or implies a qualification.")),
+      h("div", { class: "metric-grid" },
+        metric("XP earned", num(total("xp"), 1), `base ${num(total("base"), 1)} + gate bonus ${num(total("gate_bonus"), 1)}`),
+        metric("Behind-gate units", num(total("behind_units")), `of ${num(total("earned_units"))} earned goal units`),
+        metric("Badges", num((d.badges || []).length)), metric("Commitments kept", num(st.commitment_kept || 0)),
+        metric("Excusals decided", num(st.excusal_decided || 0))),
+      card("Teams", chartBox(stackedBars(teams.map((t) => ({ label: t.team, parts: [{ name: "completion", value: t.base, color: "#1764df" },
+        { name: "gate bonus", value: t.gate_bonus, color: "#e8590c" }] })), { title: "XP per team over the run", names: [{ name: "completion", color: "#1764df" },
+        { name: "gate bonus", color: "#e8590c" }], width: FULL, height: 280 })),
+        paged([{ label: "Team", key: "team" }, { label: "Level", num: true, key: "level" }, { label: "XP", num: true, render: (x) => num(x.xp, 1) },
+          { label: "Completion", num: true, render: (x) => num(x.base, 1) }, { label: "Gate bonus", num: true, render: (x) => num(x.gate_bonus, 1) },
+          { label: "Behind-gate units", num: true, key: "behind_units" }, { label: "To next level", num: true, render: (x) => num(x.next_threshold - x.xp, 1) },
+          { label: "Badges", render: (x) => Object.entries(x.badges || {}).map(([k, v]) => `${k} ×${v}`).join(", ") || "—" }], teams)),
+      card(`This shift (S${ui.shift})`, table([{ label: "Team", key: "team" }, { label: "Goal", render: (x) => (x.status === "NEUTRAL" ? "NEUTRAL: earns nothing" : x.status) },
+        { label: "Earned units", num: true, key: "earned_units" }, { label: "Completion", num: true, render: (x) => num(x.base, 1) },
+        { label: "Gate bonus", num: true, render: (x) => num(x.gate_bonus, 1) }, { label: "Behind gate", num: true, key: "behind_units" },
+        { label: "Commitment kept", render: (x) => (x.commitment_kept ? "yes" : "—") }], here, { empty: "No goals in this shift." })),
+      h("div", { class: "grid grid-2" },
+        card("Badges", paged([{ label: "Badge", key: "badge" }, { label: "Team", key: "team" },
+          { label: "When", render: (x) => (x.period ? `month ${x.period}` : `S${x.shift_no}`) },
+          { label: "Basis", render: (x) => (x.window ? `shifts ${x.window.join(", ")}` : x.score !== undefined ? `pooled score ${num(x.score, 1)}` : `${num(x.units)} unit${x.units === 1 ? "" : "s"}`) }],
+          d.badges || [], { empty: "No badges yet." })),
+        card("Rules", h("dl", { class: "kv" },
+          h("dt", {}, "Completion"), h("dd", {}, `effort ÷ ${p.base_divisor} per earned goal unit; offplan output earns nothing`),
+          h("dt", {}, "Gate bonus"), h("dd", {}, `× ${p.gate_weight}% × min(days behind ÷ ${p.gate_cap_days}, 1), frozen at publication; basis ${p.date_basis.replaceAll("_", " ")}, grace ${p.gate_grace_days} days on a baseline proxy`),
+          h("dt", {}, "Level"), h("dd", {}, `1 + floor(XP ÷ ${num(p.level_size)})`),
+          h("dt", {}, "SteadyShift"), h("dd", {}, `${p.steady_shift_run} consecutive positive-goal shifts at ${p.steady_shift_min_score} or more`),
+          ...Object.entries(d.not_derived || {}).flatMap(([k, why]) => [h("dt", {}, k), h("dd", {}, `not derived: ${why}`)])))),
+      card("Inflation monitor", paged([{ label: "Team", key: "team" }, { label: "ISO week", render: (x) => `${x.iso_year}-W${x.iso_week}` },
+        { label: "Awards", num: true, key: "awards" }, { label: "Alert", render: (x) => (x.alert ? `over ${x.limit}` : "—") }], d.inflation || [])));
+  },
+
   async dispatch(body) {
     const d = await get("dispatch", { team: ui.team });
     ui.teams = d.teams.map((t) => t.team);
@@ -379,7 +421,7 @@ const RENDER = {
         card("Accepted search moves", table([{ label: "#", key: "seq" }, { label: "Move", key: "move" }], d.moves, { empty: "No move improved the plan this shift." })),
         card("Independent validation", table([{ label: "Check", key: "check_name" }, { label: "Checked", num: true, render: (x) => num(x.count) }, { label: "Violations", num: true, key: "violations" }], d.checks),
           (d.violations || []).length ? table([{ label: "Plan", key: "purpose" }, { label: "Check", key: "check_name" }, { label: "Code", key: "code" },
-            { label: "Assignment or edge", key: "entity" }, { label: "Detail", key: "detail" }], d.violations, { caption: "Violations (first 500 per plan)" }) : null))));
+            { label: "Assignment or edge", key: "entity" }, { label: "Detail", key: "detail" }], d.violations, { caption: "Violations (first 500 per plan)" }) : null)));
   },
 
   async profile(body) {

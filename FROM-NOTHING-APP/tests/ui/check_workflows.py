@@ -40,6 +40,8 @@ VIEWS = ("team-lead", "management", "mechanic", "ie", "staffing", "supply", "sce
 LAYOUTS = ("/dashboard", "/dashboard/classic")
 WIDTHS = (375, 390, 820, 1280)
 SHOT_VIEWS = ("team-lead", "performance", "management", "myday", "gantt", "scenario")      # curated evidence screenshots
+SIM_TABS = ("overview", "economics", "aircraft", "performance", "excusals", "recognition", "dispatch", "gantt", "capacity", "supply",
+            "methods", "profile")
 
 
 def build_runtime(root: Path, *, observe: bool) -> Any:
@@ -116,6 +118,33 @@ def check_views(browser: Any, base: str, persona: str, *, widths: tuple[int, ...
                     page.screenshot(path=str(out / f"{persona}-{view}-{layout.strip('/').replace('/', '-')}-{width}.jpg"), type="jpeg", quality=55)
                 results.append({"persona": persona, "layout": layout, "width": width, "view": view, "problems": problems})
         context.close()
+    return results
+
+
+def check_simulation(browser: Any, base: str, persona: str = "manager", *, width: int = 1280) -> list[dict[str, Any]]:
+    """The fleet simulation dashboard (/simulation): its script loads and every module renders a heading with no error card and
+    no console or page error. Each module opens in a fresh page, so no earlier module's heading can stand in for it."""
+    context = browser.new_context(viewport={"width": width, "height": 900}, reduced_motion="reduce")
+    sign_in(context.new_page(), base, persona)
+    results = []
+    for tab in SIM_TABS:
+        page = context.new_page()
+        errors: list[str] = []
+        page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+        page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
+        page.goto(f"{base}/simulation#{tab}")
+        problems = []
+        try:
+            page.wait_for_selector("#main h1, #main .state-error", timeout=30000)
+        except Exception:  # noqa: BLE001 - a script that never runs renders nothing
+            problems.append("nothing rendered")
+        if page.locator("#main .state-error").count():
+            problems.append("error card: " + page.inner_text("#main .state-error")[:200])
+        if errors:
+            problems.append("console: " + "; ".join(errors[:3]))
+        results.append({"tab": tab, "heading": page.inner_text("#main h1") if page.locator("#main h1").count() else None, "problems": problems})
+        page.close()
+    context.close()
     return results
 
 

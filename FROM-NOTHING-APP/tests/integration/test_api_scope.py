@@ -128,6 +128,7 @@ def read_paths(world) -> dict[str, str]:  # type: ignore[no-untyped-def]
         "sim_capacity": "/api/v1/sim/capacity",
         "sim_methods": "/api/v1/sim/methods",
         "sim_profile": "/api/v1/sim/profile",
+        "sim_recognition": "/api/v1/sim/recognition",
     }
 
 

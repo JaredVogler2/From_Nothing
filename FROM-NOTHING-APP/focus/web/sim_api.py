@@ -623,3 +623,41 @@ def sim_profile(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
         mix = _rows(con, "SELECT customer, minor_model, COUNT(*) AS aircraft, MAX(daily_penalty_usd) AS daily_penalty_usd FROM calc_aircraft "
                          "WHERE shift_no = 0 GROUP BY customer, minor_model ORDER BY aircraft DESC")
     return ApiResult("ready", _label({"sizes": sizes, "stations": stations, "teams": teams, "facts": facts, "rework": rework, "mix": mix}))
+
+
+_RECOGNITION: dict[tuple, dict[str, Any]] = {}                      # one derivation per database version (file and WAL state)
+
+
+@REGISTRY.operation(
+    "sim_recognition", "GET", "/api/v1/sim/recognition",
+    summary="Gate recognition, XP, levels, progression streams and badges of the simulation's teams",
+    description="The production progression rules applied to the run's stored rows (focus.sim.recognition): each earned goal unit's "
+                "completion credit, the frozen gate bonus of behind-gate original units, commitments kept, decided excusals, the Recovery, "
+                "CommitmentKeeper, SteadyShift and MonthlyChampion badges, levels and the inflation monitor. Recognition never changes a "
+                "score or implies a qualification. Read-only.",
+    grants=ALL_READERS, read_only=True, query=SHIFT_Q, tags=("simulation",),
+)
+def sim_recognition(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from ..sim.recognition import derive
+
+    _fleet_scope(ctx)
+    con = _connect()
+    if con is None:
+        return _unavailable()
+    with con:
+        outdated = _outdated(con)
+        if outdated:
+            return outdated
+        path = db_path()
+        wal = path.with_name(path.name + "-wal")
+        version = tuple((p.stat().st_mtime_ns, p.stat().st_size) if p.is_file() else None for p in (path, wal))
+        key = (str(path), version, svc().policy.hash)
+        data = _RECOGNITION.get(key)
+        if data is None:
+            data = derive(con, svc().policy)
+            _RECOGNITION.clear()
+            _RECOGNITION[key] = data
+    shift = args.get("shift")
+    view = data if shift is None else {**data, "shifts": [s for s in data["shifts"] if s["shift_no"] == shift],
+                                       "badges": [b for b in data["badges"] if b.get("shift_no") == shift]}
+    return ApiResult("ready", _label(view))

@@ -193,7 +193,7 @@ The dashboard compares:
 
 ## Dashboard and API
 
-The `/simulation` page has eleven modules, each over a read-only operation that is also exposed through MCP. All
+The `/simulation` page has twelve modules, each over a read-only operation that is also exposed through MCP. All
 operations take `shift` (default: the latest). The simulation is a fleet-wide view, so only a session scoped to all
 teams may read it. Every payload is labelled synthetic and DEMONSTRATION.
 
@@ -204,6 +204,7 @@ teams may read it. Every payload is labelled synthetic and DEMONSTRATION.
 | Aircraft | `GET /api/v1/sim/aircraft?line=` | Projection plan by plan, open work by station and team, done and slipped per shift, open shortages. |
 | Shift performance | `GET /api/v1/sim/performance` | Shift, day, week and whole-run comparisons of the pooled canonical score, attainment and adherence; unexcused and excused missed effort by cause; by day; week against week; each team's B0, additions, E, Cp, U and OOS. |
 | Excusals | `GET /api/v1/sim/excusals?team=` | Every claim with its evidence, decision and reason; relief and unexcused misses by cause; whose unfinished work blocked whom; offplan work; out-of-sequence starts; emergency additions. |
+| Recognition | `GET /api/v1/sim/recognition` | Gate points, XP, levels and badges by the production progression rules over the run's stored goal units (`focus.sim.recognition`): completion credit of each earned unit, the frozen gate bonus of behind-gate original units, commitments kept, decided excusals, the Recovery, CommitmentKeeper, SteadyShift and MonthlyChampion badges, and the inflation monitor. Firebreak, SkillSteward and dependency_unlocked are listed as not derived (the run does not store the graph, lifecycle facts or certificate holders they need). |
 | Dispatch | `GET /api/v1/sim/dispatch?team=` | Labor hours per team, and one team's task list (default: the first team) with crew, commitment outcome and floor outcome. |
 | Worker Gantt | `GET /api/v1/sim/gantt?team=` | Each person's work, transfers and waits in the published shift. |
 | Capacity | `GET /api/v1/sim/capacity` | Planned load per team and shift for the next three days; actual utilization. |
