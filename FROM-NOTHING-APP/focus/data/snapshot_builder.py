@@ -33,6 +33,7 @@ from ..simulation.pools import build_virtual_support, merge_virtual_pools
 from .cs_windows import build_cs_facts, raw_rows
 from .duration_gauge import DurationStatistics, compute_statistics
 from .durations import DurationResolution, flow_index, resolve
+from .freshness import freshness_gaps
 from .graph import build_graph
 from .inspections import build_triggers
 from .parts import build_parts
@@ -67,7 +68,8 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
                    datasets: Mapping[str, tuple[Mapping[str, Any], ...]], dataset_status: Mapping[str, str],
                    dataset_ids: Mapping[str, str], dataset_lineage: Mapping[str, str], manifest_hash: str,
                    tzp: TimezonePolicy, policy: Policy, incumbent_id: str | None = None,
-                   dataset_queries: Mapping[str, str] | None = None) -> SnapshotBuild:
+                   dataset_queries: Mapping[str, str] | None = None, dataset_receipts: Mapping[str, Mapping[str, Any]] | None = None,
+                   dataset_captured: Mapping[str, datetime] | None = None) -> SnapshotBuild:
     notes: list[str] = []
     gaps: list[ReadinessGap] = []
     shift_policy = ShiftPolicy.from_policy(policy)
@@ -82,6 +84,7 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
     for name in ("master_task_list", "cday_op_plan", "cs_windows"):
         if not tzp.has(name):
             gaps.append(ReadinessGap("SOURCE_TIMEZONE_POLICY_MISSING", name, "no explicit source timezone policy", "BLOCKS_ALL"))
+    gaps.extend(freshness_gaps(datasets=datasets, receipts=dataset_receipts, captured=dataset_captured, tzp=tzp, policy=policy, cutoff=cutoff))
 
     scope = scope_config(datasets.get("scope_receipt", ()), default_site=site, default_program=program, policy=policy)
     job_index, keys, duplicates = index_master(master, scope)

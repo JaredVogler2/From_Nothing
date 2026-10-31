@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 
@@ -37,7 +37,9 @@ def admit(services: Any, state: SourceState, *, cutoff: datetime, run_id: str, c
     tz_map = dict(settings.source_timezone_map)
     reader_tz = tz_map if tz_map else {"*": "America/New_York"}
     datasets, lineage, statuses, receipts, ids, queries = {}, {}, {}, {}, {}, {}
+    loaded_at = (cutoff - timedelta(minutes=5)).isoformat()          # the simulated loader ran just before every cutoff
     for name, spec in DATASETS.items():
+        state.receipts[name]["loaded_at"] = loaded_at
         cap = state.capture(spec, cutoff, reader_tz, created_at)
         datasets[name] = cap.rows
         lineage[name] = state.lineage(cap)
@@ -50,7 +52,8 @@ def admit(services: Any, state: SourceState, *, cutoff: datetime, run_id: str, c
                 "datasets": {n: {"content_sha": lineage[n], "rows": len(datasets[n]), "status": statuses[n]} for n in DATASETS}}
     build = build_snapshot(run_id=run_id, scope_key=settings.scope_key, site=settings.site, program=settings.program, mode=settings.mode,
                            cutoff=cutoff, created_at=created_at, datasets=datasets, dataset_status=statuses, dataset_ids=ids,
-                           dataset_lineage=lineage, manifest_hash=content_hash(manifest), tzp=tzp, policy=policy, dataset_queries=queries)
+                           dataset_lineage=lineage, manifest_hash=content_hash(manifest), tzp=tzp, policy=policy, dataset_queries=queries,
+                           dataset_receipts=receipts, dataset_captured={name: created_at for name in datasets})
     return build.snapshot, build
 
 

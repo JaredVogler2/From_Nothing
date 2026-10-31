@@ -32,7 +32,8 @@ Stable check ids:
 Extended checks:
 
 * **E_INVENTORY**: complete WIP reconciliation.
-* **E_LINEAGE**: snapshot, source run, scope, policy, purpose and hashes.
+* **E_LINEAGE**: snapshot, source run, scope, policy, purpose and hashes; an executable plan also fails on a snapshot whose
+  sources are stale, unclocked or captured too far apart (``focus.data.freshness``).
 * **E_CS**: the same-run raw CS row, load and offsets behind each placed job's station fact.
 * **E_COMMITMENT**: every incumbent task's reported defense outcome, with the incumbent's work located by its position in
   the job's remaining work (PERFORMED when that work is done, MERGED when an earlier slot already defends it).
@@ -53,6 +54,7 @@ from typing import Any, Iterable
 
 from ..calendar import shift_local_minute
 from ..contracts.planning import CandidatePlan, IncumbentPlan, PlanningSnapshot, ValidationReceipt, Violation, locate_position
+from ..data.freshness import EXECUTABLE_BLOCKERS
 from ..domain import (Disposition, DomainError, EdgeType, PersonKey, PhaseKind, Purpose, ReleaseKind, ReleaseStatus, RequirementStatus, digest_id,
                       minute_ceil, to_minute)
 from ..economics.evaluator import JobRelease, aircraft_completions, line_costs, summarize
@@ -600,6 +602,11 @@ def _e_lineage(run: _Run, purpose: Purpose) -> bool:
         run.count("E_LINEAGE")
         if not ok:
             run.bad("E_LINEAGE", code, plan.id, detail)
+    if purpose is Purpose.EXECUTABLE:                     # S05 step 5: executable work needs fresh, coherently captured sources
+        for g in snap.gaps:
+            if g.code in EXECUTABLE_BLOCKERS:
+                run.count("E_LINEAGE")
+                run.bad("E_LINEAGE", g.code, g.scope, g.detail)
     return True
 
 

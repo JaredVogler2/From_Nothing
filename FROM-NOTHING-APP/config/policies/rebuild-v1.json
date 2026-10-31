@@ -109,6 +109,21 @@
       "authority": "fixture_default",
       "ref": "S13 DISPATCH source freshness: older current facts cannot release an action"
     },
+    "admission.max_source_age_hours": {
+      "value": {
+        "master_task_list": 36, "pnet_dag": 36, "flow_budget": 36, "buyoff_plan": 36, "inspection_counts": 36, "etracs_active": 36,
+        "etracs_history": 36, "actual_labor": 36, "labor_shift": 36, "person_team_map": 36, "attendance_shift": 18,
+        "neo_graph_rework": 48, "soi_cert_requirements": 48, "mechanic_certs": 48, "cert_course_map": 168, "dept_team_skill_ref": 168,
+        "cday_op_plan": 240, "cs_windows": 240
+      },
+      "authority": "fixture_default",
+      "ref": "S05 ATOMIC ACQUISITION step 5 freshness: hours from each dataset's newest source clock (or producer loaded_at) to the cutoff; daily feeds 36, NEO snapshots 48, weekly references 168, calendars and CS windows 240. Live load cadences are an open decision"
+    },
+    "admission.max_capture_skew_minutes": {
+      "value": 30,
+      "authority": "fixture_default",
+      "ref": "S05 ATOMIC ACQUISITION step 5 allowed capture skew: every dataset of one run captured within this window"
+    },
     "activation.fraction_numerator": {
       "value": 85,
       "authority": "user_requirement",
