@@ -268,7 +268,7 @@ class Decoder:
             return None, "ROLE_DEMAND_MISSING"
         defended = self.defended.get(phase.key.id)
         if defended is None:
-            placement, reason = self._search(phase, start_floor, end_floor, conditional, result)
+            placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result)
             if placement is not None:
                 result.waits[phase.key.id] = placement.start - start_floor
             return placement, reason
@@ -280,22 +280,22 @@ class Decoder:
         # minimal audited move: the nearest later slot first, then the earliest safe slot; else defer
         pending = result.commitment_results[self._result_index(defended, result)]
         not_before = defended.start if pending.outcome == "PENDING_MOVE" else None
-        placement, reason = self._search(phase, start_floor, end_floor, conditional, result, not_before=not_before)
+        placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result, not_before=not_before)
         if placement is None and not_before is not None:
-            placement, reason = self._search(phase, start_floor, end_floor, conditional, result)
+            placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result)
         self._finish_defense(defended, placement, reason, result)
         return result.placements.get(phase.key.id, placement), reason
 
-    def _search(self, phase: Phase, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
-                not_before: int | None = None) -> tuple[PhasePlacement | None, str]:
-        """The earliest feasible placement. Where a CS hard latest applies (S09) it must end by then. The earliest feasible
+    def _search_bounded(self, phase: Phase, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
+                        not_before: int | None = None) -> tuple[PhasePlacement | None, str]:
+        """The earliest feasible placement (``_search``). Where a CS hard latest applies (S09) it must end by then. The earliest feasible
         placement also ends earliest, so when it ends later nothing fits: its booking is undone and the phase is deferred."""
         latest = self.ctx.job_latest(phase.job)
         if latest is None:
-            return self._search_any(phase, start_floor, end_floor, conditional, result, not_before)
+            return self._search(phase, start_floor, end_floor, conditional, result, not_before)
         try:
             with result.ledger.transaction():
-                placement, reason = self._search_any(phase, start_floor, end_floor, conditional, result, not_before)
+                placement, reason = self._search(phase, start_floor, end_floor, conditional, result, not_before)
                 if placement is not None and placement.end > latest:
                     raise _AfterLatest(placement.end)
         except _AfterLatest as exc:
@@ -303,8 +303,8 @@ class Decoder:
                           f"{from_minute(latest).isoformat()}")
         return placement, reason
 
-    def _search_any(self, phase: Phase, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
-                    not_before: int | None = None) -> tuple[PhasePlacement | None, str]:
+    def _search(self, phase: Phase, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
+                not_before: int | None = None) -> tuple[PhasePlacement | None, str]:
         ctx = self.ctx
         ledger = result.ledger
         job = ctx.jobs[phase.job]

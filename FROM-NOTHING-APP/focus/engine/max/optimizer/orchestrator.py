@@ -87,6 +87,8 @@ OBJECTIVE_FIELDS = {
     "SCARCITY_AFFINITY_GATE": ("deferred_phases",),
 }
 
+KEY_LEVELS = tuple(f for fields in OBJECTIVE_FIELDS.values() for f in fields) + ("signature",)   # every key field; signature last
+
 
 def key_levels(policy: Any) -> tuple[str, ...]:
     order = tuple(policy.seq("objective.order"))
@@ -245,7 +247,7 @@ class MaxOptimizer:
     @staticmethod
     def improved_level(candidate: Evaluation, best: Evaluation) -> str | None:
         """The first key level where ``candidate`` is strictly better than ``best`` (None when it is not better)."""
-        for name, a, b in zip(candidate.levels, candidate.key, best.key):
+        for name, a, b in zip(getattr(candidate, "levels", ()) or KEY_LEVELS, candidate.key, best.key):
             if a != b:
                 return name if a < b else None
         return None
@@ -258,8 +260,9 @@ class MaxOptimizer:
         level = MaxOptimizer.improved_level(candidate, best)
         if level is None:
             return False
-        if (level in candidate.levels[candidate.levels.index("unknown_completion_aircraft"):] and candidate.unknown != best.unknown
-                and not candidate.unknown < best.unknown):
+        levels = getattr(candidate, "levels", ()) or KEY_LEVELS
+        mine, theirs = getattr(candidate, "unknown", frozenset()), getattr(best, "unknown", frozenset())
+        if level in levels[levels.index("unknown_completion_aircraft"):] and mine != theirs and not mine < theirs:
             return False
         outcome = {r.incumbent_assignment_id: r.outcome for r in candidate.decode.commitment_results}
         for r in best.decode.commitment_results:
