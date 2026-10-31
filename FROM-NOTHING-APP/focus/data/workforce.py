@@ -278,7 +278,11 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
 
     if not assign_rows:
         out.gaps.append(("ASSIGNMENT_FEED_EMPTY", "workforce", "FOCUS_PERSON_TEAM_MAP returned no rows; inference is nominal forecast evidence only", "BLOCKS_EXECUTABLE"))
-    attendance_known = bool(datasets.get("attendance_shift"))
+    production_day = cutoff.astimezone(shift_policy.tz).date()
+    attendance: dict[tuple[date, int, str], bool] = {}
+    for r in datasets.get("attendance_shift", ()):
+        attendance[(date.fromisoformat(str(r["PRODUCTION_DAY"])), int(r["SHIFT_NUMBER"]), str(r["BEMS_ID"]))] = bool(r["PRESENT"])
+    attendance_known = any(d == production_day for d, _, _ in attendance)     # rows for other days are no evidence for this one
     if not attendance_known:
         out.gaps.append(("ATTENDANCE_FEED_EMPTY", "workforce", "FOCUS_ATTENDANCE_SHIFT returned no rows for the production day; nobody is an "
                          "executable crew member on that day (forecast evidence only)", "BLOCKS_EXECUTABLE"))
@@ -286,11 +290,7 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
         out.gaps.append(("HORIZON_UNKNOWN", "workforce", "no admitted line calendar bounds; pools cannot be dated", "BLOCKS_ALL"))
         return out
 
-    # ---- attendance, leave, other duty, OT ----
-    production_day = cutoff.astimezone(shift_policy.tz).date()
-    attendance: dict[tuple[date, int, str], bool] = {}
-    for r in datasets.get("attendance_shift", ()):
-        attendance[(date.fromisoformat(str(r["PRODUCTION_DAY"])), int(r["SHIFT_NUMBER"]), str(r["BEMS_ID"]))] = bool(r["PRESENT"])
+    # ---- leave, other duty, OT ----
     leave: set[tuple[str, date, int]] = set()
     for r in datasets.get("availability_exceptions", ()):
         native = str(r["PERSON_KEY"])

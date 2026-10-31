@@ -185,3 +185,31 @@ def test_in_progress_rework_keeps_its_remaining_minutes_not_a_fresh_p75(services
     assert nc3.measurement_basis == "REMAINING_ELAPSED" and nc3.elapsed_minutes == 20      # not the cohort's P75 of 52
     pu3 = _estimates(snap)[job_id(snap, 1303, "PU3")]
     assert pu3.statistic == "P75" and pu3.elapsed_minutes == 52                              # open rework still uses the cohort
+
+
+def test_in_progress_rework_without_sourced_progress_is_blocked_not_planned_at_full_length(services_factory) -> None:
+    """S08: an IN WORK rework job with no work_progress row is REMAINING_UNKNOWN like any job, never a fresh P75."""
+    data = {"master_task_list": json.loads((INPUTS / "master_task_list.json").read_text())}
+    for r in data["master_task_list"]["rows"]:
+        if (r["LINE_NUMBER"], r["SHOP_ORDER_IDENTIFIER"]) == (1303, "NC3"):
+            r.update({"SHOP_ORDER_STATUS": "IN WORK", "ACT_START": "2026-10-25T08:00:00"})
+    services = services_factory()
+    outcome = acquire_demo(services, key="rework-no-progress", reader=FixtureSourceReader(INPUTS, overrides=data))
+    assert outcome.status == "COMPLETE", outcome.rejection
+    snap = load_snapshot(services.repositories, outcome.snapshot_id)
+    nc3 = job_id(snap, 1303, "NC3")
+    assert nc3 not in _estimates(snap)
+    assert any(r.startswith("REMAINING_UNKNOWN") for r in _reasons(snap, nc3))
+
+
+def test_od01_decided_total_mechanics_no_longer_withholds_live_jobs(demo_snapshot, policy) -> None:
+    """OD-01 (owner, 2026-10-31): TOTAL_MECHANICS is the crew that must be on the job at once, so live crew demand is admitted."""
+    from focus.data.durations import resolve
+
+    assert policy.authority_of("duration.total_mechanics_semantics") == "owner_decision"
+    job = next(j for j in demo_snapshot.jobs if j.raw_budget is not None and j.rework_class is None and j.remaining_elapsed is None)
+    live = resolve(job, status_class="OPEN", policy=policy, mode="live", stats={}, snapshot_key="t")
+    assert not any(r.startswith("FLOW_SEMANTICS_UNCONFIRMED") for r in live.executable_only)
+    still_open = policy.with_overrides({"duration.total_mechanics_semantics": "SIMULTANEOUS"}, new_id="od01-open", authority="open_decision")
+    gated = resolve(job, status_class="OPEN", policy=still_open, mode="live", stats={}, snapshot_key="t")
+    assert any(r.startswith("FLOW_SEMANTICS_UNCONFIRMED") for r in gated.executable_only)

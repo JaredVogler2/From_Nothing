@@ -17,9 +17,9 @@ These four datasets add quality (QA) work to each job. `buyoff_plan` says which 
 | --- | --- |
 | Kind | SOURCE: reference object `WEB_APP.FOCUS_BUYOFF_PLAN`, query `queries/source_inputs/buyoff_plan.sql` (explicit column list, no filter) |
 | Grain and key | One row per job on a line; key `SHOP_ORDER_IDENTIFIER` + `LINE_NUMBER` (S04 primary key; S04 is the manual's section of verified source table contracts). FOCUS matches rows to census jobs on the same pair. |
-| Required | Yes: a capture error (for example `SCHEMA_DRIFT`) rejects the source run (one capture of all datasets at one cutoff) with `MANDATORY_DATASET_FAILED`. An empty result does not reject the run. |
+| Required | Yes: a capture error (for example `SCHEMA_DRIFT` or a database error) rejects the source run (one capture of all datasets at one cutoff) with `MANDATORY_DATASET_FAILED`. An empty result without a certified-empty receipt rejects it too (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
-| If missing or empty | Capture error: run `REJECTED`, `MANDATORY_DATASET_FAILED`. Empty without a certificate (every empty live read): readiness gap `DATASET_EMPTY_UNCERTIFIED`, labelled BLOCKS_EXECUTABLE but not enforced by the plan validator; every job is then planned with no QA phases. A census job with no row is also planned without QA, and nothing flags it. |
+| If missing or empty | Capture error: run `REJECTED`, `MANDATORY_DATASET_FAILED`. Empty without a certificate (every empty live read today): run `REJECTED`, `MANDATORY_DATASET_EMPTY`. A census job with no row is planned without QA, and nothing flags it. |
 | Time and cutoff | Row clock `LOAD_TIMESTAMP` (stored without a zone; read in the dataset's declared source timezone). The newest value must be within 36 h of the cutoff, the source run's as-of instant (`admission.max_source_age_hours`), else `SOURCE_STALE`; no readable clock gives `SOURCE_CLOCK_UNKNOWN`. Both fail EXECUTABLE plans; forecasts still run. A producer receipt `loaded_at` replaces the row clock. No cutoff column. |
 | Read by | `focus/data/inspections.py` (`build_triggers`, `phase_plan`), `focus/data/graph.py`, `focus/data/freshness.py`; called from `focus/data/snapshot_builder.py` |
 
@@ -86,9 +86,9 @@ These four datasets add quality (QA) work to each job. `buyoff_plan` says which 
 | --- | --- |
 | Kind | SOURCE: reference object `WEB_APP.FOCUS_INSPECTION_STANDARDS`, query `queries/source_inputs/inspection_standards.sql` |
 | Grain and key | One row per inspection type; key `INSPECTION_TYPE` (S04 primary key). |
-| Required | Yes: a capture error rejects the source run with `MANDATORY_DATASET_FAILED`. An empty result does not reject the run. |
+| Required | Yes: a capture error rejects the source run with `MANDATORY_DATASET_FAILED`, and an empty result without a certified-empty receipt with `MANDATORY_DATASET_EMPTY`. |
 | Capabilities | forecast, executable |
-| If missing or empty | Capture error: run `REJECTED`, `MANDATORY_DATASET_FAILED`. Empty without a certificate: gap `DATASET_EMPTY_UNCERTIFIED` (not enforced by the plan validator); every parallel buyoff then lasts `qa.other_buyoff_minutes` (20, a fixture default). A kind with no `PARALLEL_BRANCH` row also gets 20 minutes, silently. |
+| If missing or empty | Capture error: run `REJECTED`, `MANDATORY_DATASET_FAILED`. Empty without a certificate: run `REJECTED`, `MANDATORY_DATASET_EMPTY`. A kind with no `PARALLEL_BRANCH` row gets `qa.other_buyoff_minutes` (20, a fixture default), silently. |
 | Time and cutoff | No time column, so no freshness check (the table is not in `admission.max_source_age_hours`). No cutoff column. |
 | Read by | `focus/data/snapshot_builder.py` (builds the minutes map), used by `focus/data/inspections.py` (`phase_plan`) |
 
@@ -133,5 +133,5 @@ These four datasets add quality (QA) work to each job. `buyoff_plan` says which 
 - Holds apply only when `buyoff_plan` requires IP. Holds for a job without that requirement are dropped (with a note if the job has a buyoff row); a hold count that differs from the IP count is only a note.
 - A missing or invalid hold blocks the job outright, in forecast and executable plans alike, although the registry tags this dataset executable-only.
 - For in-progress jobs, positions are on the whole job (performed plus remaining minutes). A hold at or before the minutes already performed is dropped with `IP_HOLD_STATUS_UNKNOWN`, which blocks executable work only.
-- Send whole numbers. Non-integer text in a numeric column raises an error and stops the acquisition.
+- Send whole numbers. Non-integer text in a numeric column rejects the run (`SOURCE_VALUE_INVALID`).
 - While an inspector works a hold, the production crew is released for other work (`qa.crew_during_ip` = RELEASE, a fixture default; WAIT would hold the crew).

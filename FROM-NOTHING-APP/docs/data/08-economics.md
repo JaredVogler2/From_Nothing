@@ -19,7 +19,7 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 - **One currency, no conversion.** Only `economics.supported_currencies` are supported (shipped policy: USD). FOCUS checks the chosen term's currency only, and never converts.
 - **No cap today.** `economics.cap_policy` = `EXPLICIT_ONLY`, and no table supplies an explicit cap, so no penalty is capped. A non-zero `CapFraction` on the scenario is only reported as `CAP_FIELD_NOT_APPLIED`.
 - **No double charging.** The accounted floor is a lower bound on the modeled penalty: penalty = max(modeled penalty, floor). The booked amount is never added on top.
-- **Capture.** Each table is read by its reference SQL query. A failed capture (for example `SCHEMA_DRIFT`) adds the readiness gap `DATASET_FAILED`. Zero rows from a live query add `DATASET_EMPTY_UNCERTIFIED`, because a live capture cannot certify an empty table. A readiness gap is a data finding recorded on the snapshot and shown to users. Both gaps carry the effect label `BLOCKS_EXECUTABLE`, but the plan validator does not act on them (for executable plans it checks only `SOURCE_STALE`, `SOURCE_CLOCK_UNKNOWN` and `CAPTURE_SKEW`). The run continues, and each aircraft carries the reason codes listed below. A database error on the query (for example a missing object or denied access) is not caught: the source run stops in CAPTURING, although these tables are optional.
+- **Capture.** Each table is read by its reference SQL query. A failed capture (for example `SCHEMA_DRIFT`) adds the readiness gap `DATASET_FAILED`. Zero rows from a live query add `DATASET_EMPTY_UNCERTIFIED`, because a live capture cannot certify an empty table. A readiness gap is a data finding recorded on the snapshot and shown to users. Both gaps carry the effect label `BLOCKS_EXECUTABLE`, but the plan validator does not act on them (for executable plans it checks only `SOURCE_STALE`, `SOURCE_CLOCK_UNKNOWN` and `CAPTURE_SKEW`). The run continues, and each aircraft carries the reason codes listed below. A database error on the query (for example a missing object or denied access) is a failed capture too: `DATASET_FAILED`, and the run continues.
 - **Freshness.** None of the tables has a source clock (`LOAD_TIMESTAMP`, `SNAPSHOT_TS` or `LOAD_TS`) or a cutoff column, and none is listed in `admission.max_source_age_hours`. So no `SOURCE_STALE` check applies; only the run-wide `CAPTURE_SKEW` check does.
 - **Who reads the result.** Only `focus/economics/repository.py` reads the raw rows, at admission. The engine reads the per-aircraft result (`AircraftEconomics` on the snapshot) through `focus/economics/registry.py`. Users without an economics grant (`manager` or `scenario_planner`) see costs withheld as `ECONOMICS_RESTRICTED`, never as zero.
 
@@ -113,7 +113,7 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 | Required | No: a failed or empty capture is recorded as a readiness gap and the run continues. |
 | Capabilities | economics |
 | If missing or empty | Gap `DATASET_FAILED` or `DATASET_EMPTY_UNCERTIFIED`. Every line then gets `NO_SINGLE_ACTIVE_SCENARIO`, or `MULTIPLE_ACTIVE_SCENARIOS` when more than one row qualifies. No assignment or term is considered, and costs are UNKNOWN. |
-| Time and cutoff | The effective window runs from `EffectiveFromUtc` (included) to `EffectiveToUtc` (excluded; NULL means no end). It is tested once, at the source-run cutoff. FOCUS reads these naive values in the dataset's declared source timezone, despite the Utc names: the demo receipts declare America/New_York, and live mode uses the `econ_scenario` entry in `FOCUS_SOURCE_TIMEZONE_MAP_JSON`, or `*`. No freshness clock and no cutoff column. |
+| Time and cutoff | The effective window runs from `EffectiveFromUtc` (included) to `EffectiveToUtc` (excluded; NULL means no end). It is tested once, at the source-run cutoff. The values are UTC, as their names say: a naive value is read as UTC and an explicit offset is honored, whatever the dataset's source timezone policy. No freshness clock and no cutoff column. |
 | Read by | `focus/economics/repository.py` |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -137,8 +137,8 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 - FOCUS checks no approval and no `Provenance` on the scenario; `IsActive` is the only switch. The crosswalk expects an authorized scenario, so keep drafts inactive.
 - FOCUS computes no cap. `CapFraction` only adds `CAP_FIELD_NOT_APPLIED`, and nothing else supplies an explicit cap, so every aircraft's `cap_cents` is empty.
 - The penalty curve comes from policy `economics.penalty_curve` (`LINEAR_DAILY`), not from this table.
-- If the effective times really are UTC, map `econ_scenario`, `econ_contract_assignment` and `econ_term` to `UTC` in `FOCUS_SOURCE_TIMEZONE_MAP_JSON`. Otherwise a non-UTC `*` zone shifts every window. The mirror query `queries/economics/effective_terms.sql` already compares them with the cutoff as UTC.
-- If a row's effective time is checked while the dataset has no timezone policy (no own entry and no `*`), or the time cannot be parsed, admission stops with `SOURCE_TIMEZONE_POLICY_MISSING` or `BAD_SOURCE_DATETIME`. The run is left CAPTURING, neither COMPLETE nor REJECTED. The same holds for `econ_contract_assignment` and `econ_term`.
+- Store the effective times in UTC, as the column names say. FOCUS reads them as UTC whatever `FOCUS_SOURCE_TIMEZONE_MAP_JSON` says, the same way the mirror query `queries/economics/effective_terms.sql` compares them with the cutoff.
+- An effective time that cannot be parsed rejects the run (`SOURCE_VALUE_INVALID`, `BAD_SOURCE_DATETIME`). The same holds for `econ_contract_assignment` and `econ_term`.
 
 ## `econ_contract_assignment`
 
@@ -151,7 +151,7 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 | Required | No: a failed or empty capture is recorded as a readiness gap and the run continues. |
 | Capabilities | economics |
 | If missing or empty | Gap `DATASET_FAILED` or `DATASET_EMPTY_UNCERTIFIED`. No line has a contract, so CONTRACT terms never match. Lines fall through to CUSTOMER_MODEL terms where they exist, else `NO_EFFECTIVE_TERM`. Two or more active, effective rows for one line give `CONTRACT_ASSIGNMENT_CONFLICT: <n> effective active assignments` and no term for that aircraft. |
-| Time and cutoff | Same effective-window rule as `econ_scenario`: `[EffectiveFromUtc, EffectiveToUtc)` at the cutoff, read with the `econ_contract_assignment` timezone policy. `CreatedAtUtc` is not read. No freshness clock and no cutoff column. |
+| Time and cutoff | Same effective-window rule as `econ_scenario`: `[EffectiveFromUtc, EffectiveToUtc)` at the cutoff, read as UTC. `CreatedAtUtc` is not read. No freshness clock and no cutoff column. |
 | Read by | `focus/economics/repository.py` |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -189,7 +189,7 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 | Required | No: a failed or empty capture is recorded as a readiness gap and the run continues. |
 | Capabilities | economics |
 | If missing or empty | Gap `DATASET_FAILED` or `DATASET_EMPTY_UNCERTIFIED`. Every mapped line under a resolved scenario then gets `NO_EFFECTIVE_TERM`, and its cost is UNKNOWN; no default rate is used. Other per-aircraft codes: `TERM_VERSION_CONFLICT:<selector>`; `UNSUPPORTED_CURRENCY:<code>` and `DAILY_RATE_INVALID` (status UNSUPPORTED); authority labels `ASSUMED_PLANNING_TERM` and `TERM_AUTHORITY_UNPROVEN`. |
-| Time and cutoff | Effective window `[EffectiveFromUtc, EffectiveToUtc)`, tested once at the source-run cutoff and read with the `econ_term` timezone policy (same rule as `econ_scenario`). Versions are ordered by `TermVersion`, not by time. `CreatedAtUtc` is not read. |
+| Time and cutoff | Effective window `[EffectiveFromUtc, EffectiveToUtc)`, tested once at the source-run cutoff and read as UTC (same rule as `econ_scenario`). Versions are ordered by `TermVersion`, not by time. `CreatedAtUtc` is not read. |
 | Read by | `focus/economics/repository.py` |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -269,14 +269,14 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 | Required | No: a failed or empty capture is recorded as a readiness gap and the run continues. |
 | Capabilities | economics |
 | If missing or empty | Gap `DATASET_FAILED` or `DATASET_EMPTY_UNCERTIFIED`. No floor applies, and the modeled penalty is used alone. A missing floor is never treated as a zero floor. |
-| Time and cutoff | The planner applies no time filter. It picks by `SequenceNumber`, not by `AsOfUtc` or `CreatedAtUtc`, so a checkpoint written after the cutoff still counts. The mirror query `queries/economics/liability_floor.sql` excludes checkpoints with `CreatedAtUtc` after the cutoff. No freshness clock and no cutoff column. |
+| Time and cutoff | A checkpoint counts only if its `CreatedAtUtc` (UTC) is at or before the cutoff, as in the mirror query `queries/economics/liability_floor.sql`. Among those, the highest `SequenceNumber` is the latest; `AsOfUtc` is not read. No freshness clock and no cutoff column. |
 | Read by | `focus/economics/repository.py` |
 
 | Column | Type | Meaning | How FOCUS uses it |
 | --- | --- | --- | --- |
 | `CheckpointId` | uniqueidentifier, not null | Identifier of one checkpoint. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `OriginalBasisId` | uniqueidentifier, not null | The sale basis the checkpoint accounts against (S04 foreign key to `econ_original_sale_basis`). | Checkpoints are grouped by it; only the chosen basis's checkpoints are used. |
-| `SequenceNumber` | bigint, not null | Order of the checkpoints of one basis; the highest is the latest (`liability_floor.sql`). | The highest wins. On a tie, the planner keeps whichever row it read first. |
+| `SequenceNumber` | bigint, not null | Order of the checkpoints of one basis; the highest is the latest (`liability_floor.sql`). | The highest wins among checkpoints created by the cutoff. Two at the same highest sequence give `CHECKPOINT_SEQUENCE_CONFLICT` and no floor. |
 | `AsOfUtc` | datetime2(3), not null | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `ElapsedLateDays` | decimal(18,6), not null | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `AssessedAmount` | decimal(19,4), not null | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
@@ -284,10 +284,10 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 | `AssessmentCoverage` | varchar(32), not null | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `AssessmentReference` | nvarchar(512), nullable | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `CheckpointKind` | varchar(16), not null | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
-| `CreatedAtUtc` | datetime2(3), not null | When the checkpoint was recorded; the mirror query uses it to exclude checkpoints "recorded after the cutoff". | Fetched and kept with the source run; nothing in the planner reads it today. |
+| `CreatedAtUtc` | datetime2(3), not null | When the checkpoint was recorded (UTC). | A checkpoint created after the cutoff is not known to the run and is skipped. An unparsable value rejects the run (`SOURCE_VALUE_INVALID`). |
 
 **Rules and pitfalls.**
-- Keep `SequenceNumber` unique per `OriginalBasisId`. On a tie, the planner's floor depends on row order and no conflict code is raised; the mirror query reports `CHECKPOINT_SEQUENCE_CONFLICT`.
+- Keep `SequenceNumber` unique per `OriginalBasisId`. A tie gives `CHECKPOINT_SEQUENCE_CONFLICT` and no floor (unknown, never a row-order pick), as the mirror query reports it.
 - `CumulativeAccounted` must be the running total, not the amount of one assessment: only the latest row is used.
 - The floor is a lower bound, never an addition. While the modeled penalty is under the floor, one more day late adds nothing, so the aircraft gets no cost-of-delay weight.
 - Checkpoints apply only through the one sale basis that names the chosen term (see `econ_original_sale_basis`).

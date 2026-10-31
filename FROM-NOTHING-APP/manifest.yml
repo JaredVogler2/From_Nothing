@@ -27,6 +27,7 @@ applications:
     FOCUS_MCP_ENABLED: "false"
     FOCUS_SQL_SERVICE_NAME: focus-sql
     FOCUS_SECRETS_SERVICE_NAME: focus-secrets
+    FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'   # database columns hold UTC (owner, 2026-10-31); the app shows local time
   services:
     - focus-sql
     - focus-secrets

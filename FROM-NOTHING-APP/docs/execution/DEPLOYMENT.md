@@ -116,7 +116,7 @@ Connect content settings ("Vars"):
 | `FOCUS_GRANTS_JSON` | server-owned grants and data scopes, e.g. `{"subjects": {"posit:alice": ["reader","manager"], "posit:bob": ["reader","team_lead"]}, "groups": {"focus-leads": ["team_lead"]}, "scopes": {"posit:bob": {"teams": ["PROD-A"]}, "carol": {"teams": ["PROD-A"], "person": "<badge id>"}}}` |
 | `FOCUS_SQL_HOST`, `FOCUS_SQL_DATABASE`, `FOCUS_SQL_USER`, `FOCUS_SQL_PASSWORD` | read principal (mark the password as secret) |
 | `FOCUS_SESSION_SECRET` | random 32+ bytes (secret) |
-| `FOCUS_SOURCE_TIMEZONE_MAP_JSON` | source datetime2 timezone policy |
+| `FOCUS_SOURCE_TIMEZONE_MAP_JSON` | source datetime2 timezone policy: `{"*": "UTC"}`, because database columns hold UTC (owner, 2026-10-31). The app shows times in the site's zone (policy `shift.timezone`). |
 | `FOCUS_MCP_ENABLED` | `false` until MCP access is approved |
 
 Before publishing, run `python -m focus.cli preflight --role web` with the content's variables. It checks:

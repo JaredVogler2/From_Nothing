@@ -153,3 +153,23 @@ def test_empty_attendance_feed_leaves_the_production_day_without_executable_crew
     today = pools[("PROD-A", date(2026, 10, 26), 1)]
     assert today.n_executable == 0 and today.cap_executable == 0 and today.n_forecast > 0     # no presence evidence today
     assert pools[("PROD-A", date(2026, 10, 27), 1)].n_executable == 8                          # later days plan from the roster
+
+
+def test_attendance_for_other_days_is_no_evidence_for_the_production_day(services_factory) -> None:
+    """S05: the guard looks at the production day itself; a feed holding only yesterday's rows leaves today forecast-only."""
+    import json
+    from pathlib import Path
+
+    from focus.data.acquisition import load_snapshot
+    from focus.data.fixture_reader import FixtureSourceReader
+    from tests.conftest import acquire_demo
+
+    inputs = Path(__file__).resolve().parents[2] / "fixtures" / "inputs" / "manufacturing_demo"
+    attendance = json.loads((inputs / "attendance_shift.json").read_text())
+    attendance["rows"] = [{**r, "PRODUCTION_DAY": "2026-10-25"} for r in attendance["rows"]]      # all for the day before
+    services = services_factory()
+    outcome = acquire_demo(services, key="stale-attendance", reader=FixtureSourceReader(inputs, overrides={"attendance_shift": attendance}))
+    assert outcome.status == "COMPLETE", outcome.rejection
+    snapshot = load_snapshot(services.repositories, outcome.snapshot_id)
+    assert "ATTENDANCE_FEED_EMPTY" in {g.code for g in snapshot.gaps}
+    assert _pools(snapshot)[("PROD-A", date(2026, 10, 26), 1)].n_executable == 0

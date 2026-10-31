@@ -2,7 +2,7 @@
 
 A policy bundle is ``config/policies/<policy_id>.json`` plus its ``includes``.
 Every value carries an authority label (user_requirement, manual_specified,
-fixture_default, demo_default, open_decision). Values are deep-frozen and the
+fixture_default, demo_default, open_decision, owner_decision). Values are deep-frozen and the
 bundle hash covers id, revision, scope, mode, values and authorities. Any
 override (for example a duration-statistic toggle) produces a *new* policy id
 and hash; accepted artifacts keep the hash they were built with.
@@ -17,7 +17,7 @@ from typing import Any, Mapping
 
 from .codec import CodecError, content_hash, parse_utc, strict_loads
 
-AUTHORITIES = frozenset({"user_requirement", "manual_specified", "fixture_default", "demo_default", "open_decision"})
+AUTHORITIES = frozenset({"user_requirement", "manual_specified", "fixture_default", "demo_default", "open_decision", "owner_decision"})
 
 REQUIRED_KEYS = (
     "scope.all_wip",

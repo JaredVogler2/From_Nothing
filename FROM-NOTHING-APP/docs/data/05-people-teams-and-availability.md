@@ -64,7 +64,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | Grain and key | One row per person and effective start; S04 primary key (`BEMS_ID`, `EFFECTIVE_FROM`). The code drops exact repeats of (start, end, team, role) and flags overlapping rows with a different team or role. |
 | Required | No |
 | Capabilities | executable |
-| If missing or empty | Gap `ASSIGNMENT_FEED_EMPTY` (`BLOCKS_EXECUTABLE`): no pool has executable members on any day, and inference stays nominal. Dataset status gap `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`; live mode also raises `OD-10`. An unparseable `EFFECTIVE_FROM` or `EFFECTIVE_TO`, or a naive value with no time zone policy, stops admission with `BAD_SOURCE_DATETIME` or `SOURCE_TIMEZONE_POLICY_MISSING`, and the run stays `CAPTURING`. |
+| If missing or empty | Gap `ASSIGNMENT_FEED_EMPTY` (`BLOCKS_EXECUTABLE`): no pool has executable members on any day, and inference stays nominal. Dataset status gap `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`; live mode also raises `OD-10`. An unparseable `EFFECTIVE_FROM` or `EFFECTIVE_TO`, or a naive value with no time zone policy, rejects the run (`SOURCE_VALUE_INVALID` with `BAD_SOURCE_DATETIME` or `SOURCE_TIMEZONE_POLICY_MISSING`). |
 | Time and cutoff | `EFFECTIVE_FROM` (inclusive) and `EFFECTIVE_TO` (exclusive) are local wall times, converted to UTC with this dataset's time zone policy (fixture receipt or `FOCUS_SOURCE_TIMEZONE_MAP_JSON`); an explicit offset is honored. `LOAD_TIMESTAMP` is the freshness clock (limit 36 h). No cutoff column: rows that become effective later apply to later shifts. |
 | Read by | `focus/data/workforce.py` (`build_workforce`); `focus/data/freshness.py` (`LOAD_TIMESTAMP`). |
 
@@ -100,7 +100,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | Grain and key | One row per person per run; the producer table's primary key is (`RunId`, `PersonKey`) (`sql/migrations/001_focus_fn_core.sql`). The code indexes rows by `PERSON_KEY`; a repeated key keeps the last row. |
 | Required | No |
 | Capabilities | forecast |
-| If missing or empty | Pools and crews do not change; the Standards view shows no inference. Dataset status gap `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED` (for example `SCOPE_KEY_MISSING` when no scope key is set). If the table is not installed, the query raises a driver error that `acquire()` does not turn into `FAILED`, so the acquisition stops and the run stays `CAPTURING`. Rows whose window ended more than 7 days before the cutoff give one `TEAM_INFERENCE_STALE` gap (effect `INFO`). |
+| If missing or empty | Pools and crews do not change; the Standards view shows no inference. Dataset status gap `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED` (for example `SCOPE_KEY_MISSING` when no scope key is set). If the table is not installed, the driver error marks the dataset `FAILED` (`SOURCE_QUERY_FAILED`) and the run continues. Rows whose window ended more than 7 days before the cutoff give one `TEAM_INFERENCE_STALE` gap (effect `INFO`). |
 | Time and cutoff | `WINDOW_START_UTC` and `WINDOW_END_UTC` are UTC with an explicit offset; the window is half-open and ends at the run cutoff. A row is stale when `WINDOW_END_UTC` is missing or more than `workforce.inference_stale_after_days` (7, a fixture default; the live value is an open calibration) before the cutoff. No row clock, no freshness check, no cutoff column. |
 | Read by | `focus/data/workforce.py` (`build_workforce`); shown by `standards` in `focus/web/serializers.py`. |
 
@@ -127,7 +127,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 - Inference never puts anyone in a pool. Membership needs a `shift_roster` row, and a rostered person without an active assignment is nominal (`INFERRED_NOMINAL`) whether or not the inference agrees (`focus/data/workforce.py`).
 - SQL owns the algorithm: latest revision of each clock event, voided events removed, teams ranked by count, ties broken by team name in code-point order (`Latin1_General_BIN2`), effort never used as the count.
 - `DEPT_FALLBACK` comes only through an actual mapped department. Team-less evidence with no mapping is `UNKNOWN` with no team; no team is invented.
-- Send both window timestamps with an explicit offset (for example `2026-10-25T10:00:00Z`). The parser rejects naive text (`NAIVE_DATETIME`) and admission stops. The reference read query projects these from `datetime2(6)` columns, which carry no offset.
+- The window timestamps are UTC. The live reader writes the `datetime2(6)` values of these `_UTC` columns with their offset, so they parse; in a fixture file, naive text rejects the run (`SOURCE_VALUE_INVALID`, `NAIVE_DATETIME`).
 - The live read takes the rows of the scope's current source head (a COMPLETE run). The migration notes say inference is written for the run being captured, so confirm which run's rows the capture should carry.
 
 ## `mech_team_inferred`
@@ -241,7 +241,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | `LOAD_TIMESTAMP` | datetime2(3), not null | Time the row was loaded at the source. | Cutoff column in fixture captures, and the freshness clock (newest value within 18 h of the cutoff, or `SOURCE_STALE`). |
 
 **Rules and pitfalls.**
-- The emptiness check looks at the whole feed, not the production day. A feed with rows only for other days raises no gap, and every assigned, rostered person without a production-day row still counts as executable (`SCHEDULED_ROSTER`). Always send the production day's rows.
+- The emptiness check looks at the production day itself. A feed with rows only for other days raises `ATTENDANCE_FEED_EMPTY`, and nobody is executable that day. Always send the production day's rows.
 - A missing row is not an absence. Only `PRESENT = 0` excludes a person.
 - Attendance never creates team membership. A present person still needs a roster row and an agreeing assignment (`docs/execution/TEAM_AUTHORITY.md`).
 - The reference query has no as-of filter. The adapter must keep out rows loaded after the cutoff, as the fixture reader does (crosswalk section C).
@@ -258,7 +258,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | Grain and key | One row per person and exception; no declared key. Leave is keyed by (`PERSON_KEY`, `PRODUCTION_DAY`, `SHIFT_NUMBER`). |
 | Required | No |
 | Capabilities | executable |
-| If missing or empty | Nobody is excluded for leave and no other duty is booked. Dataset status gap `DATASET_NOT_PROBED` (live today), `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`. An unparseable local time stops admission with `BAD_SOURCE_DATETIME`, and a missing time zone policy with `SOURCE_TIMEZONE_POLICY_MISSING`; the run stays `CAPTURING`. |
+| If missing or empty | Nobody is excluded for leave and no other duty is booked. Dataset status gap `DATASET_NOT_PROBED` (live today), `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`. An unparseable local time, or a missing time zone policy, rejects the run (`SOURCE_VALUE_INVALID` with `BAD_SOURCE_DATETIME` or `SOURCE_TIMEZONE_POLICY_MISSING`). |
 | Time and cutoff | `START_LOCAL` and `END_LOCAL` are local wall times, converted to UTC with this dataset's time zone policy (a time inside a DST gap moves forward; an ambiguous time takes its first occurrence). `OBSERVED_AT_UTC` is the cutoff column: fixture captures hide rows observed after the cutoff. No freshness check. |
 | Read by | `focus/data/workforce.py` (`build_workforce`); `focus/data/fixture_reader.py` (cutoff). The other-duty intervals are used by `focus/engine/model.py`, `focus/validation/duty.py` and `focus/publication/dispatch.py`. |
 
@@ -276,7 +276,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 **Rules and pitfalls.**
 - `LEAVE` covers the whole shift and its times are ignored. For part of a shift, use another `KIND` with both local times.
 - Other-duty rows without both times, with an end not after the start, or for an unknown person are dropped without any gap.
-- `PRODUCTION_DAY` and `SHIFT_NUMBER` are parsed on every row, before `KIND`. A bad value stops admission.
+- `PRODUCTION_DAY` and `SHIFT_NUMBER` are parsed on every row, before `KIND`. A bad value rejects the run (`SOURCE_VALUE_INVALID`).
 - Declare a time zone for `availability_exceptions`: the fixture receipt's `source_timezone`, or `FOCUS_SOURCE_TIMEZONE_MAP_JSON` with this name or `*`.
 - The live producer must apply the observed-at cutoff. An exception observed after the cutoff must not enter the run (crosswalk section C).
 - Other duty uses up the shift's regular and OT budget and blocks overlapping work (`PERSON_OVERLAP`). Dispatch reports `DUTY_CONFLICT`.
@@ -311,7 +311,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 - Minutes above 60 are cut to 60 (policy `shift.maximum_ot_minutes`, a user requirement).
 - Authority is per team, shift and date and applies to every member of that pool. The dataset has no person column, although the crosswalk lists person-level authority as a source need.
 - Work in the OT window beyond a member's authorized minutes fails validation (`OT_NOT_AUTHORIZED` in V4, `OT_CAP` in V7).
-- Every column except `AUTHORITY` and `EVIDENCE_REF` must be present. A missing date or number stops admission with an error.
+- Every column except `AUTHORITY` and `EVIDENCE_REF` must be present. A missing date or number rejects the run (`SOURCE_VALUE_INVALID`).
 
 ## `carry_in`
 

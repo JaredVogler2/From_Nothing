@@ -158,7 +158,7 @@ Each dataset in a run ends with one status:
 | `ROWS` | The dataset returned rows. |
 | `CERTIFIED_EMPTY` | No rows, and the producer's receipt affirms that empty is complete and correct. |
 | `EMPTY_UNCERTIFIED` | No rows and no such receipt. FOCUS never treats this as "nothing to do". |
-| `FAILED` | The capture raised an error FOCUS recognizes: schema drift, an incomplete receipt or an unreadable value. A database or connection error is different: see [Known gaps](#known-gaps-before-going-live). |
+| `FAILED` | The capture raised an error: a database or connection error (`SOURCE_QUERY_FAILED`), schema drift or an incomplete receipt. |
 | `NOT_PROBED` | No producer is installed for this input, so FOCUS did not read it. |
 
 What a status does to the run:
@@ -166,23 +166,32 @@ What a status does to the run:
 - **Required datasets.** The 11 datasets marked required are `master_task_list`, `pnet_dag`, `neo_graph_rework`,
   `flow_budget`, `buyoff_plan`, `inspection_standards`, `cday_op_plan`, `cs_windows`, `etracs_active`,
   `soi_cert_requirements` and `mechanic_certs`. If one fails to capture, the whole run is rejected
-  (`MANDATORY_DATASET_FAILED`). An empty `master_task_list` without a certified-empty receipt also stops admission
-  (`CENSUS_UNAVAILABLE`).
-- **Every other status problem** becomes a readiness gap named `DATASET_NOT_PROBED`, `DATASET_EMPTY_UNCERTIFIED` or
-  `DATASET_FAILED`. It is labelled as blocking executable work and shown in the data-gap queue. What it actually
-  withholds depends on the dataset: each page's "If missing or empty" row says what the code does.
+  (`MANDATORY_DATASET_FAILED`). If one is empty without a certified-empty receipt, the run is rejected too:
+  `CENSUS_UNAVAILABLE` for `master_task_list`, `MANDATORY_DATASET_EMPTY` for the others.
+- **Unreadable values.** A value admission cannot read (a `_UTC` text without an offset in a fixture file, a null where
+  a number or date is needed, text where a number is needed) rejects the run (`SOURCE_VALUE_INVALID`). A data problem
+  ends the run REJECTED with a code; it no longer leaves the run CAPTURING.
+- **Optional datasets** with a status problem get a readiness gap named `DATASET_NOT_PROBED`,
+  `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`, and the run continues. The gap is labelled as blocking executable work
+  and shown in the data-gap queue. What it actually withholds depends on the dataset: each page's "If missing or empty"
+  row says what the code does.
 - **Live today.** The live reader runs the 28 reference SQL queries and the two supplemental SQL paths
   (`team_inference`, `clock_observations`). The other 14 supplemental inputs report `NOT_PROBED`. A live query that
   returns no rows is `EMPTY_UNCERTIFIED`, because the live reader has no way yet to certify an empty result. A
-  legitimately empty source (for example, no open shortages) therefore needs a certification path before it stops
-  showing as a gap. The live observation reader reports every feed `NOT_PROBED` until its `FOCUS_FN` producer is
+  legitimately empty source (for example, no open shortages) therefore needs a certification path: until then an empty
+  required dataset rejects the run, and an empty optional one stays a gap. The live observation reader reports every feed `NOT_PROBED` until its `FOCUS_FN` producer is
   installed.
 
 ## Clocks and time zones
 
+- **The database holds UTC; the app shows local time** (owner decision, 2026-10-31). Live runs set
+  `FOCUS_SOURCE_TIMEZONE_MAP_JSON` to `{"*": "UTC"}` (`manifest.yml` and the live CI jobs). The live reader writes a
+  naive value from a column named `..._UTC` or `...Utc` with its UTC offset, and economics reads those columns as UTC
+  in fixture mode too. Every page shows times in the site's zone (policy `shift.timezone`), labelled, for example
+  `06:00 EDT`.
 - **SOURCE timestamps carry no zone.** SQL `datetime2` values are naive. Each dataset's zone comes from an explicit
-  policy: `FOCUS_SOURCE_TIMEZONE_MAP_JSON` in live mode maps dataset names to IANA zones, with `"*"` as an explicit
-  default. FOCUS never guesses a zone. Without a policy for `master_task_list`, `cday_op_plan` or `cs_windows`, the
+  policy: `FOCUS_SOURCE_TIMEZONE_MAP_JSON` maps dataset names to IANA zones, with `"*"` as an explicit default; name a
+  dataset only if its table holds local time. Fixture producers declare their own zone. FOCUS never guesses a zone. Without a policy for `master_task_list`, `cday_op_plan` or `cs_windows`, the
   snapshot carries `SOURCE_TIMEZONE_POLICY_MISSING`, labelled as blocking all plans; what it actually withholds depends
   on the dataset, as its page says (`focus/data/sourcetime.py`).
 - **Daylight saving.** A local time inside a spring-forward gap moves forward to the transition. An ambiguous local time
@@ -239,51 +248,38 @@ At admission FOCUS checks how old each dataset is (`focus/data/freshness.py`):
 Connecting the data is not enough for executable plans. In live mode, while these policy values still carry the
 authority `open_decision`, every job is kept out of executable plans:
 
-- **OD-01**, `duration.total_mechanics_semantics`: whether `flow_budget.TOTAL_MECHANICS` counts people working at once
-  (`FLOW_SEMANTICS_UNCONFIRMED`).
 - **OD-05**, `cs.date_mode`: how control-station offsets and dates are based (`CS_DATE_SEMANTICS_UNCONFIRMED`).
 
-The other open decisions, OD-02 to OD-17, each withhold one live capability: raw clock intervals, QA hold locations,
+OD-01 is decided (owner, 2026-10-31): `flow_budget.TOTAL_MECHANICS` is the number of mechanics that must be on the job
+at once to work it. The policy records it with the authority `owner_decision`, so live jobs no longer carry
+`FLOW_SEMANTICS_UNCONFIRMED`.
+
+The other open decisions, OD-02 to OD-17 apart from OD-05, each withhold one live capability: raw clock intervals, QA hold locations,
 OT authority, the commercial due date, the no-certificate census, the assignment and attendance feeds, the observation
 producers and so on. `docs/execution/DECISIONS.md` lists them, and the policy file records each one's live effect.
 
 ## Known gaps before going live
 
-Writing this reference turned up behaviour that matters for a live connection. Each item was checked in the code. None
-is fixed by this change; they are listed so the live work can plan for them.
+Writing this reference turned up behaviour that matters for a live connection. Each item was checked in the code.
 
-- **A database error stops the whole run.** Acquisition catches capture errors it recognizes, but not database or
-  connection errors (`focus/data/acquisition.py`; `focus/data/sql.py` does not wrap them). A missing object or denied
-  access on any dataset, even an optional one, leaves the source run in CAPTURING and fails the job. A retry resumes
-  from the datasets already captured, so a persistent error blocks every run instead of marking that dataset `FAILED`.
-- **Some bad values stop admission the same way.** Admission turns only its own admission errors into a rejected run.
-  These raise out of snapshot building instead and leave the run in CAPTURING: a `_UTC` value without an offset
-  (`NAIVE_DATETIME`), an economics effective time with no time-zone policy, a null `cs_windows.LAST_MODIFIED_DT`, a
-  null minutes value in `work_progress`, and non-integer text in `inspection_holds`. The live `team_inference` query
-  returns `datetime2` values without an offset, so its rows would stop admission the same way.
-- **An empty required dataset does not reject the run.** Only `master_task_list` is checked for emptiness
-  (`CENSUS_UNAVAILABLE`). Any other empty required dataset only adds `DATASET_EMPTY_UNCERTIFIED`. With an empty
-  `buyoff_plan` the snapshot has no QA phases; with an empty `pnet_dag` it has no template precedence. The plans still
-  validate in both cases.
-- **`DATASET_*` gaps are labels, not blocks.** They carry the effect `BLOCKS_EXECUTABLE`, but the validator only
-  enforces `SOURCE_STALE`, `SOURCE_CLOCK_UNKNOWN` and `CAPTURE_SKEW` (`focus/validation/plan.py`). What a missing
-  dataset withholds comes from how its facts resolve, as each page describes.
-- **Empty live results cannot be certified.** The live reader marks every zero-row capture `EMPTY_UNCERTIFIED`.
-- **The empty-attendance guard looks at the whole feed.** `ATTENDANCE_FEED_EMPTY` is raised only when
-  `attendance_shift` has no rows at all (`focus/data/workforce.py`). If it has rows for other days but none for the
-  production day, assigned, rostered people still count as executable that day on the roster basis, unless the 18-hour
-  freshness limit catches the stale feed.
-- **In-progress rework without progress restarts.** An IN WORK job with no `work_progress` row is blocked
-  (`REMAINING_UNKNOWN`), except a rework job (NC, PU or CI), which gets its full rework estimate again
-  (`focus/data/durations.py`). `work_progress` has no live producer yet, so live, this applies to every job in work.
-- **14 supplemental inputs and all 8 feeds have no live producer.** They report `NOT_PROBED`. `attendance_evidence` and
-  `holding_evidence` also have no draft query or landing table in `sql/migrations/008_lifecycle.sql`.
-- **Economics effective times are read as local time.** `EffectiveFromUtc` and `EffectiveToUtc` are parsed in the
-  dataset's declared source zone, not as UTC (`focus/economics/repository.py`), while
-  `queries/economics/effective_terms.sql` treats them as UTC.
-- **Liability checkpoints ignore the cutoff and ties.** The latest checkpoint is the highest `SequenceNumber`, with no
-  cutoff filter on its creation time, and a tie goes to whichever row was read first. The readiness query
-  `queries/economics/liability_floor.sql` excludes later checkpoints and reports ties.
+**Fixed on 2026-10-31:**
+- a database or connection error marks its dataset `FAILED`, or rejects the run for a required one;
+- an unreadable value, and an empty required dataset, reject the run with a code instead of leaving it CAPTURING;
+- an in-progress rework job without `work_progress` is blocked (`REMAINING_UNKNOWN`), never planned again at full
+  length;
+- economics `...Utc` times are read as UTC, and liability checkpoints respect the cutoff and never break a tie by row
+  order;
+- the empty-attendance guard looks at the production day.
+
+**Still open:**
+- **`DATASET_*` gaps are labels, not blocks.** For optional datasets they carry the effect `BLOCKS_EXECUTABLE`, but the
+  validator only enforces `SOURCE_STALE`, `SOURCE_CLOCK_UNKNOWN` and `CAPTURE_SKEW` (`focus/validation/plan.py`). What
+  a missing dataset withholds comes from how its facts resolve, as each page describes.
+- **Empty live results cannot be certified.** The live reader marks every zero-row capture `EMPTY_UNCERTIFIED`, so an
+  empty required dataset rejects the run even when empty is correct.
+- **14 supplemental inputs and all 8 feeds have no live producer.** They report `NOT_PROBED`. Without `work_progress`,
+  every live job in work is blocked. `attendance_evidence` and `holding_evidence` also have no draft query or landing
+  table in `sql/migrations/008_lifecycle.sql`.
 - **Three feeds skip the as-of rule for a missing observed time.** In `goal_amendments`, `disruption_claims` and
   `excusal_decisions`, a row with a missing or unreadable `OBSERVED_AT_UTC` is admitted at every as-of.
 - **The observation producer role cannot advance its receipt.** The drafted grants give `FOCUS_FN_ObservationProducer`

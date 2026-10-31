@@ -213,3 +213,15 @@ def test_posit_connect_identity_header_and_prefix(make_client, app_root) -> None
     app2, client2, _ = make_client(identity_provider="posit_connect", platform="posit_connect", proxy_fix=1)
     html2 = client2.get("/", headers={"X-Forwarded-Prefix": "/content/xyz"}).get_data(as_text=True)
     assert "/content/xyz/static/js/landing.js" in html2
+
+
+def test_pages_carry_the_site_zone_times_are_shown_in(make_client) -> None:
+    """Stored and served times are UTC; every page names the site's zone (policy shift.timezone) for local display."""
+    from tests.conftest import login
+
+    app, client, services = make_client()
+    zone = services.policy.str("shift.timezone")
+    assert f'<meta name="focus-site-tz" content="{zone}">' in client.get("/").get_data(as_text=True)
+    login(client, "manager")
+    for path in ("/dashboard", "/simulation"):
+        assert f'<meta name="focus-site-tz" content="{zone}">' in client.get(path).get_data(as_text=True), path

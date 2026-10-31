@@ -63,6 +63,19 @@ has ruled).
 | B21 | major | S12 l.1617 "Attempt1 exact incumbent day/shift/start" | The defense rebuilt an incumbent start from its shift's date and local time, so an S3 start after local midnight came back 24 hours early. Most S3 commitments were dropped as UNSAFE, with false safety alerts on delivery. The validator rebuilt starts the same way, so it agreed. | data | FIXED: `shift_local_minute` in both; S3 UNSAFE fell from about 116 to 14 per shift in a 6-aircraft run |
 | B22 | major | S12 l.1617, S08 l.1298 | Incumbent tasks were matched by phase ordinal. Written-back progress re-splits a job's remaining work and renumbers it from 0, so commitments landed on the wrong pieces or went missing. | data | FIXED: matched by minutes still to go (`IncumbentPlan.positions`); done work is PERFORMED, a folded piece MERGED; the validator checks both |
 
+## C. Found while writing the data source reference (`docs/data/`, October 31, 2026)
+
+| # | Sev. | Requirement | Deviation | Verified | Status |
+| --- | --- | --- | --- | --- | --- |
+| C1 | major | S05 ATOMIC ACQUISITION "a failed or rejected run never moves the head" | A database or connection error on any live query, optional datasets included, escaped acquisition: the run stayed CAPTURING and the job failed, so a missing object blocked every run. | probe | FIXED: the live reader turns a driver error into a failed capture (`SOURCE_QUERY_FAILED`): optional datasets are `FAILED`, required ones reject the run |
+| C2 | major | S05 "required datasets capture rows or a certified empty result" | Only an empty census was rejected. An empty `buyoff_plan` gave plans with no QA, an empty `pnet_dag` plans with no template precedence, and both validated. | probe | FIXED: `MANDATORY_DATASET_EMPTY` rejects the run; a certified-empty receipt is still admitted |
+| C3 | major | S05, "a malformed row never defaults" | A value admission could not read (no offset, null, not a number) raised out of snapshot building and left the run CAPTURING. | probe | FIXED: the run is rejected with `SOURCE_VALUE_INVALID` and the inner code |
+| C4 | major | S08 "never the full estimate again" | An in-progress rework job without `work_progress` got its full rework P75 again; other in-progress jobs were blocked. | code + test | FIXED: blocked (`REMAINING_UNKNOWN`) like any in-progress job |
+| C5 | major | S12 effective terms; owner decision "database columns are UTC" (2026-10-31) | Economics `...Utc` effective times were read in the dataset's local zone, and liability checkpoints ignored the cutoff and broke ties by row order. Live naive `datetime2` values in `_UTC` columns were rejected as having no offset. | probe | FIXED: `...Utc` and `..._UTC` columns are UTC (the live reader writes their offset); checkpoints created after the cutoff are skipped and a tie is `CHECKPOINT_SEQUENCE_CONFLICT` with no floor; live runs set the source zone map to UTC |
+| C6 | minor | S05 "an empty attendance feed is unready for executable crews" | The guard checked the whole feed, so rows for other days made the production day executable on the roster. | probe | FIXED: the guard looks at the production day |
+| C7 | minor | Owner decision (2026-10-31): the app shows local time | The simulation dashboard showed UTC, and the workspace hard-coded New York with an "ET" label. | browser | FIXED: every page carries the site zone (policy `shift.timezone`) and shows times in it, labelled, for example `EDT` |
+| C8 | — | OD-01 TOTAL_MECHANICS semantics | Open decision: live jobs carried `FLOW_SEMANTICS_UNCONFIRMED`. | — | DECIDED (owner, October 31, 2026): TOTAL_MECHANICS is the number of mechanics that must be on the job at once (authority `owner_decision`) |
+
 ## Checked and correct
 
 - Delivery hysteresis (2-day hold, 7-day bad news, sustained replans).

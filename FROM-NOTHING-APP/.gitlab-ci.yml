@@ -99,6 +99,7 @@ fixture_pipeline_rehearsal:
   resource_group: focus-$FOCUS_SCOPE_KEY
   variables:
     FOCUS_MODE: live
+    FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'   # database columns hold UTC (owner, 2026-10-31); the app shows local time
   artifacts:
     when: always
     expire_in: 90 days

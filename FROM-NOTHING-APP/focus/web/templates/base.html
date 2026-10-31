@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="focus-base" content="{{ base_path }}">
+  <meta name="focus-site-tz" content="{{ site_tz }}">
   {% if csrf_token %}<meta name="focus-csrf" content="{{ csrf_token }}">{% endif %}
   <title>{% block title %}FOCUS Manufacturing Scheduling{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/focus.css') }}">
