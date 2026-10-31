@@ -123,9 +123,16 @@ Five things the synthetic run cannot show, each to measure on a real extract:
    before a crew fits. Start skipping keeps that cheap, but it is not free.
 3. **Certificate bundles.** Real multi-certificate requirements and alternatives widen the crew search (capped at 2,000
    combinations per attempt). The synthetic teams need one to three certificates.
-4. **Hardware.** The measured runs used 4 cores and peaked at 5.9-9.4 GB.
-   - Posit Connect and Tanzu defaults are smaller; size the scheduling worker to at least 4 cores and 12-16 GB.
+4. **Where it runs.** The schedule runs in the GitLab pipeline (`schedule_validate` in `.gitlab-ci.yml`), and Posit
+   Connect only displays the published results. The size therefore matters for that job's runner, not for Connect:
+   - The measured runs used 4 cores and peaked at 5.9-9.4 GB. Tag the job to a runner with at least 4 vCPU and 16 GB.
+   - The job also needs the native wheel and `FOCUS_NATIVE_CORE=true`; without them the Python core gives the same plan
+     but is far too slow at 50 aircraft.
+   - Build the wheel with `native_wheel`, or bake it into a prebuilt image so the job spends no time installing.
    - With one core the search moves decode one at a time: the same plan, about 90 s more.
+   - Not yet measured at 50 aircraft: the draft pipeline passes the admitted snapshot from `acquire_admit` to
+     `schedule_validate` through the store. The simulation admits and plans in one process, so time that hand-off on
+     the real server. If it is slow, run admission and planning in one job (keeping each role's credentials).
 5. **Headroom.** 9.6 minutes fits the 10-minute target with little margin.
    - The repeatable knobs are fewer search moves (they accepted nothing at this scale) and fewer repair boosts.
    - The bigger lever would be a detailed horizon with a coarser projection beyond it, which changes how completions are

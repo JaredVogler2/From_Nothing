@@ -68,6 +68,16 @@ ui:
   script:
     - python -m pytest -q -p no:cacheprovider tests/ui
 
+native_wheel:
+  stage: verify
+  image: { name: "ghcr.io/pyo3/maturin:v1.7.4", entrypoint: [""] }   # Rust and manylinux Pythons; builds the abi3 wheel
+  before_script: []
+  script:
+    - maturin build --release -m native/Cargo.toml -o dist
+  artifacts:
+    expire_in: 30 days
+    paths: [dist/]
+
 fixture_pipeline_rehearsal:
   stage: verify
   needs: [import_and_lint]
@@ -108,7 +118,12 @@ schedule_validate:
   stage: schedule
   needs: [acquire_admit]
   environment: { name: focus-app }
+  tags: [focus-scheduler]                           # a runner with at least 4 vCPU and 16 GB (50 aircraft peaked at 6-9 GB)
+  variables:
+    FOCUS_NATIVE_CORE: "true"                       # the Rust core: the same plans as the Python core, far faster
   script:
+    # the wheel built by native_wheel, published to the internal index (docs/execution/NATIVE_CORE.md, Deployment)
+    - python -m pip install --disable-pip-version-check "focus-native==0.1.0"
     - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app > ci-receipts/app.json
 
 stage_readback:

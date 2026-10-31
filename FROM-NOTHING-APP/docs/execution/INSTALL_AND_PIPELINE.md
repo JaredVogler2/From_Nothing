@@ -191,6 +191,12 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   fixture rehearsal of the whole pipeline. None of it needs secrets.
 - **Live jobs** each run one role in a protected environment, chained with `needs` and serialized per scope with
   `resource_group`. `sign_accept` is `when: manual` and holds the only signing reference.
+- **The scheduling job** (`schedule_validate`) does the heavy work: it associates jobs with people and start times.
+  - Tag it to a runner with at least 4 vCPU and 16 GB.
+  - It installs the native wheel (`focus-native`, built by `native_wheel` and published to the internal index) and sets
+    `FOCUS_NATIVE_CORE=true`.
+  - Posit Connect only displays published results, so it needs no scheduling capacity
+    (`docs/execution/PRODUCTION_SCALE.md`).
 - **Status.** The draft was never pushed to a GitLab remote or activated.
 
 ## 5. Recovery
