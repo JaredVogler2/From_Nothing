@@ -222,7 +222,7 @@ def quantile_interval(ordered: Sequence[Fraction], p: Fraction, level: Fraction)
 class DurationStatistics:
     id: str
     run_id: str
-    group: tuple[str, ...]              # ("NC", "PROD-B") or ("NC",)
+    group: tuple[str, ...]              # exact ("NC", "PROD-B", "MODEL=787", "CREW=2"), broader ("NC", "PROD-B") or ("NC",)
     group_key_sha: str
     measurement_basis: str              # ELAPSED_ACTIVE (never person effort / crew)
     raw_count: int
@@ -264,10 +264,21 @@ METHOD = ("continuous-percentile h=(n-1)p; exact Fraction; elapsed-active comple
 METHOD_SHA = content_hash(METHOD)
 
 
+def exact_group(cls: str, team: str, model: Any, crew: Any) -> tuple[str, ...] | None:
+    """The exact comparable context of an episode or a job (S08): class, team, model and crew. None if model or crew is unknown.
+
+    The spec's context also names process and revision. No source contract carries them yet (duration_episodes,
+    clock observations and the job census have no such column), so they cannot be matched and are not invented.
+    """
+    if model in (None, "") or crew in (None, ""):
+        return None
+    return (cls, team, f"MODEL={model}", f"CREW={int(crew)}")
+
+
 def compute_statistics(episodes: Iterable[Mapping[str, Any]], *, run_id: str, policy_id: str, minimum_sample: int,
                        as_of: datetime | None = None, stale_after_days: int | None = None, query_sha: str = "",
                        confidence_level: Fraction | None = None) -> list[DurationStatistics]:
-    """Group completed episodes by (class, team) and by (class); persist P50/P55/mean/P75/P90.
+    """Group completed episodes by exact context (class, team, model, crew), by (class, team) and by (class); persist P50/P55/mean/P75/P90.
 
     Admission: STATUS ``verified_complete``, a positive parseable elapsed value and a completion
     instant. Reopened/unverified episodes are censored (excluded with their reason), so a
@@ -276,9 +287,12 @@ def compute_statistics(episodes: Iterable[Mapping[str, Any]], *, run_id: str, po
     """
     grouped: dict[tuple[str, ...], list[Mapping[str, Any]]] = defaultdict(list)
     for row in episodes:
-        cls = str(row["REWORK_CLASS"])
-        grouped[(cls, str(row.get("TEAM") or ""))].append(row)
+        cls, team = str(row["REWORK_CLASS"]), str(row.get("TEAM") or "")
+        grouped[(cls, team)].append(row)
         grouped[(cls,)].append(row)
+        exact = exact_group(cls, team, row.get("MODEL"), row.get("CREW"))
+        if exact is not None:
+            grouped[exact].append(row)
     out: list[DurationStatistics] = []
     for group, rows in sorted(grouped.items()):
         admitted: list[Fraction] = []

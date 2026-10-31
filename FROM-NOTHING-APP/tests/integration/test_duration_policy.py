@@ -115,6 +115,21 @@ def test_a17_rework_uses_p75_of_elapsed_cohort_not_effort_over_crew(services_fac
     assert stat.admitted_count == 30 and stat.excluded_reasons == {"STATUS_REOPENED": 1, "STATUS_UNVERIFIED": 1} and stat.unit == "minutes"
 
 
+def test_b14_exact_model_and_crew_context_first_then_the_approved_broader_group(services_factory) -> None:
+    _, _, snap = _snapshot(services_factory, "b14-exact", lambda d: None)
+    nc3 = _estimates(snap)[job_id(snap, 1303, "NC3")]
+    assert "of 30 completed NC/PROD-B/MODEL=9/CREW=2 elapsed episodes (exact context)" in nc3.method
+
+    def other_model(d):                       # half of the NC cohort was another model, so the exact context is below the sample
+        for r in d["duration_episodes"]["rows"]:
+            if r["REWORK_CLASS"] == "NC" and r["EPISODE_KEY"] < "NC-015":
+                r["MODEL"] = "10"
+
+    _, _, mixed = _snapshot(services_factory, "b14-broader", other_model)
+    e = _estimates(mixed)[job_id(mixed, 1303, "NC3")]
+    assert "of 30 completed NC/PROD-B elapsed episodes (approved broader group)" in e.method and e.elapsed_minutes == 52
+
+
 # ---------------------------------------------------------------------------- A18
 
 def test_a18_p90_toggle_is_a_new_policy_and_snapshot_original_unchanged(demo) -> None:
