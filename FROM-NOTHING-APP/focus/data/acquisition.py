@@ -366,7 +366,7 @@ def make_reader(services: Any, scenario: str | None = None) -> Any:
         return FixtureSourceReader(settings.fixture_inputs_dir / (scenario or settings.scenario_id))
     from .sql import SqlReader
 
-    return LiveSourceReader(settings.app_root, SqlReader(settings))
+    return LiveSourceReader(settings.app_root, SqlReader(settings), settings.scope_key)
 
 
 def cli_acquire(services: Any, args: Any) -> dict[str, Any]:

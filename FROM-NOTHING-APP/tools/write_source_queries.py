@@ -46,7 +46,8 @@ def render(name: str) -> str:
 SUPPLEMENTAL_READERS = {
     "queries/workforce/read_team_inference.sql": (
         HEADER
-        + "-- SQL-owned team inference output (S06 FOCUS_FN_TeamInference) for the latest COMPLETE source run.\n"
+        + "-- SQL-owned team inference output (S06 FOCUS_FN_TeamInference) for this scope's head source run.\n"
+        "-- Bound parameter (pymssql positional placeholder): ScopeKey.\n"
         "SELECT CONVERT(varchar(40), ti.RunId) AS RUN_ID, ti.PersonKey AS PERSON_KEY, ti.InferredTeam AS INFERRED_TEAM,\n"
         " ti.WindowStartUtc AS WINDOW_START_UTC, ti.WindowEndUtc AS WINDOW_END_UTC, ti.EvidenceCount AS EVIDENCE_COUNT,\n"
         " ti.EffortMinutes AS EFFORT_MINUTES, ti.TopShare AS TOP_SHARE,\n"
@@ -56,16 +57,17 @@ SUPPLEMENTAL_READERS = {
         " TRY_CONVERT(datetime2(6), JSON_VALUE(CONVERT(nvarchar(max), ti.EvidencePayload), '$.first_evidence_utc')) AS FIRST_EVIDENCE_UTC,\n"
         " TRY_CONVERT(datetime2(6), JSON_VALUE(CONVERT(nvarchar(max), ti.EvidencePayload), '$.last_evidence_utc')) AS LAST_EVIDENCE_UTC\n"
         "FROM WEB_APP.FOCUS_FN_TeamInference ti\n"
-        "WHERE ti.RunId = (SELECT TOP 1 h.RunId FROM WEB_APP.FOCUS_FN_SourceHead h ORDER BY h.UpdatedAtUtc DESC);\n"
+        "WHERE ti.RunId = (SELECT h.RunId FROM WEB_APP.FOCUS_FN_SourceHead h WHERE h.ScopeKey = %s);\n"
     ),
     "queries/durations/read_clock_observations.sql": (
         HEADER
-        + "-- Raw clock intervals (S06 FOCUS_FN_ClockObservation) for the latest COMPLETE source run.\n"
+        + "-- Raw clock intervals (S06 FOCUS_FN_ClockObservation) for this scope's head source run.\n"
+        "-- Bound parameter (pymssql positional placeholder): ScopeKey.\n"
         "SELECT co.SourceEventKey AS SOURCE_EVENT_KEY, co.LineNumber AS LINE_NUMBER, co.NativeSoi AS NATIVE_SOI,\n"
         " co.PersonKey AS PERSON_KEY, co.EpisodeKey AS EPISODE_KEY, co.Team AS TEAM, co.ReworkClass AS REWORK_CLASS,\n"
         " co.StartUtc AS START_UTC, co.EndUtc AS END_UTC, co.SourceRevision AS SOURCE_REVISION, co.IsVoided AS IS_VOIDED\n"
         "FROM WEB_APP.FOCUS_FN_ClockObservation co\n"
-        "WHERE co.RunId = (SELECT TOP 1 h.RunId FROM WEB_APP.FOCUS_FN_SourceHead h ORDER BY h.UpdatedAtUtc DESC);\n"
+        "WHERE co.RunId = (SELECT h.RunId FROM WEB_APP.FOCUS_FN_SourceHead h WHERE h.ScopeKey = %s);\n"
     ),
 }
 
