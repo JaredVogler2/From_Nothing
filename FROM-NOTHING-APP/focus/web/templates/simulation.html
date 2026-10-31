@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}FOCUS — Fleet simulation{% endblock %}
+{% block body_class %}workspace layout-classic simulation{% endblock %}
+{% block body %}
+<header class="app-header">
+  <div class="brand"><a href="{{ url_for('focus.landing') }}">FOCUS</a> <span class="muted">Fleet simulation</span></div>
+  <nav class="header-links" aria-label="Workspaces">
+    <a href="{{ url_for('focus.dashboard_classic') }}">Workspace</a>
+    <a href="{{ url_for('focus.api_docs') }}">API</a>
+  </nav>
+</header>
+<div class="sim-bar" id="sim-bar" aria-label="Simulation controls"></div>
+<nav class="sim-tabs" id="sim-tabs" aria-label="Simulation modules"></nav>
+<main id="main" class="sim-host" aria-live="polite"></main>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/simulation.js') }}"></script>
+{% endblock %}
