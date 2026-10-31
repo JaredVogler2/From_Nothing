@@ -40,6 +40,8 @@ from .parts import PartsBuild, root_chain
 from .scope import CensusBuild
 
 KIND = {"WORK": PhaseKind.WORK, "IP_QA": PhaseKind.IP_QA, "FINAL_QA": PhaseKind.FINAL_QA, "OTHER_BUYOFF": PhaseKind.OTHER_BUYOFF}
+BRIDGE_SIDES = {"FS": ("F", "S"), "SS": ("S", "S"), "FF": ("F", "F"), "SF": ("S", "F")}      # (predecessor side, successor side)
+BRIDGE_TYPES = {sides: etype for etype, sides in BRIDGE_SIDES.items()}
 
 
 @dataclass
@@ -73,6 +75,7 @@ class GraphBuild:
     diagnostics: list[tuple[str, str, str, str]] = field(default_factory=list)   # (code, scope, detail, effect)
     template_absent: int = 0
     template_pred_absent: int = 0
+    template_bridged: int = 0             # edges bridged through template tasks an aircraft does not carry
 
 
 def _tarjan(nodes: Iterable[str], adj: Mapping[str, set[str]]) -> list[list[str]]:
@@ -235,12 +238,57 @@ def build_graph(*, census: CensusBuild, durations: Mapping[str, DurationResoluti
     lines_of: dict[str, set[int]] = {}                  # SOI -> lines carrying it (one set per SOI, not per template row)
     carriers: dict[str, list[tuple[int, str, Any]]] = {}  # SOI -> (line, job id, census job) in census order
     job_index, jobs = census.job_index, census.jobs
+
+    def carried(soi: str) -> set[int]:
+        found = lines_of.get(soi)
+        if found is None:
+            found = lines_of[soi] = {line for line, _ in by_soi.get(soi, ())}
+        return found
+
+    # Each minor model's network spans every customer's aircraft, and customer options mean an aircraft may not carry a
+    # task: A>B>C on one customer's line is A>C on another's without B. A missing task is bridged, never taken as done and
+    # never dropped: its nearest carried ancestors connect to its successors. A missing task takes no time, so the
+    # composed relation joins the ancestor's side of the first edge to the successor's side of the last, with the lags
+    # summed; a bridge is hard only when every edge on its path is.
+    template_in: dict[str, list[tuple[int, str, str | None, str | None, int, str | None, str | None]]] = defaultdict(list)
+    for ordinal, row in enumerate(pnet_rows):
+        raw_type, raw_hard = row.get("RELATIONSHIP_TYPE"), row.get("IS_HARD")
+        pm, sm = row.get("PRED_MINOR_MODEL"), row.get("SUC_MINOR_MODEL")
+        template_in[str(row["SUCCESSOR_SOI"])].append((
+            ordinal, str(row["PREDECESSOR_SOI"]), rel_map.get(str(raw_type)) if raw_type is not None else None,
+            hard_map.get(str(raw_hard)) if raw_hard is not None else None,
+            int(row["OFFSET_MINUTES"]) if row.get("OFFSET_MINUTES") is not None else 0, None if pm is None else str(pm), None if sm is None else str(sm)))
+    frontiers: dict[tuple[int, str], list[tuple[str, str, int, bool, tuple[int, ...]]]] = {}
+
+    def frontier(line: int, model: str | None, soi: str) -> list[tuple[str, str, int, bool, tuple[int, ...]]]:
+        """The carried ancestors reached through tasks ``line`` does not carry, up to ``soi`` (itself not carried): each with
+        the ancestor's side (F/S), the summed lag to soi, whether every edge is hard, and the template rows on the path."""
+        key = (line, soi)
+        if key in frontiers:
+            return frontiers[key]
+        frontiers[key] = []                                    # a cycle through missing tasks contributes nothing
+        best: dict[tuple[str, str, bool], tuple[int, tuple[int, ...]]] = {}
+        for ordinal, pred, x_type, x_hardness, x_lag, xpm, xsm in template_in.get(soi, ()):
+            if model is not None and ((xpm is not None and xpm != model) or (xsm is not None and xsm != model)):
+                continue                                       # the edge's effectivity excludes this aircraft
+            if x_type not in BRIDGE_SIDES or x_hardness is None:
+                out.problems.append(f"line {line}: template edge {pred}->{soi} ({x_type}, IS_HARD {x_hardness}) cannot be bridged; not instantiated")
+                continue
+            x_hard = x_hardness == "HARD" or (x_hardness == "ADVISORY" and advisory_mandatory)
+            reached = ([(pred, BRIDGE_SIDES[x_type][0], 0, True, ())] if line in carried(pred)
+                       else frontier(line, model, pred))
+            for anc, side, lag, hard, path in reached:
+                k = (anc, side, hard and x_hard)
+                if k not in best or lag + x_lag > best[k][0]:      # the binding path: the largest summed lag
+                    best[k] = (lag + x_lag, path + (ordinal,))
+        frontiers[key] = [(anc, side, lag, hard, path) for (anc, side, hard), (lag, path) in sorted(best.items())]
+        return frontiers[key]
+
     for ordinal, row in enumerate(pnet_rows):
         pred_soi, succ_soi = str(row["PREDECESSOR_SOI"]), str(row["SUCCESSOR_SOI"])
         pred_lines = lines_of.get(pred_soi)
         if pred_lines is None:
             pred_lines = lines_of[pred_soi] = {line for line, _ in by_soi.get(pred_soi, ())}
-        out.template_pred_absent += sum(1 for line, _ in by_soi.get(succ_soi, ()) if line not in pred_lines)
         raw_type, raw_hard = row.get("RELATIONSHIP_TYPE"), row.get("IS_HARD")
         lag = int(row["OFFSET_MINUTES"]) if row.get("OFFSET_MINUTES") is not None else 0
         etype = rel_map.get(str(raw_type)) if raw_type is not None else None
@@ -248,6 +296,41 @@ def build_graph(*, census: CensusBuild, durations: Mapping[str, DurationResoluti
         evidence = (EvidenceRef(dataset_ids.get("pnet_dag", ""), f"pnet_dag#{ordinal}", source_run_id=run_id),)
         pm, sm = row.get("PRED_MINOR_MODEL"), row.get("SUC_MINOR_MODEL")
         pm, sm = (None if pm is None else str(pm)), (None if sm is None else str(sm))
+        # the successor is on a line that does not carry the predecessor (a customer option): bridge to its carried ancestors
+        for line, succ_job in by_soi.get(succ_soi, ()):
+            if line in pred_lines:
+                continue
+            out.template_pred_absent += 1
+            sjob = jobs.get(succ_job)
+            model = sjob.model if sjob is not None else None
+            if sjob is None or (model is not None and ((pm is not None and pm != model) or (sm is not None and sm != model))):
+                continue                                       # the template's effectivity excludes this aircraft
+            if etype not in BRIDGE_SIDES or hardness is None:
+                out.problems.append(f"line {line}: template edge {pred_soi}->{succ_soi} ({raw_type}, IS_HARD {raw_hard!r}) cannot be bridged")
+                continue
+            y_hard = hardness == "HARD" or (hardness == "ADVISORY" and advisory_mandatory)
+            for anc, side, anc_lag, anc_hard, path in frontier(line, model, pred_soi):
+                anc_job = job_index.get((line, anc))
+                if anc_job is None or anc_job == succ_job:
+                    continue
+                et = EdgeType(BRIDGE_TYPES[(side, BRIDGE_SIDES[etype][1])])
+                b_lag, b_hard = anc_lag + lag, anc_hard and y_hard
+                dedupe = (anc_job, succ_job, et.value, b_lag)
+                if dedupe in seen_template:
+                    continue
+                seen_template.add(dedupe)
+                a = out.finish_phase[anc_job] if side == "F" else out.start_phase[anc_job]
+                b = out.start_phase[succ_job] if BRIDGE_SIDES[etype][1] == "S" else out.finish_phase[succ_job]
+                rows = path + (ordinal,)
+                job_edges.append(Edge(digest_id("E", a, b, et.value, b_lag, "BRIDGED_PNET"), a, b, et, b_lag, b_hard, "BRIDGED_PNET",
+                                      f"bridged through {len(rows) - 1} task(s) line {line} does not carry", "HARD" if b_hard else "ADVISORY",
+                                      None, None, tuple(EvidenceRef(dataset_ids.get("pnet_dag", ""), f"pnet_dag#{o}", source_run_id=run_id)
+                                                        for o in rows)))
+                out.template_bridged += 1
+                if b_hard:
+                    job_adj[anc_job].add(succ_job)
+                    out.job_preds[succ_job].add(anc_job)
+                    job_edge_types[(anc_job, succ_job)].add(et)
         preds = carriers.get(pred_soi)
         if preds is None:
             preds = carriers[pred_soi] = [(line, job_id, jobs.get(job_id)) for line, job_id in by_soi.get(pred_soi, ())]

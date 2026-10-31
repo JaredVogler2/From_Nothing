@@ -191,7 +191,8 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
     notes.extend(graph.problems)
     if graph.template_absent or graph.template_pred_absent:
         notes.append(f"template edges not instantiated: {graph.template_absent} with the successor and {graph.template_pred_absent} with the "
-                     "predecessor SOI absent from that line's full census (template not applicable to that aircraft; never treated as done)")
+                     f"predecessor SOI absent from that line's full census (a customer option, never treated as done); {graph.template_bridged} "
+                     "edges bridge the missing tasks to their nearest carried ancestors")
     for code, scope_name, detail, effect in graph.diagnostics:
         gaps.append(ReadinessGap(code, scope_name, detail, effect))
 

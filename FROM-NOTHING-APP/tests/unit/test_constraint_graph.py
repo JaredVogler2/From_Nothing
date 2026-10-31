@@ -178,3 +178,37 @@ def test_a28_lifecycle_conflict_and_reopened_root_closure(services_factory) -> N
     assert [(e.pred_phase, e.succ_phase) for e in gated] == [(_phase_of(snap, child5, "RELEASE")[0].key.id,
                                                               _phase_of(snap, next5, "WORK")[0].key.id)]
     assert any(g.code == "ROOT_CLOSURE_REOPENED" for g in snap.gaps)
+
+
+def test_tasks_an_aircraft_does_not_carry_are_bridged(services_factory) -> None:
+    """Customer options: one model network spans every customer, so A>B>C on one aircraft is A>C on another without B.
+    A missing task is bridged (composed type, summed lag, hard only if every edge is), never dropped or taken as done; an
+    edge whose effectivity excludes the aircraft bridges nothing."""
+    def mutate(d):
+        row = d["pnet_dag"]["rows"][0]                                               # A0 -> A1, model 9, hard FS
+        def edge(pred, succ, kind="FINISH <= START", lag=0, model="9"):
+            return dict(row, PREDECESSOR_SOI=pred, SUCCESSOR_SOI=succ, ORIGINAL_PRED_JOBNUMBER=pred, ORIGINAL_SUC_JOBNUMBER=succ,
+                        RELATIONSHIP_TYPE=kind, OFFSET_MINUTES=lag, PRED_MINOR_MODEL=model, SUC_MINOR_MODEL=model)
+        d["pnet_dag"]["rows"] += [
+            edge("A0", "OPT1", lag=10), edge("OPT1", "OPT2", lag=5), edge("OPT2", "A2", lag=15),     # two missing tasks in a row
+            edge("A1", "OPT3", "START <= START"), edge("OPT3", "FGI", "FINISH <= FINISH", lag=20),    # composes to A1 start -> FGI finish
+            edge("A0", "OPT8", model="8"), edge("OPT8", "FGI", model="8"),                            # another model's option
+            dict(edge("A1", "OPT4"), IS_HARD="N"), edge("OPT4", "A2", lag=45),                       # one advisory edge: an advisory bridge
+        ]
+
+    snap = _snapshot(services_factory, "bridge", ("pnet_dag",), mutate)
+    a0, a2, fgi = job_id(snap, 1301, "A0"), job_id(snap, 1301, "A2"), job_id(snap, 1301, "FGI")
+    starts = {p.job: p.key.id for p in snap.phases if p.kind.value == "WORK" and p.ordinal == 0}
+    finishes = {p.job: p.key.id for p in snap.phases if p.kind.value == "RELEASE"}
+    bridged = [e for e in snap.edges if e.basis == "BRIDGED_PNET"]
+    a0_a2 = [e for e in bridged if (e.pred_phase, e.succ_phase) == (finishes[a0], starts[a2])]
+    assert len(a0_a2) == 1, bridged
+    edge = a0_a2[0]
+    assert edge.type is EdgeType.FS and edge.lag_minutes == 30 and edge.hard and len(edge.evidence) == 3     # 10 + 5 + 15 over 3 rows
+    a1 = job_id(snap, 1301, "A1")
+    sf = [e for e in bridged if (e.pred_phase, e.succ_phase) == (starts[a1], finishes[fgi])]
+    assert len(sf) == 1 and sf[0].type is EdgeType.SF and sf[0].lag_minutes == 20 and sf[0].hard          # (start of SS, finish of FF)
+    assert [e.pred_phase for e in bridged if e.succ_phase in (starts[fgi], finishes[fgi])] == [starts[a1]]  # model 8 never applies to 9
+    advisory = [e for e in bridged if (e.pred_phase, e.succ_phase) == (finishes[a1], starts[a2])]
+    assert len(advisory) == 1 and advisory[0].lag_minutes == 45 and not advisory[0].hard
+    assert not any("OPT" in r for d in snap.dispositions for r in d.reasons)                                  # nothing held or done
