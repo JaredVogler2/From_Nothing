@@ -18,7 +18,7 @@ from tests.integration.test_validator_mutations import CORPUS, base  # noqa: F40
 
 
 def v9_reference(run) -> None:  # type: ignore[no-untyped-def]
-    """The per-assignment V9 kept verbatim as the oracle."""
+    """The per-assignment V9 kept as the oracle: each assignment's hard-edge ancestors up to verified completion."""
     inp = run.inp
     memo: dict[str, frozenset[str]] = {}
     blocking = [s for s in inp.snapshot.shortages if s.status in ("UNKNOWN_ECD", "REOPENED")]
@@ -108,3 +108,65 @@ def test_one_pass_v9_equals_the_reference_behind_blocking_shortages(app_root, tm
         assert new == old and n_new == n_old, purpose
     new, *_ = both(snapshot, services.policy, replace(plan, assignments=tuple(forged)), Purpose.EXECUTABLE)
     assert any(v.code == "PART_SHORTAGE_BLOCKED" for v in new)
+
+
+def test_one_pass_v9_equals_the_reference_on_a_cyclic_graph(base) -> None:  # noqa: F811
+    """A hard-edge cycle through placed work (a corrupt graph the topological pass cannot order): the phases on and
+    below the cycle take the exact walk, and both implementations still agree, on forecast and executable judgement."""
+    plan = base.plans[Purpose.FORECAST]
+    checked = 0
+    for purpose in (Purpose.FORECAST, Purpose.EXECUTABLE):
+        inp = ValidationInput.build(base.snapshot, base.policy, purpose)
+        memo: dict[str, frozenset[str]] = {}
+        parts = {rid for rid, rel in inp.releases.items() if rel.kind is ReleaseKind.PART}
+        placed = sorted({a.phase for a in plan.assignments if a.phase in inp.phases})
+        phase, edge = next((pid, e) for pid in placed if inp.ancestors(pid, memo) & parts
+                           for e in inp.hard_out.get(pid, ()) if e.succ_phase in inp.phases)
+        back = replace(edge, pred_phase=edge.succ_phase, succ_phase=phase)       # successor -> phase closes the loop
+        inp.hard_out.setdefault(back.pred_phase, []).append(back)
+        inp.hard_in.setdefault(phase, []).append(back)
+        new, old = vplan._Run(inp, plan), vplan._Run(inp, plan)
+        vplan._v9(new)
+        v9_reference(old)
+        key = lambda v: (v.check, v.code, v.entity, v.detail)  # noqa: E731
+        assert sorted(new.violations, key=key) == sorted(old.violations, key=key), purpose
+        assert new.counts["V9"] == old.counts["V9"]
+        checked += bool(old.violations)
+    assert checked                                                              # executable judgement draws real findings
+
+
+def test_v9_stops_at_verified_completion(base) -> None:  # noqa: F811
+    """A verified-complete phase satisfies its successors (V2, the decoder): a part or a blocking shortage above it gates
+    nothing below it. A 50-aircraft run hit this: an open rework child whose part had not arrived fed the completed
+    successor of its completed root (REWORK_REOPENED_ROOT), the decoder rightly placed the open work after that successor,
+    and V9 walked through the completion and failed the plan."""
+    from focus.domain import EdgeType
+
+    checked = 0
+    for purpose in (Purpose.EXECUTABLE, Purpose.FORECAST):
+        inp = ValidationInput.build(base.snapshot, base.policy, purpose)
+        plan = base.plans[purpose]
+        placed = {a.phase: a for a in plan.assignments}
+        done, below = next((pid, e.succ_phase) for pid in sorted(inp.phases) if inp.satisfied_node(pid)
+                           for e in inp.hard_out.get(pid, ()) if e.succ_phase in placed)
+        part = next(rid for rid, rel in sorted(inp.releases.items()) if rel.kind is ReleaseKind.PART and rel.status is not ReleaseStatus.CONFIRMED)
+        edge = replace(inp.hard_out[done][0], id="E-TEST-PART-ABOVE-DONE", pred_phase=part, succ_phase=done, type=EdgeType.FS, lag_minutes=0)
+        inp.hard_out.setdefault(part, []).append(edge)
+        inp.hard_in.setdefault(done, []).append(edge)
+        shortage = replace(base.snapshot.shortages[0], record_id=999001, affected_jobs=(inp.phases[done].job,), status="UNKNOWN_ECD")
+        inp.snapshot = replace(inp.snapshot, shortages=inp.snapshot.shortages + (shortage,))
+        raw, stack = set(), [below]                                             # a walk through completion reaches the part
+        while stack:
+            for e in inp.hard_in.get(stack.pop(), ()):
+                if e.pred_phase not in raw:
+                    raw.add(e.pred_phase)
+                    stack.append(e.pred_phase)
+        assert part in raw and part not in inp.ancestors(below, {})
+        new, old = vplan._Run(inp, plan), vplan._Run(inp, plan)
+        vplan._v9(new)
+        v9_reference(old)
+        key = lambda v: (v.check, v.code, v.entity, v.detail)  # noqa: E731
+        assert sorted(new.violations, key=key) == sorted(old.violations, key=key), purpose
+        assert not [v for v in new.violations if v.entity == placed[below].id], purpose
+        checked += 1
+    assert checked == 2

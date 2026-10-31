@@ -16,6 +16,8 @@ Claims, reviewed relief and verified actual work are distinct, revisioned facts:
   never mutated.
 * ``DefectEvidence``: explicit defect-origin evidence, kept separate from DAG direction and from
   the executing team.
+* ``AttendanceEvidence`` and ``HoldingEvidence``: source attendance and certificate revocation facts
+  observed after planning; the explicit evidence behind CAPACITY_SHORTAGE and SKILL_SHORTAGE claims.
 * ``ObservationRun``: one collection, with per-feed coverage and quarantine receipts.
 """
 from __future__ import annotations
@@ -217,6 +219,56 @@ class DefectEvidence:
         _utc(self, "observed_at", "ingested_at")
         if not self.origin_team or not self.evidence_ref:
             raise DomainError("ORIGIN_EVIDENCE_REQUIRED", "defect origin needs an origin team and an evidence reference")
+
+
+@dataclass(frozen=True, slots=True)
+class AttendanceEvidence:
+    """A source attendance record for one person and shift. ``present=False`` is a call-off: evidence for a
+    CAPACITY_SHORTAGE claim when the person was on a planned crew, never relief by itself."""
+
+    id: str
+    scope: str
+    source_key: str
+    person: str
+    shift_id: str
+    present: bool
+    reason: str
+    recorded_at: datetime
+    observed_at: datetime
+    ingested_at: datetime
+    evidence_ref: str
+
+    def __post_init__(self) -> None:
+        _utc(self, "recorded_at", "observed_at", "ingested_at")
+        if not self.person or not self.evidence_ref:
+            raise DomainError("ATTENDANCE_EVIDENCE_REQUIRED", "attendance evidence names a person and an evidence reference")
+
+
+HOLDING_EVENTS = ("REVOKED", "REINSTATED")      # the holding_events vocabulary of source admission (focus.data.qualifications)
+
+
+@dataclass(frozen=True, slots=True)
+class HoldingEvidence:
+    """A certificate revocation or reinstatement for one person: evidence for a SKILL_SHORTAGE claim when the certificate
+    is in the bundle of planned work the person was crewed on."""
+
+    id: str
+    scope: str
+    source_key: str
+    person: str
+    cert: str
+    event: str                     # REVOKED | REINSTATED
+    effective_at: datetime
+    observed_at: datetime
+    ingested_at: datetime
+    evidence_ref: str
+
+    def __post_init__(self) -> None:
+        _utc(self, "effective_at", "observed_at", "ingested_at")
+        if self.event not in HOLDING_EVENTS:
+            raise DomainError("BAD_HOLDING_EVENT", f"holding event {self.event!r} is not one of {', '.join(HOLDING_EVENTS)}")
+        if not self.person or not self.cert or not self.evidence_ref:
+            raise DomainError("HOLDING_EVIDENCE_REQUIRED", "holding evidence names a person, a certificate and an evidence reference")
 
 
 @dataclass(frozen=True, slots=True)

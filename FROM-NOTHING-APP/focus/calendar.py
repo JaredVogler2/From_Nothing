@@ -267,6 +267,18 @@ def build_shift(day: date, number: int, policy: ShiftPolicy, site: str = "DEMO")
     return _build_shift_cached(day, number, policy, site)
 
 
+def shift_local_minute(day: date, number: int, wall: str, policy: ShiftPolicy, site: str = "DEMO") -> int:
+    """The UTC minute of a local wall-clock time ("HH:MM") inside shift ``number`` of production day ``day``.
+
+    A time earlier than the shift's start belongs to the next calendar day: S3 runs past local midnight, so its
+    starts after midnight are on the day after its production day.
+    """
+    shift = build_shift(day, number, policy, site)
+    t = time.fromisoformat(wall)
+    at = to_minute(local_to_utc(datetime.combine(day, t), policy.tz))
+    return at if at >= shift.start else to_minute(local_to_utc(datetime.combine(day + timedelta(days=1), t), policy.tz))
+
+
 def parse_shift_id(shift_id: str) -> tuple[str, date, int]:
     site, day, label = shift_id.rsplit(":", 2)
     if not label.startswith("S"):

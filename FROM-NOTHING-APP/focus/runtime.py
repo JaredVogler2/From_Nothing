@@ -63,6 +63,10 @@ def build_services(settings: Settings | None = None, *, repositories: Repositori
                    clock: Clock | None = None, store: Store | None = None, policy: Policy | None = None) -> Services:
     settings = settings or Settings.from_env()
     clock = clock or default_clock(settings)
+    if settings.native_core:
+        from .codec import enable_native_codec
+
+        enable_native_codec(True)             # byte-identical canonical JSON and hashes from the native core, when installed
     if repositories is None:
         repositories = Repositories(store or default_store(settings), mode=settings.mode, scope_key=settings.scope_key, clock=clock)
     return Services(settings=settings, clock=clock, repositories=repositories, _policy=policy)

@@ -278,8 +278,10 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
 
     if not assign_rows:
         out.gaps.append(("ASSIGNMENT_FEED_EMPTY", "workforce", "FOCUS_PERSON_TEAM_MAP returned no rows; inference is nominal forecast evidence only", "BLOCKS_EXECUTABLE"))
-    if not datasets.get("attendance_shift"):
-        out.gaps.append(("ATTENDANCE_FEED_EMPTY", "workforce", "FOCUS_ATTENDANCE_SHIFT returned no rows for the production day", "BLOCKS_EXECUTABLE"))
+    attendance_known = bool(datasets.get("attendance_shift"))
+    if not attendance_known:
+        out.gaps.append(("ATTENDANCE_FEED_EMPTY", "workforce", "FOCUS_ATTENDANCE_SHIFT returned no rows for the production day; nobody is an "
+                         "executable crew member on that day (forecast evidence only)", "BLOCKS_EXECUTABLE"))
     if horizon is None:
         out.gaps.append(("HORIZON_UNKNOWN", "workforce", "no admitted line calendar bounds; pools cannot be dated", "BLOCKS_ALL"))
         return out
@@ -396,7 +398,8 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
                         basis=basis,
                         evidence=(EvidenceRef(dataset_ids.get("shift_roster", ""), f"{person}@{d.isoformat()}S{n}", source_run_id=run_id),),
                     ))
-                    if basis.value in executable_bases:
+                    # an empty attendance feed leaves the production day without presence evidence: forecast only (S05)
+                    if basis.value in executable_bases and (attendance_known or d != production_day):
                         exec_members.append(person)
                     if basis.value in forecast_bases:
                         fore_members.append(person)

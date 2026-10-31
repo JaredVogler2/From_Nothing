@@ -130,3 +130,26 @@ def test_a64_spoofed_flags_cannot_make_virtual_people_executable(demo_snapshot) 
     real_pool = next(p for p in demo_snapshot.pools if p.key.team == "PROD-A" and p.n_executable)
     mixed = admit_executable_crew([real_pool.executable_members[0], virtual[0]], real_pool, {**people, **spoofed}, claims=claims)
     assert not mixed.allowed and mixed.code == "SYNTHETIC_NOT_EXECUTABLE"
+
+
+def test_empty_attendance_feed_leaves_the_production_day_without_executable_crew(services_factory) -> None:
+    """S05: an empty current attendance feed is unready for executable crew; the roster stays forecast evidence."""
+    import json
+    from pathlib import Path
+
+    from focus.data.acquisition import load_snapshot
+    from focus.data.fixture_reader import FixtureSourceReader
+    from tests.conftest import acquire_demo
+
+    inputs = Path(__file__).resolve().parents[2] / "fixtures" / "inputs" / "manufacturing_demo"
+    attendance = json.loads((inputs / "attendance_shift.json").read_text())
+    attendance["rows"] = []
+    services = services_factory()
+    outcome = acquire_demo(services, key="empty-attendance", reader=FixtureSourceReader(inputs, overrides={"attendance_shift": attendance}))
+    assert outcome.status == "COMPLETE", outcome.rejection
+    snapshot = load_snapshot(services.repositories, outcome.snapshot_id)
+    assert {g.code: g.capability_effect for g in snapshot.gaps}.get("ATTENDANCE_FEED_EMPTY") == "BLOCKS_EXECUTABLE"
+    pools = _pools(snapshot)
+    today = pools[("PROD-A", date(2026, 10, 26), 1)]
+    assert today.n_executable == 0 and today.cap_executable == 0 and today.n_forecast > 0     # no presence evidence today
+    assert pools[("PROD-A", date(2026, 10, 27), 1)].n_executable == 8                          # later days plan from the roster

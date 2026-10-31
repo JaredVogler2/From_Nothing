@@ -4,8 +4,9 @@
 --
 -- Bound parameters (pymssql positional placeholders, in order): RunId, PolicyId.
 -- The worker first loads #EpisodeCompletion(EpisodeKey nvarchar(256), ReworkClass varchar(8), Team nvarchar(80),
--- CompletedAtUtc datetime2(6), Verified bit, Reopened bit) from the run's admitted source rows (verified completion,
--- authoritative NC/PU/CI classification and parent/root links). Unverified or reopened episodes are censored:
+-- Model nvarchar(40) NULL, Crew int NULL, CompletedAtUtc datetime2(6), Verified bit, Reopened bit) from the run's admitted
+-- source rows (verified completion, authoritative NC/PU/CI classification and parent/root links). Model and crew are the
+-- episode's comparable context (S08); they travel in EvidencePayload, and percentiles.sql groups the exact context on them. Unverified or reopened episodes are censored:
 -- they are written with Admitted = 0 and an exclusion reason, never silently dropped (no survivor bias).
 --
 -- Semantics (identical to focus.data.duration_gauge.episode_metrics):
@@ -89,7 +90,7 @@ SELECT NEWID(), @RunId,
        ec.CompletedAtUtc,
        CASE WHEN ec.Verified = 1 AND ec.Reopened = 0 THEN 1 ELSE 0 END,
        CONVERT(varbinary(max), CONVERT(nvarchar(max), (
-           SELECT ec.EpisodeKey AS episode_key, @PolicyId AS policy_id,
+           SELECT ec.EpisodeKey AS episode_key, @PolicyId AS policy_id, ec.Model AS model, ec.Crew AS crew,
                   CASE WHEN ec.Reopened = 1 THEN 'STATUS_REOPENED' WHEN ec.Verified = 0 THEN 'STATUS_UNVERIFIED' END AS excluded_reason,
                   'RUNNING_MAX_UNION;OWNER_UNIONS;FIRST_ON_LAST_OFF;US_EXACT;6DP_HALF_AWAY' AS method
            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES)))

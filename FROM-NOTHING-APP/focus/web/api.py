@@ -486,6 +486,15 @@ def create_ie_review(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     success_status=202,
 )
 def create_reported_observation(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from .serializers import Canon, phase_team
+
+    canon = Canon.load(svc())
+    job = canon.jobs().get(args["job_id"])
+    phase = canon.phases().get(args.get("phase_id") or "")
+    team = phase_team(phase) if phase is not None and phase.job == args["job_id"] else (job.team if job is not None else None)
+    if job is None or not ctx.scope.allows_team(team):
+        # the same 404 whether the job is missing or outside the caller's scope: no existence leak across teams
+        raise ApiError(404, "JOB_NOT_FOUND", "no job with that id in your scope")
     return enqueue(ctx, "reported_observation", args)
 
 

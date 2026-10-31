@@ -63,14 +63,19 @@ class EconomicsRegistry:
         return True, "KNOWN"
 
     def penalty(self, line: int, completion_minute: int) -> Fraction | None:
-        """Exact modeled penalty (Fraction cents) if the aircraft completes at ``completion_minute``."""
+        """Exact modeled penalty (Fraction cents) if the aircraft completes at ``completion_minute``.
+
+        The cumulative already-accounted exposure is a floor (S12): the modeled exposure never counts below what accounting
+        has booked, so the controllable increment and the marginal priority weight both start above it.
+        """
         ok, _ = self.supported(line)
         if not ok:
             return None
         econ = self.economics[line]
         delay = max(0, completion_minute - to_minute(econ.due_at))   # type: ignore[arg-type]
         raw = econ.daily_rate_cents * delay / 1440                    # type: ignore[operator]
-        return min(raw, econ.cap_cents) if econ.cap_cents is not None else raw
+        modeled = min(raw, econ.cap_cents) if econ.cap_cents is not None else raw
+        return max(modeled, Fraction(econ.accrued_floor_cents)) if econ.accrued_floor_cents is not None else modeled
 
     def marginal(self, line: int, completion_minute: int, days: int | None = None) -> Fraction | None:
         span = 1440 * (days if days is not None else self.horizon_days)

@@ -1,13 +1,15 @@
 """Planning contracts: snapshot, phases, candidate plans, receipts, publications (S03)."""
 from __future__ import annotations
 
+import weakref
+
 from dataclasses import dataclass, fields, replace
 from datetime import date, datetime
 from decimal import Decimal
 from fractions import Fraction
 from typing import Any
 
-from ..codec import content_hash
+from ..codec import streamed_content_hash
 from ..domain import (
     AvailabilityBasis,
     DomainError,
@@ -33,9 +35,10 @@ from ..domain import (
 
 
 def record_hash(record: Any, exclude: tuple[str, ...] = ("hash",)) -> str:
-    """Canonical hash of a dataclass record excluding its own hash/signature fields."""
+    """Canonical hash of a dataclass record excluding its own hash/signature fields (streamed: the same digest as hashing
+    the record's canonical JSON, without building it whole)."""
     body = {f.name: getattr(record, f.name) for f in fields(record) if f.name not in exclude}
-    return content_hash(body)
+    return streamed_content_hash(body)
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +452,7 @@ class AircraftCensus:
     reasons: tuple[str, ...]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, weakref_slot=True)
 class PlanningSnapshot:
     id: str
     source_run_id: str
@@ -496,8 +499,19 @@ class PlanningSnapshot:
         return record_hash(self)
 
     def verify(self) -> None:
+        """Recompute the content hash against the sealed one. A frozen snapshot object verified once in this process is
+        not re-hashed: the memo holds a weak reference, so it never keeps a snapshot alive or matches a new object."""
+        seen = _VERIFIED.get(id(self))
+        if seen is not None and seen[0]() is self and seen[1] == self.hash:
+            return
         if self.computed_hash() != self.hash:
             raise DomainError("SNAPSHOT_HASH_MISMATCH", f"snapshot {self.id} content hash mismatch")
+        _VERIFIED[id(self)] = (weakref.ref(self), self.hash)
+        for key in [k for k, (ref, _) in _VERIFIED.items() if ref() is None]:
+            del _VERIFIED[key]
+
+
+_VERIFIED: dict[int, tuple[Any, str]] = {}          # id -> (weak reference, verified hash): snapshots verified in this process
 
 
 def seal_snapshot(snapshot: PlanningSnapshot) -> PlanningSnapshot:
@@ -607,7 +621,7 @@ class CommitmentResult:
     job: str
     incumbent_assignment_id: str
     day_offset: int
-    outcome: str                       # KEPT | CREW_CHANGED | MOVED | DEFERRED | UNSAFE | OUT_OF_HORIZON | COMPLETED
+    outcome: str                       # KEPT | CREW_CHANGED | MOVED | DEFERRED | UNSAFE | OUT_OF_HORIZON | COMPLETED | PERFORMED | MERGED
     attempt1: str
     attempt2: str
     reason: str
@@ -630,7 +644,12 @@ class IncumbentAssignment:
 
 @dataclass(frozen=True, slots=True)
 class IncumbentPlan:
-    """The accepted incumbent for one scope/purpose: the only source of defeasible task commitments."""
+    """The accepted incumbent for one scope/purpose: the only source of defeasible task commitments.
+
+    ``positions`` holds, per assignment, the production minutes still to go in its job from that phase (``work_to_go``),
+    or None where the position does not apply. It is empty for incumbents recorded without positions (the fixture
+    incumbent), which are matched by phase ordinal.
+    """
 
     id: str
     scope: str
@@ -641,6 +660,52 @@ class IncumbentPlan:
     previous_cutoff: datetime
     namespace: str
     assignments: tuple[IncumbentAssignment, ...]
+    positions: tuple[int | None, ...] = ()
+
+
+POSITIONED_KINDS = (PhaseKind.WORK, PhaseKind.IP_QA)
+
+
+def work_to_go(job_phases: Any) -> dict[str, int]:
+    """Production minutes from each WORK or in-process QA phase to the end of its job's production work, by phase id.
+
+    ``job_phases`` are one job's phases in chain order. When progress is written back, the remaining work is re-split
+    and renumbered from ordinal 0, but every piece not yet started keeps its minutes to go. A WORK phase counts its own
+    minutes; an IP_QA hold counts the production work after it.
+    """
+    out: dict[str, int] = {}
+    left = 0
+    for p in reversed(list(job_phases)):
+        if p.kind is PhaseKind.WORK:
+            left += p.work_minutes
+            out[p.key.id] = left
+        elif p.kind is PhaseKind.IP_QA:
+            out[p.key.id] = left
+    return out
+
+
+def locate_position(job_phases: Any, kind: PhaseKind, to_go: int) -> tuple[Any, bool] | None:
+    """The current phase holding an incumbent position, and whether that position has already been performed.
+
+    A WORK position belongs to the WORK phase whose span of minutes to go contains it. An IP_QA position needs a hold
+    at exactly that point. A position beyond all of the job's remaining production work was performed since the
+    incumbent was accepted. None when positions do not apply: the kind is not positioned, or the job has no known
+    remaining production work (its phases are then matched by ordinal).
+    """
+    if kind not in POSITIONED_KINDS:
+        return None
+    phases = list(job_phases)
+    togo = work_to_go(phases)
+    remaining = max((togo[p.key.id] for p in phases if p.kind is PhaseKind.WORK), default=0)
+    if remaining <= 0:
+        return None
+    for p in phases:
+        if p.kind is not kind or p.key.id not in togo:
+            continue
+        hi = togo[p.key.id]
+        if (kind is PhaseKind.WORK and hi - p.work_minutes < to_go <= hi) or (kind is PhaseKind.IP_QA and hi == to_go):
+            return p, False
+    return None, to_go > remaining
 
 
 @dataclass(frozen=True, slots=True)

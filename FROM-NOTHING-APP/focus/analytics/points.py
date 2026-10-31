@@ -25,6 +25,9 @@ At a true gate, ages 0/2/3/5/7 give raw 0, 0.4, 0.6, 1 and 1.
 ``FrozenGoal`` (``publication.serializer.freeze_goals`` calls ``gate_context`` here). Recognition is
 earned once, from verified completion, at that frozen value. A later display or refresh date never
 increases XP that was already earned.
+
+**Display.** ``behind_station`` values one station gate on a display date for the twin (S01): basis, ages, grace and
+factor, never XP.
 """
 from __future__ import annotations
 
@@ -65,6 +68,22 @@ def gate_context(policy: Any, gate_date: date | None, valuation: date, effort: i
     effective = effective_gate(basis, gate_date, policy.int("gate.proxy_grace_days"))
     behind, raw = behind_raw(valuation, effective, policy.int("gate.cap_days"))
     return GateContext(basis, gate_date, effective, valuation, behind, raw, base, base * Fraction(policy.int("gate.weight"), 100) * raw)
+
+
+def behind_station(policy: Any, gate_date: date | None, valuation: date, *, basis: str | None = None) -> dict[str, Any]:
+    """A station gate's behind-station value on ``valuation``, with its explicit date basis (S01, S14).
+
+    ``bonus_factor`` = ``gate.weight``/100 * behind_raw: the share of base recognition a unit completed on ``valuation``
+    adds. ``grace_days`` is the grace this basis applies (``gate.proxy_grace_days`` for a baseline proxy, else 0). A missing
+    gate is UNAVAILABLE: its ages and factor are None, never zero.
+    """
+    c = gate_context(policy, gate_date, valuation, 0, basis=basis)
+    weight = policy.int("gate.weight")
+    return {"basis": c.basis, "gate_date": c.gate_date, "effective_gate_date": c.effective_gate_date,
+            "grace_days": policy.int("gate.proxy_grace_days") if c.basis == "BASELINE_PROXY" else 0,
+            "valuation_date": c.valuation_date, "behind_days": c.behind_days, "behind_raw": c.behind_raw,
+            "bonus_factor": None if c.behind_raw is None else Fraction(weight, 100) * c.behind_raw,
+            "weight": weight, "cap_days": policy.int("gate.cap_days")}
 
 
 def unit_values(context: GateContext | None, unit_effort: int, policy: Any) -> tuple[Fraction, Fraction]:

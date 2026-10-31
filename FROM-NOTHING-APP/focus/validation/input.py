@@ -178,6 +178,9 @@ class ValidationInput:
             if h.revoked_at is not None and minute_floor(h.revoked_at) < end:
                 reasons.append("REVOKED")
                 continue
+            if any(minute_floor(a) < end and start < minute_floor(b) for a, b in h.revoked_windows):
+                reasons.append("REVOKED")
+                continue
             return True, "VALID"
         return False, sorted(reasons)[0]
 
@@ -198,13 +201,16 @@ class ValidationInput:
     def shift(self, shift_id: str | None) -> ShiftInstance | None:
         if not shift_id:
             return None
+        cache = self.__dict__.setdefault("_shift_cache", {})     # ShiftInstance is immutable: one per id per input
+        if shift_id in cache:
+            return cache[shift_id]
         try:
             site, day, number = parse_shift_id(shift_id)
-            if site != self.snapshot.site:
-                return None
-            return build_shift(day, number, self.shift_policy, site)
+            found = build_shift(day, number, self.shift_policy, site) if site == self.snapshot.site else None
         except (ValueError, TypeError):
-            return None
+            found = None
+        cache[shift_id] = found
+        return found
 
     def _status(self, line: int, day: date) -> str | None:
         cal = self.calendars.get(line)
@@ -269,14 +275,19 @@ class ValidationInput:
         return None
 
     def ancestors(self, node: str, memo: dict[str, frozenset[str]]) -> frozenset[str]:
-        """Every hard-edge ancestor of a node (iterative, cycle-safe)."""
+        """Every hard-edge ancestor of a node up to verified completion (iterative, cycle-safe).
+
+        Completion is a fact: a satisfied phase satisfies its successors (V2, the decoder), so nothing above it, such as
+        an unreceived part or a blocking shortage, gates the work below it. The walk neither includes a satisfied phase
+        nor passes through one.
+        """
         if node in memo:
             return memo[node]
         seen: set[str] = set()
         stack = [e.pred_phase for e in self.hard_in.get(node, ())]
         while stack:
             n = stack.pop()
-            if n in seen:
+            if n in seen or self.satisfied_node(n):
                 continue
             seen.add(n)
             if n in memo:
@@ -285,6 +296,10 @@ class ValidationInput:
             stack.extend(e.pred_phase for e in self.hard_in.get(n, ()))
         memo[node] = frozenset(seen)
         return memo[node]
+
+    def satisfied_node(self, node: str) -> bool:
+        phase = self.phases.get(node)
+        return phase is not None and self.satisfied(phase) is not None
 
     def known_node(self, node: str) -> bool:
         return node in self.phases or node in self.releases

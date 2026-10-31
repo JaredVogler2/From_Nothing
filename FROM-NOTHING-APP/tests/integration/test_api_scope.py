@@ -118,7 +118,24 @@ def read_paths(world) -> dict[str, str]:  # type: ignore[no-untyped-def]
         "get_scenario": "/api/v1/scenarios/SCN-abcdef12",
         "get_twin": "/api/v1/twin?team=PROD-A",
         "get_explanation": "/api/v1/explanations/EXP-abcdef12",
+        "sim_overview": "/api/v1/sim/overview",
+        "sim_performance": "/api/v1/sim/performance?shift=0",
+        "sim_excusals": "/api/v1/sim/excusals?team=T01",
+        "sim_dispatch": "/api/v1/sim/dispatch?team=T01",
+        "sim_gantt": "/api/v1/sim/gantt?team=T01",
+        "sim_aircraft": "/api/v1/sim/aircraft?line=1201",
+        "sim_supply": "/api/v1/sim/supply",
+        "sim_capacity": "/api/v1/sim/capacity",
+        "sim_methods": "/api/v1/sim/methods",
+        "sim_profile": "/api/v1/sim/profile",
+        "sim_recognition": "/api/v1/sim/recognition",
     }
+
+
+@pytest.fixture(autouse=True)
+def _no_simulation_database(monkeypatch, tmp_path):  # type: ignore[no-untyped-def]
+    """The simulation operations read ``FOCUS_SIM_DB``; none exists here, so they answer empty whatever this machine holds."""
+    monkeypatch.setenv("FOCUS_SIM_DB", str(tmp_path / "no-simulation.db"))
 
 
 def _tree(root: Path) -> dict[str, tuple[int, int]]:
@@ -129,6 +146,7 @@ def _tree(root: Path) -> dict[str, tuple[int, int]]:
 
 def test_a68_every_read_needs_a_trusted_identity_and_its_grants(world, app_root) -> None:
     import focus.web.api_views  # noqa: F401  (registers the projection operations)
+    import focus.web.sim_api  # noqa: F401  (registers the fleet simulation operations)
     from focus.web.operations import REGISTRY
 
     paths = read_paths(world)
@@ -438,7 +456,13 @@ def test_a68_schedule_and_other_commands_report_honest_worker_status(published, 
     review = ie.post("/api/v1/ie-reviews", json={"job_id": job, "standard_revision": "fixture-v1", "proposed_correction": "raise the P75 duration",
                                                  "reason": "five observed overruns", "idempotency_key": "ie-test-0001"}, headers={"X-CSRF-Token": itoken})
     mechanic, _, mtoken = client_on(root, app_root, "mechanic-a05")
-    report = mechanic.post("/api/v1/reported-observations", json={"job_id": job, "kind": "COMPLETED", "effective_at": "2026-10-26T09:00:00Z",
+    # a report on another team's job is refused like a missing job, before anything is queued
+    r = mechanic.post("/api/v1/reported-observations", json={"job_id": job, "kind": "COMPLETED", "effective_at": "2026-10-26T09:00:00Z",
+                                                            "notes": "done before lunch", "idempotency_key": "rep-test-0000"},
+                      headers={"X-CSRF-Token": mtoken})
+    assert r.status_code == 404 and error(r) == "JOB_NOT_FOUND"
+    own = next(j.id for j in published.snap.jobs if j.team == "PROD-A")
+    report = mechanic.post("/api/v1/reported-observations", json={"job_id": own, "kind": "COMPLETED", "effective_at": "2026-10-26T09:00:00Z",
                                                                  "notes": "done before lunch", "idempotency_key": "rep-test-0001"},
                            headers={"X-CSRF-Token": mtoken})
     assert review.status_code == report.status_code == 202
@@ -501,6 +525,7 @@ def test_every_read_operation_answers_identically_over_rest_and_mcp(world, app_r
     """P24 application-to-application check: every registered read operation returns the same envelope, or the same
     refusal, through REST and through the MCP tool another application calls, under one identity and one scope."""
     import focus.web.api_views  # noqa: F401  (registers the projection operations)
+    import focus.web.sim_api  # noqa: F401  (registers the fleet simulation operations)
     from focus.web.operations import REGISTRY
 
     client, _, _ = client_on(world.root, app_root, "manager", mcp_enabled=True)

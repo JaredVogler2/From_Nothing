@@ -10,8 +10,9 @@ It is off by default. ``FOCUS_NATIVE_CORE=true`` turns it on when the extension 
 the engine uses the Python ledger and records the fallback in the run receipt; it never fails because of the setting.
 
 ``NativeDutyLedger`` presents the ``DutyLedger`` interface that the decoder, crew selection and the orchestrator use.
-The hot path skips the conversions: ``choose_crew`` and ``candidate_starts`` run entirely in Rust, and bookings stay on
-the Rust side as handles until committed.
+The hot path skips the conversions: the decoder's whole time-slot search for a phase (``search``: shifts, candidate
+starts, calendar advance, crew choice, booking) runs in Rust, and bookings stay on the Rust side as handles until
+committed.
 """
 from __future__ import annotations
 
@@ -26,14 +27,19 @@ if TYPE_CHECKING:  # pragma: no cover
     from .model import EngineContext
 
 _LOADED: dict[str, Any] = {}
+PROTOCOL = 3            # the Context row formats this module sends; the extension reports its own (2: revocation windows; 3: crew reserve)
 
 
 def _module() -> Any:
-    """The ``focus_native`` extension, imported on first use (an optional package, like the solver); None if absent."""
+    """The ``focus_native`` extension, imported on first use (an optional package, like the solver). None when it is absent
+    or built for another protocol: a wheel from another commit is never fed rows it cannot read."""
     if "module" not in _LOADED:
         try:
             import focus_native  # type: ignore[import-not-found]
         except ImportError:
+            focus_native = None
+        if focus_native is not None and getattr(focus_native, "PROTOCOL", 1) != PROTOCOL:
+            _LOADED["reason"] = f"focus_native protocol {getattr(focus_native, 'PROTOCOL', 1)} != {PROTOCOL}: rebuild native/ from this commit"
             focus_native = None
         _LOADED["module"] = focus_native
     return _LOADED["module"]
@@ -44,8 +50,11 @@ def available() -> bool:
 
 
 def status(requested: bool) -> dict[str, Any]:
-    """The receipt entry: what was asked for and what ran."""
-    return {"requested": requested, "available": available(), "engine": "native" if requested and available() else "python"}
+    """The receipt entry: what was asked for and what ran (and why the Python core ran, when the extension was refused)."""
+    out = {"requested": requested, "available": available(), "engine": "native" if requested and available() else "python"}
+    if "reason" in _LOADED:
+        out["reason"] = _LOADED["reason"]
+    return out
 
 
 @dataclass(frozen=True)
@@ -75,10 +84,31 @@ def build_context(ctx: "EngineContext") -> Any:
     for person, certs in ctx.eligibility.index._by_person.items():           # noqa: SLF001 - the index's own rows, read once
         for cert, items in certs.items():
             for h in items:
-                holdings.append((person, cert, h.active, h.known, h.start, h.end, h.revoked))
-    return _module().Context(windows, travel, list(ctx.pool_caps.items()), sorted(k.value for k in ctx.counted_kinds),
-                           list(ctx.tool_capacity.items()), [(pool, list(members)) for pool, members in ctx._members.items()],  # noqa: SLF001
-                           holdings, [(team, sorted(certs)) for team, certs in ctx.team_certs.items()])
+                holdings.append((person, cert, h.active, h.known, h.start, h.end, h.revoked, list(h.windows)))
+    context = _module().Context(windows, travel, list(ctx.pool_caps.items()), sorted(k.value for k in ctx.counted_kinds),
+                                list(ctx.tool_capacity.items()), [(pool, list(members)) for pool, members in ctx._members.items()],  # noqa: SLF001
+                                holdings, [(team, sorted(certs)) for team, certs in ctx.team_certs.items()])
+    register_calendar(context, ctx)
+    context.register_reserve([(person, shift, n) for (person, shift), n in sorted(ctx.crew_reserve().items())])
+    return context
+
+
+def register_calendar(context: Any, ctx: "EngineContext") -> None:
+    """Every line's eligible shifts (``EngineContext.line_shifts``) and each shift's team pools (``pool_for``)."""
+    teams_by_shift: dict[tuple, list[tuple[str, str]]] = {}
+    for (team, start_date, number), pool in sorted(ctx.pool_by_key.items(), key=lambda kv: (kv[0][1], kv[0][2], kv[0][0])):
+        teams_by_shift.setdefault((start_date, number), []).append((team, pool.id))
+    shifts: dict[str, tuple] = {}
+    lines = []
+    for line in sorted({j.line for j in ctx.jobs.values()}):
+        ids = []
+        for sh in ctx.line_shifts(line):
+            if sh.id not in shifts:
+                shifts[sh.id] = (sh.id, sh.label, sh.start, sh.end, list(sh.regular_windows), sh.cutoff_coord, sh.cutoff_instant,
+                                 sh.ot_window, teams_by_shift.get((sh.start_date, sh.number), []))
+            ids.append(sh.id)
+        lines.append((line, ids))
+    context.register_calendar(ctx.shift_policy.ot_minutes, ctx.purpose.value, list(shifts.values()), lines)
 
 
 class NativeDutyLedger:
@@ -128,8 +158,8 @@ class NativeDutyLedger:
     def free_points(self, person: str, shift_id: str) -> list[int]:
         return self._n.free_points(person, shift_id)
 
-    def candidate_starts(self, pool_id: str, shift_id: str, first: int, cutoff: int, travel: int, max_starts: int) -> list[int]:
-        return self._n.candidate_starts(pool_id, shift_id, first, cutoff, travel, max_starts)
+    def candidate_starts(self, pool_id: str, shift_id: str, first: int, cutoff: int, travel: int) -> list[int]:
+        return self._n.candidate_starts(pool_id, shift_id, first, cutoff, travel)
 
     # ------------------------------------------------------------------ carry-in
     def add_locked(self, item_id: str, person: str, start: int, end: int, kind: DutyKind, line: int | None, shift_id: str,
@@ -198,3 +228,9 @@ class NativeDutyLedger:
             return None, reason
         booking = NativeBooking(assignment_id, kind, line, shift_id, pool_id, tuple(crew), tuple(segs), tuple(tools), handle=handle)
         return (tuple(crew), booking, tried, qualified, tuple(preference)), reason
+
+    def search(self, *, phase_id: str, line: int, team: str, count: int, bundle, work_minutes: int, floor: int, end_floor: int,
+               tools: Sequence[str], wait: tuple | None):
+        """``greedy.Decoder._search`` for one phase, entirely in Rust. Returns ((start, end, segments, shift_id, pool_id, crew,
+        assignment_id) or None, reason, crew attempts, skipped starts)."""
+        return self._n.search(phase_id, line, team, count, self.bundle_id(bundle), work_minutes, floor, end_floor, list(tools), wait)

@@ -67,3 +67,20 @@ def test_team_lead_emergency_addition_completes_as_a_worker_run(browser, publish
 def test_a66_team_lead_explanation_is_a_grounded_worker_result(browser, published) -> None:
     result = cw.workflow_explanation(browser, published)
     assert result["ok"] and result["outcome"] == "DETERMINISTIC" and result["items"] == 5, result
+
+
+def test_simulation_dashboard_script_loads_and_every_module_renders(browser, observed, tmp_path_factory, monkeypatch) -> None:
+    """Every /simulation module, over a one-day two-aircraft run: a broken dashboard script renders nothing, so this fails."""
+    from focus.data.fullscale_fixture import FleetSpec
+    from focus.sim.runner import SimSpec, run
+
+    db = tmp_path_factory.mktemp("ui_sim") / "fleet.db"
+    run(SimSpec(fleet=FleetSpec(n_aircraft=2, baseline=240, edges=1000, rework_total=90, teams=4, team_size=(4, 6)), days=1, max_moves=1,
+                max_repairs=1), db, log=lambda message: None)
+    monkeypatch.setenv("FOCUS_SIM_DB", str(db))                 # read per request by the dashboard's operations
+    results = cw.check_simulation(browser, observed)
+    assert [r["tab"] for r in results] == list(cw.SIM_TABS)
+    assert [r for r in results if r["problems"] or not r["heading"]] == []
+    phone = cw.check_simulation(browser, observed, width=390, layout="ios")          # the iOS variant on a phone (S15)
+    assert [r["tab"] for r in phone] == [*cw.SIM_TABS, "more"]
+    assert [r for r in phone if r["problems"] or not r["heading"]] == []

@@ -18,6 +18,8 @@ from ..contracts.runs import WorkerRun
 from .store import Head, Store, StoreError, VersionConflict
 
 T = TypeVar("T")
+WORKER_MAX_ATTEMPTS = 3                       # leases a worker run may take before it fails (as pipeline steps, orchestration)
+WORKER_DEADLINE = timedelta(hours=24)         # a request not finished within this is stale and fails instead of running
 
 
 class RepositoryError(RuntimeError):
@@ -191,7 +193,12 @@ class Repositories:
         return runs
 
     def claim_worker_run(self, owner: str, lease_seconds: float = 300.0, kinds: Iterable[str] | None = None) -> WorkerRun | None:
-        """Lease the oldest queued (or lease-expired running) run using optimistic versions."""
+        """Lease the oldest queued (or lease-expired running) run using optimistic versions (S17: bounded retries and deadline).
+
+        * A run whose lease expired ``WORKER_MAX_ATTEMPTS`` times (its worker died each time) fails as ATTEMPTS_EXHAUSTED.
+        * A run not finished within ``WORKER_DEADLINE`` of its request fails as DEADLINE_EXCEEDED, never running stale work.
+        * The lease covers the run's own budget twice over, so a run within its budget is never taken over mid-flight.
+        """
         allowed = set(kinds) if kinds else None
         now = self.clock.now()
         for run in self.list_worker_runs(statuses=("queued", "running")):
@@ -200,13 +207,21 @@ class Repositories:
             if run.status == "running" and run.lease_until and run.lease_until > now:
                 continue
             version = self.worker_run_version(run.id)
+            stop = None
+            if run.attempts >= WORKER_MAX_ATTEMPTS:
+                stop = {"code": "ATTEMPTS_EXHAUSTED", "message": f"{run.attempts} attempts ended without a result; submit a new request"}
+            elif now - run.created_at > WORKER_DEADLINE:
+                stop = {"code": "DEADLINE_EXCEEDED", "message": f"not finished within {WORKER_DEADLINE} of its request; submit a new request"}
             try:
+                if stop is not None:
+                    self.update_worker_run(run, version, status="failed", error=stop, lease_owner=None, lease_until=None)
+                    continue
                 return self.update_worker_run(
                     run,
                     version,
                     status="running",
                     lease_owner=owner,
-                    lease_until=now + timedelta(seconds=lease_seconds),
+                    lease_until=now + timedelta(seconds=max(lease_seconds, 2 * run.budget_seconds + 60)),
                     attempts=run.attempts + 1,
                 )
             except (VersionConflict, StoreError):

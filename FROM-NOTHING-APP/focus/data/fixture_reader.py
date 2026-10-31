@@ -145,7 +145,8 @@ class FixtureSourceReader:
 # live reader
 # ---------------------------------------------------------------------------
 
-# Supplemental datasets with an installed FOCUS_FN producer (S06). Others have no live producer yet.
+# Supplemental datasets with an installed FOCUS_FN producer (S06). Others have no live producer yet. Each read is bound
+# to this scope's source head (its one parameter is the scope key), never to the newest head of any scope.
 LIVE_SUPPLEMENTAL_QUERIES: dict[str, str] = {
     "team_inference": "queries/workforce/read_team_inference.sql",
     "clock_observations": "queries/durations/read_clock_observations.sql",
@@ -176,23 +177,28 @@ def raw_value(value: Any) -> Any:
 class LiveSourceReader:
     kind = "live"
 
-    def __init__(self, app_root: Path, sql_reader: Any):
+    def __init__(self, app_root: Path, sql_reader: Any, scope_key: str = ""):
         self.app_root = Path(app_root)
         self.sql = sql_reader
+        self.scope_key = scope_key
 
     def _query(self, relative: str) -> str:
         return (self.app_root / relative).read_text(encoding="utf-8")
 
     def capture(self, spec: DatasetSpec, cutoff: datetime, tz_map: Mapping[str, str], captured_at: datetime) -> Capture:
+        params: tuple[Any, ...] = ()
         if spec.kind == "SUPPLEMENTAL":
             query_file = LIVE_SUPPLEMENTAL_QUERIES.get(spec.name)
             if query_file is None:
                 return Capture(spec.name, "NOT_PROBED", (), spec.columns, "", schema_sha_for(spec),
                                {"complete": False, "reason": "no installed live producer for this supplemental input"}, captured_at)
+            if not self.scope_key:
+                raise CaptureError("SCOPE_KEY_MISSING", f"{spec.name}: a supplemental read is bound to one scope's source head")
+            params = (self.scope_key,)
         else:
             query_file = spec.query_file
         sql = self._query(query_file)
-        result = self.sql.fetch(spec.name, sql)
+        result = self.sql.fetch(spec.name, sql, params)
         columns = tuple(result.columns)
         if columns != spec.columns:
             raise CaptureError("SCHEMA_DRIFT", f"{spec.name}: live columns {list(columns)} differ from {list(spec.columns)}")

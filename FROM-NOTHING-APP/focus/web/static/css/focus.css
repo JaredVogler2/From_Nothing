@@ -32,7 +32,7 @@ h2 { font-size: 20px; margin: 0 0 8px; line-height: 1.3; }
 h3 { font-size: 16px; margin: 0 0 6px; line-height: 1.3; }
 p { margin: 0 0 8px; }
 a { color: var(--primary); }
-code, .mono { font-family: var(--mono); font-size: 12.5px; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; overflow-wrap: break-word; }   /* a long id or digest wraps rather than widen the page */
 .muted { color: var(--muted); }
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip-link { position: absolute; left: -999px; top: 8px; background: var(--primary); color: var(--primary-ink); padding: 8px 12px; border-radius: 8px; z-index: 100; }
@@ -241,3 +241,34 @@ label textarea { display: block; margin-top: 2px; }
 .explanation-items { padding-left: 20px; margin: 8px 0; }
 .explanation-items li { margin: 10px 0; overflow-wrap: anywhere; }
 .explanation-items details { margin-top: 4px; }
+
+/* ---------- fleet simulation dashboard ---------- */
+.simulation .header-links { display: flex; gap: 16px; margin-left: auto; }
+.simulation .header-links a { text-decoration: none; font-weight: 600; }
+.sim-bar { padding: 10px var(--gutter) 0; }
+.sim-tabs { display: flex; gap: var(--gap); flex-wrap: wrap; padding: 6px var(--gutter) 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.sim-tabs .chip { text-decoration: none; }
+.sim-host { max-width: 1280px; margin: 0 auto; padding: var(--gutter); }
+/* iOS layout: one compact, horizontally scrollable module selector; the bottom navigation takes over on phones */
+[data-layout="ios"] .sim-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+[data-layout="ios"] .sim-tabs .chip { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 760px) { [data-layout="ios"] .sim-host { padding-bottom: 84px; } }
+.sim-host .view-title h1 { margin: 0 0 4px; font-size: 22px; }
+.sim-host .metric-grid { margin: 12px 0 var(--gutter); }
+.sim-host .grid-2 { margin-top: var(--gutter); }
+.sim-host .card { margin-top: var(--gutter); }
+.chart-box { margin: 0; overflow-x: auto; }
+.chart-box figcaption { font-size: 12px; margin-top: 4px; }
+.chart-values { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.chart-values summary { cursor: pointer; }
+.chart-values ul { max-height: 220px; overflow: auto; margin: 6px 0 0; padding-left: 18px; columns: 2; column-gap: 24px; }
+svg.chart { width: 100%; height: auto; min-width: 520px; font-family: var(--font); }
+svg.chart .grid { stroke: #e3e9f2; stroke-width: 1; }
+svg.chart .tick { font-size: 11px; fill: var(--muted); }
+svg.chart .axis-label { font-size: 12px; fill: var(--muted); }
+svg.chart .line { stroke-width: 2; }
+svg.chart rect:hover { opacity: 0.8; }
+svg.chart .bar-label { font-size: 10px; fill: #fff; pointer-events: none; }
+.delta-good { color: var(--success); font-weight: 600; }
+.delta-bad { color: var(--error); font-weight: 600; }
+@media (max-width: 860px) { .sim-host .grid-2 { grid-template-columns: minmax(0, 1fr); } }   /* a wide chart scrolls in its box, not the page */

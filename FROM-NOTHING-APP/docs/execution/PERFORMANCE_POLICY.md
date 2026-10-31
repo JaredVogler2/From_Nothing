@@ -86,6 +86,14 @@ how supplementary recognition is projected from it. The rules are implemented in
   prerequisite. DAG direction alone never proves culpability.
 - **Rework origin** comes only from defect-origin evidence: the admitted rework classification or
   a `defect_evidence` row.
+- **Crew capacity and skill** come only from source records observed after the plan's source
+  cutoff (`attendance_evidence`, `holding_evidence`).
+  - A planned crew member's call-off for the shift is CAPACITY_SHORTAGE evidence for that
+    person's missed units. A later record for the same person and shift corrects it.
+  - A revocation of a certificate in the work's bundle is SKILL_SHORTAGE evidence when it takes
+    effect before the unit's planned end and is not reinstated by the planned start.
+  - What the plan already knew is not a disruption. Both feeds are optional, like
+    `defect_evidence`; without them these causes are claimed by hand.
 - **Decisions.**
   - The deciding role is `disruption.reviewer_roles` (`excusal_decider`), and nobody reviews
     their own claim.

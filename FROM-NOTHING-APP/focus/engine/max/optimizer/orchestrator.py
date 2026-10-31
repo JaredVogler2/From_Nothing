@@ -6,11 +6,22 @@
    locked in the ledger.
 3. Build a named neutral seed over all aircraft sharing pool capacity (``greedy.Decoder``,
    CPM tails as urgency).
-4. Project aircraft completions and derive marginal priority weights through
-   ``EconomicsRegistry``, then redispatch economically.
+4. Redispatch economically by the cost of delaying each phase (``urgency.cost_of_delay``: the
+   aircraft's daily penalty, decayed by the phase's slack in the seed). The marginal weights of
+   ``EconomicsRegistry`` are still recorded in the receipt. Defended commitments and their
+   prerequisites, which the decoder dispatches first, keep the seed's order in every candidate
+   (redispatch, repairs, search moves), so a candidate keeps the seed's commitment outcomes and is
+   judged on the uncommitted work it reorders. A commitment that loses its slot is requeued with
+   the candidate's own priority, so its minimal move still follows the cost of delay.
 5. Run bounded delay repair for resource-deferred jobs.
-6. Search seeded neighbourhoods (swap, boost, aircraft advance), stopping at the move bound,
-   the wall-clock budget or cancellation.
+6. Search seeded neighbourhoods (swap, boost, aircraft advance; half of the moves boost the
+   jobs with the longest waits when there are any), stopping at the move bound, the wall-clock
+   budget or cancellation. Only the move bound keeps a run repeatable: the receipt's
+   ``stop_reason`` says which one ended the search. Moves are drawn and judged in exactly the
+   sequential order, but up to ``SPECULATION`` of them are decoded at once from the same best (on
+   threads with the native core, whose search releases the GIL): the draws a sequential run would
+   make while no move is accepted. After an accepted move, the rest of the batch is discarded
+   and drawing resumes from the random state that followed the accepted move.
 7. Keep a candidate only when it is strictly better under the exact lexicographic comparison
    (S12), with no monetary tolerance, and it keeps every commitment the current best keeps
    (a later move can never silently undo a feasible defended task). The independent validator
@@ -40,12 +51,12 @@ from __future__ import annotations
 import random
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from fractions import Fraction
 from typing import Any, Callable, Mapping
 
-from ....codec import to_jsonable
+from ....codec import native_codec, to_jsonable
 from ....contracts.planning import (AlgorithmStatus, Assignment, CandidatePlan, CostSummary, CrewRole, Duty, JobOutcome, StageMetric,
                                     seal_candidate)
 from ....domain import Disposition, DutyKind, Interval, PhaseKind, Purpose, digest_id, from_minute
@@ -55,15 +66,35 @@ from ...model import EngineContext
 from ...projections import completion_minutes
 from .continuity import continuity_breaks
 from .greedy import DecodeResult, Decoder, DefendedTask
-from .neighborhoods import Move, PriorityState, generate
+from .neighborhoods import Competition, Move, PriorityState, generate
 from .repair import repairable_jobs
+from .urgency import cost_of_delay, long_waits, urgency_summary
+
+SPECULATION = 3              # search moves decoded at once from the same best (identical results to one at a time)
 
 ALGORITHM = "FOCUS-rich-MAX"
 VERSION = "1.0"
 DEFENDED = frozenset({"KEPT", "CREW_CHANGED"})
-# the exact comparison key, level by level (``Evaluation.key``); the signature only breaks ties deterministically
-KEY_LEVELS = ("commitments_defended", "commitments_exact", "unknown_completion_aircraft", "deferred_phases", "controllable_known_cents",
-              "travel_plus_wait_minutes", "ot_minutes", "continuity_breaks", "signature")
+# The exact comparison key follows the policy's lexicographic order (``objective.order``, S12): each level contributes
+# these fields. FEASIBILITY is the independent validation every accepted candidate passes, so it adds none; raw job
+# counts never outrank money (the deferred-phase count is a last backlog tie); the signature only breaks ties.
+OBJECTIVE_FIELDS = {
+    "FEASIBILITY": (),
+    "COMMITMENT_DEFENSE": ("commitments_defended", "commitments_exact"),
+    "CONTROLLABLE_COST": ("unknown_completion_aircraft", "controllable_known_cents"),
+    "NVA_MINUTES": ("travel_plus_wait_minutes",),
+    "OT_AND_CHURN": ("ot_minutes", "continuity_breaks"),
+    "SCARCITY_AFFINITY_GATE": ("deferred_phases",),
+}
+
+KEY_LEVELS = tuple(f for fields in OBJECTIVE_FIELDS.values() for f in fields) + ("signature",)   # every key field; signature last
+
+
+def key_levels(policy: Any) -> tuple[str, ...]:
+    order = tuple(policy.seq("objective.order"))
+    if sorted(order) != sorted(OBJECTIVE_FIELDS):
+        raise ValueError(f"objective.order must order exactly {sorted(OBJECTIVE_FIELDS)}, got {list(order)}")
+    return tuple(f for level in order for f in OBJECTIVE_FIELDS[level]) + ("signature",)
 
 
 @dataclass
@@ -81,6 +112,8 @@ class Evaluation:
     breaks: int
     signature: str
     key: tuple = ()
+    levels: tuple[str, ...] = ()                # the field name of each key element, in order
+    unknown: frozenset[int] = frozenset()       # aircraft whose completion (so whose cost) is unknown
 
 
 @dataclass
@@ -99,22 +132,25 @@ class MaxRun:
     validation: Any = None               # final ValidationReceipt (schedule)
     solver: dict[str, Any] = field(default_factory=dict)   # optional CP-SAT stage receipt (P22); DISABLED by default
     native: dict[str, Any] = field(default_factory=dict)   # which ledger/crew core ran; never part of the candidate
+    urgency: dict[str, int] = field(default_factory=dict)  # phase -> cost of delay used by the economic passes
+    stop_reason: str = "move_bound"                        # move_bound | no_moves (repeatable) or deadline | cancelled
 
 
-def make_priority(ctx: EngineContext, state: PriorityState, weights: Mapping[int, Fraction] | None,
+def make_priority(ctx: EngineContext, state: PriorityState, urgency: Mapping[str, int] | None,
                   fixed: Mapping[str, int] | None = None) -> Callable[[str], tuple]:
     """Order within a dispatch class; the decoder puts ready commitments and their prerequisites first.
 
-    ``fixed`` holds planned task priorities of an isolated scenario (job -> negative rank). They lead the key, so
-    search moves cannot reorder them, and they act only among ready phases: graph, parts, QA, crews and defended
-    commitments still decide what may start.
+    ``urgency`` is the cost of delaying each phase (``urgency.cost_of_delay``; None in the neutral seed, which orders by
+    CPM tail alone). ``fixed`` holds planned task priorities of an isolated scenario (job -> negative rank). They lead
+    the key, so search moves cannot reorder them, and they act only among ready phases: graph, parts, QA, crews and
+    defended commitments still decide what may start.
     """
     fixed = fixed or {}
+    urgency = urgency or {}
 
     def key(pid: str) -> tuple:
         phase = ctx.phases[pid]
-        weight = (weights or {}).get(phase.line, Fraction(0))
-        return (fixed.get(phase.job, 0), state.ranks.get(phase.job, 0.0), -weight, -ctx.tails.get(pid, 0), pid)
+        return (fixed.get(phase.job, 0), state.ranks.get(phase.job, 0.0), -urgency.get(pid, 0), -ctx.tails.get(pid, 0), pid)
     return key
 
 
@@ -122,7 +158,7 @@ class MaxOptimizer:
     def __init__(self, ctx: EngineContext, *, defended: Mapping[str, DefendedTask] | None = None, budget_seconds: float | None = None,
                  seed: int | None = None, max_moves: int | None = None, cancel: Callable[[], bool] | None = None,
                  clock: Callable[[], float] = time.monotonic, gate: bool = True, incumbent_id: str | None = None,
-                 fixed_ranks: Mapping[str, int] | None = None):
+                 fixed_ranks: Mapping[str, int] | None = None, max_repairs: int = 20):
         self.ctx = ctx
         self.fixed_ranks = dict(fixed_ranks or {})
         self.gate = gate
@@ -131,27 +167,42 @@ class MaxOptimizer:
         self._gate_log: list[str] = []
         self._gate_count = 0
         self.registry = EconomicsRegistry(ctx.economics, ctx.policy)
+        self.key_levels = key_levels(ctx.policy)
         self.defended = dict(defended or {})
         self.budget = float(budget_seconds if budget_seconds is not None else ctx.policy.int("optimizer.budget_seconds"))
         self.seed = int(seed if seed is not None else ctx.policy.int("optimizer.seed"))
         self.max_moves = int(max_moves if max_moves is not None else ctx.policy.int("optimizer.max_neighborhood_moves"))
         self.cancel = cancel or (lambda: False)
         self.clock = clock
+        self.max_repairs = max_repairs                 # delay-repair boosts (each a full re-decode)
         self.lines = sorted({j.line for j in ctx.jobs.values()})
         placeable = [j for j in ctx.jobs if ctx.placeability(j).placeable]
         self.team_jobs: dict[str, list[str]] = defaultdict(list)
         self.line_jobs: dict[int, list[str]] = defaultdict(list)
+        listed: set[tuple[str, str]] = set()
         for job in placeable:
             for p in ctx.job_phases[job]:
                 for d in p.role_demands:
-                    if job not in self.team_jobs[d.team]:
+                    if (d.team, job) not in listed:
+                        listed.add((d.team, job))
                         self.team_jobs[d.team].append(job)
             self.line_jobs[ctx.jobs[job].line].append(job)
-        self.peers = {job: sorted({o for jobs in self.team_jobs.values() if job in jobs for o in jobs if o != job}) for job in placeable}
+        self.peers = Competition(self.team_jobs)
+        self.workers = SPECULATION if ctx.native else 1    # threads overlap only when the search runs without the GIL
 
     # ------------------------------------------------------------------ evaluation
-    def decode(self, state: PriorityState, weights: Mapping[int, Fraction] | None) -> DecodeResult:
-        return Decoder(self.ctx, make_priority(self.ctx, state, weights, self.fixed_ranks), defended=self.defended).run()
+    def decode(self, state: PriorityState, urgency: Mapping[str, int] | None) -> DecodeResult:
+        # committed work (defended phases and their prerequisites) is dispatched in the seed's order by every candidate
+        return Decoder(self.ctx, make_priority(self.ctx, state, urgency, self.fixed_ranks), defended=self.defended,
+                       committed=make_priority(self.ctx, PriorityState(), None, self.fixed_ranks)).run()
+
+    def _decode_all(self, states: list[PriorityState], urgency: Mapping[str, int] | None) -> list[Evaluation]:
+        """Decode and evaluate each state, results in order. With the native core the decodes run on threads: the Rust
+        search releases the GIL, each decode has its own ledger, and the shared context is only read."""
+        if self.workers <= 1 or len(states) <= 1:
+            return [self.evaluate(self.decode(state, urgency)) for state in states]
+        with ThreadPoolExecutor(max_workers=min(self.workers, len(states))) as pool:
+            return list(pool.map(lambda state: self.evaluate(self.decode(state, urgency)), states))
 
     def evaluate(self, decode: DecodeResult) -> Evaluation:
         ctx = self.ctx
@@ -186,22 +237,32 @@ class MaxOptimizer:
         breaks = sum(continuity_breaks(decode.placements).values())
         signature = digest_id("SIG", sorted((p.phase_id, p.start, p.crew) for p in decode.placements.values()))
         ev = Evaluation(decode, releases, completions, costs, summary, defended, exact, travel, wait, ot, breaks, signature)
-        ev.key = (-defended, -exact, len(summary.unknown_lines), len(decode.deferred), summary.controllable_known_cents, travel + wait, ot,
-                  breaks, signature)
+        fields = {"commitments_defended": -defended, "commitments_exact": -exact, "unknown_completion_aircraft": len(summary.unknown_lines),
+                  "controllable_known_cents": summary.controllable_known_cents, "travel_plus_wait_minutes": travel + wait, "ot_minutes": ot,
+                  "continuity_breaks": breaks, "deferred_phases": len(decode.deferred), "signature": signature}
+        ev.key = tuple(fields[f] for f in self.key_levels)
+        ev.levels, ev.unknown = self.key_levels, frozenset(summary.unknown_lines)
         return ev
 
     @staticmethod
     def improved_level(candidate: Evaluation, best: Evaluation) -> str | None:
         """The first key level where ``candidate`` is strictly better than ``best`` (None when it is not better)."""
-        for name, a, b in zip(KEY_LEVELS, candidate.key, best.key):
+        for name, a, b in zip(getattr(candidate, "levels", ()) or KEY_LEVELS, candidate.key, best.key):
             if a != b:
                 return name if a < b else None
         return None
 
     @staticmethod
     def better(candidate: Evaluation, best: Evaluation) -> bool:
-        """Strictly better under the exact key and no commitment kept by ``best`` is lost or downgraded."""
-        if not candidate.key < best.key:
+        """Strictly better under the exact key, no commitment kept by ``best`` is lost or downgraded, and a cost decided at
+        or after the cost level compares the same aircraft: a candidate whose unknown aircraft differ is better only by
+        making some of best's unknown aircraft known and losing none (S12: never cheaper by ignoring missing lines)."""
+        level = MaxOptimizer.improved_level(candidate, best)
+        if level is None:
+            return False
+        levels = getattr(candidate, "levels", ()) or KEY_LEVELS
+        mine, theirs = getattr(candidate, "unknown", frozenset()), getattr(best, "unknown", frozenset())
+        if level in levels[levels.index("unknown_completion_aircraft"):] and mine != theirs and not mine < theirs:
             return False
         outcome = {r.incumbent_assignment_id: r.outcome for r in candidate.decode.commitment_results}
         for r in best.decode.commitment_results:
@@ -222,28 +283,54 @@ class MaxOptimizer:
         t = self.clock()
         neutral = PriorityState()
         baseline = self.evaluate(self.decode(neutral, None))
-        seed_valid = self._valid(baseline, "neutral_seed")
-        stages.append(stage("neutral_seed", t, 1, 1, f"{len(baseline.decode.placements)} placed, {len(baseline.decode.deferred)} deferred; "
-                                                    f"independent validation {'passed' if seed_valid else 'FAILED'}"))
-        best, best_state, best_valid = baseline, neutral, seed_valid
-        t = self.clock()
+        seed_decoded = self.clock()
         weight_records = self.registry.derive_priority_weights(completion_minutes(baseline.completions))
-        weights = {line: w.normalized for line, w in weight_records.items()}
-        econ = self.evaluate(self.decode(neutral, weights))
+        urgency = cost_of_delay(self.ctx, self.registry, baseline.decode, weight_records)      # dispatch through the Registry weights
+        timed: dict[str, float] = {}
+
+        def validate_seed() -> bool:
+            began = self.clock()
+            try:
+                return self._valid(baseline, "neutral_seed")
+            finally:
+                timed["seed_validation"] = self.clock() - began
+
+        t_econ = self.clock()
+        if self.workers > 1:
+            # the seed's independent validation runs while the redispatch decodes (the native search releases the GIL);
+            # the redispatch is judged only after the seed's verdict, exactly as in sequence
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                verdict = pool.submit(validate_seed)
+                econ = self.evaluate(self.decode(neutral, urgency))
+                seed_valid = verdict.result()
+        else:
+            seed_valid = validate_seed()
+            t_econ = self.clock()
+            econ = self.evaluate(self.decode(neutral, urgency))
+        econ_decoded = self.clock()
+        overlap = "; validated while the redispatch decoded" if self.workers > 1 else ""
+        stages.append(StageMetric("neutral_seed", int((seed_decoded - t + timed["seed_validation"]) * 1000), 1, 1,
+                                  f"{len(baseline.decode.placements)} placed, {len(baseline.decode.deferred)} deferred; "
+                                  f"independent validation {'passed' if seed_valid else 'FAILED'}{overlap}"))
+        best, best_state, best_valid = baseline, neutral, seed_valid
         accepted = self._admit(econ, best, best_valid, "economic_redispatch")
+        best_urgency: Mapping[str, int] | None = None              # the order the best candidate was decoded with
         if accepted:
-            best, best_valid = econ, True
-        stages.append(stage("economic_redispatch", t, 1, int(accepted), "registry marginal weights; exact complete-candidate comparison"))
-        run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages, seed_valid=seed_valid)
+            best, best_valid, best_urgency = econ, True, urgency
+        stages.append(StageMetric("economic_redispatch", int((econ_decoded - t_econ + self.clock() - econ_decoded) * 1000), 1, int(accepted),
+                                  f"{urgency_summary(urgency)}; exact complete-candidate comparison"))
+        run = MaxRun(baseline, best, {line: w for line, w in weight_records.items()}, stages, seed_valid=seed_valid,
+                     urgency=dict(best_urgency or {}))
         t = self.clock()
         phase_job = {pid: p.job for pid, p in self.ctx.phases.items()}
         repaired = 0
-        for job in repairable_jobs(best.decode.deferred, phase_job)[:20]:
+        for job in repairable_jobs(best.decode.deferred, phase_job)[:self.max_repairs]:
             if self._out_of_time(start):
                 run.deadline_reached = True
+                run.stop_reason = "cancelled" if self.cancel() else "deadline"
                 break
             state = best_state.apply(Move("boost", (job,), "repair"), self.peers)
-            cand = self.evaluate(self.decode(state, weights))
+            cand = self.evaluate(self.decode(state, best_urgency))
             if self._admit(cand, best, best_valid, "delay_repair"):
                 best, best_state, best_valid = cand, state, True
                 repaired += 1
@@ -252,21 +339,37 @@ class MaxOptimizer:
         t = self.clock()
         rng = random.Random(self.seed)
         moves = accepted_n = 0
+        waits = long_waits(best.decode)
         while moves < self.max_moves:
             if self._out_of_time(start):
                 run.deadline_reached = True
+                run.stop_reason = "cancelled" if self.cancel() else "deadline"
                 break
+            # the next draws of a sequential run while no move is accepted: same best, same focus, the rng in order
             focus = repairable_jobs(best.decode.deferred, phase_job) + sorted(j for j, n in continuity_breaks(best.decode.placements).items() if n)
-            move = generate(rng, team_jobs=self.team_jobs, line_jobs=self.line_jobs, focus_jobs=focus)
-            if move is None:
+            batch: list[tuple[Move, Any]] = []
+            exhausted = False
+            while len(batch) < min(SPECULATION, self.max_moves - moves):
+                move = generate(rng, team_jobs=self.team_jobs, line_jobs=self.line_jobs, focus_jobs=focus, wait_jobs=waits)
+                if move is None:
+                    exhausted = True
+                    break
+                batch.append((move, rng.getstate()))
+            states = [best_state.apply(move, self.peers) for move, _ in batch]
+            accepted = False
+            for (move, after), state, cand in zip(batch, states, self._decode_all(states, best_urgency)):
+                moves += 1
+                if self._admit(cand, best, best_valid, f"neighborhoods:{move.kind}"):
+                    best, best_state, best_valid = cand, state, True
+                    accepted_n += 1
+                    run.accepted_moves.append(f"{move.kind} {','.join(move.jobs)}")
+                    waits = long_waits(best.decode)
+                    rng.setstate(after)                 # later draws in the batch came from the old best: redraw them
+                    accepted = True
+                    break
+            if exhausted and not accepted:
+                run.stop_reason = "no_moves"
                 break
-            moves += 1
-            state = best_state.apply(move, self.peers)
-            cand = self.evaluate(self.decode(state, weights))
-            if self._admit(cand, best, best_valid, f"neighborhoods:{move.kind}"):
-                best, best_state, best_valid = cand, state, True
-                accepted_n += 1
-                run.accepted_moves.append(f"{move.kind} {','.join(move.jobs)}")
         stages.append(stage("neighborhoods", t, moves, accepted_n, f"seed {self.seed}; bound {self.max_moves} moves, {self.budget}s; "
                                                                   f"{self._gate_count} candidates independently validated, "
                                                                   f"{len(self._gate_log)} rolled back"))
@@ -324,15 +427,21 @@ def build_candidate(ctx: EngineContext, run: MaxRun, *, created_at: datetime, in
     for h in snapshot.holdings:
         holdings[h.person].append(h)
     assignments: list[Assignment] = []
+    evidence: dict[tuple[str, frozenset[str]], tuple[str, ...]] = {}      # (person, bundle codes) -> holding rows
+
+    def held(person: str, codes: frozenset[str]) -> tuple[str, ...]:
+        found = evidence.get((person, codes))
+        if found is None:
+            found = evidence[(person, codes)] = tuple(sorted({e.row_id for h in holdings.get(person, []) if h.cert in codes for e in h.evidence}))
+        return found
+
     for p in sorted(decode.placements.values(), key=lambda x: (x.start, x.phase_id)):
         if not p.crew or p.assignment_id is None:
             continue
         phase = ctx.phases[p.phase_id]
         demand = phase.role_demands[0]
-        codes = set(demand.bundle.all_codes)
-        crew = tuple(CrewRole(person, demand.bundle.role,
-                              tuple(sorted({e.row_id for h in holdings.get(person, []) if h.cert in codes for e in h.evidence})),
-                              availability.get((person, p.pool_id), "")) for person in p.crew)
+        codes = frozenset(demand.bundle.all_codes)
+        crew = tuple(CrewRole(person, demand.bundle.role, held(person, codes), availability.get((person, p.pool_id), "")) for person in p.crew)
         releases = tuple(sorted(e.pred_phase for e in ctx.preds.get(p.phase_id, ()) if e.pred_phase in ctx.releases))
         disp = ctx.dispositions.get(p.job)
         assignments.append(Assignment(
@@ -381,6 +490,8 @@ def build_candidate(ctx: EngineContext, run: MaxRun, *, created_at: datetime, in
             "baseline_deferred_phases": len(run.baseline.decode.deferred), "final_deferred_phases": len(decode.deferred),
             "final_travel_minutes": best.travel_minutes, "final_wait_minutes": best.wait_minutes, "final_ot_minutes": best.ot_minutes,
             "moves": run.moves, "accepted_moves": run.accepted_moves, "complete_fleet_cost": fin.complete,
+            "stop_reason": run.stop_reason, "repeatable": run.stop_reason in ("move_bound", "no_moves"),
+            "long_wait_jobs": len(long_waits(best.decode)), "cost_of_delay_phases": len(run.urgency),
             "solver": run.solver or None,
         }),
         paths_used=tuple(sorted(decode.paths_used | {"economics_registry", "exact_evaluator", "neighborhoods", "delay_repair"}
@@ -401,12 +512,41 @@ def build_candidate(ctx: EngineContext, run: MaxRun, *, created_at: datetime, in
     return seal_candidate(plan)
 
 
+RUN_REFERENCES = frozenset({"availability_id", "pool_key", "duration_estimate_id", "evidence", "source_run_id", "snapshot_id"})
+
+
+def decision_digest(plan: CandidatePlan) -> str:
+    """Hash of what the plan decides, without references to the source run it was read from.
+
+    Assignments (phase, start, end, segments, shift, people, conditions, commitment outcome), duties, job dispositions
+    with reasons, aircraft completions, costs and commitment results. Ids that every acquisition mints afresh
+    (availability, pool and duration-estimate references, evidence, source run and snapshot ids) and the run's stage
+    timings are left out, so the same constraints and open work give the same digest in every run (repeatability).
+    """
+    def strip(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: strip(v) for k, v in value.items() if k not in RUN_REFERENCES}
+        if isinstance(value, list):
+            return [strip(v) for v in value]
+        return value
+    record = {"assignments": plan.assignments, "duties": plan.duties, "dispositions": plan.job_dispositions,
+              "completions": plan.aircraft_completion, "costs": plan.costs, "commitments": plan.commitment_results}
+    canon = native_codec()
+    if canon is not None:
+        try:
+            return canon.digest_excluding("DEC", record, RUN_REFERENCES, 64)     # the same bytes, keys dropped while writing
+        except Exception:  # noqa: BLE001 - the Python path gives the same digest or raises the exact error
+            pass
+    return digest_id("DEC", strip(to_jsonable(record)), length=64)
+
+
 def receipt(plan: CandidatePlan) -> dict[str, Any]:
     census: dict[str, int] = defaultdict(int)
     for o in plan.job_dispositions:
         census[o.disposition.value] += 1
     return to_jsonable({
-        "candidate_id": plan.id, "candidate_hash": plan.hash, "snapshot_id": plan.snapshot_id, "source_run_id": plan.source_run_id,
+        "candidate_id": plan.id, "candidate_hash": plan.hash, "decision_digest": decision_digest(plan), "snapshot_id": plan.snapshot_id,
+        "source_run_id": plan.source_run_id,
         "policy_hash": plan.policy_hash, "purpose": plan.purpose.value, "assignments": len(plan.assignments), "duties": len(plan.duties),
         "disposition_census": dict(sorted(census.items())), "jobs_total": len(plan.job_dispositions),
         "costs": {"known_cents": plan.costs.known_total_cents, "conditional_cents": plan.costs.conditional_total_cents,

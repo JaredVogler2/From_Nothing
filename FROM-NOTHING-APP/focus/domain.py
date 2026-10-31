@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable
 
+from . import codec as _codec
 from .codec import canonical_dumps, sha256_hex
 
 UTC = timezone.utc
@@ -42,6 +43,14 @@ def aware_utc(value: Any, field_name: str = "datetime") -> datetime:
 
 
 def _total_us(value: datetime) -> int:
+    if type(value) is not datetime or value.tzinfo is None:
+        aware_utc(value)                                     # raises the typed error for a non-datetime or naive value
+    return _total_us_of(value)
+
+
+@functools.lru_cache(maxsize=1 << 18)
+def _total_us_of(value: datetime) -> int:
+    """Microseconds since the epoch. Equal instants give equal results, so caching by value is exact."""
     delta = aware_utc(value) - EPOCH
     return (delta.days * 86_400 + delta.seconds) * 1_000_000 + delta.microseconds
 
@@ -65,6 +74,11 @@ def to_minute(value: datetime) -> int:
 def from_minute(minute: int) -> datetime:
     if isinstance(minute, bool) or not isinstance(minute, int):
         raise DomainError("TYPE_MISMATCH", f"minute must be int, got {minute!r}")
+    return _from_minute(minute)
+
+
+@functools.lru_cache(maxsize=1 << 18)
+def _from_minute(minute: int) -> datetime:
     return EPOCH + timedelta(minutes=minute)
 
 
@@ -180,6 +194,12 @@ def _digest(prefix: str, payload: bytes, length: int) -> str:
 
 
 def digest_id(prefix: str, *parts: Any, length: int = 20) -> str:
+    canon = _codec._CANON
+    if canon is not None:
+        try:
+            return canon.digest(prefix, parts, length)
+        except Exception:  # noqa: BLE001 - the Python path returns the same id or raises the exact error
+            pass
     return _digest(prefix, canonical_dumps(list(parts)), length)
 
 
@@ -422,6 +442,7 @@ class Holding:
     raw_last_cert_date: str | None
     raw_expiry: str | None
     evidence: tuple[EvidenceRef, ...] = ()
+    revoked_windows: tuple[tuple[datetime, datetime], ...] = ()     # earlier revocations, each ended by a reinstatement
 
     def __post_init__(self) -> None:
         if self.validity not in ("BOUNDED", "PERPETUAL", "UNKNOWN"):
@@ -430,6 +451,10 @@ class Holding:
             value = getattr(self, name)
             if value is not None:
                 object.__setattr__(self, name, aware_utc(value, name))
+        windows = tuple((aware_utc(a, "revoked_windows"), aware_utc(b, "revoked_windows")) for a, b in self.revoked_windows)
+        if any(a >= b for a, b in windows):
+            raise DomainError("BAD_REVOCATION_WINDOW", "a revocation window ends after it starts")
+        object.__setattr__(self, "revoked_windows", windows)
         if self.validity == "BOUNDED" and self.valid_to is None:
             raise DomainError("BAD_VALIDITY", "bounded holding needs valid_to")
         if self.valid_from and self.valid_to and self.valid_from >= self.valid_to:

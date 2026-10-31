@@ -125,6 +125,16 @@ def test_a17_statistics_persist_all_fields_on_elapsed_basis() -> None:
     assert ("NC",) in stats and stats[("NC",)].admitted_count == 30
 
 
+def test_exact_context_groups_split_by_model_and_crew_and_skip_unknown_context() -> None:
+    rows = _episodes(range(30, 60)) + _episodes(range(100, 130), crew=3, prefix="C") + \
+        [dict(r, MODEL=None) for r in _episodes(range(30, 40), prefix="N")]
+    stats = {s.group: s for s in compute_statistics(rows, run_id="RUN", policy_id="POL", minimum_sample=30)}
+    assert set(stats) == {("NC",), ("NC", "PROD-B"), ("NC", "PROD-B", "MODEL=9", "CREW=2"), ("NC", "PROD-B", "MODEL=9", "CREW=3")}
+    assert stats[("NC", "PROD-B", "MODEL=9", "CREW=2")].admitted_count == 30 and stats[("NC", "PROD-B", "MODEL=9", "CREW=3")].admitted_count == 30
+    assert stats[("NC", "PROD-B")].admitted_count == 70                       # a broader group keeps every episode, unknown model included
+    assert stats[("NC", "PROD-B", "MODEL=9", "CREW=3")].p50 == Decimal("114.500000")
+
+
 def test_statistics_flag_insufficient_and_stale_cohorts() -> None:
     small = compute_statistics(_episodes(range(30, 59)), run_id="RUN", policy_id="POL", minimum_sample=30)
     assert all(not s.sufficient and not s.usable for s in small)                      # 29 < 30
