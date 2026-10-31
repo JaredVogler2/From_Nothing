@@ -8,8 +8,9 @@
   nominal or virtual people) is CONDITIONAL and labelled.
 * **Cost per aircraft.** The exact modeled penalty at that completion
   (``EconomicsRegistry.penalty``) is split into the unavoidable exposure (the penalty even
-  at the cutoff) and the controllable increment. The accrued accounting floor and the
-  assumed-versus-actual authority are reported, never merged.
+  at the cutoff) and the controllable increment. The accrued accounting floor bounds both
+  from below, so the increment is only what remains controllable above it. The
+  assumed-versus-actual authority is reported, never merged.
 * **Fleet total.** The total is known only when every aircraft is known. An unknown
   aircraft is listed and never counted as zero; a known-portfolio comparison is possible,
   but complete-fleet optimality is not claimed.
@@ -86,7 +87,7 @@ def line_costs(registry: EconomicsRegistry, completions: Mapping[int, AircraftCo
         delay = max(0, completion - to_minute(due))                                                   # type: ignore[arg-type]
         reasons = [f"{authority} term"]
         if econ.accrued_floor_cents is not None:                                                     # type: ignore[union-attr]
-            reasons.append(f"accrued accounting floor {econ.accrued_floor_cents} cents reported separately")  # type: ignore[union-attr]
+            reasons.append(f"accrued accounting floor {econ.accrued_floor_cents} cents: the modeled exposure never counts below it")  # type: ignore[union-attr]
         if comp.status == "conditional":
             reasons.append("conditional completion: forecast-only evidence")
         out[line] = LineCost(line, comp.status, authority, comp.completion_at, due, delay, total, unavoidable,
