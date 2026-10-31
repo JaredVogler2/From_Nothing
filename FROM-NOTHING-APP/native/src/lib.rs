@@ -225,6 +225,7 @@ struct Shared {
     bundles: Mutex<(Vec<Vec<Vec<Arc<str>>>>, HashMap<Vec<Vec<String>>, usize>)>,
     memo: Mutex<HashMap<(u32, usize, i64, i64), bool>>,
     calendar: Mutex<Option<Arc<Calendar>>>,
+    reserve: Mutex<Arc<HashMap<(u32, u32), i64>>>,
 }
 
 // ------------------------------------------------------------------------------------------ calendar
@@ -516,6 +517,7 @@ impl Context {
                 bundles: Mutex::new((Vec::new(), HashMap::default())),
                 memo: Mutex::new(HashMap::default()),
                 calendar: Mutex::new(None),
+                reserve: Mutex::new(Arc::new(HashMap::default())),
             }),
         })
     }
@@ -558,6 +560,21 @@ impl Context {
         Ok(())
     }
 
+    /// Register crew choice's reserve table (`EngineContext.crew_reserve`): (person, shift id, rare role bundles of ready work the
+    /// person is one of few holders of). Unknown people or shifts are skipped. Registering again replaces it; ledgers made
+    /// afterwards read it.
+    fn register_reserve(&self, entries: Vec<(String, String, i64)>) -> PyResult<()> {
+        let d = &self.shared.data;
+        let mut table: HashMap<(u32, u32), i64> = HashMap::with_capacity_and_hasher(entries.len(), Default::default());
+        for (person, shift, n) in entries {
+            if let (Some(&p), Some(&s)) = (d.persons.ids.get(person.as_str()), d.shifts.ids.get(shift.as_str())) {
+                table.insert((p, s), n);
+            }
+        }
+        *self.shared.reserve.lock().unwrap() = Arc::new(table);
+        Ok(())
+    }
+
     /// Register a requirement bundle (AND groups of OR alternatives); equal content returns the same id.
     fn register_bundle(&self, groups: Vec<Vec<String>>) -> usize {
         let mut reg = self.shared.bundles.lock().unwrap();
@@ -576,6 +593,7 @@ impl Context {
         let tool_res = d.tool_cap.keys().map(|t| (t.clone(), Vec::new())).collect();
         Ledger {
             shared: self.shared.clone(),
+            reserve: self.shared.reserve.lock().unwrap().clone(),
             persons: d.persons.clone(),
             shifts: d.shifts.clone(),
             pools: d.pools.clone(),
@@ -600,6 +618,7 @@ impl Context {
 #[pyclass(module = "focus_native")]
 struct Ledger {
     shared: Arc<Shared>,
+    reserve: Arc<HashMap<(u32, u32), i64>>,
     persons: Interner,
     shifts: Interner,
     pools: Interner,
@@ -620,7 +639,7 @@ struct Ledger {
 type ItemTuple = (String, String, i64, i64, String, Option<i64>, Option<i64>, bool, String, Option<String>, Option<String>, bool);
 type BookingTuple = (String, String, i64, String, String, Vec<String>, Vec<(i64, i64, bool)>, Vec<String>);
 type ErrTuple = Option<(String, String)>;
-type PrefKey = (i64, i64, i64, String);
+type PrefKey = (i64, i64, i64, i64, String);
 type ChooseTuple = (Option<Vec<String>>, Option<u64>, usize, usize, Vec<(String, PrefKey)>, String);
 
 impl Ledger {
@@ -1041,6 +1060,7 @@ impl Ledger {
     }
 
     fn pref_key(&self, person: u32, team: &str, line: i64, shift: u32, start: i64, end: i64) -> PrefKey {
+        let reserve = self.reserve.get(&(person, shift)).copied().unwrap_or(0);
         let usable = self.shared.usable(person, team, start, end);
         let last = self.items_of(person, shift).iter().filter(|i| i.kind != TRAVEL && i.end <= start).last();
         let affinity = if matches!(last, Some(i) if i.line == Some(line)) { 0 } else { 1 };
@@ -1051,7 +1071,7 @@ impl Ledger {
             }
             None => 0,
         };
-        (usable, affinity, minutes, self.pname(person).to_string())
+        (reserve, usable, affinity, minutes, self.pname(person).to_string())
     }
 
     fn intern_tools(tools: Vec<String>) -> Vec<Arc<str>> {
@@ -1811,6 +1831,6 @@ fn focus_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<canon::Canon>()?;
     m.add("PARITY_REFERENCE", "focus/engine/ledger.py, focus/engine/crew_selection.py, focus/eligibility.py, focus/codec.py")?;
     // the Context row formats this build reads; focus/engine/native.py refuses a wheel built for another protocol
-    m.add("PROTOCOL", 2)?;
+    m.add("PROTOCOL", 3)?;
     Ok(())
 }

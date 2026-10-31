@@ -112,7 +112,7 @@ def test_a41_scarce_specialists_are_preserved_and_affinity_wins_ties(demo_snapsh
     choice, _ = _choose(ctx, ledger, a1, shift, start)
     assert set(choice.crew) <= {_p(f"DEMO-A1-0{i}") for i in (1, 2, 3, 4)}            # A-only people, B holders kept for A2/B2
     keys = dict(choice.preference)
-    assert keys[_p("DEMO-A1-07")][0] == 3 and keys[_p("DEMO-A1-01")][0] == 1          # usable applicable certs drive the order
+    assert keys[_p("DEMO-A1-07")][1] == 3 and keys[_p("DEMO-A1-01")][1] == 1          # after the reserve (B3), usable applicable certs
     ledger2 = ctx.new_ledger()
     pool = ctx.windows[(_p("DEMO-A1-03"), shift.id)].pool_id
     ledger2.book("AT1301", [_p("DEMO-A1-03")], 1301, shift.id, pool, [(start, start + 60, False)])

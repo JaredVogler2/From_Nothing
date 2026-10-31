@@ -119,6 +119,11 @@
       "authority": "fixture_default",
       "ref": "S05 ATOMIC ACQUISITION step 5 freshness: hours from each dataset's newest source clock (or producer loaded_at) to the cutoff; daily feeds 36, NEO snapshots 48, weekly references 168, calendars and CS windows 240. Live load cadences are an open decision"
     },
+    "crew.rare_holders_max": {
+      "value": 2,
+      "authority": "fixture_default",
+      "ref": "S11 SCARCITY: a role bundle held by at most this many members of a pool is rare there; crew choice keeps its holders for ready work that needs it"
+    },
     "admission.max_capture_skew_minutes": {
       "value": 30,
       "authority": "fixture_default",

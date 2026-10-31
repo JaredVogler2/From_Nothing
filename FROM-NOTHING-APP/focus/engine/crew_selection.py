@@ -8,13 +8,15 @@ neighbouring transfers, budget and windows respected. A candidate crew is accept
 when the ledger plans the whole crew, which also enforces the activation cap. There is no
 demand clamp, anonymous fallback, cross-team loan or fake person.
 
-Preference among feasible people follows the documented tie order:
+Preference among feasible people follows the documented tie order (S11 SCARCITY/AFFINITY):
 
-1. fewer usable applicable certificates within the team's demanded set, which keeps scarce
-   multi-cert specialists for rare roles (raw, expired or irrelevant extras never count);
-2. same-aircraft affinity (no transfer from the person's previous duty in the shift);
-3. less duty already booked in the shift;
-4. stable person id.
+1. opportunity cost: fewer rare role bundles of ready work the person is one of few holders of
+   in this shift (``EngineContext.crew_reserve``), so a specialist stays free for the rare role;
+2. fewer usable applicable certificates within the team's demanded set (raw, expired or
+   irrelevant extras never count);
+3. same-aircraft affinity (no transfer from the person's previous duty in the shift);
+4. less duty already booked in the shift;
+5. stable person id.
 
 Incumbent defense passes an exact crew (attempt 1) or excludes nothing but records the
 alternate crew (attempt 2); the caller records why a switch or generalist won.
@@ -45,11 +47,12 @@ class CrewChoice:
 
 def preference_key(ctx: "EngineContext", ledger: DutyLedger, person: str, team: str, line: int, shift_id: str, start: int,
                    end: int) -> tuple:
+    reserve = ctx.crew_reserve().get((person, shift_id), 0)
     usable = ctx.usable_applicable(person, team, start, end)
     last = ledger.last_located(person, shift_id, start)
     affinity = 0 if last is not None and last.line == line else 1
     regular, ot = ledger.duty_minutes(person, shift_id)
-    return (usable, affinity, regular + ot, person)
+    return (reserve, usable, affinity, regular + ot, person)
 
 
 def choose_crew(ctx: "EngineContext", ledger: DutyLedger, *, phase_id: str, assignment_id: str, line: int, team: str,

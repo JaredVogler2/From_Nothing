@@ -78,7 +78,8 @@ FOCUS_NATIVE_CORE=true python -m focus.cli schedule ...
 
 - **Building** needs a Rust toolchain (stable) and pulls `maturin` and `pyo3` from the package indexes.
 - **Prebuilt wheel:** `maturin build --release -o dist` writes `focus_native-0.1.0-cp312-abi3-manylinux_*_x86_64.whl`.
-- **Protocol.** The extension reports `PROTOCOL`, the row formats its `Context` reads (2 since revocation windows). The
+- **Protocol.** The extension reports `PROTOCOL`, the row formats its `Context` reads (2 since revocation windows, 3 since
+  crew choice's reserve table, `Context.register_reserve`). The
   Python side refuses a wheel built for another protocol and runs the Python core, recording the reason in the run
   receipt. Bump both sides together whenever a row format changes, and install the wheel built from the same commit.
 - **Receipt:** every schedule receipt carries `engine` (`requested`, `available`, `engine`). The candidate itself never

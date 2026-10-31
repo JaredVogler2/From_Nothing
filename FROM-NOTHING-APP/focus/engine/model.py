@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
-from typing import Mapping
+from typing import Any, Mapping
 
 from ..calendar import CalendarService, ShiftInstance, ShiftPolicy, build_shift, shifts_between
 from ..contracts.planning import Edge, Phase, PlanningSnapshot, Pool
@@ -125,6 +125,7 @@ class EngineContext:
         self.team_certs = {t: frozenset(c) for t, c in demanded.items()}
         self.tails = self._tails()
         self._whole_window: dict[tuple, bool] = {}
+        self._reserve: dict[tuple[str, str], int] | None = None
 
     # ---------------------------------------------------------------- readiness
     def placeability(self, job_id: str) -> Placeability:
@@ -215,6 +216,41 @@ class EngineContext:
             if whole:
                 return True
         return self.eligibility.index.check_bundle(person, bundle, start, end).allowed
+
+    def crew_reserve(self) -> dict[tuple[str, str], int]:
+        """(person, shift id) -> how many rare role bundles of ready work the person is one of few holders of (S11 SCARCITY).
+
+        A bundle is rare in a pool when 1 to ``crew.rare_holders_max`` of the pool's members hold it over the whole shift.
+        Ready work is every placeable phase whose hard predecessors are already satisfied or released at the cutoff (the
+        ready frontier), demanded of the pool's team. Crew choice uses these people last, so a specialist stays free for the
+        rare role coming up. The table comes from the snapshot alone, so both cores rank by the same numbers.
+        """
+        if self._reserve is not None:
+            return self._reserve
+        limit = self.policy.int("crew.rare_holders_max")
+        done = {p.key.id for job, plist in self.job_phases.items() if self.placeability(job).satisfied for p in plist}
+        released = {rid for rid in self.releases if self.release_floor(rid)[0] is not None}
+        demand: dict[str, set[Any]] = defaultdict(set)
+        for pid, phase in self.phases.items():
+            if not phase.role_demands or not phase.role_demands[0].bundle.groups or not self.placeability(phase.job).placeable:
+                continue
+            if all(e.pred_phase in done or e.pred_phase in released for e in self.preds.get(pid, ())):
+                demand[phase.role_demands[0].team].add(phase.role_demands[0].bundle)
+        out: dict[tuple[str, str], int] = defaultdict(int)
+        for pool in sorted(self.snapshot.pools, key=lambda p: p.id):
+            bundles = demand.get(pool.key.team)
+            members = self._members.get(pool.id, ())
+            if not bundles or not members:
+                continue
+            shift = self.shift(pool.key.start_date, pool.key.shift_number)
+            window = (shift.start, shift.end)
+            for bundle in sorted(bundles, key=repr):
+                holders = [m for m in members if self.qualifies_within(m, bundle, window, shift.start, shift.end)]
+                if 0 < len(holders) <= limit:
+                    for m in holders:
+                        out[(m, shift.id)] += 1
+        self._reserve = dict(out)
+        return self._reserve
 
     def usable_applicable(self, person: str, team: str, start: int, end: int) -> int:
         return len(self.eligibility.index.usable_certs(person, start, end, self.team_certs.get(team, frozenset())))

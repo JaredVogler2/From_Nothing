@@ -27,7 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .model import EngineContext
 
 _LOADED: dict[str, Any] = {}
-PROTOCOL = 2            # the Context row formats this module sends; the extension reports its own (2: revocation windows)
+PROTOCOL = 3            # the Context row formats this module sends; the extension reports its own (2: revocation windows; 3: crew reserve)
 
 
 def _module() -> Any:
@@ -89,6 +89,7 @@ def build_context(ctx: "EngineContext") -> Any:
                                 list(ctx.tool_capacity.items()), [(pool, list(members)) for pool, members in ctx._members.items()],  # noqa: SLF001
                                 holdings, [(team, sorted(certs)) for team, certs in ctx.team_certs.items()])
     register_calendar(context, ctx)
+    context.register_reserve([(person, shift, n) for (person, shift), n in sorted(ctx.crew_reserve().items())])
     return context
 
 
