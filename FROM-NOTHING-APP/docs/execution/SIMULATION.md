@@ -109,14 +109,16 @@ order:
 - **Absence.** A task with a called-off crew member cannot start.
 - **Deviation.** With `deviation` = 5 % a team works an unplanned ready task in place of one dispatched task.
 - **Duration.** The actual length is the planned length times a lognormal factor (`duration_sigma` = 0.15). Work that
-  would end more than 60 minutes past the shift end is not finished (overrun).
+  would end more than 60 minutes past the shift end is not finished (overrun): the crew stops when the allowance runs
+  out, and the work it performed is kept (see the write-back).
 
 Afterwards, a team with at least two idle hours pulls ready work forward with `pull_ahead` = 35 %.
 
-**Write-back.** Finished work is written back per job, so nothing is credited twice:
+**Write-back.** Finished work, and work an overrun cut short, is written back per job before the next cutoff. So each
+shift plans only the work the earlier shifts left open, and nothing is credited twice:
 
 - A job with production work left becomes IN WORK, with its performed and remaining minutes in `work_progress`. The
-  next admission plans only what is left. Its remaining work is re-split and renumbered from ordinal 0, so the next
+  next admission plans only what is left; a phase an overrun cut short keeps the rest of its actual length. Its remaining work is re-split and renumbered from ordinal 0, so the next
   plan's defense finds each committed piece by its minutes still to go, not by its ordinal.
 - A job whose production work is all done takes its buyoff at the end of the shift and is completed. A completed rework
   job's NEO link is marked `COMPLETE`, the master vocabulary the census reconciles it with.

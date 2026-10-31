@@ -27,14 +27,15 @@ attendance. Then every dispatched assignment that starts in the shift is worked 
 - **absence:** a task with a called-off crew member cannot start (``absence``);
 - **deviation:** with ``deviation`` probability a team works an unplanned ready task in place of one dispatched task;
 - **duration:** the actual length is the planned length times a lognormal factor (``duration_sigma``). Work that would
-  run more than the authorized overtime past the shift end is not finished (``overrun``).
+  run more than the authorized overtime past the shift end is not finished (``overrun``): the crew stops when the
+  allowance runs out, and what it performed is kept.
 
 Afterwards a team with at least ``PULL_AHEAD_IDLE_HOURS`` idle hours pulls ready work forward with ``pull_ahead``
 probability.
 
-**Progress.** Finished phases are written back per job:
+**Progress.** Finished phases, and work an overrun cut short, are written back per job:
 - A job with production work left becomes IN WORK with its performed and remaining minutes (``work_progress``), so the
-  next admission plans only what is left.
+  next admission plans only what is left. A phase cut short keeps the rest of its actual length.
 - A job whose production work is all done takes its buyoff at the end of the shift and is completed.
 
 Nothing is credited twice.
@@ -335,6 +336,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
     by_team: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
     job_times: dict[str, list[int]] = {}
     missed: dict[str, tuple[str, str | None, str, int]] = {}          # phase -> (cause, blocking phase, evidence, when)
+    stopped: dict[str, tuple[int, int, int]] = {}                     # phase -> (start, stop, true end) of work an overrun cut short
     worked: dict[str, int] = defaultdict(int)                         # team -> crew minutes actually worked
 
     def ready_at(pid: str, at: int) -> bool:
@@ -424,6 +426,8 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
             if actual_start is not None:
                 started[a.phase] = actual_start
                 worked[team] += (min(s1 + OT_ALLOWANCE, actual_end or s1) - actual_start) * crew_size
+            if cause == "overrun":
+                stopped[a.phase] = (actual_start, s1 + OT_ALLOWANCE, actual_end)   # the crew stops when the overtime allowance runs out
             missed[a.phase] = (cause, blocker if cause == "predecessor" else None, evidence, start)
         rows.append((shift_no, a.id, a.job, job.line, job.key.native_id, team, crew_size, a.start.isoformat(), a.end.isoformat(),
                      from_minute(actual_start).isoformat() if actual_start is not None else None,
@@ -448,24 +452,31 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
             if pulled >= 2:
                 break
 
-    # ---- the source system moves on: finished phases are written back per job, so nothing is credited twice
+    # ---- the source system moves on: finished phases are written back per job, so nothing is credited twice, and work an
+    # overrun cut short keeps what it performed: the next admission plans only its remaining minutes (S08)
     completed = 0
     finished_by_job: dict[str, list[str]] = defaultdict(list)
     for pid in list(done_phase):
         node = phases.get(pid)
         if node is not None and node.kind is not PhaseKind.RELEASE:
             finished_by_job[node.job].append(pid)
+    stopped_by_job: dict[str, list[str]] = defaultdict(list)
+    for pid in stopped:
+        stopped_by_job[phases[pid].job].append(pid)
     buyoff: set[str] = set()                                          # inspections taken with the job's buyoff at shift end
-    for job_id, pids in sorted(finished_by_job.items()):
+    for job_id in sorted(set(finished_by_job) | set(stopped_by_job)):
+        pids, cut = finished_by_job.get(job_id, []), stopped_by_job.get(job_id, [])
         job = ctx.jobs[job_id]
         row = state.get("master_task_list", job.line, job.key.native_id)
         if row is None:
             continue
         left = [p for p in ctx.job_phases.get(job_id, ()) if p.kind is not PhaseKind.RELEASE and p.key.id not in done_phase
                 and p.key.id not in satisfied]
-        work_left = sum(p.work_minutes for p in left if p.kind is PhaseKind.WORK)
-        t0, t1 = job_times[job_id]
+        work_left = sum(stopped[p.key.id][2] - stopped[p.key.id][1] if p.key.id in stopped else p.work_minutes
+                        for p in left if p.kind is PhaseKind.WORK)
+        t0 = min(([job_times[job_id][0]] if job_id in job_times else []) + [stopped[p][0] for p in cut])
         if work_left <= 0:
+            t1 = job_times[job_id][1]
             for p in left:                                            # only inspections left: the buyoff closes the job
                 done_phase[p.key.id] = max(t1, min(s1, t1 + p.work_minutes))
                 buyoff.add(p.key.id)
@@ -481,8 +492,9 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
                 _new_rework(state, job.line, row, rng, rework_minutes, cert_of_team, load_ts, shift_no, "QA reject", events)
         else:
             prog = state.get("work_progress", job.line, job.key.native_id)
-            performed = (int(prog["PERFORMED_ELAPSED_MINUTES"]) if prog else 0) + sum(phases[p].work_minutes for p in pids
-                                                                                     if phases[p].kind is PhaseKind.WORK)
+            performed = ((int(prog["PERFORMED_ELAPSED_MINUTES"]) if prog else 0) + sum(phases[p].work_minutes for p in pids
+                                                                                      if phases[p].kind is PhaseKind.WORK)
+                         + sum(stopped[p][1] - stopped[p][0] for p in cut))
             state.upsert("work_progress", {"LINE_NUMBER": job.line, "SOI": job.key.native_id, "PERFORMED_ELAPSED_MINUTES": performed,
                                            "REMAINING_ELAPSED_MINUTES": work_left, "AS_OF_UTC": from_minute(s1 - 20).isoformat(),
                                            "EVIDENCE_REF": f"SIM-PROGRESS:{shift_no}:{job.key.native_id}"})

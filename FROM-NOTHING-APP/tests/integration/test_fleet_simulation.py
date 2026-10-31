@@ -7,10 +7,13 @@ dashboard's read-only operations must answer from the database it wrote.
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import replace
+from datetime import datetime
 
 import pytest
 
 from focus.data.fullscale_fixture import FleetSpec
+from focus.sim.execute import FloorSpec
 from focus.sim.runner import SimSpec, run
 from tests.integration.test_api_scope import client_on
 
@@ -56,6 +59,48 @@ def test_every_layer_is_filled_and_every_published_plan_is_valid(sims) -> None:
     # an S3 start after local midnight being read on the shift's production day
     assert _all(first, "SELECT COUNT(*) FROM method_commitment WHERE outcome = 'KEPT'")[0][0] > 0
     assert not _all(first, "SELECT * FROM method_commitment WHERE outcome = 'UNSAFE' AND code IN ('NO_START_RULE', 'INCUMBENT_PHASE_MISSING')")
+
+
+def _keys(path, sql) -> set[tuple[int, str]]:
+    return {(int(line), str(soi)) for line, soi in _all(path, sql)}
+
+
+def test_each_shift_plans_only_the_work_the_previous_shift_left_open(sims) -> None:
+    """A job the floor finished is written back COMPLETE before the next cutoff, so the next shift neither admits nor plans it."""
+    first, _ = sims
+    for k in (0, 1):
+        done = _keys(first, f"SELECT LINE_NUMBER, SHOP_ORDER_IDENTIFIER FROM src_master_task_list WHERE load_shift = {k + 1} "
+                            "AND SHOP_ORDER_STATUS = 'COMPLETE'")
+        assert done and done <= _keys(first, f"SELECT line, soi FROM calc_job WHERE shift_no = {k}")      # open work the floor finished
+        assert not done & _keys(first, f"SELECT line, soi FROM calc_job WHERE shift_no = {k + 1}")
+        assert not done & _keys(first, f"SELECT line, soi FROM plan_assignment WHERE shift_no = {k + 1}")
+
+
+@pytest.fixture(scope="module")
+def overruns(tmp_path_factory):
+    db = tmp_path_factory.mktemp("overrun") / "overrun.db"
+    run(replace(SPEC, floor=FloorSpec(duration_sigma=1.0)), db, log=lambda message: None)   # long tails: work cut short at shift end
+    return db
+
+
+def test_work_cut_short_at_the_shift_end_comes_back_with_its_remaining_minutes(overruns) -> None:
+    """An overrun stops when the overtime allowance runs out (shift end + 60 minutes). What it performed is written back and the
+    job returns IN WORK, so the next shift admits and plans only its remaining minutes (S08 remaining actual work preserved)."""
+    ends = dict(_all(overruns, "SELECT shift_no, end_utc FROM sim_shift"))
+    cut = _all(overruns, "SELECT shift_no, line, soi, actual_start FROM exec_assignment WHERE cause = 'overrun' AND shift_no < 2")
+    assert cut
+    for k, line, soi, start in cut:
+        worked = (datetime.fromisoformat(ends[k]) - datetime.fromisoformat(start)).total_seconds() // 60 + 60
+        progress = _all(overruns, "SELECT load_shift, PERFORMED_ELAPSED_MINUTES, REMAINING_ELAPSED_MINUTES FROM src_work_progress "
+                                  f"WHERE LINE_NUMBER = {line} AND SOI = '{soi}' ORDER BY load_shift")
+        earlier = [p for p in progress if p[0] <= k]
+        (now,) = [p for p in progress if p[0] == k + 1]
+        assert now[1] - (earlier[-1][1] if earlier else 0) >= worked and now[2] > 0          # performed accumulates; work remains
+        assert _all(overruns, f"SELECT SHOP_ORDER_STATUS FROM src_master_task_list WHERE load_shift = {k + 1} AND LINE_NUMBER = {line} "
+                              f"AND SHOP_ORDER_IDENTIFIER = '{soi}'") == [("IN WORK",)]
+        (admitted,) = _all(overruns, f"SELECT status, disposition, work_minutes FROM calc_job WHERE shift_no = {k + 1} AND line = {line} "
+                                     f"AND soi = '{soi}'")
+        assert admitted[:2] == ("IN WORK", "admitted") and admitted[2] >= now[2]              # the remainder (and inspections left)
 
 
 def test_the_same_arguments_repeat_exactly(sims) -> None:
