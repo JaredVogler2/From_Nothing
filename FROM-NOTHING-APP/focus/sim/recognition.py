@@ -13,11 +13,15 @@ re-scored; the canonical score stays in ``perf_team_shift``.
   only. Only goals with a policy-status score earn: a NEUTRAL goal (D = 0) earns nothing, as only scored evaluations do.
 * **commitment_kept**: every incumbent-defended unit of the goal (committed in the freezing plan) is earned and every miss
   carries approved relief. **excusal_decided**: one event per decided claim, approved or rejected.
-* **Badges.** Recovery (a goal with a ``gate_recovery``), CommitmentKeeper (a ``commitment_kept``), SteadyShift (each window of
-  ``badges.steady_shift_run`` consecutive positive-goal shifts scored at least ``badges.steady_shift_min_score``) and
-  MonthlyChampion (the best pooled score of a month that closed within the run; ties go to the team id).
-* **Not derived.** ``dependency_unlocked`` and Firebreak need each shift's admitted graph and lifecycle facts, and SkillSteward
-  the frozen membership's certificate holders. The run stores neither, so they are listed as not derived, never as zero.
+* **dependency_unlocked**: an earned unit whose completion was the last prerequisite of other jobs downstream. The run
+  stores those jobs when the work finishes (``perf_unlock``, from the shift's admitted graph).
+* **Badges.** Recovery (a goal with a ``gate_recovery``), CommitmentKeeper (a ``commitment_kept``), Firebreak (one completion
+  released at least ``badges.firebreak_min_unlocked`` jobs), SkillSteward (a goal earned a unit whose role needs a certificate
+  group held by at most ``badges.skill_steward_max_holders`` of the frozen membership: ``perf_unit.scarce``, never a
+  certification), SteadyShift (each window of ``badges.steady_shift_run`` consecutive positive-goal shifts scored at least
+  ``badges.steady_shift_min_score``) and MonthlyChampion (the best pooled score of a month that closed within the run; ties
+  go to the team id).
+* **Not derived.** A run made before those facts were stored lists the rules that need them as not derived, never as zero.
 * **Level** = 1 + floor(XP / ``xp.level_size``). The inflation monitor counts awards per team and ISO week against
   ``xp.inflation_alert_awards_per_team_week``.
 """
@@ -33,10 +37,10 @@ from ..analytics.points import gate_context
 from ..performance.score import formula
 
 SCORED = ("DEMONSTRATION", "OFFICIAL")
-NOT_DERIVED = {
-    "dependency_unlocked": "needs each shift's admitted graph and lifecycle facts, which the run does not store",
-    "Firebreak": "awarded from dependency_unlocked, which is not derived",
-    "SkillSteward": "needs the frozen membership's certificate holders, which the run does not store",
+NOT_STORED = {
+    "dependency_unlocked": "this run predates the stored releases (perf_unlock); a new run derives it",
+    "Firebreak": "awarded from dependency_unlocked, which this run does not store",
+    "SkillSteward": "this run predates the stored scarce-role flag (perf_unit.scarce); a new run derives it",
 }
 
 
@@ -48,7 +52,14 @@ def derive(con: sqlite3.Connection, policy: Any) -> dict[str, Any]:
     """Team-shift recognition, team XP and levels, stream counts, badges and the inflation monitor of one run."""
     divisor = policy.int("recognition.base_divisor")
     size = policy.int("xp.level_size")
+    firebreak, steward = policy.int("badges.firebreak_min_unlocked"), policy.int("badges.skill_steward_max_holders")
     con.row_factory = sqlite3.Row
+    has_unlocks = con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'perf_unlock'").fetchone() is not None
+    has_scarce = any(r["name"] == "scarce" for r in con.execute("PRAGMA table_info(perf_unit)"))
+    not_derived = {k: v for k, v in NOT_STORED.items() if not (has_scarce if k == "SkillSteward" else has_unlocks)}
+    released: dict[tuple[int, str, str], set[str]] = defaultdict(set)   # (shift_no, team, assignment) -> jobs its completion released
+    for r in con.execute("SELECT shift_no, team, assignment_id, unlocked_job FROM perf_unlock") if has_unlocks else ():
+        released[(r["shift_no"], r["team"], r["assignment_id"])].add(r["unlocked_job"])
     goals = {(r["shift_no"], r["team"]): r for r in con.execute(
         "SELECT shift_no, production_day, shift_number, week, team, B, E, Cp, U, oos_effort, score, status FROM perf_team_shift")}
     frozen = {(r["production_day"], r["team"], r["shift_number"]): r["frozen_shift_no"] for r in con.execute(
@@ -62,7 +73,9 @@ def derive(con: sqlite3.Connection, policy: Any) -> dict[str, Any]:
     zero = Fraction(0)
     rows: dict[tuple[int, str], dict[str, Any]] = {}
     units_of: dict[tuple[int, str], list[sqlite3.Row]] = defaultdict(list)
-    for u in con.execute("SELECT shift_no, team, assignment_id, job_id, effort, status, relief, origin FROM perf_unit ORDER BY shift_no, team, assignment_id"):
+    scarce = ", scarce" if has_scarce else ", 0 AS scarce"
+    for u in con.execute(f"SELECT shift_no, team, assignment_id, job_id, effort, status, relief, origin{scarce} FROM perf_unit "
+                         "ORDER BY shift_no, team, assignment_id"):
         units_of[(u["shift_no"], u["team"])].append(u)
     streams: Counter[str] = Counter()
     awards: Counter[tuple[str, int, int]] = Counter()              # team, ISO year, ISO week -> awards
@@ -81,10 +94,18 @@ def derive(con: sqlite3.Connection, policy: Any) -> dict[str, Any]:
             skipped[g["status"] or "UNSCORED"] += 1
             continue
         mine = units_of.get(key, [])
-        recovered = []
+        recovered, stewarded = [], []
         for u in mine:
             if u["status"] != "EARNED":
                 continue
+            jobs = released.get((shift_no, team, u["assignment_id"]), set())
+            if jobs:
+                streams["dependency_unlocked"] += 1
+                awards[(team, iso[0], iso[1])] += 1
+                if len(jobs) >= firebreak:
+                    badges.append({"badge": "Firebreak", "team": team, "shift_no": shift_no, "units": 1, "released": len(jobs)})
+            if u["scarce"]:
+                stewarded.append(u["assignment_id"])
             ctx = None
             if u["origin"] == "ORIGINAL":
                 gate = (gates.get(f) or {}).get(u["job_id"]) if f is not None else None
@@ -110,6 +131,8 @@ def derive(con: sqlite3.Connection, policy: Any) -> dict[str, Any]:
             badges.append({"badge": "CommitmentKeeper", "team": team, "shift_no": shift_no, "units": len(defended)})
         if recovered:
             badges.append({"badge": "Recovery", "team": team, "shift_no": shift_no, "units": len(recovered)})
+        if stewarded:
+            badges.append({"badge": "SkillSteward", "team": team, "shift_no": shift_no, "units": len(stewarded)})
     streams["excusal_decided"] = con.execute("SELECT COUNT(*) FROM perf_claim WHERE decision IN ('APPROVED', 'REJECTED')").fetchone()[0]
 
     # SteadyShift: each window of consecutive qualifying shifts in the team's own sequence
@@ -182,6 +205,7 @@ def derive(con: sqlite3.Connection, policy: Any) -> dict[str, Any]:
         s.pop("bonus")
     return {"policy": {"base_divisor": divisor, "gate_weight": policy.int("gate.weight"), "gate_cap_days": policy.int("gate.cap_days"),
                        "gate_grace_days": policy.int("gate.proxy_grace_days"), "date_basis": policy.str("gate.date_basis"), "level_size": size,
-                       "steady_shift_run": need, "steady_shift_min_score": str(floor), "inflation_limit": limit},
+                       "steady_shift_run": need, "steady_shift_min_score": str(floor), "inflation_limit": limit,
+                       "firebreak_min_unlocked": firebreak, "skill_steward_max_holders": steward},
             "teams": out_teams, "shifts": shifts, "streams": dict(sorted(streams.items())), "badges": badges, "inflation": monitor,
-            "not_derived": NOT_DERIVED, "skipped_goals": dict(skipped)}
+            "not_derived": not_derived, "skipped_goals": dict(skipped)}

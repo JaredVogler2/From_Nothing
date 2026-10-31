@@ -182,6 +182,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         db.insert("perf_unit", outcome.units)
         db.insert("perf_claim", outcome.claims)
         db.insert("perf_amendment", outcome.amendments)
+        db.insert("perf_unlock", outcome.unlocks)
         db.insert("perf_team_shift", outcome.perf)
         rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
         val = dispatch.run.validation

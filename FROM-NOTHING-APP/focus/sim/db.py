@@ -69,7 +69,8 @@ CREATE TABLE IF NOT EXISTS perf_team_shift (
   policy_id TEXT, policy_hash TEXT, status_reason TEXT);
 CREATE TABLE IF NOT EXISTS perf_unit (
   shift_no INTEGER, team TEXT, assignment_id TEXT, job_id TEXT, phase TEXT, line INTEGER, effort INTEGER, status TEXT, cause TEXT,
-  claim_cause TEXT, origin_team TEXT, claim_status TEXT, relief INTEGER, oos_charged INTEGER, origin TEXT);
+  claim_cause TEXT, origin_team TEXT, claim_status TEXT, relief INTEGER, oos_charged INTEGER, origin TEXT, scarce INTEGER);
+CREATE TABLE IF NOT EXISTS perf_unlock (shift_no INTEGER, team TEXT, assignment_id TEXT, phase TEXT, line INTEGER, unlocked_job TEXT);
 CREATE TABLE IF NOT EXISTS perf_claim (
   shift_no INTEGER, team TEXT, claim_id TEXT, cause TEXT, origin_team TEXT, executing_team TEXT, status TEXT, attribution TEXT,
   units INTEGER, effort INTEGER, evidence TEXT, decision TEXT, decided_by TEXT, reason TEXT, reported_by TEXT);

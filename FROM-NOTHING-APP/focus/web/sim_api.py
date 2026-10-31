@@ -664,9 +664,9 @@ _RECOGNITION: dict[tuple, dict[str, Any]] = {}                      # one deriva
     "sim_recognition", "GET", "/api/v1/sim/recognition",
     summary="Gate recognition, XP, levels, progression streams and badges of the simulation's teams",
     description="The production progression rules applied to the run's stored rows (focus.sim.recognition): each earned goal unit's "
-                "completion credit, the frozen gate bonus of behind-gate original units, commitments kept, decided excusals, the Recovery, "
-                "CommitmentKeeper, SteadyShift and MonthlyChampion badges, levels and the inflation monitor. Recognition never changes a "
-                "score or implies a qualification. Read-only.",
+                "completion credit, the frozen gate bonus of behind-gate original units, commitments kept, decided excusals, released "
+                "dependencies, the Recovery, CommitmentKeeper, Firebreak, SkillSteward, SteadyShift and MonthlyChampion badges, levels and "
+                "the inflation monitor. Recognition never changes a score or implies a qualification. Read-only.",
     grants=ALL_READERS, read_only=True, query=SHIFT_Q, tags=("simulation",),
 )
 def sim_recognition(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:

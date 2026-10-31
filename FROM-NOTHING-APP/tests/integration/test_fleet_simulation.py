@@ -63,8 +63,40 @@ def test_the_same_arguments_repeat_exactly(sims) -> None:
     for sql in ("SELECT shift_no, snapshot_hash, decision_digest FROM sim_shift ORDER BY shift_no",
                 "SELECT shift_no, assignment_id, outcome, cause, actual_start, actual_end FROM exec_assignment ORDER BY shift_no, assignment_id",
                 "SELECT shift_no, team, units, earned, B0, E, Cp, U, oos_effort, score, grade FROM perf_team_shift ORDER BY shift_no, team",
-                "SELECT shift_no, team, cause, origin_team, status, units, effort, decision FROM perf_claim ORDER BY shift_no, claim_id"):
+                "SELECT shift_no, team, cause, origin_team, status, units, effort, decision FROM perf_claim ORDER BY shift_no, claim_id",
+                "SELECT shift_no, team, assignment_id, scarce FROM perf_unit ORDER BY shift_no, team, assignment_id",
+                "SELECT shift_no, team, assignment_id, unlocked_job FROM perf_unlock ORDER BY shift_no, team, assignment_id, unlocked_job"):
         assert _all(first, sql) == _all(second, sql), sql
+
+
+def test_released_dependencies_and_scarce_roles_are_stored_and_recognized(sims, policy) -> None:
+    """A13: the facts behind dependency_unlocked, Firebreak and SkillSteward are stored as work finishes and goals freeze, and
+    the recognition counts exactly what they say for scored goals."""
+    from focus.sim.recognition import derive
+
+    first, _ = sims
+    unlocks = _all(first, "SELECT l.shift_no, l.team, l.assignment_id, l.unlocked_job, u.status, u.job_id, l.line, j.line FROM perf_unlock l "
+                          "JOIN perf_unit u ON u.shift_no = l.shift_no AND u.team = l.team AND u.assignment_id = l.assignment_id "
+                          "LEFT JOIN calc_job j ON j.shift_no = l.shift_no AND j.job_id = l.unlocked_job")
+    assert unlocks and len(unlocks) == _all(first, "SELECT COUNT(*) FROM perf_unlock")[0][0]       # every release belongs to a stored unit
+    assert all(status == "EARNED" and job != freed and line == freed_line for _, _, _, freed, status, job, line, freed_line in unlocks)
+    scored = {(r[0], r[1]) for r in _all(first, "SELECT shift_no, team FROM perf_team_shift WHERE status IN ('DEMONSTRATION', 'OFFICIAL')")}
+    released: dict[tuple, set] = {}
+    for shift_no, team, asg, freed, *_ in unlocks:
+        if (shift_no, team) in scored:
+            released.setdefault((shift_no, team, asg), set()).add(freed)
+    stewards = {(r[0], r[1]) for r in _all(first, "SELECT shift_no, team FROM perf_unit WHERE status = 'EARNED' AND scarce = 1")} & scored
+    assert stewards                                                                              # the tiny run earns scarce-role work
+    con = sqlite3.connect(first)
+    try:
+        data = derive(con, policy)
+    finally:
+        con.close()
+    badges = [b for b in data["badges"]]
+    assert data["not_derived"] == {} and data["streams"].get("dependency_unlocked", 0) == len(released)
+    assert {(b["shift_no"], b["team"]) for b in badges if b["badge"] == "SkillSteward"} == stewards
+    firebreak = policy.int("badges.firebreak_min_unlocked")
+    assert sum(b["badge"] == "Firebreak" for b in badges) == sum(len(jobs) >= firebreak for jobs in released.values())
 
 
 def test_dashboard_operations_answer_from_the_tables(sims, tmp_path, app_root, monkeypatch) -> None:
@@ -256,4 +288,4 @@ def test_recognition_is_the_frozen_value_of_earned_goal_units(sims, app_root) ->
     assert data["streams"].get("gate_recovery", 0) == sum(behind for _, _, behind in expected.values())
     decided = _all(first, "SELECT COUNT(*) FROM perf_claim WHERE decision IN ('APPROVED', 'REJECTED')")[0][0]
     assert data["streams"].get("excusal_decided", 0) == decided
-    assert set(data["not_derived"]) == {"dependency_unlocked", "Firebreak", "SkillSteward"}
+    assert data["not_derived"] == {}                                                 # a new run stores every fact the rules need

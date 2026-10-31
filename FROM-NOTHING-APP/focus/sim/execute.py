@@ -133,6 +133,7 @@ class GoalUnit:
     crew: tuple[str, ...]
     shift_number: int
     origin: str = "ORIGINAL"           # ORIGINAL (frozen) | AMENDMENT (approved emergency addition)
+    scarce: bool = False               # its role needs a certificate group few of the frozen membership hold (SkillSteward)
 
 
 @dataclass
@@ -145,11 +146,33 @@ class DayGoals:
     keys: set[tuple[str, str, int]] = field(default_factory=set)
     done: dict[tuple[str, str, int], int] = field(default_factory=dict)        # frozen key -> completion minute
     progress: dict[tuple[str, str], int] = field(default_factory=dict)         # (job, kind) -> phases finished since freezing
+    unlocked: dict[tuple[str, str, int], tuple[str, ...]] = field(default_factory=dict)  # frozen key -> jobs its completion released
+
+
+def scarce_role(ctx: Any, phase: Any, members: tuple[str, ...], start: int, end: int, held: dict[tuple, int]) -> bool:
+    """SkillSteward's scarce role (S14), as ``focus.analytics.progression`` judges it: a certificate group of the phase's role
+    held over the shift window by at least one and at most ``badges.skill_steward_max_holders`` of the frozen membership."""
+    limit = ctx.policy.int("badges.skill_steward_max_holders")
+    for group in phase.role_demands[0].bundle.groups:
+        key = (members, start, end, tuple(group))
+        if key not in held:
+            held[key] = sum(1 for m in members if any(ctx.eligibility.index.holds(m, cert, start, end)[0] for cert in group))
+        if group and 0 < held[key] <= limit:
+            return True
+    return False
+
+
+def frozen_members(ctx: Any, team: str, shift: Any) -> tuple[str, ...]:
+    """The admitted membership a goal freezes with: the team's executable pool members of that shift."""
+    pool = ctx.pool_for(team, shift)
+    return tuple(sorted(ctx.pool_members(pool.id))) if pool is not None else ()
 
 
 def freeze_day(plan: Any, ctx: Any, day: date, windows: Mapping[int, tuple[int, int]]) -> DayGoals:
     """The day's goals of record from an accepted plan: its assignments in each remaining shift window of the day."""
     units: dict[tuple[str, int], list[GoalUnit]] = defaultdict(list)
+    members: dict[tuple[str, int], tuple[str, ...]] = {}
+    held: dict[tuple, int] = {}
     for a in sorted(plan.assignments, key=lambda a: (to_minute(a.start), a.id)):
         phase = ctx.phases.get(a.phase)
         if phase is None or not phase.role_demands:
@@ -159,8 +182,12 @@ def freeze_day(plan: Any, ctx: Any, day: date, windows: Mapping[int, tuple[int, 
         if number is None:
             continue
         team = phase.role_demands[0].team
+        if (team, number) not in members:
+            members[(team, number)] = frozen_members(ctx, team, ctx.shift(day, number))
+        w0, w1 = windows[number]
         units[(team, number)].append(GoalUnit(a.id, a.phase, a.job, phase.kind.value, phase.key.ordinal, a.line, team,
-                                              phase.standard_person_minutes, start, tuple(c.person for c in a.crew), number))
+                                              phase.standard_person_minutes, start, tuple(c.person for c in a.crew), number,
+                                              scarce=scarce_role(ctx, phase, members[(team, number)], w0, w1, held)))
     goals = DayGoals(day, plan.id, dict(units), frozenset(ctx.jobs))
     goals.keys = {(u.job, u.kind, u.ordinal) for us in goals.units.values() for u in us}
     return goals
@@ -177,6 +204,7 @@ class Outcome:
     oos: list[tuple]
     completed_jobs: int
     amendments: list[tuple] = field(default_factory=list)
+    unlocks: list[tuple] = field(default_factory=list)
 
 
 def _local(dt_utc: datetime, tz) -> str:
@@ -288,6 +316,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
     # plan assigns in this shift (approved feasible additions: B = B0 + additions, the original units unchanged)
     added: dict[str, GoalUnit] = {}
     amendments: list[tuple] = []
+    held: dict[tuple, int] = {}
     for a in todo if goals is not None else ():
         p, job = phases.get(a.phase), ctx.jobs.get(a.job)
         if (p is None or job is None or p.kind is PhaseKind.RELEASE or not p.role_demands or not job.is_rework or job.id in goals.jobs
@@ -295,7 +324,8 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
             continue
         team = team_of_phase.get(a.phase) or "?"
         added[a.phase] = GoalUnit(a.id, a.phase, a.job, p.kind.value, frozen_key(a.phase)[2], a.line, team, p.standard_person_minutes,
-                                  to_minute(a.start), tuple(c.person for c in a.crew), shift.number, "AMENDMENT")
+                                  to_minute(a.start), tuple(c.person for c in a.crew), shift.number, "AMENDMENT",
+                                  scarce_role(ctx, p, frozen_members(ctx, team, shift), s0, s1, held))
         amendments.append((shift_no, team, digest_id("SIMAMD", shift_no, team, a.phase), a.id, a.job, a.phase, a.line, p.standard_person_minutes,
                            "ASSIGNED_IN_ACCEPTED_PLAN", f"sim-lead:{team}", f"emergency rework {job.key.native_id} found after the goals froze"))
     deviating = {team for team in sorted({team_of_phase.get(a.phase) or "?" for a in todo}) if rng.random() < spec.deviation}
@@ -539,6 +569,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
                              worked_on.get(p, "outside_goals")))
     if goals is not None:
         goals.done.update({frozen_key(p): t for p, t in done_phase.items() if phases.get(p) is not None and phases[p].kind is not PhaseKind.RELEASE})
+        goals.unlocked.update({frozen_key(p): jobs for p, jobs in released_by(ctx, done_phase, satisfied, open_record).items()})
     known_records = {int(r["RECORD_ID"]) for r in open_short.values()} | {rec for rec, _ in kit_short}
 
     def culprit(pid: str, at: int, trail: frozenset[str]) -> tuple[str, str | None, str]:
@@ -594,7 +625,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
     rework_origin = {(int(r["LINE_NUMBER"]), str(r["CHILD_SOI"])): r.get("DEFECT_ORIGIN_TEAM") for r in state.all("rework_classification")}
     teams_now = (set(by_team) | set(present) | set(output) | {u.team for u in added.values()}
                  | ({t for (t, n) in goals.units if n == shift.number} if goals else set()))
-    units_rows, claims, perf = [], [], []
+    units_rows, claims, perf, unlock_rows = [], [], [], []
     for team in sorted(teams_now):
         mine = (goals.units.get((team, shift.number), []) if goals is not None else []) + [u for u in added.values() if u.team == team]
         by_key = {(u.job, u.kind, u.ordinal): u for u in mine}
@@ -604,6 +635,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         for key, u in by_key.items():
             if (u.phase in done_phase) if u.origin == "AMENDMENT" else (goals is not None and key in goals.done):
                 facts[key] = ("EARNED", None, None, None, None)
+                unlock_rows.extend((shift_no, team, u.assignment_id, u.phase, u.line, job) for job in (goals.unlocked.get(key, ()) if goals else ()))
                 continue
             now = u.ordinal - base.get((u.job, u.kind), 0)
             cur = f"{u.job}.{u.kind}.{now}"
@@ -684,7 +716,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         for key, u in by_key.items():
             status_, cause, claim, origin, cstatus = facts[key]
             units_rows.append((shift_no, team, u.assignment_id, u.job, u.phase, u.line, u.effort, status_, cause, claim, origin, cstatus,
-                               int(key in relieved), int(key in charged), u.origin))
+                               int(key in relieved), int(key in charged), u.origin, int(u.scarce)))
         available = present.get(team, 0) * regular / 60
         score = result["score"]
         counts = {c: sum(1 for f in facts.values() if f[1] == c) for c in ("part", "predecessor", "absence", "overrun", "deviation")}
@@ -705,7 +737,47 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
             if node is not None and node.kind is not PhaseKind.RELEASE:
                 k = (node.job, node.kind.value)
                 goals.progress[k] = goals.progress.get(k, 0) + 1
-    return Outcome(rows, events, perf, units_rows, claims, offplan_rows, oos_rows, completed, amendments)
+    return Outcome(rows, events, perf, units_rows, claims, offplan_rows, oos_rows, completed, amendments, unlock_rows)
+
+
+def released_by(ctx: Any, done: Mapping[str, int], satisfied: set[str], open_record: Any) -> dict[str, tuple[str, ...]]:
+    """dependency_unlocked (S14), as ``focus.analytics.progression`` derives it: for each phase finished this shift, the other
+    jobs downstream (through RELEASE nodes) whose hard prerequisites were all satisfied with this completion the last of them.
+    A prerequisite finished before the shift counts as earlier; a part gates through its open shortage record, as on the floor."""
+    phases = ctx.phases
+
+    def when(q: str, trail: frozenset[str] = frozenset()) -> int | None:
+        if q in satisfied or q in ctx.releases or q not in phases:
+            return -1
+        if phases[q].kind is PhaseKind.RELEASE:
+            times = [when(e.pred_phase, trail | {q}) for e in ctx.preds.get(q, ()) if e.pred_phase not in trail]
+            return None if any(t is None for t in times) else max(times, default=-1)
+        return done.get(q)
+
+    out: dict[str, tuple[str, ...]] = {}
+    for p, t in sorted(done.items()):
+        node = phases.get(p)
+        if node is None or node.kind is PhaseKind.RELEASE:
+            continue
+        frontier, seen, released = [e.succ_phase for e in ctx.succs.get(p, ())], set(), set()
+        while frontier:
+            n = frontier.pop()
+            target = phases.get(n)
+            if n in seen or target is None:
+                continue
+            seen.add(n)
+            if target.kind is PhaseKind.RELEASE:
+                frontier.extend(e.succ_phase for e in ctx.succs.get(n, ()))
+                continue
+            job = ctx.jobs.get(target.job)
+            if job is None or target.job == node.job or target.job in released:
+                continue
+            times = [when(e.pred_phase) for e in ctx.preds.get(n, ())]
+            if times and all(x is not None for x in times) and max(times) == t and open_record(job.line, job.key.native_id, t) is None:
+                released.add(target.job)
+        if released:
+            out[p] = tuple(sorted(released))
+    return out
 
 
 def _poisson(rng: random.Random, lam: float) -> int:
