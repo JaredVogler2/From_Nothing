@@ -6,9 +6,12 @@
   duration, crew, earliest start, open part shortage and disposition; per aircraft its customer, minor model, due date
   and daily penalty; per team and shift the pool size and activation cap; inventory counts.
 * **Method** (``method_*``, ``sim_shift``): stage timings and accepted moves of the optimizer, validator check counts,
-  stop reason, decision digest and each step's wall time.
+  the defense outcome of every incumbent commitment (with the code of each UNSAFE one), stop reason, decision digest and
+  each step's wall time.
 * **Results and outcomes** (``plan_*``, ``exec_*``, ``perf_*``): the published assignments, duties, aircraft completions
-  and costs, exceptions with reasons; what the simulated shop floor did with each assignment; each team's shift score.
+  and costs, exceptions with reasons; what the simulated shop floor did with each assignment, its offplan work and
+  out-of-sequence starts; each team-shift's goal units (frozen and amended), approved emergency additions, excusal claims
+  with their decisions, and canonical score.
 """
 from __future__ import annotations
 
@@ -40,6 +43,7 @@ CREATE TABLE IF NOT EXISTS method_stage (
   shift_no INTEGER, purpose TEXT, seq INTEGER, stage TEXT, runtime_ms INTEGER, candidates INTEGER, accepted INTEGER, note TEXT);
 CREATE TABLE IF NOT EXISTS method_move (shift_no INTEGER, purpose TEXT, seq INTEGER, move TEXT);
 CREATE TABLE IF NOT EXISTS method_check (shift_no INTEGER, purpose TEXT, check_name TEXT, count INTEGER, violations INTEGER);
+CREATE TABLE IF NOT EXISTS method_commitment (shift_no INTEGER, purpose TEXT, outcome TEXT, code TEXT, n INTEGER);
 CREATE TABLE IF NOT EXISTS plan_assignment (
   shift_no INTEGER, purpose TEXT, assignment_id TEXT, job_id TEXT, line INTEGER, soi TEXT, kind TEXT, team TEXT,
   start_utc TEXT, end_utc TEXT, shift_id TEXT, crew_size INTEGER, crew TEXT, conditional INTEGER, committed INTEGER,
@@ -55,16 +59,35 @@ CREATE TABLE IF NOT EXISTS exec_assignment (
   planned_start TEXT, planned_end TEXT, actual_start TEXT, actual_end TEXT, outcome TEXT, cause TEXT);
 CREATE TABLE IF NOT EXISTS exec_event (shift_no INTEGER, kind TEXT, line INTEGER, job TEXT, person TEXT, detail TEXT);
 CREATE TABLE IF NOT EXISTS perf_team_shift (
-  shift_no INTEGER, production_day TEXT, shift_number INTEGER, week INTEGER, team TEXT, planned INTEGER, completed INTEGER,
-  on_time INTEGER, slipped_part INTEGER, slipped_absence INTEGER, slipped_predecessor INTEGER, slipped_overrun INTEGER,
-  planned_hours REAL, actual_hours REAL, present INTEGER, available_hours REAL, adherence REAL, on_time_rate REAL,
-  utilization REAL, score REAL, grade TEXT);
+  shift_no INTEGER, production_day TEXT, shift_number INTEGER, week INTEGER, team TEXT, units INTEGER, earned INTEGER, on_time INTEGER,
+  missed_part INTEGER, missed_absence INTEGER, missed_predecessor INTEGER, missed_overrun INTEGER, missed_deviation INTEGER,
+  planned_hours REAL, actual_hours REAL, present INTEGER, available_hours REAL, B0 INTEGER, additions INTEGER, B INTEGER, E INTEGER,
+  Cp INTEGER, U INTEGER, oos_effort INTEGER, relieved_units INTEGER, added_units INTEGER, offplan_units INTEGER, oos_units INTEGER,
+  attainment REAL, adherence REAL, utilization REAL, score REAL, grade TEXT, status TEXT);
+CREATE TABLE IF NOT EXISTS perf_unit (
+  shift_no INTEGER, team TEXT, assignment_id TEXT, job_id TEXT, phase TEXT, line INTEGER, effort INTEGER, status TEXT, cause TEXT,
+  claim_cause TEXT, origin_team TEXT, claim_status TEXT, relief INTEGER, oos_charged INTEGER, origin TEXT);
+CREATE TABLE IF NOT EXISTS perf_claim (
+  shift_no INTEGER, team TEXT, claim_id TEXT, cause TEXT, origin_team TEXT, executing_team TEXT, status TEXT, attribution TEXT,
+  units INTEGER, effort INTEGER, evidence TEXT, decision TEXT, decided_by TEXT, reason TEXT, reported_by TEXT);
+CREATE TABLE IF NOT EXISTS perf_amendment (
+  shift_no INTEGER, team TEXT, amendment_id TEXT, assignment_id TEXT, job_id TEXT, phase TEXT, line INTEGER, effort INTEGER, basis TEXT,
+  authority TEXT, reason TEXT);
+CREATE TABLE IF NOT EXISTS perf_goal_day (
+  frozen_shift_no INTEGER, production_day TEXT, plan_id TEXT, team TEXT, shift_number INTEGER, units INTEGER, B0 INTEGER);
+CREATE TABLE IF NOT EXISTS exec_offplan (
+  shift_no INTEGER, team TEXT, job_id TEXT, phase TEXT, line INTEGER, soi TEXT, effort INTEGER, start_utc TEXT, end_utc TEXT, kind TEXT);
+CREATE TABLE IF NOT EXISTS exec_oos (
+  shift_no INTEGER, team TEXT, assignment_id TEXT, phase TEXT, blocked_by TEXT, discretionary INTEGER, charged INTEGER, affected_effort INTEGER,
+  effective_utc TEXT, evidence TEXT);
 CREATE INDEX IF NOT EXISTS ix_calc_job ON calc_job (shift_no, line);
 CREATE INDEX IF NOT EXISTS ix_plan_asg ON plan_assignment (shift_no, purpose, line);
 CREATE INDEX IF NOT EXISTS ix_plan_asg_team ON plan_assignment (shift_no, purpose, team, start_utc);
 CREATE INDEX IF NOT EXISTS ix_plan_duty ON plan_duty (shift_no, purpose, person);
 CREATE INDEX IF NOT EXISTS ix_exec ON exec_assignment (shift_no, team);
 CREATE INDEX IF NOT EXISTS ix_perf ON perf_team_shift (shift_no, team);
+CREATE INDEX IF NOT EXISTS ix_perf_unit ON perf_unit (shift_no, team);
+CREATE INDEX IF NOT EXISTS ix_perf_claim ON perf_claim (shift_no, team);
 """
 
 

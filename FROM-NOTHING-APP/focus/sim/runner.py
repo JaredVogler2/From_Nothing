@@ -1,6 +1,6 @@
 """Run a shift-by-shift fleet simulation into a SQLite database.
 
-python -m focus.sim.runner --aircraft 50 --days 14 --db runtime/sim/fleet.db [--purposes FORECAST] [--max-moves 6]
+python -m focus.sim.runner --aircraft 50 --days 14 --db runtime/sim/fleet.db [--purposes EXECUTABLE,FORECAST] [--max-moves 6]
 
 Per shift (three a day): attendance for the day, admission of the sources at the cutoff (15 minutes before the shift),
 the plan for each purpose with the previous shift's published plan defended, independent validation, the published
@@ -15,12 +15,13 @@ import gc
 import json
 import os
 import random
+import re
 import resource
 import sys
 import tempfile
 import time
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -38,10 +39,11 @@ from ..engine.max.optimizer.orchestrator import decision_digest  # noqa: E402
 from ..runtime import build_services  # noqa: E402
 from .db import SimDB  # noqa: E402
 from .engine import admit, plan, published_incumbent  # noqa: E402
-from .execute import FloorSpec, attendance_rows, execute_shift  # noqa: E402
+from .execute import DayGoals, FloorSpec, attendance_rows, execute_shift, freeze_day  # noqa: E402
 from .state import SourceState  # noqa: E402
 
 UTC = timezone.utc
+UNSAFE_CODE = re.compile(r"^[A-Z][A-Z_]+(?=:|$)")            # FLOOR_AFTER_COMMITTED_START, SAFETY_OVERRIDE, ...
 DUTY_DAYS = 1                                   # duties kept per plan: the published shift and the rest of its day
 
 
@@ -50,7 +52,7 @@ class SimSpec:
     fleet: FleetSpec = field(default_factory=FleetSpec)
     floor: FloorSpec = field(default_factory=FloorSpec)
     days: int = 14
-    purposes: tuple[str, ...] = ("FORECAST",)
+    purposes: tuple[str, ...] = ("EXECUTABLE", "FORECAST")    # the floor works the executable plan; the forecast projects
     max_moves: int = 3
     max_repairs: int = 2
     budget_seconds: float = 3600.0
@@ -93,6 +95,8 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
     facts = dict(FLEET_FACTS)
     state = SourceState(datasets)
     sim_id = digest_id("SIM", asdict(spec))
+    facts.update({"policy_id": services.policy.id, "policy_hash": services.policy.hash, "synthetic": True,
+                  "score_policy_status": services.policy.str("score.policy_status")})
     db.run_meta(sim_id, datetime.now(UTC).isoformat(), asdict(spec), facts, "RUNNING")
     for name, ds in datasets.items():
         db.source_rows(name, ds.rows, 0)
@@ -102,6 +106,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
     rework_minutes = sorted({int(r["ELAPSED_MINUTES"]) for r in state.all("duration_episodes")})
     rework_rate = spec.fleet.rework_total / (5 * spec.fleet.stay_days * 3)
     incumbent = None
+    day_goals: DayGoals | None = None                            # goals of record: frozen by the day's first accepted plan
     summary: list[dict[str, Any]] = []
     for k in range(min(spec.days * 3, spec.shifts or spec.days * 3)):
         day = first_day + timedelta(days=k // 3)
@@ -143,13 +148,28 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         for purpose_name, sp in plans.items():
             _write_plan(db, k, purpose_name, sp, shift, tz)
         timings["write_s"] = time.time() - t
-        incumbent = {name: published_incumbent(snapshot, sp, cutoff) for name, sp in plans.items()}
+        # only a plan the independent validator passed is accepted: it becomes the next incumbent and, for the dispatched
+        # purpose, the work of the floor; an invalid one leaves the previous incumbent in force and the floor without goals
+        incumbent = {**(incumbent or {}), **{name: published_incumbent(snapshot, sp, cutoff) for name, sp in plans.items() if sp.run.validation.valid}}
         t = time.time()
-        outcome = execute_shift(state, dispatch, shift, shift_no=k, week=week, rng=rng, spec=spec.floor, rework_rate=rework_rate,
-                                rework_minutes=rework_minutes, cert_of_team=cert_of_team, tz=tz)
+        floor_plan = dispatch if dispatch.run.validation.valid else replace(dispatch, plan=replace(dispatch.plan, assignments=()))
+        if day_goals is not None and day_goals.day != day:
+            day_goals = None
+        if day_goals is None and dispatch.run.validation.valid:
+            windows = {n: (w.start, w.end) for n in range(number, 4) for w in [build_shift(day, n, shift_policy, settings.site)]}
+            day_goals = freeze_day(dispatch.plan, dispatch.context, day, windows)
+            db.insert("perf_goal_day", [(k, day.isoformat(), dispatch.plan.id, team, n, len(us), sum(u.effort for u in us))
+                                        for (team, n), us in sorted(day_goals.units.items())])
+        outcome = execute_shift(state, floor_plan, shift, shift_no=k, week=week, rng=rng, spec=spec.floor, rework_rate=rework_rate,
+                                rework_minutes=rework_minutes, cert_of_team=cert_of_team, tz=tz, policy=services.policy, goals=day_goals)
         timings["execute_s"] = time.time() - t
         db.insert("exec_assignment", outcome.rows)
         db.insert("exec_event", outcome.events)
+        db.insert("exec_offplan", outcome.offplan)
+        db.insert("exec_oos", outcome.oos)
+        db.insert("perf_unit", outcome.units)
+        db.insert("perf_claim", outcome.claims)
+        db.insert("perf_amendment", outcome.amendments)
         db.insert("perf_team_shift", outcome.perf)
         rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
         val = dispatch.run.validation
@@ -243,6 +263,11 @@ def _write_plan(db: SimDB, k: int, purpose: str, sp: Any, shift: Any, tz) -> Non
     val = run.validation
     bad = Counter(v.check for v in val.violations)
     db.insert("method_check", [(k, purpose, name, count, bad.get(name, 0)) for name, count in sorted(val.check_counts.items())])
+    outcomes: Counter = Counter()
+    for r in plan.commitment_results:
+        code = next((m.group(0) for m in map(UNSAFE_CODE.match, (r.attempt1, r.reason)) if m), "") if r.outcome == "UNSAFE" else ""
+        outcomes[(r.outcome, code)] += 1
+    db.insert("method_commitment", [(k, purpose, outcome, code, n) for (outcome, code), n in sorted(outcomes.items())])
     team_of = {pid: (p.role_demands[0].team if p.role_demands else None) for pid, p in ctx.phases.items()}
     rows = []
     for a in plan.assignments:
@@ -279,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--aircraft", type=int, default=50)
     parser.add_argument("--days", type=int, default=14)
     parser.add_argument("--db", default=str(APP_ROOT / "runtime" / "sim" / "fleet.db"))
-    parser.add_argument("--purposes", default="FORECAST")
+    parser.add_argument("--purposes", default="EXECUTABLE,FORECAST")
     parser.add_argument("--max-moves", type=int, default=3)
     parser.add_argument("--max-repairs", type=int, default=2)
     parser.add_argument("--baseline", type=int, default=4500)

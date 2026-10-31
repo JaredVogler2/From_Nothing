@@ -3,7 +3,7 @@ import { api, h, mount, loadingCard, errorCard, metric, table, stateCard, setCsr
 import { barChart, lineChart, stackedBars, heatmap, gantt, PALETTE, fmtShort } from "./charts.js";
 
 const TABS = [
-  ["overview", "Fleet overview"], ["economics", "Economics"], ["aircraft", "Aircraft"], ["performance", "Shift performance"],
+  ["overview", "Fleet overview"], ["economics", "Economics"], ["aircraft", "Aircraft"], ["performance", "Shift performance"], ["excusals", "Excusals"],
   ["dispatch", "Dispatch"], ["gantt", "Worker Gantt"], ["capacity", "Capacity"], ["supply", "Supply chain"],
   ["methods", "How the plan was made"], ["profile", "Data profile"],
 ];
@@ -11,7 +11,9 @@ const FULL = 1200, HALF = 590;                 // chart widths in SVG units: abo
 const host = document.getElementById("main");
 const bar = document.getElementById("sim-bar");
 const tabs = document.getElementById("sim-tabs");
-const ui = { tab: "overview", shift: null, shifts: [], team: "T01", line: null, teams: [] };
+const ui = { tab: "overview", shift: null, shifts: [], team: null, claimTeam: "ALL", line: null, teams: [] };
+const OFFPLAN = { pull_ahead: "pulled ahead into idle time", deviation: "worked instead of a dispatched task",
+  outside_goals: "dispatched by a later plan, not in the day's frozen goals" };
 let token = 0;
 
 const money = (v) => (v === null || v === undefined ? "—" : "$" + fmtShort(v));
@@ -95,9 +97,9 @@ const RENDER = {
         metric("Mean days late", num(k.mean_late_days, 2), deltaNote(dl.mean_late_days, (v) => num(v, 2), false)),
         metric("Unknown completion", num(k.unknown_completion), "an undated part blocks the rest of the aircraft"),
         metric("Open jobs", num(k.open_jobs), deltaNote(dl.open_jobs, num, false)),
-        metric("Tasks done this shift", `${num(k.completed_tasks)} of ${num(k.planned_tasks)}`, k.adherence !== undefined ? pct(k.adherence) + " of planned" : null),
+        metric("Planned tasks done", `${num(k.completed_tasks)} of ${num(k.planned_tasks)}`, k.attainment !== null && k.attainment !== undefined ? pct(k.attainment) + " attainment after relief" : null),
         metric("Utilization", pct(k.utilization), "labor hours over present people's regular hours"),
-        metric("Fleet score", num(k.score, 1), deltaNote(dl.score, (v) => num(v, 1)))),
+        metric("Fleet score", k.score === null || k.score === undefined ? "—" : `${num(k.score, 1)} ${k.grade || ""}`, deltaNote(dl.score, (v) => num(v, 1)))),
       card("Days late by aircraft", chartBox(barChart(d.fleet.map((f) => ({ label: String(f.line), value: f.late_days || 0,
         color: colorFor(`${f.customer} 787-${f.minor_model}`), note: `${f.customer} 787-${f.minor_model}, ${money(f.cost_usd)} projected` })),
         { title: "Projected days late per aircraft", yLabel: "days late", rotate: true, width: FULL }),
@@ -166,46 +168,103 @@ const RENDER = {
     const c = d.compare;
     const row = (label, x) => {
       const cur = x.current || {}, dl = x.delta || {};
-      return { label, score: cur.score, ds: dl.score, adherence: cur.adherence, da: dl.adherence, on_time: cur.on_time_rate, dot: dl.on_time_rate,
-        util: cur.utilization, du: dl.utilization, done: cur.completed, planned: cur.planned };
+      return { label, score: cur.score, grade: cur.grade, ds: dl.score, attainment: cur.attainment, da: dl.attainment, adherence: cur.adherence,
+        dh: dl.adherence, util: cur.utilization, du: dl.utilization, earned: cur.earned, units: cur.units, relief: cur.E, D: cur.D, oos: cur.oos_charge };
     };
     const rows = [row(`This shift vs prior shift`, c.shift), row(`This day (${d.day}) vs prior day`, c.day), row(`Week ${d.week} vs prior week`, c.week),
       row("Whole simulation", c.overall)];
-    const slipNames = [["slipped_part", "part", "#e8590c"], ["slipped_absence", "absence", "#ae3ec9"], ["slipped_predecessor", "predecessor", "#1098ad"], ["slipped_overrun", "overrun", "#c92a2a"]];
+    const delta = (v, scale = 100, unit = "pt") => (v === undefined || v === null ? "" : h("span", { class: v >= 0 ? "delta-good" : "delta-bad" }, signed(v * scale, (x) => num(x, 1) + unit)));
+    const causeColor = { LATE_PART: "#e8590c", CROSS_TEAM_PREDECESSOR: "#1098ad", CAPACITY_SHORTAGE: "#ae3ec9", REWORK_INJECTION: "#2f9e44",
+      SAME_TEAM_PREDECESSOR: "#3b5bdb", DURATION_OVERRUN: "#c92a2a", DEVIATION: "#495057", REPLANNED: "#adb5bd" };
+    const causes = Object.keys(causeColor);
+    const excusable = causes.slice(0, 4);
+    const byShift = new Map();
+    d.missed_by_cause.forEach((m) => { const v = byShift.get(m.shift_no) || {}; v[m.cause] = m; byShift.set(m.shift_no, v); });
+    const stack = (key, list = causes) => d.shifts.map((x) => ({ label: x.label, parts: list.map((cz) => ({ name: cz, value: ((byShift.get(x.shift_no) || {})[cz] || {})[key] || 0, color: causeColor[cz] })) }));
     mount(body,
-      h("div", { class: "view-title" }, h("h1", {}, "Shift performance"),
-        h("p", { class: "muted" }, d.scoring)),
+      h("div", { class: "view-title" }, h("h1", {}, "Shift performance"), h("p", { class: "muted" }, d.scoring)),
       card("Comparisons", table([{ label: "Period", key: "label" },
-        { label: "Score", num: true, render: (r) => [num(r.score, 1), " ", h("span", { class: r.ds >= 0 ? "delta-good" : "delta-bad" }, r.ds === undefined ? "" : signed(r.ds, (v) => num(v, 1)))] },
-        { label: "Finished", num: true, render: (r) => [pct(r.adherence), " ", h("span", { class: r.da >= 0 ? "delta-good" : "delta-bad" }, r.da === undefined ? "" : signed(r.da * 100, (v) => num(v, 1) + "pt"))] },
-        { label: "On time", num: true, render: (r) => [pct(r.on_time), " ", h("span", { class: r.dot >= 0 ? "delta-good" : "delta-bad" }, r.dot === undefined ? "" : signed(r.dot * 100, (v) => num(v, 1) + "pt"))] },
+        { label: "Score", num: true, render: (r) => [r.score === null || r.score === undefined ? "—" : `${num(r.score, 1)} ${r.grade || ""}`, " ",
+          h("span", { class: r.ds >= 0 ? "delta-good" : "delta-bad" }, r.ds === undefined ? "" : signed(r.ds, (v) => num(v, 1)))] },
+        { label: "Attainment", num: true, render: (r) => [pct(r.attainment), " ", delta(r.da)] },
+        { label: "Adherence", num: true, render: (r) => [pct(r.adherence), " ", delta(r.dh)] },
+        { label: "Relief (E of D+E)", num: true, render: (r) => (r.relief === undefined ? "—" : `${num(r.relief)} of ${num((r.D || 0) + (r.relief || 0))} min`) },
+        { label: "OOS charge", num: true, render: (r) => (r.oos === null || r.oos === undefined ? "—" : num(r.oos, 2)) },
         { label: "Utilization", num: true, render: (r) => [pct(r.util), " ", h("span", { class: "muted" }, r.du === undefined ? "" : signed(r.du * 100, (v) => num(v, 1) + "pt"))] },
-        { label: "Tasks", num: true, render: (r) => `${num(r.done)} / ${num(r.planned)}` }], rows)),
+        { label: "Planned tasks done", num: true, render: (r) => `${num(r.earned)} / ${num(r.units)}` }], rows)),
       h("div", { class: "grid grid-2" },
-        card("Score and finish rate by shift", chartBox(lineChart([
-          { name: "Score", points: d.shifts.map((s) => ({ x: s.label, y: s.score })) },
-          { name: "Finished %", points: d.shifts.map((s) => ({ x: s.label, y: s.adherence === null ? null : s.adherence * 100 })) },
-          { name: "On time %", points: d.shifts.map((s) => ({ x: s.label, y: s.on_time_rate === null ? null : s.on_time_rate * 100 })) }],
-          { title: "Fleet score, finish and on-time rates per shift", yMax: 100, width: HALF, height: 300 }))),
-        card("Why tasks slipped", chartBox(stackedBars(d.shifts.map((s) => ({ label: s.label, parts: slipNames.map(([k, n, col]) => ({ name: n, value: s[k], color: col })) })),
-          { title: "Slipped tasks per shift by cause", names: slipNames.map(([, n, col]) => ({ name: n, color: col })), width: HALF, height: 300 })))),
+        card("Score, attainment and adherence by shift", chartBox(lineChart([
+          { name: "Score", points: d.shifts.map((x) => ({ x: x.label, y: x.score })) },
+          { name: "Attainment %", points: d.shifts.map((x) => ({ x: x.label, y: x.attainment === null ? null : x.attainment * 100 })) },
+          { name: "Adherence %", points: d.shifts.map((x) => ({ x: x.label, y: x.adherence === null ? null : x.adherence * 100 })) }],
+          { title: "Pooled fleet score, attainment and adherence per shift", yMax: 100, width: HALF, height: 300 }),
+          "Pooled: the components of every team are summed before dividing, never an average of team scores.")),
+        card("Missed planned work that counted against teams", chartBox(stackedBars(stack("unexcused"),
+          { title: "Unexcused missed effort per shift by cause (person minutes)", names: causes.map((cz) => ({ name: cz.replace(/_/g, " ").toLowerCase(), color: causeColor[cz] })), width: HALF, height: 300 }),
+          "Same-team predecessor and overrun claims are only proposed (they need a person's notes); a deviation, or work a replan moved with no disruption on record, has no claim."))),
       h("div", { class: "grid grid-2" },
-        card("By day", chartBox(barChart(d.days.map((x) => ({ label: x.day.slice(5), value: x.score, note: `${num(x.completed)} of ${num(x.planned)} tasks` })),
-          { title: "Fleet score per production day", width: HALF, height: 300, yLabel: "score" }))),
-        card("Week against week", table([{ label: "Week", key: "week" }, { label: "Score", num: true, render: (r) => num(r.score, 1) },
-          { label: "Finished", num: true, render: (r) => pct(r.adherence) }, { label: "On time", num: true, render: (r) => pct(r.on_time_rate) },
-          { label: "Utilization", num: true, render: (r) => pct(r.utilization) }, { label: "Tasks", num: true, render: (r) => `${num(r.completed)} / ${num(r.planned)}` }], d.weeks))),
-      card("Teams this shift", table([{ label: "Team", key: "team" }, { label: "Grade", key: "grade" }, { label: "Score", num: true, render: (r) => num(r.score, 1) },
+        card("Missed planned work excused by approved claims", chartBox(stackedBars(stack("excused", excusable),
+          { title: "Relieved effort per shift by cause (person minutes)", names: excusable.map((cz) => ({ name: cz.replace(/_/g, " ").toLowerCase(), color: causeColor[cz] })), width: HALF, height: 300 }),
+          "Late parts, another team's unfinished predecessor, a call-off after publication and rework from another team's defect, approved by the excusal decider.")),
+        card("By day", chartBox(barChart(d.days.map((x) => ({ label: x.day.slice(5), value: x.score, note: `${num(x.earned)} of ${num(x.units)} planned tasks, grade ${x.grade || "—"}` })),
+          { title: "Pooled fleet score per production day", width: HALF, height: 300, yLabel: "score" })))),
+      card("Week against week", table([{ label: "Week", key: "week" }, { label: "Score", num: true, render: (r) => (r.score === null ? "—" : `${num(r.score, 1)} ${r.grade || ""}`) },
+        { label: "Attainment", num: true, render: (r) => pct(r.attainment) }, { label: "Adherence", num: true, render: (r) => pct(r.adherence) },
+        { label: "Relief", num: true, render: (r) => num(r.E) }, { label: "Offplan output", num: true, render: (r) => num(r.U) },
+        { label: "Utilization", num: true, render: (r) => pct(r.utilization) }, { label: "Planned tasks done", num: true, render: (r) => `${num(r.earned)} / ${num(r.units)}` }], d.weeks)),
+      card("Teams this shift", table([{ label: "Team", key: "team" }, { label: "Grade", render: (r) => r.grade || (r.status === "NEUTRAL" ? "neutral" : "—") },
+        { label: "Score", num: true, render: (r) => num(r.score, 1) },
         { label: "vs prior", num: true, render: (r) => (r.score_delta === null ? "—" : h("span", { class: r.score_delta >= 0 ? "delta-good" : "delta-bad" }, signed(r.score_delta, (v) => num(v, 1)))) },
-        { label: "Planned", num: true, key: "planned" }, { label: "Done", num: true, key: "completed" }, { label: "On time", num: true, key: "on_time" },
-        { label: "Part", num: true, key: "slipped_part" }, { label: "Absence", num: true, key: "slipped_absence" }, { label: "Pred.", num: true, key: "slipped_predecessor" },
-        { label: "Overrun", num: true, key: "slipped_overrun" }, { label: "Utilization", num: true, render: (r) => pct(r.utilization) },
-        { label: "Present", num: true, key: "present" }], d.teams)));
+        { label: "Attainment", num: true, render: (r) => pct(r.attainment) }, { label: "Adherence", num: true, render: (r) => pct(r.adherence) },
+        { label: "Frozen (B0)", num: true, render: (r) => num(r.B0) }, { label: "Added", num: true, render: (r) => num(r.additions) },
+        { label: "Relief (E)", num: true, render: (r) => num(r.E) },
+        { label: "Earned (Cp)", num: true, render: (r) => num(r.Cp) }, { label: "Offplan (U)", num: true, render: (r) => num(r.U) },
+        { label: "OOS effort", num: true, render: (r) => num(r.oos_effort) },
+        { label: "Missed: part / pred. / absence / overrun / deviation", render: (r) => `${r.missed_part} / ${r.missed_predecessor} / ${r.missed_absence} / ${r.missed_overrun} / ${r.missed_deviation}` },
+        { label: "Utilization", num: true, render: (r) => pct(r.utilization) }], d.teams)));
+  },
+
+  async excusals(body) {
+    const d = await get("excusals", { team: ui.claimTeam !== "ALL" ? ui.claimTeam : null });
+    const pick = h("select", { "aria-label": "Team", onchange: (e) => { ui.claimTeam = e.target.value; route(); } },
+      ["ALL"].concat(d.teams).map((t) => h("option", { value: t, selected: t === (d.team || "ALL") ? true : null }, t === "ALL" ? "All teams" : t)));
+    const decided = (r) => (r.decision ? `${r.decision.toLowerCase()} by ${r.decided_by}` : r.status === "PROPOSED" ? "proposed: needs notes" : "not decided");
+    mount(body,
+      h("div", { class: "view-title" }, h("h1", {}, "Excusals"),
+        h("p", { class: "muted" }, `Why planned work was not done, as disruption claims in the eight-cause taxonomy, and whether each excuse is valid. ${d.rules} Decisions: ${d.decider}.`)),
+      h("div", { class: "toolbar" }, h("label", {}, "Team", pick)),
+      h("div", { class: "grid grid-2" },
+        card("Claims by cause this shift", table([{ label: "Cause", render: (r) => r.cause.replace(/_/g, " ").toLowerCase() }, { label: "Claims", num: true, key: "claims" },
+          { label: "Tasks", num: true, key: "units" }, { label: "Effort (min)", num: true, render: (r) => num(r.effort) },
+          { label: "Relieved", num: true, render: (r) => num(r.relieved) }, { label: "Proposed only", num: true, render: (r) => num(r.proposed) }], d.by_cause, { empty: "No missed planned work this shift." })),
+        card("Counted against the team this shift", table([{ label: "Cause", render: (r) => r.cause.replace(/_/g, " ").toLowerCase() },
+          { label: "Tasks", num: true, key: "units" }, { label: "Effort (min)", num: true, render: (r) => num(r.effort) }], d.unexcused, { empty: "Nothing unexcused this shift." }))),
+      h("div", { class: "grid grid-2" },
+        card("Whose unfinished work blocked whom (this shift)", table([{ label: "Blocking team", key: "origin_team" }, { label: "Blocked team (relieved)", key: "team" },
+          { label: "Tasks", num: true, key: "units" }, { label: "Effort (min)", num: true, render: (r) => num(r.effort) }], d.blame_shift, { empty: "No cross-team blocking this shift." })),
+        card("Whose unfinished work blocked whom (whole run)", table([{ label: "Blocking team", key: "origin_team" }, { label: "Blocked team", key: "team" },
+          { label: "Tasks", num: true, key: "units" }, { label: "Effort (min)", num: true, render: (r) => num(r.effort) }], d.blame_run, { empty: "No cross-team blocking yet." }))),
+      card(`Claims${d.team ? " of " + d.team : ""}`, table([{ label: "Team", key: "team" }, { label: "Cause", render: (r) => r.cause.replace(/_/g, " ").toLowerCase() },
+        { label: "Origin team", render: (r) => r.origin_team || "—" }, { label: "Tasks", num: true, key: "units" }, { label: "Effort", num: true, render: (r) => num(r.effort) },
+        { label: "Evidence", key: "evidence" }, { label: "Status", render: (r) => r.status.toLowerCase() }, { label: "Decision", render: decided }, { label: "Reason", key: "reason" }],
+        d.claims, { empty: "No claims." })),
+      h("div", { class: "grid grid-2" },
+        card("Offplan work (counts in adherence, not attainment)", table([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" }, { label: "Task", key: "soi" },
+          { label: "Effort", num: true, key: "effort" }, { label: "Why", render: (r) => OFFPLAN[r.kind] || r.kind }],
+          d.offplan, { empty: "No offplan work." })),
+        card("Out-of-sequence starts", table([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" }, { label: "Task", key: "soi" },
+          { label: "By choice", render: (r) => (r.discretionary ? "yes: charged" : "directed: not charged") }, { label: "Charged effort", num: true, key: "affected_effort" }],
+          d.oos, { empty: "No out-of-sequence starts." }))),
+      card("Emergency additions (B = B0 + additions)", table([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" },
+        { label: "Effort", num: true, key: "effort" }, { label: "Approved by", key: "authority" }, { label: "Why", key: "reason" },
+        { label: "Outcome", render: (r) => (r.status === "EARNED" ? "done" : r.status ? "missed" : "—") }],
+        d.amendments, { empty: "No emergency additions this shift." })));
   },
 
   async dispatch(body) {
     const d = await get("dispatch", { team: ui.team });
     ui.teams = d.teams.map((t) => t.team);
+    ui.team = d.team;
     const pick = h("select", { "aria-label": "Team", onchange: (e) => { ui.team = e.target.value; route(); } },
       ui.teams.map((t) => h("option", { value: t, selected: t === ui.team ? true : null }, t)));
     mount(body,
@@ -223,7 +282,8 @@ const RENDER = {
 
   async gantt(body) {
     const d = await get("gantt", { team: ui.team });
-    if (!ui.teams.length) ui.teams = Array.from({ length: 30 }, (_, i) => "T" + String(i + 1).padStart(2, "0")).concat(["QA"]);
+    ui.teams = d.teams;
+    ui.team = d.team;
     const pick = h("select", { "aria-label": "Team", onchange: (e) => { ui.team = e.target.value; route(); } },
       ui.teams.map((t) => h("option", { value: t, selected: t === ui.team ? true : null }, t)));
     const t0 = Date.parse(d.window.start_utc) / 60000, t1 = Date.parse(d.window.end_utc) / 60000;

@@ -15,9 +15,10 @@ python -m focus.sim.runner --aircraft 50 --days 14 --db runtime/sim/fleet.db
 FOCUS_SIM_DB=runtime/sim/fleet.db python app.py
 ```
 
-Then sign in with a demo persona and open `/simulation`. Two more options:
+Then sign in with a demo persona that sees all teams and open `/simulation`. More options:
 
 - `--shifts N` stops after N shifts, for a trial run.
+- `--purposes` chooses the plans made each shift (default `EXECUTABLE,FORECAST`). The floor works the EXECUTABLE plan.
 - `--max-moves`, `--max-repairs`, `--baseline`, `--edges`, `--rework`, `--teams` and `--team-size` change the defaults
   below.
 
@@ -26,7 +27,7 @@ The same arguments always give the same tables, down to the decision digests, th
 
 ## The shift loop
 
-Each production day has three shifts, so 14 days is 42 shifts. Each shift goes through eight steps:
+Each production day has three shifts, so 14 days is 42 shifts. Each shift goes through these steps:
 
 1. **Attendance** (first shift of the day). Every rostered person is present or absent for the day's three shifts.
    Absence is `planned_absence` = 3 %.
@@ -35,22 +36,31 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
 3. **Admit.** The production snapshot builder (`build_snapshot`) runs on the datasets captured at the cutoff, 15 minutes
    before the shift. It does census, admission, durations, eligibility, pools, calendars, station windows, parts, graph
    and economics. Only the file-store round trip of `acquire` is skipped: its input and output are the same.
-4. **Plan.** The rich MAX optimizer runs with the native core:
+4. **Plan, twice.** The rich MAX optimizer runs with the native core for both purposes (`--purposes`, default
+   `EXECUTABLE,FORECAST`):
    - the neutral seed;
-   - the cost-of-delay redispatch;
+   - the cost-of-delay redispatch, through each aircraft's Registry weight;
    - delay repair, with `--max-repairs` boosts;
    - `--max-moves` search moves, half of them aimed at the longest waits.
 
-   The previous shift's published plan is the incumbent, so its three-day commitments are defended.
-5. **Validate.** The independent validator checks the candidate from the snapshot, with every check required. Only a
-   valid plan is used.
-6. **Publish.** The plan's assignments, duties, aircraft completions, costs and exceptions are written to tables. It
-   becomes the next shift's incumbent.
-7. **Execute.** A seeded shop-floor model works the assignments that start in the shift (see below).
-8. **Feed back.** Finished tasks are completed with their actual times. The floor's outcomes change the source system:
-   - new rework from the floor and QA rejects;
-   - part arrivals and slips;
-   - new undated shortages, and dates for undated ones.
+   Each purpose's previous valid plan is its incumbent, so its three-day commitments are defended. The incumbent is
+   accepted by the simulation without the stage, readback and sign protocol, and its defense says so (`SIMULATED`).
+5. **Validate.** The independent validator checks each candidate from the snapshot, with every check required. Only a
+   valid plan becomes the next incumbent. The floor works only a valid EXECUTABLE plan; when it is invalid, the floor
+   gets no dispatch that shift.
+6. **Freeze the day's goals.** The first valid EXECUTABLE plan of a production day freezes that day's team-shift goals,
+   as `GoalRegistry` does in production. Later plans of the day are proposals: the floor works the latest one, while
+   the goals stay frozen.
+7. **Publish.** Both plans' assignments, duties, aircraft completions, costs and exceptions are written to tables, with
+   every commitment's defense outcome.
+8. **Execute.** A seeded shop-floor model works the EXECUTABLE assignments that start in the shift (see below). The
+   FORECAST plan only projects completions and penalties.
+9. **Score.** Each team-shift goal is scored with the canonical formula, after its excusal claims are decided.
+10. **Feed back.** The floor's results change the source system:
+    - finished work is written back per job;
+    - new rework from the floor and QA rejects;
+    - part arrivals and slips;
+    - new undated shortages, and dates for undated ones.
 
 ## The synthetic fleet (`FleetSpec`, `focus/data/fullscale_fixture.py`)
 
@@ -77,32 +87,91 @@ An aircraft's lateness is set by its worst late parts, the maximum over hundreds
 
 ## The shop floor (`FloorSpec`, `focus/sim/execute.py`)
 
-Each assignment that starts in the shift is worked in start order:
+At the start of the shift a few present people call off after publication (`late_absence` = 1 % per person and
+shift). The call-offs are written to attendance (`SOURCE` = `SIM_LATE_CALLOFF`): they are the evidence of any capacity
+claim, and the next shift's plan sees them. Then each dispatched assignment that starts in the shift is worked in start
+order:
 
-- **Part:** a task whose part is still open at its start cannot start.
-- **Absence:** each crew member misses the shift after publication with probability `late_absence` = 1 %.
-- **Predecessor:** every hard predecessor must be finished, before the shift or earlier in it. A late predecessor
-  pushes the start; a start pushed past the shift end is a slip.
-- **Duration:** the actual length is the planned length times a lognormal factor (`duration_sigma` = 0.15). Work that
+- **Predecessors.** Every hard edge is honored by type and lag: finish-to-start waits for the predecessor's end,
+  start-to-start for its start, and finish-to-finish holds the end. Links between jobs run through each job's
+  RELEASE node, which finishes when all its inputs do, so work finished earlier in the shift releases its successors.
+  A crew whose predecessor is unfinished waits (a slip), or with `oos_work` = 15 % works out of sequence anyway.
+- **Out of sequence.** Every out-of-sequence start is recorded at its actual start against each unfinished
+  predecessor. By choice (`oos_discretionary` = 60 %) it is charged once at `score.oos_rate`, finished or not. A
+  directed one cites a directive and is not charged.
+- **Parts.** A task cannot start while its part is still open. Its kit can also be found short at the point of use
+  (`kit_shortage` = 0.3 % of tasks), which enters a new dated shortage. Half of the part slips (`unannounced_slip`) are
+  entered only once work finds the part missing.
+- **Absence.** A task with a called-off crew member cannot start.
+- **Deviation.** With `deviation` = 5 % a team works an unplanned ready task in place of one dispatched task.
+- **Duration.** The actual length is the planned length times a lognormal factor (`duration_sigma` = 0.15). Work that
   would end more than 60 minutes past the shift end is not finished (overrun).
+
+Afterwards, a team with at least two idle hours pulls ready work forward with `pull_ahead` = 35 %.
+
+**Write-back.** Finished work is written back per job, so nothing is credited twice:
+
+- A job with production work left becomes IN WORK, with its performed and remaining minutes in `work_progress`. The
+  next admission plans only what is left. Its remaining work is re-split and renumbered from ordinal 0, so the next
+  plan's defense finds each committed piece by its minutes still to go, not by its ordinal.
+- A job whose production work is all done takes its buyoff at the end of the shift and is completed. A completed rework
+  job's NEO link is marked `COMPLETE`, the master vocabulary the census reconciles it with.
 
 Then the source system moves on:
 
 - **Parts:** parts whose expected date has passed arrive, or slip one to three days (`part_slip` = 15 %).
 - **Undated shortages:** they get a date with probability `undated_dated_per_shift` = 40 % a shift. New ones are found
   at `new_undated_per_aircraft_shift` = 2 % per aircraft per shift.
-- **Rework:** found on the floor at the fleet's rework rate, and from QA rejections (`qa_reject` = 4 %).
+- **Rework:** found on the floor at the fleet's rework rate, and from QA rejections (`qa_reject` = 4 %). The defect
+  origin is an explicit fact in the rework classification. A QA reject is the team's own defect. Rework found on the
+  floor is traced to another team's finished work at the station with `upstream_defect` = 35 %, otherwise to the
+  owning team.
 
-## Scores
+## Scores and excusals
 
-Each team's shift is scored from its published tasks:
+Each team-shift goal is scored by the one canonical formula (`focus.performance.score`) under the active policy, the
+same function production uses (S14):
 
-- score = 100 × (0.6 × share of planned tasks finished + 0.4 × share finished on time);
-- graded A (90+), B, C, D, or F (below 60).
+- **Goal.** B0 is the frozen standard person minutes of the goal's units. B = B0 + approved emergency additions.
+- **Additions.** At the start of each shift the team's lead adds the rework found after the goals froze that the accepted
+  plan assigns in the shift (basis `ASSIGNED_IN_ACCEPTED_PLAN`). The original units are never changed.
+- **Relief.** E is the effort of missed units relieved by approved claims, and D = B − E.
+- **Earned.** Cp is the planned or added effort finished, once. A frozen unit finished in an earlier shift of the day is
+  credited to its own goal.
+- **Offplan.** U is finished work that is no unit of the goal: pulled ahead, a deviation, or work a later plan dispatched
+  outside the day's goals.
+- **Formula.** attainment A = min(1, Cp/D); adherence H = Cp/(Cp + U), so offplan work is discounted; score =
+  100 × (0.70 A + 0.30 H) − 100 × O/D, where O is the once-only out-of-sequence charge. Grades are A 90+, B 80+, C 70+,
+  D 60+ and F below.
+- **Labels.** Results carry the policy's status (DEMONSTRATION). A goal with D = 0 is NEUTRAL, never 100 or F.
 
-Utilization is reported beside the score, not in it: actual labor hours over present people's regular hours. It
-reflects how much work the plan could give the team, which the team does not control. Fleet figures are rolled up from
-team-shifts: counts are summed, rates recomputed, and the score is weighted by planned tasks. The dashboard compares:
+Fleet, day and week figures pool the components of every team-shift before dividing, so they are never an average of
+team scores. Utilization is reported beside the score, not in it.
+
+**Excusals.** Every missed unit's reason becomes a claim in the eight-cause S14 taxonomy, attributed as
+`disruption.auto_attribute` does in production:
+
+- **Blame passes upstream.** A blocking task that was itself blocked passes the blame to its own unfinished
+  prerequisite, and a RELEASE node passes it to its unfinished inputs. The culpable task's team is the origin of a
+  CROSS_TEAM_PREDECESSOR claim; an open part makes the claim LATE_PART.
+- **Capacity.** A CAPACITY_SHORTAGE claim cites the attendance call-off.
+- **Rework.** A REWORK_INJECTION claim cites rework the team took on, with the defect origin from the classification.
+  Without an origin it is only proposed.
+- **Proposed only.** SAME_TEAM_PREDECESSOR and DURATION_OVERRUN claims need a person's notes, so they are proposed and
+  never reviewed automatically.
+- **No claim.** A deviation has no claim, and neither has work a replan moved with no disruption on record.
+
+A simulated reviewer in the `excusal_decider` role, never the claimant, decides each submitted claim. It approves only
+when the cited evidence holds:
+
+- the part record was open at the planned start;
+- the cited task belongs to the named other team and was unfinished at the planned start;
+- attendance shows the call-off after publication;
+- the rework's defect came from another team's work.
+
+Otherwise it rejects with a reason. Only approved claims of the five nominally excusable causes give relief.
+
+The dashboard compares:
 
 - this shift with the prior shift;
 - this day with the prior day;
@@ -115,21 +184,25 @@ team-shifts: counts are summed, rates recomputed, and the score is weighted by p
 | --- | --- | --- |
 | Pulled | `src_<dataset>` | Every source row version, the shift it was loaded in (`load_shift`) and `op` (`upsert`/`delete`). |
 | Calculated | `calc_count`, `calc_job`, `calc_aircraft`, `calc_pool` | Each shift's admitted snapshot. Per open job: team, window, duration, crew, earliest start, open shortage and disposition. Per aircraft: customer, model, due date and daily penalty. Per team and shift: pool size and activation cap. |
-| Method | `sim_shift`, `method_stage`, `method_move`, `method_check` | Stage timings and notes, accepted moves, validator check counts and violations, stop reason, decision digest, each step's wall time and peak memory. |
-| Results and outcomes | `plan_assignment`, `plan_duty`, `plan_aircraft`, `plan_exception`, `exec_assignment`, `exec_event`, `perf_team_shift` | Published plans, the floor's outcome for each assignment with its cause, source events, and team scores. |
+| Method | `sim_shift`, `method_stage`, `method_move`, `method_check`, `method_commitment` | Stage timings and notes, accepted moves, validator check counts and violations, each incumbent commitment's defense outcome (with the code of each UNSAFE one), stop reason, decision digest, each step's wall time and peak memory. |
+| Results | `plan_assignment`, `plan_duty`, `plan_aircraft`, `plan_exception` | Both purposes' published plans. |
+| Outcomes | `exec_assignment`, `exec_event`, `exec_offplan`, `exec_oos` | The floor's outcome for each dispatched assignment with its cause, source events, offplan work with its kind, and out-of-sequence starts with their evidence. |
+| Performance | `perf_goal_day`, `perf_unit`, `perf_amendment`, `perf_claim`, `perf_team_shift` | Each day's frozen goals, every goal unit (frozen or added) with its status, cause and claim, the emergency additions, the claims with their decisions and reasons, and each team-shift's B0, additions, B, E, Cp, U, O, attainment, adherence, score and grade. |
 
 ## Dashboard and API
 
-The `/simulation` page has ten modules, each over a read-only operation that is also exposed through MCP. All
-operations take `shift` (default: the latest).
+The `/simulation` page has eleven modules, each over a read-only operation that is also exposed through MCP. All
+operations take `shift` (default: the latest). The simulation is a fleet-wide view, so only a session scoped to all
+teams may read it. Every payload is labelled synthetic and DEMONSTRATION.
 
 | Module | Operation | Shows |
 | --- | --- | --- |
 | Fleet overview | `GET /api/v1/sim/overview` | KPIs against the prior shift, days late per aircraft, penalty and lateness trends, every aircraft. |
 | Economics | `GET /api/v1/sim/overview` | Projected penalty and daily rate by customer and minor model; costliest aircraft. |
 | Aircraft | `GET /api/v1/sim/aircraft?line=` | Projection plan by plan, open work by station and team, done and slipped per shift, open shortages. |
-| Shift performance | `GET /api/v1/sim/performance` | Shift, day, week and whole-run comparisons; score and slip causes per shift; by day; week against week; teams. |
-| Dispatch | `GET /api/v1/sim/dispatch?team=` | Labor hours per team, and one team's task list with crew, commitment outcome and floor outcome. |
+| Shift performance | `GET /api/v1/sim/performance` | Shift, day, week and whole-run comparisons of the pooled canonical score, attainment and adherence; unexcused and excused missed effort by cause; by day; week against week; each team's B0, additions, E, Cp, U and OOS. |
+| Excusals | `GET /api/v1/sim/excusals?team=` | Every claim with its evidence, decision and reason; relief and unexcused misses by cause; whose unfinished work blocked whom; offplan work; out-of-sequence starts; emergency additions. |
+| Dispatch | `GET /api/v1/sim/dispatch?team=` | Labor hours per team, and one team's task list (default: the first team) with crew, commitment outcome and floor outcome. |
 | Worker Gantt | `GET /api/v1/sim/gantt?team=` | Each person's work, transfers and waits in the published shift. |
 | Capacity | `GET /api/v1/sim/capacity` | Planned load per team and shift for the next three days; actual utilization. |
 | Supply chain | `GET /api/v1/sim/supply` | Open shortages by aircraft, when they are expected, arrivals and slips, and tasks blocked by a missing part. |

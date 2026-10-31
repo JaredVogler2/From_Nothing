@@ -120,6 +120,7 @@ def read_paths(world) -> dict[str, str]:  # type: ignore[no-untyped-def]
         "get_explanation": "/api/v1/explanations/EXP-abcdef12",
         "sim_overview": "/api/v1/sim/overview",
         "sim_performance": "/api/v1/sim/performance?shift=0",
+        "sim_excusals": "/api/v1/sim/excusals?team=T01",
         "sim_dispatch": "/api/v1/sim/dispatch?team=T01",
         "sim_gantt": "/api/v1/sim/gantt?team=T01",
         "sim_aircraft": "/api/v1/sim/aircraft?line=1201",

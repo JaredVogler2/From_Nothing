@@ -69,7 +69,8 @@ def plan(services: Any, snapshot: PlanningSnapshot, purpose: Purpose, *, incumbe
     policy = services.policy
     native = bool(getattr(services.settings, "native_core", False))
     ctx = EngineContext(snapshot, policy, purpose, native=native)
-    defense = defense_for(ctx, incumbent, status="PUBLISHED", detail="the previous shift's published plan") if incumbent else None
+    defense = (defense_for(ctx, incumbent, status="SIMULATED", detail="the previous shift's valid plan, accepted by the simulation without the "
+                           "stage/readback/sign protocol (synthetic demonstration)") if incumbent else None)
     optimizer = MaxOptimizer(ctx, defended=defense.defended if defense else None, budget_seconds=budget_seconds, max_moves=max_moves,
                              incumbent_id=defense.incumbent_id if defense else None, max_repairs=max_repairs)
     run = optimizer.run()

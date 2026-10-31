@@ -24,6 +24,7 @@ KEYS: dict[str, tuple[str, ...]] = {
     "etracs_active": ("RECORD_ID",),
     "etracs_history": ("RECORD_ID",),
     "attendance_shift": ("PRODUCTION_DAY", "SHIFT_NUMBER", "BEMS_ID"),
+    "work_progress": ("LINE_NUMBER", "SOI"),
 }
 
 
@@ -35,6 +36,7 @@ class SourceState:
         self._lineage: dict[str, tuple[int, str, tuple]] = {}
         self.changes: dict[str, list[tuple[str, dict[str, Any]]]] = {}
         self.next_rework: dict[int, int] = {}                     # line -> next free rework number
+        self.missing_parts: dict[int, str] = {}                   # shop-floor fact: a slipped part whose new date nobody has entered yet
         for name in DATASETS:
             ds = datasets[name]
             self.receipts[name] = dict(ds.receipt)

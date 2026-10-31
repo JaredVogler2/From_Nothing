@@ -270,7 +270,7 @@ def build_fullscale_fixture(spec: FleetSpec = FleetSpec()) -> dict:
                                       "TOTAL_LABOR_MINUTES": None, "DURATION_SOURCE": "REWORK_STATISTIC", "LOAD_TIMESTAMP": fb.LOAD_TS})
             ds["soi_cert_requirements"].append({"SOI_ID": child, "LINE_NUMBER": line, "CRITICAL_PROCESS_NAME": "PROC REWORK", "CERT_CODE": cert[team],
                                                 "CERT_TYPE": "CERT", "REQ_CERT": "Y", "SNAPSHOT_TS": "2026-10-25T05:00:00"})
-            ds["neo_graph_rework"].append({"LINE_NUMBER": line, "PARENT_SOI": parent, "CHILD_SOI": child, "CHILD_STATUS": "OPEN" if is_open else "CLOSED",
+            ds["neo_graph_rework"].append({"LINE_NUMBER": line, "PARENT_SOI": parent, "CHILD_SOI": child, "CHILD_STATUS": "OPEN" if is_open else "COMPLETE",
                                            "SNAPSHOT_TS": "2026-10-25T05:00:00"})
             ds["rework_classification"].append({"LINE_NUMBER": line, "CHILD_SOI": child, "REWORK_CLASS": cls, "ROOT_SOI": parent,
                                                 "DEFECT_ORIGIN_TEAM": team, "EVIDENCE_REF": f"SYNTH-NCR-{line}-{r}"})
