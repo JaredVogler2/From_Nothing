@@ -44,7 +44,7 @@ are FIXED (in this branch), NEXT (being fixed now), OPEN (planned) and DECISION 
 | B3 | major | S01 l.126, S11 l.1514-1516, P11 l.3226 | Crew choice has no rare-certification preservation or opportunity cost (both cores). | code | OPEN |
 | B4 | major | S07 l.1203 "latest revocation … wins" | A later reinstatement erases the revocation window; a unit test asserts this behavior. A second revocation while revoked also moved the start later. | code | FIXED: closed windows kept on the holding (`revoked_windows`) and checked by the index, the validator and the Rust core; both cores tested on a window |
 | B5 | major | S05 l.927 | An empty attendance feed does not block executable crews. | probe | FIXED: with an empty feed, nobody is an executable crew member on the production day (forecast evidence only) |
-| B6 | major (live) | P05 l.2828 | Team inference and clock evidence SQL read the latest source head, not the run being admitted. | SQL | OPEN |
+| B6 | major (live) | P05 l.2828 | Team inference and clock evidence SQL read the newest source head of any scope, not the run being admitted. | SQL | PART: bound to this scope's head (a parameter); reading the run being captured needs the SQL source-run lifecycle, which the app does not drive yet |
 | B7 | major (live) | S05 l.935 | Admission has no freshness or capture-skew checks. | search | OPEN |
 | B8 | major | S15 l.1889, A68 | The reported-observation command enqueues without a scope check; a test asserted a mechanic could report on another team's job. | code | FIXED: a job or phase outside the caller's teams gets the same 404 as a missing one |
 | B9 | major | P17 l.3619 | No automatic capacity or skill attribution: no attendance or revocation evidence feed. | code | OPEN |
@@ -55,8 +55,8 @@ are FIXED (in this branch), NEXT (being fixed now), OPEN (planned) and DECISION 
 | B14 | minor | S08 l.1259 | The rework comparison group ignores model/process/revision/crew. | code | OPEN |
 | B15 | minor | S05 l.906, P09 l.3091 | Template prerequisites missing on an aircraft are dropped silently. | code | OPEN |
 | B16 | minor (inactive) | S09 l.1372 | A CS hard latest date is not enforced in the search (the policy sets NONE today). | code | OPEN |
-| B17 | minor | S17 l.2022, P23 l.4018 | Live CI jobs do not wait for the UI and rehearsal jobs. | CI file | OPEN |
-| B18 | minor | S17 l.1985 | Worker retries are unbounded, with no deadline or lease renewal. | code | OPEN |
+| B17 | minor | S17 l.2022, P23 l.4018 | Live CI jobs do not wait for the UI and rehearsal jobs, and the scheduler installs an index wheel from any commit. | CI file | FIXED: acquisition needs every verify job; the scheduler installs the same-commit wheel, and the native core refuses a wheel of another protocol |
+| B18 | minor | S17 l.1985 | Worker retries are unbounded, with no deadline or lease renewal. | code | FIXED: three attempts, a 24-hour deadline, and a lease covering twice the run's budget |
 | B19 | minor | S01 l.131 | The twin does not show the behind-station value or its date basis (the math is right). | code | OPEN |
 | B20 | minor | S14 l.1801 | Badge awards carry no earning unit IDs or policy. | code | OPEN |
 | B21 | major | S12 l.1617 "Attempt1 exact incumbent day/shift/start" | The defense rebuilt an incumbent start from its shift's date and local time, so an S3 start after local midnight came back 24 hours early. Most S3 commitments were dropped as UNSAFE, with false safety alerts on delivery. The validator rebuilt starts the same way, so it agreed. | data | FIXED: `shift_local_minute` in both; S3 UNSAFE fell from about 116 to 14 per shift in a 6-aircraft run |

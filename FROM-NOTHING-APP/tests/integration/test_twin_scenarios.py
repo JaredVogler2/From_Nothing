@@ -468,3 +468,31 @@ def test_a64_ten_virtual_people_per_team_shift_union_certs_and_origin_rejection(
     assert result.capability == "SCENARIO_ONLY"
     refused = publish(services, result.scenario_candidate_id)
     assert refused.status != "ACCEPTED" and refused.reasons[0].startswith("PURPOSE_NOT_PUBLISHABLE"), refused.reasons
+
+
+def test_worker_runs_have_bounded_attempts_a_deadline_and_a_budget_sized_lease(services_factory) -> None:
+    """S17: bounded retries and deadline. A run whose worker keeps dying fails as ATTEMPTS_EXHAUSTED; a stale request fails
+    as DEADLINE_EXCEEDED; a lease outlasts the run's own budget so a healthy run is never taken over."""
+    from datetime import timedelta
+
+    from focus.data.repositories import WORKER_DEADLINE, WORKER_MAX_ATTEMPTS
+
+    services = services_factory()
+    repos = services.repositories
+    run, _ = repos.create_worker_run(kind="scenario", scope=services.settings.scope_key, idempotency_key="bounded-0001", requested_by="test",
+                                     request={"idempotency_key": "bounded-0001"}, budget_seconds=600)
+    claimed = repos.claim_worker_run("w1", 60)
+    assert claimed.id == run.id and claimed.lease_until >= services.clock.now() + timedelta(seconds=2 * 600)   # covers the budget
+    for n in range(2, WORKER_MAX_ATTEMPTS + 1):                  # each lease expires: the worker died without a result
+        services.clock._instant = claimed.lease_until + timedelta(seconds=1)                                   # noqa: SLF001
+        claimed = repos.claim_worker_run(f"w{n}", 60)
+        assert claimed is not None and claimed.attempts == n
+    services.clock._instant = claimed.lease_until + timedelta(seconds=1)                                       # noqa: SLF001
+    assert repos.claim_worker_run("w-last", 60) is None
+    failed = repos.get_worker_run(run.id)
+    assert failed.status == "failed" and failed.error["code"] == "ATTEMPTS_EXHAUSTED"
+    stale, _ = repos.create_worker_run(kind="scenario", scope=services.settings.scope_key, idempotency_key="bounded-0002", requested_by="test",
+                                       request={"idempotency_key": "bounded-0002"}, budget_seconds=10)
+    services.clock._instant = stale.created_at + WORKER_DEADLINE + timedelta(minutes=1)                        # noqa: SLF001
+    assert repos.claim_worker_run("w-late", 60) is None
+    assert repos.get_worker_run(stale.id).error["code"] == "DEADLINE_EXCEEDED"
