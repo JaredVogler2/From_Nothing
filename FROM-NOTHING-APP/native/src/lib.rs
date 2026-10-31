@@ -1810,5 +1810,7 @@ fn focus_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Ledger>()?;
     m.add_class::<canon::Canon>()?;
     m.add("PARITY_REFERENCE", "focus/engine/ledger.py, focus/engine/crew_selection.py, focus/eligibility.py, focus/codec.py")?;
+    // the Context row formats this build reads; focus/engine/native.py refuses a wheel built for another protocol
+    m.add("PROTOCOL", 2)?;
     Ok(())
 }

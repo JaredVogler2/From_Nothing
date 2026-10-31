@@ -27,14 +27,19 @@ if TYPE_CHECKING:  # pragma: no cover
     from .model import EngineContext
 
 _LOADED: dict[str, Any] = {}
+PROTOCOL = 2            # the Context row formats this module sends; the extension reports its own (2: revocation windows)
 
 
 def _module() -> Any:
-    """The ``focus_native`` extension, imported on first use (an optional package, like the solver); None if absent."""
+    """The ``focus_native`` extension, imported on first use (an optional package, like the solver). None when it is absent
+    or built for another protocol: a wheel from another commit is never fed rows it cannot read."""
     if "module" not in _LOADED:
         try:
             import focus_native  # type: ignore[import-not-found]
         except ImportError:
+            focus_native = None
+        if focus_native is not None and getattr(focus_native, "PROTOCOL", 1) != PROTOCOL:
+            _LOADED["reason"] = f"focus_native protocol {getattr(focus_native, 'PROTOCOL', 1)} != {PROTOCOL}: rebuild native/ from this commit"
             focus_native = None
         _LOADED["module"] = focus_native
     return _LOADED["module"]
@@ -45,8 +50,11 @@ def available() -> bool:
 
 
 def status(requested: bool) -> dict[str, Any]:
-    """The receipt entry: what was asked for and what ran."""
-    return {"requested": requested, "available": available(), "engine": "native" if requested and available() else "python"}
+    """The receipt entry: what was asked for and what ran (and why the Python core ran, when the extension was refused)."""
+    out = {"requested": requested, "available": available(), "engine": "native" if requested and available() else "python"}
+    if "reason" in _LOADED:
+        out["reason"] = _LOADED["reason"]
+    return out
 
 
 @dataclass(frozen=True)

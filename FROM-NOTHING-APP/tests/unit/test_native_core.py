@@ -260,3 +260,17 @@ def test_revocation_windows_bind_both_cores_identically(app_root: Path) -> None:
                 if a.job in needs_a and person in {c.person for c in a.crew}:
                     assert to_minute(a.end) <= lo or to_minute(a.start) >= hi, (flag, a.id, a.start, a.end)
         assert out[False][:2] == out[True][:2] and out[True][2] == "native", out
+
+
+def test_a_wheel_built_for_another_protocol_is_refused(monkeypatch) -> None:
+    """A wheel from another commit is never fed rows it cannot read: the Python core runs and the receipt says why."""
+    import sys
+    import types
+
+    stale = types.ModuleType("focus_native")
+    stale.PROTOCOL = native.PROTOCOL - 1                  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "focus_native", stale)
+    monkeypatch.setattr(native, "_LOADED", {})
+    assert native.available() is False
+    receipt = native.status(True)
+    assert receipt["engine"] == "python" and "protocol" in receipt["reason"]
