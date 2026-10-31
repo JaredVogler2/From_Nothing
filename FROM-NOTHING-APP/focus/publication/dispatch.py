@@ -11,8 +11,9 @@ never the facts frozen in the plan. Checks:
 * **The work.** The phase still exists and is open. The job is still executable: a reopened or
   new shortage, a hold or quarantine blocks it. Every hard predecessor is verified complete
   now, and every own or ancestor part release is confirmed now.
-* **The crew.** Each person is still an admitted, non-synthetic member of the role's
-  team-shift pool, so withdrawn attendance or leave blocks. Each still holds the whole
+* **The crew.** It is still the full crew the current demand needs (that many distinct people).
+  Each person is still an admitted, non-synthetic member of the role's team-shift pool, so
+  withdrawn attendance or leave blocks. Each still holds the whole
   certificate bundle over the action's interval under current holdings, so a revoked or expired
   certificate blocks. No current carry-in duty conflicts.
 * **The calendar and CS facts.** The line calendar still admits the shift, the station's CS fact
@@ -150,6 +151,10 @@ def assess_action(services: Any, action: Any, facts: Any, inp: ValidationInput, 
         demand = phase.role_demands[0] if phase.role_demands else None
         pool = inp.pool_by_key.get((demand.team, shift.start_date, shift.number)) if demand else None
         members = inp.admitted_members(pool) if pool is not None else frozenset()
+        crew = {r.person for r in action.crew}
+        if demand is not None and len(crew) != demand.bundle.count:
+            # full crew (S13): the current demand, not the one the plan was made with
+            reasons.append(("CREW_SIZE_CHANGED", f"the current demand needs {demand.bundle.count} distinct people; the action has {len(crew)}"))
         for r in action.crew:
             if inp.synthetic(r.person):
                 reasons.append(("SYNTHETIC_RESOURCE", f"{r.person} is virtual support: never executable"))

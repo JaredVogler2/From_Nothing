@@ -303,6 +303,12 @@ def unfinish(data):
             r["SHOP_ORDER_STATUS"], r["ACT_COMP"] = "IN WORK", None
 
 
+def raise_crew(data):
+    for r in data["flow_budget"]["rows"]:
+        if r["LINE_NUMBER"] == 1301 and r["JOB_NUMBER"] == "A1":
+            r["TOTAL_MECHANICS"] += 1
+
+
 def withdraw(data):
     data["availability_exceptions"]["rows"].append({"END_LOCAL": None, "EVIDENCE_REF": "LEAVE-A101", "KIND": "LEAVE", "OBSERVED_AT_UTC": "2026-10-26T09:30:00Z",
                                                     "PERSON_KEY": "DEMO-A1-01", "PRODUCTION_DAY": "2026-10-26", "SHIFT_NUMBER": 1, "START_LOCAL": None})
@@ -313,6 +319,7 @@ def withdraw(data):
     ("shortage-reopened", reopen, ("etracs_active",), "PART_NOT_RECEIVED"),
     ("predecessor-incomplete", unfinish, ("master_task_list",), "PREDECESSOR_INCOMPLETE"),
     ("attendance-withdrawn", withdraw, ("availability_exceptions",), "ATTENDANCE_WITHDRAWN"),
+    ("crew-demand-raised", raise_crew, ("flow_budget",), "CREW_SIZE_CHANGED"),
 ])
 def test_a53_adverse_current_evidence_blocks_dispatch_and_requests_repair(world, name, edit, names, code) -> None:
     w = world
