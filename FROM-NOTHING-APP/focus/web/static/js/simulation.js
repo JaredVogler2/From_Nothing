@@ -34,8 +34,23 @@ function q(params) {
 function card(title, ...children) {
   return h("section", { class: "card" }, h("div", { class: "card-header" }, h("h2", {}, title)), ...children);
 }
+// every chart's values in text: the per-mark titles listed under a collapsed "Values" control (not only on hover)
 function chartBox(node, note) {
-  return h("figure", { class: "chart-box" }, node, note ? h("figcaption", { class: "muted" }, note) : null);
+  const marks = Array.from(node.querySelectorAll ? node.querySelectorAll("title") : []).slice(1).map((t) => t.textContent);
+  const values = marks.length ? h("details", { class: "chart-values" }, h("summary", {}, `Values (${num(marks.length)})`),
+    h("ul", {}, marks.slice(0, 600).map((m) => h("li", {}, m)))) : null;
+  return h("figure", { class: "chart-box" }, node, note ? h("figcaption", { class: "muted" }, note) : null, values);
+}
+
+// a long table shows PAGE rows at a time with a control for the next page (rows stay in the order given)
+const PAGE = 50;
+function paged(columns, rows, opts = {}, shown = PAGE) {
+  if (!rows || rows.length <= shown) return table(columns, rows, opts);
+  const holder = h("div", {});
+  const more = h("button", { class: "btn btn-quiet", onclick: () => mount(holder, paged(columns, rows, opts, shown + PAGE)) },
+    `Show ${num(Math.min(PAGE, rows.length - shown))} more of ${num(rows.length - shown)} remaining`);
+  mount(holder, table(columns, rows.slice(0, shown), opts), h("p", { class: "muted" }, `Showing ${num(shown)} of ${num(rows.length)}. `, more));
+  return holder;
 }
 function deltaNote(value, fmt = num, betterHigher = true) {
   if (value === null || value === undefined || value === 0) return "no change vs prior";
@@ -45,7 +60,11 @@ function deltaNote(value, fmt = num, betterHigher = true) {
 
 // ------------------------------------------------------------------ shell
 function renderTabs() {
-  mount(tabs, TABS.map(([id, label]) => h("a", { href: "#" + id, class: "chip", "aria-selected": ui.tab === id ? "true" : "false" }, label)));
+  tabs.setAttribute("role", "tablist");
+  mount(tabs, TABS.map(([id, label]) => h("a", { href: "#" + id, id: "tab-" + id, role: "tab", class: "chip", "aria-controls": "main",
+    "aria-selected": ui.tab === id ? "true" : "false", tabindex: ui.tab === id ? "0" : "-1" }, label)));
+  host.setAttribute("role", "tabpanel");
+  host.setAttribute("aria-labelledby", "tab-" + ui.tab);
 }
 
 function renderBar() {
@@ -54,8 +73,13 @@ function renderBar() {
       `${s.production_day} S${s.shift_number} (week ${s.week})${s.valid ? "" : " — INVALID"}`)));
   const prev = h("button", { class: "btn btn-quiet", onclick: () => { if (ui.shift > 0) { ui.shift -= 1; route(); } } }, "◀ Prior shift");
   const next = h("button", { class: "btn btn-quiet", onclick: () => { if (ui.shift < ui.shifts.length - 1) { ui.shift += 1; route(); } } }, "Next shift ▶");
+  const s = ui.shifts.find((x) => x.shift_no === ui.shift) || {};
+  const who = ui.identity ? `${ui.identity.subject || "signed in"} · ${ui.identity.scope || "scope unknown"}` : "";
   mount(bar, h("div", { class: "toolbar" }, h("label", {}, "Published shift", select), prev, next,
-    h("span", { class: "muted" }, "Synthetic fleet simulation — every number comes from the simulation tables.")));
+    h("span", { class: "muted" }, "Synthetic fleet simulation (demonstration) — every number comes from the simulation tables.")),
+    h("p", { class: "muted bindings", "data-testid": "sim-bindings" },
+      [s.plan_id ? `plan ${s.plan_id}` : null, s.source_run_id ? `source ${s.source_run_id}` : null, s.cutoff_utc ? `as of ${when(s.cutoff_utc)}` : null, who]
+        .filter(Boolean).join(" · ")));
 }
 
 async function route() {
@@ -244,18 +268,18 @@ const RENDER = {
           { label: "Tasks", num: true, key: "units" }, { label: "Effort (min)", num: true, render: (r) => num(r.effort) }], d.blame_shift, { empty: "No cross-team blocking this shift." })),
         card("Whose unfinished work blocked whom (whole run)", table([{ label: "Blocking team", key: "origin_team" }, { label: "Blocked team", key: "team" },
           { label: "Tasks", num: true, key: "units" }, { label: "Effort (min)", num: true, render: (r) => num(r.effort) }], d.blame_run, { empty: "No cross-team blocking yet." }))),
-      card(`Claims${d.team ? " of " + d.team : ""}`, table([{ label: "Team", key: "team" }, { label: "Cause", render: (r) => r.cause.replace(/_/g, " ").toLowerCase() },
+      card(`Claims${d.team ? " of " + d.team : ""}`, paged([{ label: "Team", key: "team" }, { label: "Cause", render: (r) => r.cause.replace(/_/g, " ").toLowerCase() },
         { label: "Origin team", render: (r) => r.origin_team || "—" }, { label: "Tasks", num: true, key: "units" }, { label: "Effort", num: true, render: (r) => num(r.effort) },
         { label: "Evidence", key: "evidence" }, { label: "Status", render: (r) => r.status.toLowerCase() }, { label: "Decision", render: decided }, { label: "Reason", key: "reason" }],
         d.claims, { empty: "No claims." })),
       h("div", { class: "grid grid-2" },
-        card("Offplan work (counts in adherence, not attainment)", table([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" }, { label: "Task", key: "soi" },
+        card("Offplan work (counts in adherence, not attainment)", paged([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" }, { label: "Task", key: "soi" },
           { label: "Effort", num: true, key: "effort" }, { label: "Why", render: (r) => OFFPLAN[r.kind] || r.kind }],
           d.offplan, { empty: "No offplan work." })),
-        card("Out-of-sequence starts", table([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" }, { label: "Task", key: "soi" },
+        card("Out-of-sequence starts", paged([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" }, { label: "Task", key: "soi" },
           { label: "By choice", render: (r) => (r.discretionary ? "yes: charged" : "directed: not charged") }, { label: "Charged effort", num: true, key: "affected_effort" }],
           d.oos, { empty: "No out-of-sequence starts." }))),
-      card("Emergency additions (B = B0 + additions)", table([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" },
+      card("Emergency additions (B = B0 + additions)", paged([{ label: "Team", key: "team" }, { label: "Aircraft", key: "line" },
         { label: "Effort", num: true, key: "effort" }, { label: "Approved by", key: "authority" }, { label: "Why", key: "reason" },
         { label: "Outcome", render: (r) => (r.status === "EARNED" ? "done" : r.status ? "missed" : "—") }],
         d.amendments, { empty: "No emergency additions this shift." })));
@@ -273,7 +297,7 @@ const RENDER = {
       card("Teams this shift", chartBox(barChart(d.teams.map((t) => ({ label: t.team, value: t.labor_hours, note: `${t.tasks} tasks on ${t.aircraft} aircraft` })),
         { title: "Planned labor hours per team in the published shift", yLabel: "labor hours", rotate: true, width: FULL }))),
       h("div", { class: "toolbar" }, h("label", {}, "Team", pick)),
-      card(`${ui.team} task list`, table([{ label: "Start", render: (r) => when(r.start_utc) }, { label: "End", render: (r) => when(r.end_utc) },
+      card(`${ui.team} task list`, paged([{ label: "Start", render: (r) => when(r.start_utc) }, { label: "End", render: (r) => when(r.end_utc) },
         { label: "Aircraft", key: "line" }, { label: "Task", key: "soi" }, { label: "Kind", key: "kind" }, { label: "Crew", render: (r) => r.crew.join(", ") },
         { label: "Prior plan", render: (r) => (r.committed ? PRIOR[r.commitment_outcome] || r.commitment_outcome || "committed" : "new") },
         { label: "Conditional", render: (r) => (r.conditional ? "part ETA" : "") },
@@ -398,6 +422,8 @@ async function main() {
     }
     ui.shifts = env.data.shifts;
     ui.shift = env.data.shift;
+    const id = ctx.data.identity, scope = ctx.data.scope || {};
+    ui.identity = { subject: id.display_name || id.subject, scope: scope.all_teams ? "all teams" : (scope.teams || []).join(", ") || null };
   } catch (err) {
     mount(host, errorCard(err));
     return;

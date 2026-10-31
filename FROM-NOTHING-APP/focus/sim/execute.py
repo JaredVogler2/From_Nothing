@@ -93,10 +93,11 @@ def scoring_text(policy: Any) -> str:
     wa, wh, rate = policy.str("score.attainment_weight"), policy.str("score.adherence_weight"), policy.str("score.oos_rate")
     return (f"Canonical team-shift score ({policy.str('score.policy_status').lower()} policy {policy.id}): 100 × ({wa} × attainment + {wh} × "
             f"adherence) − 100 × {rate} × out-of-sequence effort ÷ D, graded {bands}, F below. Goals are frozen per day from the first "
-            f"accepted executable plan. Attainment = frozen work earned ÷ D. Adherence = frozen work earned ÷ (frozen work earned + "
-            f"offplan work), so work done off the plan is discounted. D = frozen effort − approved relief: a missed task excused by an "
-            f"approved claim (late part, another team's unfinished predecessor, a call-off after publication) does not count against "
-            f"the team. Effort is standard person minutes.")
+            f"accepted executable plan; a shift lead may add emergency rework the plan assigns. Attainment = planned work earned ÷ D. "
+            f"Adherence = planned work earned ÷ (planned work earned + offplan work), so work done off the plan is discounted. "
+            f"D = frozen effort + approved emergency additions − approved relief: "
+            f"a missed task excused by an approved claim (late part, another team's unfinished predecessor, a call-off after "
+            f"publication, rework from another team's defect) does not count against the team. Effort is standard person minutes.")
 
 
 @dataclass(frozen=True)

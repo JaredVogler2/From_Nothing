@@ -174,7 +174,7 @@ def sim_overview(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
             if key in meta and meta[key]:
                 meta[key] = json.loads(meta[key])
         shifts = _rows(con, "SELECT shift_no, shift_id, production_day, shift_number, week, valid, engine, stop_reason, moves, load_s, plan_s, "
-                            "execute_s, write_s, rss_mb, decision_digest FROM sim_shift ORDER BY shift_no")
+                            "execute_s, write_s, rss_mb, decision_digest, cutoff_utc, plan_id, source_run_id FROM sim_shift ORDER BY shift_no")
         purpose = _purpose(con, k)
         fleet = _rows(con, """
             SELECT a.line, c.customer, c.minor_model, c.station, a.status, a.completion_utc, a.due_utc, a.late_days, a.cost_usd,

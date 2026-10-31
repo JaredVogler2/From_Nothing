@@ -116,7 +116,10 @@ export function lineChart(series, { title = "", width = 720, height = 260, yLabe
 // stacks: [{label, parts: [{name, value, color}]}]
 export function stackedBars(stacks, { title = "", width = 720, height = 260, fmt = fmtShort, names = [] } = {}) {
   const root = frame(title, width, height);
-  const left = 56, bottom = 46, top = 22;
+  // the legend wraps into rows of slots as wide as its longest name; the plot starts below it
+  const slot = Math.min(220, 24 + 6.6 * Math.max(0, ...names.map((n) => String(n.name).length)));
+  const perRow = Math.max(1, Math.floor((width - 56) / slot));
+  const left = 56, bottom = 46, top = 22 + Math.max(0, Math.ceil(names.length / perRow) - 1) * 16;
   const plotH = height - bottom - top, plotW = width - left - 10;
   const max = niceMax(Math.max(0, ...stacks.map((s) => s.parts.reduce((a, p) => a + (p.value || 0), 0))));
   yAxis(root, max, left, height - bottom, plotH, 4, fmt);
@@ -136,8 +139,9 @@ export function stackedBars(stacks, { title = "", width = 720, height = 260, fmt
     }
   });
   names.forEach((n, i) => {
-    root.appendChild(svg("rect", { x: left + i * 130, y: 4, width: 10, height: 10, fill: n.color }));
-    root.appendChild(svg("text", { x: left + i * 130 + 14, y: 13, class: "tick" }, n.name));
+    const x = left + (i % perRow) * slot, y = 4 + Math.floor(i / perRow) * 16;
+    root.appendChild(svg("rect", { x, y, width: 10, height: 10, fill: n.color }));
+    root.appendChild(svg("text", { x: x + 14, y: y + 9, class: "tick" }, n.name));
   });
   return root;
 }
