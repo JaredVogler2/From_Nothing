@@ -163,11 +163,15 @@ def defended_tasks(services: Any, ctx: EngineContext) -> Defense:
                              namespaces=namespaces)
     if found.plan is None:
         return Defense(status=found.status, detail=found.detail)
-    plan = found.plan
+    return defense_for(ctx, found.plan, status=found.status, detail=found.detail)
+
+
+def defense_for(ctx: EngineContext, plan: IncumbentPlan, *, status: str, detail: str) -> Defense:
+    """The defended tasks and other commitment outcomes of ``plan`` (an accepted incumbent) against this context."""
     horizon = ctx.policy.int("commitment.horizon_calendar_days")
     today = ctx.snapshot.cutoff.astimezone(ctx.shift_policy.tz).date()
     by_key = {(j.line, j.key.native_id): j for j in ctx.jobs.values()}
-    out = Defense(incumbent_id=plan.id, status=found.status, detail=found.detail)
+    out = Defense(incumbent_id=plan.id, status=status, detail=detail)
     others: list[CommitmentResult] = []
     for n, a in enumerate(plan.assignments):
         aid = digest_id("INCA", plan.id, n)
