@@ -130,27 +130,38 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         snapshot, build = admit(services, state, cutoff=cutoff, run_id=run_id, created_at=cutoff)
         timings["load_s"] = time.time() - t
         log(f"shift {k} ({shift.id}): admitted {len(snapshot.jobs)} jobs, {len(snapshot.phases)} phases in {timings['load_s']:.1f}s")
-        plans = {}
-        t = time.time()
-        for purpose_name in spec.purposes:
-            purpose = Purpose(purpose_name)
-            plans[purpose_name] = plan(services, snapshot, purpose, incumbent=incumbent.get(purpose_name) if incumbent else None,
-                                       max_moves=spec.max_moves, budget_seconds=spec.budget_seconds, created_at=cutoff,
-                                       max_repairs=spec.max_repairs)
-        timings["plan_s"] = time.time() - t
-        timings["validate_s"] = sum(sp.validate_s for sp in plans.values())
-        dispatch_name = "EXECUTABLE" if "EXECUTABLE" in plans else spec.purposes[0]
-        dispatch = plans[dispatch_name]
+        # the dispatch purpose is planned last: every other purpose is written and released first, so only one engine
+        # context is alive at a time (at 50 aircraft one context is several GB)
+        dispatch_name = "EXECUTABLE" if "EXECUTABLE" in spec.purposes else spec.purposes[0]
+        order = [name for name in spec.purposes if name != dispatch_name] + [dispatch_name]
+        timings.update(plan_s=0.0, validate_s=0.0, write_s=0.0)
+        accepted: dict[str, Any] = {}
+        dispatch = None
+        for purpose_name in order:
+            t = time.time()
+            sp = plan(services, snapshot, Purpose(purpose_name), incumbent=incumbent.get(purpose_name) if incumbent else None,
+                      max_moves=spec.max_moves, budget_seconds=spec.budget_seconds, created_at=cutoff, max_repairs=spec.max_repairs)
+            timings["plan_s"] += time.time() - t
+            timings["validate_s"] += sp.validate_s
+            t = time.time()
+            _write_plan(db, k, purpose_name, sp, shift, tz)
+            # only a plan the independent validator passed is accepted: it becomes the next incumbent and, for the dispatched
+            # purpose, the work of the floor; an invalid one leaves the previous incumbent in force and the floor without goals
+            if sp.run.validation.valid:
+                accepted[purpose_name] = published_incumbent(snapshot, sp, cutoff)
+            timings["write_s"] += time.time() - t
+            if purpose_name == dispatch_name:
+                dispatch = sp
+            else:
+                del sp
+                _release_memory()
+        assert dispatch is not None
         t = time.time()
         if k == 0:
             _write_people(db, snapshot, state)
         _write_calc(db, k, snapshot, dispatch.context, state)
-        for purpose_name, sp in plans.items():
-            _write_plan(db, k, purpose_name, sp, shift, tz)
-        timings["write_s"] = time.time() - t
-        # only a plan the independent validator passed is accepted: it becomes the next incumbent and, for the dispatched
-        # purpose, the work of the floor; an invalid one leaves the previous incumbent in force and the floor without goals
-        incumbent = {**(incumbent or {}), **{name: published_incumbent(snapshot, sp, cutoff) for name, sp in plans.items() if sp.run.validation.valid}}
+        timings["write_s"] += time.time() - t
+        incumbent = {**(incumbent or {}), **accepted}
         t = time.time()
         floor_plan = dispatch if dispatch.run.validation.valid else replace(dispatch, plan=replace(dispatch.plan, assignments=()))
         if day_goals is not None and day_goals.day != day:
@@ -182,7 +193,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         done = Counter(r[11] for r in outcome.rows)
         row = {"shift": k, "id": shift.id, "valid": val.valid, "assignments": len(dispatch.plan.assignments), "executed": dict(done),
                "jobs_completed": outcome.completed_jobs, **{key: round(v, 1) for key, v in timings.items()}, "rss_mb": round(rss)}
-        del snapshot, build, plans, dispatch, outcome
+        del snapshot, build, dispatch, outcome
         row["rss_after_mb"] = round(_release_memory())
         summary.append(row)
         log(json.dumps(row))

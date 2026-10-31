@@ -45,6 +45,8 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
 
    Each purpose's previous valid plan is its incumbent, so its three-day commitments are defended. The incumbent is
    accepted by the simulation without the stage, readback and sign protocol, and its defense says so (`SIMULATED`).
+   The forecast is planned, written and released first, and the executable plan last, so only one engine context (several
+   GB at 50 aircraft) is in memory at a time.
 5. **Validate.** The independent validator checks each candidate from the snapshot, with every check required. Only a
    valid plan becomes the next incumbent. The floor works only a valid EXECUTABLE plan; when it is invalid, the floor
    gets no dispatch that shift.
