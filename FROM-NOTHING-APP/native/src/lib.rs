@@ -132,6 +132,7 @@ struct Hold {
     start: Option<i64>,
     end: i64,
     revoked: Option<i64>,
+    windows: Vec<(i64, i64)>, // closed revocation windows [revoked, reinstated)
 }
 
 impl Hold {
@@ -143,7 +144,7 @@ impl Hold {
         if s > start || self.end < end {
             return false;
         }
-        !matches!(self.revoked, Some(r) if r < end)
+        !matches!(self.revoked, Some(r) if r < end) && !self.windows.iter().any(|&(a, b)| a < end && start < b)
     }
 }
 
@@ -440,7 +441,7 @@ struct Context {
 }
 
 type WindowRow = (String, String, String, Vec<(i64, i64)>, Vec<(i64, i64)>, i64, i64);
-type HoldingRow = (String, String, bool, bool, Option<i64>, i64, Option<i64>);
+type HoldingRow = (String, String, bool, bool, Option<i64>, i64, Option<i64>, Vec<(i64, i64)>);
 
 #[pymethods]
 impl Context {
@@ -486,9 +487,9 @@ impl Context {
             mem.insert(pid, ids);
         }
         let mut held: HashMap<u32, HashMap<Arc<str>, Vec<Hold>>> = HashMap::default();
-        for (person, cert, active, known, start, end, revoked) in holdings {
+        for (person, cert, active, known, start, end, revoked, windows) in holdings {
             let pid = persons.intern(&person);
-            held.entry(pid).or_default().entry(Arc::from(cert.as_str())).or_default().push(Hold { active, known, start, end, revoked });
+            held.entry(pid).or_default().entry(Arc::from(cert.as_str())).or_default().push(Hold { active, known, start, end, revoked, windows });
         }
         let teams: HashMap<Arc<str>, HashSet<Arc<str>>> = team_certs
             .into_iter()

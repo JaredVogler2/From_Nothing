@@ -42,11 +42,11 @@ are FIXED (in this branch), NEXT (being fixed now), OPEN (planned) and DECISION 
 | B1 | major | S12 l.1564-1575; policy `objective.order` | The acceptance key ranks the deferred-phase count above money and compares known cost across different sets of unknown aircraft. The policy order is never read. | code | OPEN |
 | B2 | major | S10 l.1400-1410 | Hard CONCURRENT/NONCONCURRENT edges are dropped before placement (`model.unsupported_edges`); only the validator rejects them. | code | OPEN |
 | B3 | major | S01 l.126, S11 l.1514-1516, P11 l.3226 | Crew choice has no rare-certification preservation or opportunity cost (both cores). | code | OPEN |
-| B4 | major | S07 l.1203 "latest revocation … wins" | A later reinstatement erases the revocation window; a unit test asserts this behavior. | code | OPEN |
-| B5 | major | S05 l.927 | An empty attendance feed does not block executable crews. | probe | OPEN |
+| B4 | major | S07 l.1203 "latest revocation … wins" | A later reinstatement erases the revocation window; a unit test asserts this behavior. A second revocation while revoked also moved the start later. | code | FIXED: closed windows kept on the holding (`revoked_windows`) and checked by the index, the validator and the Rust core; both cores tested on a window |
+| B5 | major | S05 l.927 | An empty attendance feed does not block executable crews. | probe | FIXED: with an empty feed, nobody is an executable crew member on the production day (forecast evidence only) |
 | B6 | major (live) | P05 l.2828 | Team inference and clock evidence SQL read the latest source head, not the run being admitted. | SQL | OPEN |
 | B7 | major (live) | S05 l.935 | Admission has no freshness or capture-skew checks. | search | OPEN |
-| B8 | major | S15 l.1889, A68 | The reported-observation command enqueues without a scope check. | code | OPEN |
+| B8 | major | S15 l.1889, A68 | The reported-observation command enqueues without a scope check; a test asserted a mechanic could report on another team's job. | code | FIXED: a job or phase outside the caller's teams gets the same 404 as a missing one |
 | B9 | major | P17 l.3619 | No automatic capacity or skill attribution: no attendance or revocation evidence feed. | code | OPEN |
 | B10 | minor | S12 l.1581 | CPM tails use summed work minutes (packed days). | code | OPEN |
 | B11 | minor | S12 l.1541, l.1560 | The accrued exposure floor is never applied. | code | OPEN |

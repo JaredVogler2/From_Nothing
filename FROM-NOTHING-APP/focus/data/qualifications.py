@@ -97,16 +97,19 @@ def build_holdings(cert_rows: Iterable[Mapping[str, Any]], events: Iterable[Mapp
     active = set(policy.seq("qualifications.active_statuses"))
     inactive = set(policy.seq("qualifications.inactive_statuses"))
     inclusive = policy.bool("qualifications.inclusive_expiry")
-    revoked: dict[tuple[str, str], tuple[datetime, str]] = {}
-    reinstated: dict[tuple[str, str], datetime] = {}
+    # the latest revocation/status effective at an instant wins (S07): a revocation holds from its effective time until a
+    # later reinstatement, which closes the window but never erases it; a revocation while already revoked changes nothing
+    revoked: dict[tuple[str, str], tuple[datetime, str]] = {}                  # revocation still in force (no reinstatement)
+    windows: dict[tuple[str, str], list[tuple[datetime, datetime]]] = {}       # revocations a reinstatement ended
     for ev in sorted(events, key=lambda e: (str(e["EFFECTIVE_AT_UTC"]), str(e.get("EVIDENCE_REF")))):
         key = (str(ev["BEMS_ID"]), str(ev["CERT_CODE"]))
         when = parse_utc(str(ev["EFFECTIVE_AT_UTC"]))
         if ev["EVENT"] == "REVOKED":
-            revoked[key] = (when, str(ev.get("EVIDENCE_REF") or ""))
-            reinstated.pop(key, None)
-        elif ev["EVENT"] == "REINSTATED":
-            reinstated[key] = when
+            revoked.setdefault(key, (when, str(ev.get("EVIDENCE_REF") or "")))
+        elif ev["EVENT"] == "REINSTATED" and key in revoked:
+            start, _ = revoked.pop(key)
+            if when > start:
+                windows.setdefault(key, []).append((start, when))
     out: list[Holding] = []
     problems: list[str] = []
     for ordinal, row in enumerate(cert_rows):
@@ -154,10 +157,8 @@ def build_holdings(cert_rows: Iterable[Mapping[str, Any]], events: Iterable[Mapp
         if valid_from is not None and valid_to is not None and valid_from >= valid_to:
             validity, valid_to = "UNKNOWN", None
             problems.append(f"HOLDING_RANGE_INVALID:{native}:{cert}")
-        revoked_at = None
         rev = revoked.get((native, cert))
-        if rev is not None and (native, cert) not in reinstated:
-            revoked_at = rev[0]
+        revoked_at = rev[0] if rev is not None else None
         evidence = (EvidenceRef(dataset_id, f"mechanic_certs#{ordinal}", source_run_id=run_id),)
         out.append(Holding(
             person=person,
@@ -172,6 +173,7 @@ def build_holdings(cert_rows: Iterable[Mapping[str, Any]], events: Iterable[Mapp
             raw_last_cert_date=None if row.get("LAST_CERT_DATE") is None else str(row.get("LAST_CERT_DATE")),
             raw_expiry=None if row.get("CERT_EXP_DATE") is None else str(row.get("CERT_EXP_DATE")),
             evidence=evidence,
+            revoked_windows=tuple(windows.get((native, cert), ())),
         ))
         if expiry.problem:
             problems.append(f"HOLDING_EXPIRY_{expiry.problem}:{native}:{cert}")

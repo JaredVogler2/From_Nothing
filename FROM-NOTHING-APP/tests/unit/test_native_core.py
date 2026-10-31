@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from focus.codec import parse_utc
 from focus.config import Settings, SettingsError
 from focus.domain import DutyKind
 from focus.engine import native
@@ -207,3 +208,55 @@ def test_native_core_setting_is_strict() -> None:
     assert Settings.from_env({}).native_core is False
     with pytest.raises(SettingsError):
         Settings.from_env({"FOCUS_NATIVE_CORE": "maybe"})
+
+
+def test_revocation_windows_bind_both_cores_identically(app_root: Path) -> None:
+    """S07: a revocation holds until its reinstatement, in the Rust core as in the Python one; nobody works a job needing
+    the revoked certificate inside the window, and both cores make the same plan."""
+    pytest.importorskip("focus_native")
+    import json
+
+    from focus.clock import FIXTURE_CUTOFF, FixedClock
+    from focus.data.acquisition import acquire, load_snapshot
+    from focus.data.fixture_reader import FixtureSourceReader
+    from focus.data.repositories import Repositories
+    from focus.data.store import FixtureStore
+    from focus.domain import PersonKey, Purpose, to_minute
+    from focus.engine.max.optimizer.orchestrator import schedule_snapshot
+    from focus.runtime import build_services
+
+    inputs = app_root / "fixtures" / "inputs" / "manufacturing_demo"
+    events = json.loads((inputs / "holding_events.json").read_text())
+    window = ("2026-10-26T10:00:00Z", "2026-10-26T20:00:00Z")
+    events["rows"] += [
+        {"BEMS_ID": "DEMO-A1-01", "CERT_CODE": "A", "EVENT": "REVOKED", "EFFECTIVE_AT_UTC": window[0], "OBSERVED_AT_UTC": "2026-10-25T12:00:00Z",
+         "EVIDENCE_REF": "TEST-REVOKE-A101-A"},
+        {"BEMS_ID": "DEMO-A1-01", "CERT_CODE": "A", "EVENT": "REINSTATED", "EFFECTIVE_AT_UTC": window[1], "OBSERVED_AT_UTC": "2026-10-25T12:00:00Z",
+         "EVIDENCE_REF": "TEST-REINSTATE-A101-A"}]
+    with tempfile.TemporaryDirectory() as tmp:
+        clock = FixedClock(FIXTURE_CUTOFF)
+
+        def services(flag: bool):  # type: ignore[no-untyped-def]
+            settings = Settings.from_env({}, app_root=app_root, inprocess_worker=False, native_core=flag)
+            return build_services(settings, repositories=Repositories(FixtureStore(Path(tmp)), mode="fixture", scope_key=settings.scope_key,
+                                                                      clock=clock), clock=clock)
+
+        base = services(False)
+        snapshot_id = acquire(base, FixtureSourceReader(inputs, overrides={"holding_events": events}), cutoff=FIXTURE_CUTOFF,
+                              idempotency_key="native-revocation-window").snapshot_id
+        snapshot = load_snapshot(base.repositories, snapshot_id)
+        person = PersonKey("DEMO-A1-01", "fixture-demo").id
+        held = next(h for h in snapshot.holdings if h.person == person and h.cert == "A")
+        assert held.revoked_at is None and len(held.revoked_windows) == 1          # reinstated: a closed window, not erased
+        needs_a = {r.job for r in snapshot.requirements if r.bundle is not None and any("A" in g for g in r.bundle.groups)}
+        lo, hi = (to_minute(parse_utc(t)) for t in window)
+        out = {}
+        for flag in (False, True):
+            svc = services(flag)
+            plan, run = schedule_snapshot(svc, load_snapshot(svc.repositories, snapshot_id), purpose=Purpose.EXECUTABLE, budget_seconds=60,
+                                          max_moves=5)
+            out[flag] = (plan.id, plan.hash, run.native["engine"])
+            for a in plan.assignments:
+                if a.job in needs_a and person in {c.person for c in a.crew}:
+                    assert to_minute(a.end) <= lo or to_minute(a.start) >= hi, (flag, a.id, a.start, a.end)
+        assert out[False][:2] == out[True][:2] and out[True][2] == "native", out

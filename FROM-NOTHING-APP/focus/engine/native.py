@@ -76,7 +76,7 @@ def build_context(ctx: "EngineContext") -> Any:
     for person, certs in ctx.eligibility.index._by_person.items():           # noqa: SLF001 - the index's own rows, read once
         for cert, items in certs.items():
             for h in items:
-                holdings.append((person, cert, h.active, h.known, h.start, h.end, h.revoked))
+                holdings.append((person, cert, h.active, h.known, h.start, h.end, h.revoked, list(h.windows)))
     context = _module().Context(windows, travel, list(ctx.pool_caps.items()), sorted(k.value for k in ctx.counted_kinds),
                                 list(ctx.tool_capacity.items()), [(pool, list(members)) for pool, members in ctx._members.items()],  # noqa: SLF001
                                 holdings, [(team, sorted(certs)) for team, certs in ctx.team_certs.items()])

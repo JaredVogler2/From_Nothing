@@ -178,6 +178,9 @@ class ValidationInput:
             if h.revoked_at is not None and minute_floor(h.revoked_at) < end:
                 reasons.append("REVOKED")
                 continue
+            if any(minute_floor(a) < end and start < minute_floor(b) for a, b in h.revoked_windows):
+                reasons.append("REVOKED")
+                continue
             return True, "VALID"
         return False, sorted(reasons)[0]
 
