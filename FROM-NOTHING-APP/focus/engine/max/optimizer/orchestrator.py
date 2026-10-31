@@ -189,6 +189,14 @@ class MaxOptimizer:
             self.line_jobs[ctx.jobs[job].line].append(job)
         self.peers = Competition(self.team_jobs)
         self.workers = SPECULATION if ctx.native else 1    # threads overlap only when the search runs without the GIL
+        # only work that is not verified complete gets a release from a candidate or can delay an aircraft
+        # (aircraft_completions skips verified-complete jobs), so evaluating a candidate keeps pace with open work
+        self.open_jobs = [job for job in ctx.jobs.values() if not ctx.placeability(job.id).satisfied]
+        self.open_releases: list[tuple[str, list[Any], Any]] = []
+        for job_id, phases in ctx.job_phases.items():
+            rel = next((p for p in phases if p.kind is PhaseKind.RELEASE), None)
+            if rel is not None and not ctx.placeability(job_id).satisfied:
+                self.open_releases.append((job_id, phases, rel))
 
     # ------------------------------------------------------------------ evaluation
     def decode(self, state: PriorityState, urgency: Mapping[str, int] | None) -> DecodeResult:
@@ -207,10 +215,7 @@ class MaxOptimizer:
     def evaluate(self, decode: DecodeResult) -> Evaluation:
         ctx = self.ctx
         releases: dict[str, JobRelease] = {}
-        for job_id, phases in ctx.job_phases.items():
-            rel = next((p for p in phases if p.kind is PhaseKind.RELEASE), None)
-            if rel is None:
-                continue
+        for job_id, phases, rel in self.open_releases:
             placed = decode.placements.get(rel.key.id)
             if placed is not None:
                 cond = any(decode.placements[p.key.id].conditional for p in phases if p.key.id in decode.placements)
@@ -220,7 +225,7 @@ class MaxOptimizer:
             else:
                 reasons = [decode.deferred[p.key.id] for p in phases if p.key.id in decode.deferred]
                 releases[job_id] = JobRelease(job_id, None, False, reasons[0] if reasons else "not released")
-        completions = aircraft_completions(ctx.jobs.values(), ctx.dispositions, releases, self.lines)
+        completions = aircraft_completions(self.open_jobs, ctx.dispositions, releases, self.lines)
         costs = line_costs(self.registry, completions, ctx.cutoff_minute)
         summary = summarize(costs)
         travel = wait = ot = 0

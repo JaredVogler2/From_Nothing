@@ -96,6 +96,8 @@ def cost_of_delay(ctx: "EngineContext", registry: "EconomicsRegistry", seed: "De
     clocks: dict[int, OpenClock] = {}
     out: dict[str, int] = {}
     for pid, phase in ctx.phases.items():
+        if pid in seed.satisfied:                        # verified-complete work is never placed: no cost of delaying it
+            continue
         line = phase.line
         weight = weights.get(line)
         if weight is None or weight.status != "known" or not weight.marginal_cents:

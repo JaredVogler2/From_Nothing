@@ -68,12 +68,16 @@ def _iso(minute: int | None) -> str | None:
 
 def _release_memory() -> float:
     """Collect and hand freed heap back to the operating system between shifts (glibc), so each shift starts small; the
-    resident size afterwards in MB (Linux), or 0.0 where it cannot be read."""
+    resident size afterwards in MB (Linux), or 0.0 where it cannot be read. What survives is frozen until the next call:
+    the collections that allocation triggers meanwhile then examine only new objects, not the source state, which grows
+    with the run. Everything is unfrozen and examined again here, so nothing frozen is kept past its use."""
+    gc.unfreeze()
     gc.collect()
     try:
         ctypes.CDLL("libc.so.6").malloc_trim(0)
     except (OSError, AttributeError):
         pass
+    gc.freeze()
     try:
         with open("/proc/self/statm", encoding="ascii") as fh:
             return int(fh.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2 ** 20
@@ -201,6 +205,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         log(json.dumps(row))
     db.run_meta(sim_id, datetime.now(UTC).isoformat(), asdict(spec), facts, "COMPLETE")
     db.close()
+    gc.unfreeze()                                         # the caller's own collections see everything again
     return {"sim_id": sim_id, "shifts": summary, "facts": facts}
 
 

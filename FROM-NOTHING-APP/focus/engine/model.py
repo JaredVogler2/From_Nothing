@@ -280,7 +280,17 @@ class EngineContext:
 
     # ---------------------------------------------------------------- CPM tails
     def _tails(self) -> dict[str, int]:
-        nodes = set(self.phases) | set(self.releases)
+        """Each node's CPM tail: its own work plus the longest hard chain after it. A tail depends only on the nodes after it,
+        so the walk covers what open work reaches. Verified-complete history that no open node leads into is never placed and
+        is left out (admitted graphs are acyclic: cycles are quarantined), so the build keeps pace with open work, not history."""
+        done = {job for job, d in self.dispositions.items() if d.disposition is Disposition.VERIFIED_COMPLETE}
+        stack = [n for n, p in self.phases.items() if p.job not in done] + list(self.releases)
+        nodes = set(stack)
+        while stack:
+            for e in self.succs.get(stack.pop(), ()):
+                if e.succ_phase not in nodes and (e.succ_phase in self.phases or e.succ_phase in self.releases):
+                    nodes.add(e.succ_phase)
+                    stack.append(e.succ_phase)
         indeg = {n: 0 for n in nodes}
         for n in nodes:
             for e in self.succs.get(n, ()):

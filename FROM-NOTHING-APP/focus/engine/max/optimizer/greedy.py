@@ -105,6 +105,7 @@ class DecodeResult:
     satisfied: dict[str, int] = field(default_factory=dict)          # verified-complete phase -> minute
     milestones: dict[str, int] = field(default_factory=dict)         # release milestone -> floor minute
     commitment_results: list[CommitmentResult] = field(default_factory=list)
+    record_at: dict[str, int] = field(default_factory=dict, repr=False, compare=False)   # incumbent assignment -> its latest record
     ledger: DutyLedger | None = None
     paths_used: set[str] = field(default_factory=set)
     attempts: int = 0
@@ -498,14 +499,14 @@ class Decoder:
                 continue
             phase = self.ctx.phases.get(pid)
             cause = result.deferred.get(pid, "NOT_PLACED: the phase never became placeable")
+            result.record_at[d.incumbent_assignment_id] = len(result.commitment_results)
             result.commitment_results.append(CommitmentResult(pid, phase.job if phase else pid, d.incumbent_assignment_id, d.day_offset,
                                                               "UNSAFE", "not attempted", "not attempted", f"SAFETY_OVERRIDE: {cause}"[:480],
                                                               None))
 
     @staticmethod
     def _result_index(d: DefendedTask, result: DecodeResult) -> int:
-        return next(i for i in range(len(result.commitment_results) - 1, -1, -1)
-                    if result.commitment_results[i].incumbent_assignment_id == d.incumbent_assignment_id)
+        return result.record_at[d.incumbent_assignment_id]           # the latest record of the task, without a scan back
 
     def _finish_defense(self, d: DefendedTask, placement: PhasePlacement | None, reason: str, result: DecodeResult) -> None:
         i = self._result_index(d, result)
@@ -526,5 +527,6 @@ class Decoder:
 
     def _record(self, d: DefendedTask, phase: Phase, outcome: str, attempt1: str, attempt2: str, reason: str, new_id: str | None,
                 result: DecodeResult) -> None:
+        result.record_at[d.incumbent_assignment_id] = len(result.commitment_results)
         result.commitment_results.append(CommitmentResult(phase.key.id, phase.job, d.incumbent_assignment_id, d.day_offset, outcome,
                                                           attempt1, attempt2, reason, new_id))
