@@ -93,7 +93,9 @@ def test_dashboard_operations_answer_from_the_tables(sims, tmp_path, app_root, m
     assert [h["shift_no"] for h in history["history"]] == [r[0] for r in _all(first, f"SELECT shift_no FROM perf_team_shift WHERE team = '{team}' ORDER BY shift_no")]
     assert not {c["cause"] for c in history["missed_by_cause"]} & {"DEVIATION", "REPLANNED"}
     assert client.get("/api/v1/sim/overview?bogus=1").status_code == 400          # unknown parameters are refused
-    assert client.get("/simulation").status_code == 200
+    classic, ios = (client.get(path).get_data(as_text=True) for path in ("/simulation", "/simulation/ios"))
+    assert 'data-layout="classic"' in classic and 'id="sim-bottom"' not in classic
+    assert 'data-layout="ios"' in ios and 'id="sim-bottom"' in ios                  # same modules and data, iOS shell (S15)
 
 
 def test_without_a_database_the_operations_say_how_to_build_one(tmp_path, app_root, monkeypatch) -> None:

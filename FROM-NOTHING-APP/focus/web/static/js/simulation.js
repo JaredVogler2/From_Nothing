@@ -12,6 +12,11 @@ const FULL = 1200, HALF = 590;                 // chart widths in SVG units: abo
 const host = document.getElementById("main");
 const bar = document.getElementById("sim-bar");
 const tabs = document.getElementById("sim-tabs");
+const bottom = document.getElementById("sim-bottom");          // iOS layout only
+const layoutSwitch = document.getElementById("sim-layout-switch");
+// iOS mobile bottom navigation (S15 Team Lead / My Day / Fleet / Performance / More) over the same modules
+const BOTTOM = [["dispatch", "Team Lead", "TL"], ["gantt", "My Day", "MD"], ["overview", "Fleet", "FL"], ["performance", "Performance", "PF"],
+  ["more", "More", "⋯"]];
 const ui = { tab: "overview", shift: null, shifts: [], team: null, claimTeam: "ALL", line: null, teams: [], historyTeam: null };
 const OFFPLAN = { pull_ahead: "pulled ahead into idle time", deviation: "worked instead of a dispatched task",
   outside_goals: "dispatched by a later plan, not in the day's frozen goals" };
@@ -64,8 +69,25 @@ function renderTabs() {
   tabs.setAttribute("role", "tablist");
   mount(tabs, TABS.map(([id, label]) => h("a", { href: "#" + id, id: "tab-" + id, role: "tab", class: "chip", "aria-controls": "main",
     "aria-selected": ui.tab === id ? "true" : "false", tabindex: ui.tab === id ? "0" : "-1" }, label)));
-  host.setAttribute("role", "tabpanel");
-  host.setAttribute("aria-labelledby", "tab-" + ui.tab);
+  if (TABS.some(([id]) => id === ui.tab)) {
+    host.setAttribute("role", "tabpanel");
+    host.setAttribute("aria-labelledby", "tab-" + ui.tab);
+  } else {
+    host.removeAttribute("role");
+    host.removeAttribute("aria-labelledby");
+  }
+  if (bottom) {
+    mount(bottom, BOTTOM.map(([id, label, icon]) => h("a", { href: "#" + id, class: "bottom-tab", "data-view": id, "aria-current": ui.tab === id ? "page" : null },
+      h("span", { class: "nav-icon", "aria-hidden": "true" }, icon), h("span", {}, label))));
+  }
+  if (layoutSwitch) layoutSwitch.setAttribute("href", layoutSwitch.getAttribute("href").split("#")[0] + "#" + ui.tab);   // same module, other layout
+}
+
+// every module in one list (the iOS bottom navigation's More), plus the other layout over the same data
+function renderMore(body) {
+  mount(body, h("div", { class: "view-title" }, h("h1", {}, "All modules")),
+    card("Modules", h("ul", { class: "nav-list" }, TABS.map(([id, label]) => h("li", {}, h("a", { href: "#" + id, class: "nav-link" }, label))))),
+    layoutSwitch ? h("p", {}, h("a", { href: layoutSwitch.getAttribute("href").split("#")[0] }, layoutSwitch.textContent)) : null);
 }
 
 function renderBar() {
@@ -91,7 +113,7 @@ async function route() {
   mount(host, loadingCard());
   const body = h("div", { class: "view-body" });
   try {
-    await (RENDER[ui.tab] || RENDER.overview)(body);
+    await (ui.tab === "more" ? renderMore : RENDER[ui.tab] || RENDER.overview)(body);
   } catch (err) {
     if (err.code !== "SIMULATION_NOT_RUN") console.error(err);     // a module that fails to render is a defect, never quiet
     mount(body, errorCard(err));

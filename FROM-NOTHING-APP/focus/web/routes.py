@@ -115,11 +115,18 @@ def register(app: Flask, services: Services) -> None:
             return redirect(url_for("focus.landing"))
         return render_template("workspace.html", layout="classic", page="workspace")
 
-    @bp.get("/simulation")
-    def simulation():  # type: ignore[no-untyped-def]
+    def _simulation(layout: str):  # type: ignore[no-untyped-def]
         if services.settings.identity_provider == "fixture" and not current_context().authenticated:
             return redirect(url_for("focus.landing"))
-        return render_template("simulation.html", layout="classic", page="simulation")
+        return render_template("simulation.html", layout=layout, page="simulation")
+
+    @bp.get("/simulation")
+    def simulation():  # type: ignore[no-untyped-def]
+        return _simulation("classic")
+
+    @bp.get("/simulation/ios")
+    def simulation_ios():  # type: ignore[no-untyped-def]
+        return _simulation("ios")
 
     @bp.get("/api/docs")
     def api_docs():  # type: ignore[no-untyped-def]

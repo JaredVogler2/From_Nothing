@@ -121,18 +121,21 @@ def check_views(browser: Any, base: str, persona: str, *, widths: tuple[int, ...
     return results
 
 
-def check_simulation(browser: Any, base: str, persona: str = "manager", *, width: int = 1280) -> list[dict[str, Any]]:
-    """The fleet simulation dashboard (/simulation): its script loads and every module renders a heading with no error card and
-    no console or page error. Each module opens in a fresh page, so no earlier module's heading can stand in for it."""
+def check_simulation(browser: Any, base: str, persona: str = "manager", *, width: int = 1280, layout: str = "classic") -> list[dict[str, Any]]:
+    """The fleet simulation dashboard (/simulation, or /simulation/ios): its script loads and every module renders a heading with
+    no error card, no console or page error and no sideways page scroll. Each module opens in a fresh page, so no earlier
+    module's heading can stand in for it. The iOS layout also has More (every module in one list) and, on a phone, the
+    five-entry bottom navigation with the open module marked."""
     context = browser.new_context(viewport={"width": width, "height": 900}, reduced_motion="reduce")
     sign_in(context.new_page(), base, persona)
+    path = "/simulation/ios" if layout == "ios" else "/simulation"
     results = []
-    for tab in SIM_TABS:
+    for tab in SIM_TABS + (("more",) if layout == "ios" else ()):
         page = context.new_page()
         errors: list[str] = []
         page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
         page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
-        page.goto(f"{base}/simulation#{tab}")
+        page.goto(f"{base}{path}#{tab}")
         problems = []
         try:
             page.wait_for_selector("#main h1, #main .state-error", timeout=30000)
@@ -142,6 +145,17 @@ def check_simulation(browser: Any, base: str, persona: str = "manager", *, width
             problems.append("error card: " + page.inner_text("#main .state-error")[:200])
         if errors:
             problems.append("console: " + "; ".join(errors[:3]))
+        overflow = page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+        if overflow > 1:
+            problems.append(f"the page scrolls sideways by {overflow}px")
+        if layout == "ios" and width <= 760:
+            nav = page.locator("#sim-bottom")
+            if not nav.is_visible() or nav.locator(".bottom-tab").count() != 5:
+                problems.append("no five-entry bottom navigation")
+            elif tab in ("dispatch", "gantt", "overview", "performance", "more") and nav.locator(f"[data-view='{tab}'][aria-current='page']").count() != 1:
+                problems.append("the bottom navigation does not mark the open module")
+        if tab == "more" and page.locator("#main a.nav-link").count() != len(SIM_TABS):
+            problems.append("More does not list every module")
         results.append({"tab": tab, "heading": page.inner_text("#main h1") if page.locator("#main h1").count() else None, "problems": problems})
         page.close()
     context.close()

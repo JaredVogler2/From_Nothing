@@ -15,7 +15,9 @@ python -m focus.sim.runner --aircraft 50 --days 14 --db runtime/sim/fleet.db
 FOCUS_SIM_DB=runtime/sim/fleet.db python app.py
 ```
 
-Then sign in with a demo persona that sees all teams and open `/simulation`. More options:
+Then sign in with a demo persona that sees all teams and open `/simulation` (classic) or `/simulation/ios` (the iOS
+layout: one scrolling module selector and, on a phone, the Team Lead / My Day / Fleet / Performance / More bottom
+navigation over the same modules). More options:
 
 - `--shifts N` stops after N shifts, for a trial run.
 - `--purposes` chooses the plans made each shift (default `EXECUTABLE,FORECAST`). The floor works the EXECUTABLE plan.

@@ -81,3 +81,6 @@ def test_simulation_dashboard_script_loads_and_every_module_renders(browser, obs
     results = cw.check_simulation(browser, observed)
     assert [r["tab"] for r in results] == list(cw.SIM_TABS)
     assert [r for r in results if r["problems"] or not r["heading"]] == []
+    phone = cw.check_simulation(browser, observed, width=390, layout="ios")          # the iOS variant on a phone (S15)
+    assert [r["tab"] for r in phone] == [*cw.SIM_TABS, "more"]
+    assert [r for r in phone if r["problems"] or not r["heading"]] == []
