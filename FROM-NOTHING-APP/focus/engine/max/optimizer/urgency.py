@@ -8,8 +8,10 @@ the phase has before it would make the aircraft late. A phase on the critical ch
 weight; a phase with days of slack carries little, whatever its aircraft. This is the apparent-tardiness-cost rule for
 weighted lateness, made exact for repeatability:
 
-* slack = latest start - earliest start, where latest start = due - CPM tail x the line's calendar factor (calendar
-  minutes per open work minute) and earliest start is the phase's start in the neutral seed (the cutoff when unplaced);
+* slack = latest start - earliest start. The latest start is the last instant from which the phase's CPM tail (work
+  minutes on its critical chain) still fits into the line's open regular minutes before the due instant: a walk back
+  through the actual admitted shift windows, with no averaged or packed days (``OpenClock``). The earliest start is the
+  phase's start in the neutral seed (the cutoff when unplaced);
 * decay = ``COD_DECAY[slack // COD_STEP_MINUTES]``, an integer table of exp(-i/4) in millionths, so one day of slack
   divides the urgency by e; no floating point is involved, so every platform orders phases identically;
 * aircraft without a known weight carry no urgency (unknown is never zero cost; it simply does not rank).
@@ -20,8 +22,8 @@ competes with (the ones that held its team) and keeping the result only when the
 """
 from __future__ import annotations
 
-from fractions import Fraction
-from typing import TYPE_CHECKING, Mapping
+from bisect import bisect_right
+from typing import TYPE_CHECKING, Iterable, Mapping
 
 from ....domain import to_minute
 
@@ -38,20 +40,60 @@ LONG_WAIT_MINUTES = 480                   # more than a shift past the phase's e
 LONG_WAIT_FOCUS = 40                      # the longest waits the search aims at
 
 
-def calendar_factor(ctx: "EngineContext", line: int) -> Fraction:
-    """Calendar minutes per open regular minute over the line's admitted shifts (1 when it has none)."""
-    shifts = ctx.line_shifts(line)
-    open_minutes = sum(s.open_minutes for s in shifts)
-    if not shifts or open_minutes <= 0:
-        return Fraction(1)
-    return Fraction(shifts[-1].end - shifts[0].start, open_minutes)
+class OpenClock:
+    """The open regular minutes of one line's admitted shifts as a cumulative clock (S12: no packed-day shortcut).
+
+    ``before(t)`` counts open minutes before ``t``. ``latest_start(due, minutes)`` inverts it: the last instant from which
+    ``minutes`` open minutes still end by ``due``. Outside the admitted calendar nothing is known to be open, so a remainder
+    before the first window is counted minute for minute (earlier, so never less urgent).
+    """
+
+    def __init__(self, windows: Iterable[tuple[int, int]]):
+        self.starts: list[int] = []
+        self.ends: list[int] = []
+        self.cum: list[int] = []                         # open minutes before each window
+        total = 0
+        for ws, we in sorted(windows):
+            if we <= ws:
+                continue
+            if self.ends and ws < self.ends[-1]:          # overlapping windows count once
+                ws = self.ends[-1]
+                if we <= ws:
+                    continue
+            self.starts.append(ws)
+            self.ends.append(we)
+            self.cum.append(total)
+            total += we - ws
+        self.total = total
+
+    @classmethod
+    def of_line(cls, ctx: "EngineContext", line: int) -> "OpenClock":
+        return cls(w for s in ctx.line_shifts(line) for w in s.regular_windows)
+
+    def before(self, t: int) -> int:
+        i = bisect_right(self.starts, t) - 1
+        if i < 0:
+            return 0
+        return self.cum[i] + min(t, self.ends[i]) - self.starts[i]
+
+    def latest_start(self, due: int, minutes: int) -> int:
+        if not self.starts:
+            return due - minutes
+        before_due = self.before(due)
+        target = before_due - minutes                       # open minutes allowed before the start
+        if minutes <= 0 or target >= self.total:
+            return due
+        if target < 0:
+            return self.starts[0] + target
+        i = bisect_right(self.cum, target) - 1              # the last window that opens with at most target minutes behind it
+        return self.starts[i] + target - self.cum[i]        # inside it: later windows open with more than target behind them
 
 
 def cost_of_delay(ctx: "EngineContext", registry: "EconomicsRegistry", seed: "DecodeResult",
                   weights: Mapping[int, "WeightRecord"]) -> dict[str, int]:
     """phase -> the aircraft's registry weight (marginal cents of one more day at its projected completion) x decay(slack);
     phases of aircraft without a known, positive weight are absent."""
-    factors: dict[int, Fraction] = {}
+    clocks: dict[int, OpenClock] = {}
     out: dict[str, int] = {}
     for pid, phase in ctx.phases.items():
         line = phase.line
@@ -59,11 +101,10 @@ def cost_of_delay(ctx: "EngineContext", registry: "EconomicsRegistry", seed: "De
         if weight is None or weight.status != "known" or not weight.marginal_cents:
             continue
         econ = registry.economics[line]
-        factor = factors.get(line)
-        if factor is None:
-            factor = factors[line] = calendar_factor(ctx, line)
-        tail = ctx.tails.get(pid, 0) * factor
-        latest = to_minute(econ.due_at) - (tail.numerator + tail.denominator - 1) // tail.denominator   # type: ignore[arg-type]
+        clock = clocks.get(line)
+        if clock is None:
+            clock = clocks[line] = OpenClock.of_line(ctx, line)
+        latest = clock.latest_start(to_minute(econ.due_at), ctx.tails.get(pid, 0))     # type: ignore[arg-type]
         placed = seed.placements.get(pid)
         earliest = placed.start if placed is not None else ctx.cutoff_minute
         step = max(0, latest - earliest) // COD_STEP_MINUTES

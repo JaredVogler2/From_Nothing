@@ -48,7 +48,7 @@ are FIXED (in this branch), NEXT (being fixed now), OPEN (planned) and DECISION 
 | B7 | major (live) | S05 l.935 | Admission has no freshness or capture-skew checks. | search | OPEN |
 | B8 | major | S15 l.1889, A68 | The reported-observation command enqueues without a scope check; a test asserted a mechanic could report on another team's job. | code | FIXED: a job or phase outside the caller's teams gets the same 404 as a missing one |
 | B9 | major | P17 l.3619 | No automatic capacity or skill attribution: no attendance or revocation evidence feed. | code | OPEN |
-| B10 | minor | S12 l.1581 | CPM tails use summed work minutes (packed days). | code | OPEN |
+| B10 | minor | S12 l.1581 | CPM tails use summed work minutes (packed days). | code | FIXED: the latest start walks back through the line's actual open shift windows (`OpenClock`); a closed weekend is no longer averaged over the horizon. Not yet in the 50-aircraft run, which started before this change |
 | B11 | minor | S12 l.1541, l.1560 | The accrued exposure floor is never applied. | code | FIXED: the modeled exposure never counts below the already-accounted floor, so the increment and the priority weight start above it |
 | B12 | minor | S13 l.1723 | Dispatch does not recheck crew size against current demand. | code | FIXED: an action whose crew is no longer the full current demand is blocked (CREW_SIZE_CHANGED) |
 | B13 | minor | S08 l.1298 | In-progress rework is rescheduled for its full P75. | script | FIXED: remaining minutes are kept for rework as for any job |
