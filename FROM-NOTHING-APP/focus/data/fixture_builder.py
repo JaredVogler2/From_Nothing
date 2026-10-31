@@ -667,6 +667,8 @@ def build_observations(scenario: str = "manufacturing_demo") -> dict[str, dict[s
                              "EFFECTIVE_AT_UTC,RECORDED_AT_UTC,OBSERVED_AT_UTC,VERIFIED,VERIFIED_BY,DIRECTIVE_REF,SUPERSEDES_EVENT_KEY,EVIDENCE_REF,DETAIL"),
         "actual_intervals": "SOURCE_EVENT_KEY,SOURCE_REVISION,LINE_NUMBER,SOI,PHASE_KIND,PHASE_ORDINAL,PERSON_KEY,START_UTC,END_UTC,IS_VOIDED,OBSERVED_AT_UTC,EVIDENCE_REF",
         "defect_evidence": "SOURCE_EVENT_KEY,LINE_NUMBER,SOI,ROOT_SOI,REWORK_CLASS,DEFECT_ORIGIN_TEAM,EVIDENCE_REF,OBSERVED_AT_UTC",
+        "attendance_evidence": "SOURCE_EVENT_KEY,PERSON_KEY,SHIFT_DATE,SHIFT_NUMBER,PRESENT,REASON,RECORDED_AT_UTC,OBSERVED_AT_UTC,EVIDENCE_REF",
+        "holding_evidence": "SOURCE_EVENT_KEY,PERSON_KEY,CERT_CODE,EVENT,EFFECTIVE_AT_UTC,OBSERVED_AT_UTC,EVIDENCE_REF",
         "goal_amendments": ("AMENDMENT_KEY,TEAM,SHIFT_DATE,SHIFT_NUMBER,WORK_REF,STANDARD_PERSON_MINUTES,EFFORT_BASIS,FEASIBILITY_REF,AUTHORITY,"
                             "DECISION_AT_UTC,REASON,OBSERVED_AT_UTC"),
         "disruption_claims": ("CLAIM_KEY,TEAM,SHIFT_DATE,SHIFT_NUMBER,WORK_REFS,CAUSE,ORIGIN_TEAM,EXECUTING_TEAM,EVIDENCE_REFS,NOTES,STATUS,REPORTED_BY,"
@@ -675,7 +677,8 @@ def build_observations(scenario: str = "manufacturing_demo") -> dict[str, dict[s
                               "REASON,REVIEW_TRACK,SUPERSEDES_DECISION_KEY,OBSERVED_AT_UTC"),
     }
     rows = {"lifecycle_events": life, "actual_intervals": intervals, "defect_evidence": defects, "goal_amendments": amendments,
-            "disruption_claims": claims, "excusal_decisions": decisions}
+            "disruption_claims": claims, "excusal_decisions": decisions,
+            "attendance_evidence": [], "holding_evidence": []}             # nobody was called off or lost a certificate after planning
     out: dict[str, dict[str, Any]] = {}
     for name, cols in columns.items():
         col_tuple = [c for c in cols.split(",") if c]
@@ -683,7 +686,7 @@ def build_observations(scenario: str = "manufacturing_demo") -> dict[str, dict[s
             if list(row) != col_tuple and set(row) != set(col_tuple):
                 raise ValueError(f"{name}: observation row keys differ from the feed contract")
         out[name] = {"schema_version": 1, "dataset": name, "columns": col_tuple, "rows": rows[name],
-                     "receipt": {"complete": True, "certified_empty": False, "producer": f"fixture:{scenario}", "upstream_revision": "fixture-v1",
+                     "receipt": {"complete": True, "certified_empty": not rows[name], "producer": f"fixture:{scenario}", "upstream_revision": "fixture-v1",
                                  "covered_through_utc": OBSERVATION_COVERED_THROUGH}}
     out["manifest"] = {"schema_version": 1, "scenario": scenario, "collection_points_utc": list(OBSERVATION_POINTS_UTC),
                        "note": "Deterministic collection points for the S14 observation replay (fixture only)."}

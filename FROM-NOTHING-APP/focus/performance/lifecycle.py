@@ -59,8 +59,8 @@ from typing import Any, Iterable
 
 from ..calendar import ShiftPolicy, build_shift, parse_shift_id, shift_containing
 from ..contracts.evaluation import OffplanFact, OOSFact, UnitFact
-from ..contracts.events import (REVISION_KINDS, ActualInterval, DefectEvidence, DisruptionClaim, ExcusalDecision, GoalAmendment, LifecycleEvent,
-                                ObservationRun, SequenceViolation, ShiftWindow)
+from ..contracts.events import (REVISION_KINDS, ActualInterval, AttendanceEvidence, DefectEvidence, DisruptionClaim, ExcusalDecision, GoalAmendment,
+                                HoldingEvidence, LifecycleEvent, ObservationRun, SequenceViolation, ShiftWindow)
 from ..contracts.planning import EarningUnit, FrozenGoal, PlanningSnapshot
 from ..domain import DomainError, EdgeType, PhaseKind, ReleaseStatus, digest_id, from_minute, to_minute
 
@@ -132,11 +132,15 @@ class GoalRegistry:
     records: dict[tuple[str, str], GoalRecord] = field(default_factory=dict)
     goals: dict[str, FrozenGoal] = field(default_factory=dict)           # every accepted goal (records and proposals)
     unit_start: dict[str, datetime] = field(default_factory=dict)        # unit id -> planned start of its frozen assignment
+    unit_end: dict[str, datetime] = field(default_factory=dict)          # unit id -> planned end of its frozen assignment
+    unit_crew: dict[str, tuple[str, ...]] = field(default_factory=dict)  # unit id -> the planned crew of its frozen assignment
+    plan_knowledge: dict[str, datetime] = field(default_factory=dict)    # plan id -> the source cutoff it was planned on
     committed_units: set[str] = field(default_factory=set)               # units of incumbent-defended (committed) assignments
     rejected: list[tuple[str, str]] = field(default_factory=list)
 
     @classmethod
     def load(cls, services: Any, *, signer: Any = None) -> "GoalRegistry":
+        from ..data.acquisition import get_run
         from ..publication.repository import repository_for
         from ..publication.service import accepted_plans
 
@@ -149,6 +153,8 @@ class GoalRegistry:
         for current in plans:
             artifact, published = current.artifact, current.published
             reg.plan_snapshot[published.id] = artifact.snapshot_id
+            source = get_run(services.repositories, published.source_run_id)
+            reg.plan_knowledge[published.id] = published.accepted_at if source is None else source[0].cutoff
             goals = {g.id: g for g in repo.goals(published.frozen_goal_ids)}
             if set(goals) != set(published.frozen_goal_ids) or any(g.hash != g.computed_hash() for g in goals.values()):
                 reg.rejected.append((published.id, "SECURITY_FAILURE: frozen goals missing or altered"))
@@ -161,6 +167,8 @@ class GoalRegistry:
             for d in new_days:
                 reg.day_plan[d] = published.id
             starts = {a.id: a.start for a in artifact.candidate.assignments}
+            ends = {a.id: a.end for a in artifact.candidate.assignments}
+            crews = {a.id: tuple(r.person for r in a.crew) for a in artifact.candidate.assignments}
             committed = {a.id for a in artifact.candidate.assignments if a.committed}
             for g in goals.values():
                 key = (g.team, g.shift_id)
@@ -169,6 +177,8 @@ class GoalRegistry:
                     for u in g.earning_units:
                         if u.assignment_id in starts:
                             reg.unit_start[u.id] = starts[u.assignment_id]
+                            reg.unit_end[u.id] = ends[u.assignment_id]
+                            reg.unit_crew[u.id] = crews[u.assignment_id]
                         if u.assignment_id in committed:
                             reg.committed_units.add(u.id)
                 else:
@@ -609,6 +619,8 @@ class ObservationView:
     violations: list[SequenceViolation]
     run: ObservationRun | None
     graph: GraphView | None
+    attendance: list[AttendanceEvidence] = field(default_factory=list)
+    holding_events: list[HoldingEvidence] = field(default_factory=list)
     credits: dict[str, Credit] = field(default_factory=dict)
     offplan: list[OffplanFact] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
@@ -617,7 +629,8 @@ class ObservationView:
     @classmethod
     def build(cls, services: Any, as_of: datetime, *, store: Any = None, registry: GoalRegistry | None = None,
               graph: GraphView | None | str = "current") -> "ObservationView":
-        from .actuals import AMENDMENTS, CLAIMS, DECISIONS, DEFECTS, EVENTS, INTERVALS, VIOLATIONS, ObservationStore, latest_revisions
+        from .actuals import (AMENDMENTS, ATTENDANCE, CLAIMS, DECISIONS, DEFECTS, EVENTS, HOLDINGS, INTERVALS, VIOLATIONS, ObservationStore,
+                              latest_revisions)
 
         settings = services.settings
         store = store or ObservationStore(services.repositories, settings.scope_key)
@@ -652,7 +665,8 @@ class ObservationView:
         view = cls(services, policy, settings.scope_key, settings.site, as_of, registry, events, effective, notes, cycles, dict(phases_by_job),
                    intervals, frozenset(invalid), store.known(DEFECTS, as_of), {k: tuple(sorted(v, key=lambda a: a.id)) for k, v in amendments.items()},
                    store.known(CLAIMS, as_of), store.known(DECISIONS, as_of), store.known(VIOLATIONS, as_of), store.latest_run(as_of),
-                   current_graph(services) if graph == "current" else graph, errors=errors)  # type: ignore[arg-type]
+                   current_graph(services) if graph == "current" else graph, attendance=store.known(ATTENDANCE, as_of),  # type: ignore[arg-type]
+                   holding_events=store.known(HOLDINGS, as_of), errors=errors)
         view._credit()
         return view
 
