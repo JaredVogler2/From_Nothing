@@ -143,3 +143,5 @@ class BadgeAward:
     revision: int
     revoked: bool
     supersedes: str | None
+    earning_unit_ids: tuple[str, ...] = ()   # the exact earning units behind the award (S14 PROGRESSION)
+    policy_id: str = ""                      # the policy it was decided under

@@ -50,15 +50,15 @@ are FIXED (in this branch), NEXT (being fixed now), OPEN (planned) and DECISION 
 | B9 | major | P17 l.3619 | No automatic capacity or skill attribution: no attendance or revocation evidence feed. | code | OPEN |
 | B10 | minor | S12 l.1581 | CPM tails use summed work minutes (packed days). | code | OPEN |
 | B11 | minor | S12 l.1541, l.1560 | The accrued exposure floor is never applied. | code | OPEN |
-| B12 | minor | S13 l.1723 | Dispatch does not recheck crew size against current demand. | code | OPEN |
+| B12 | minor | S13 l.1723 | Dispatch does not recheck crew size against current demand. | code | FIXED: an action whose crew is no longer the full current demand is blocked (CREW_SIZE_CHANGED) |
 | B13 | minor | S08 l.1298 | In-progress rework is rescheduled for its full P75. | script | FIXED: remaining minutes are kept for rework as for any job |
 | B14 | minor | S08 l.1259 | The rework comparison group ignores model/process/revision/crew. | code | OPEN |
-| B15 | minor | S05 l.906, P09 l.3091 | Template prerequisites missing on an aircraft are dropped silently. | code | OPEN |
-| B16 | minor (inactive) | S09 l.1372 | A CS hard latest date is not enforced in the search (the policy sets NONE today). | code | OPEN |
+| B15 | major | S05 l.906, P09 l.3091 | Template prerequisites missing on an aircraft are dropped silently. Each minor model's network spans every customer, and customer options leave tasks off some aircraft (A>B>C for one customer, A>C for another), so the successor lost its real prerequisite. | code + owner | FIXED: missing tasks are bridged to their nearest carried ancestors (composed type, summed lag, hard only if every edge is); never dropped or taken as done |
+| B16 | minor (inactive) | S09 l.1372 | A CS hard latest date is not enforced in the search (the policy sets NONE today). | code | FIXED: the search and the defense defer work that cannot end by it; both cores tested |
 | B17 | minor | S17 l.2022, P23 l.4018 | Live CI jobs do not wait for the UI and rehearsal jobs, and the scheduler installs an index wheel from any commit. | CI file | FIXED: acquisition needs every verify job; the scheduler installs the same-commit wheel, and the native core refuses a wheel of another protocol |
 | B18 | minor | S17 l.1985 | Worker retries are unbounded, with no deadline or lease renewal. | code | FIXED: three attempts, a 24-hour deadline, and a lease covering twice the run's budget |
 | B19 | minor | S01 l.131 | The twin does not show the behind-station value or its date basis (the math is right). | code | OPEN |
-| B20 | minor | S14 l.1801 | Badge awards carry no earning unit IDs or policy. | code | OPEN |
+| B20 | minor | S14 l.1801 | Badge awards carry no earning unit IDs or policy. | code | FIXED: awards and their badge events carry the exact earning units and the policy id |
 | B21 | major | S12 l.1617 "Attempt1 exact incumbent day/shift/start" | The defense rebuilt an incumbent start from its shift's date and local time, so an S3 start after local midnight came back 24 hours early. Most S3 commitments were dropped as UNSAFE, with false safety alerts on delivery. The validator rebuilt starts the same way, so it agreed. | data | FIXED: `shift_local_minute` in both; S3 UNSAFE fell from about 116 to 14 per shift in a 6-aircraft run |
 | B22 | major | S12 l.1617, S08 l.1298 | Incumbent tasks were matched by phase ordinal. Written-back progress re-splits a job's remaining work and renumbers it from 0, so commitments landed on the wrong pieces or went missing. | data | FIXED: matched by minutes still to go (`IncumbentPlan.positions`); done work is PERFORMED, a folded piece MERGED; the validator checks both |
 
