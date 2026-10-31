@@ -12,7 +12,7 @@ const FULL = 1200, HALF = 590;                 // chart widths in SVG units: abo
 const host = document.getElementById("main");
 const bar = document.getElementById("sim-bar");
 const tabs = document.getElementById("sim-tabs");
-const ui = { tab: "overview", shift: null, shifts: [], team: null, claimTeam: "ALL", line: null, teams: [] };
+const ui = { tab: "overview", shift: null, shifts: [], team: null, claimTeam: "ALL", line: null, teams: [], historyTeam: null };
 const OFFPLAN = { pull_ahead: "pulled ahead into idle time", deviation: "worked instead of a dispatched task",
   outside_goals: "dispatched by a later plan, not in the day's frozen goals" };
 let token = 0;
@@ -93,6 +93,7 @@ async function route() {
   try {
     await (RENDER[ui.tab] || RENDER.overview)(body);
   } catch (err) {
+    if (err.code !== "SIMULATION_NOT_RUN") console.error(err);     // a module that fails to render is a defect, never quiet
     mount(body, errorCard(err));
   }
   if (t === token) mount(host, body);
@@ -177,6 +178,11 @@ const RENDER = {
         metric("Done jobs", num(f.jobs_done)), metric("Open late parts", num(f.shortages_open)), metric("Open rework", num(f.rework_open))),
       card("Projected days late, plan by plan", chartBox(lineChart([{ name: "Days late", points: hist.map((x) => ({ x: "S" + x.shift_no, y: x.late_days })) }],
         { title: "Projected days late in each published plan", width: FULL, height: 240 }))),
+      card("Aircraft score", h("p", { class: "muted" }, "The canonical formula over this aircraft's goal units pooled across every team: planned effort, approved relief, earned effort, offplan output and the out-of-sequence charge, summed before dividing. "
+        + (d.score_overall && d.score_overall.score !== null ? `Over the run: ${num(d.score_overall.score, 1)} (${d.score_overall.grade}).` : "")),
+        chartBox(lineChart([{ name: "Score", points: (d.scores || []).map((x) => ({ x: x.label, y: x.score })) },
+          { name: "Attainment %", points: (d.scores || []).map((x) => ({ x: x.label, y: x.attainment === null ? null : x.attainment * 100 })) }],
+          { title: `Aircraft ${d.line}: pooled score and attainment per shift`, yMax: 100, width: FULL, height: 240 }))),
       h("div", { class: "grid grid-2" },
         card("Open work by station and team", table([{ label: "Station", key: "station" }, { label: "Team", key: "team" },
           { label: "Open jobs", num: true, key: "open_jobs" }, { label: "Work min", num: true, render: (r) => num(r.work_minutes) },
@@ -189,7 +195,8 @@ const RENDER = {
   },
 
   async performance(body) {
-    const d = await get("performance");
+    const d = await get("performance", { team: ui.historyTeam });
+    ui.historyTeam = d.history_team;
     const c = d.compare;
     const row = (label, x) => {
       const cur = x.current || {}, dl = x.delta || {};
@@ -200,8 +207,11 @@ const RENDER = {
       row("Whole simulation", c.overall)];
     const delta = (v, scale = 100, unit = "pt") => (v === undefined || v === null ? "" : h("span", { class: v >= 0 ? "delta-good" : "delta-bad" }, signed(v * scale, (x) => num(x, 1) + unit)));
     const causeColor = { LATE_PART: "#e8590c", CROSS_TEAM_PREDECESSOR: "#1098ad", CAPACITY_SHORTAGE: "#ae3ec9", REWORK_INJECTION: "#2f9e44",
-      SAME_TEAM_PREDECESSOR: "#3b5bdb", DURATION_OVERRUN: "#c92a2a", DEVIATION: "#495057", REPLANNED: "#adb5bd" };
-    const causes = Object.keys(causeColor);
+      SAME_TEAM_PREDECESSOR: "#3b5bdb", DURATION_OVERRUN: "#c92a2a" };
+    const causes = Object.keys(causeColor);                                   // the claimable causes; a deviation is not one
+    const noDisruption = { DEVIATION: "#495057", REPLANNED: "#adb5bd" };
+    const plain = new Map();
+    (d.missed_without_disruption || []).forEach((m) => { const v = plain.get(m.shift_no) || {}; v[m.cause] = m; plain.set(m.shift_no, v); });
     const excusable = causes.slice(0, 4);
     const byShift = new Map();
     d.missed_by_cause.forEach((m) => { const v = byShift.get(m.shift_no) || {}; v[m.cause] = m; byShift.set(m.shift_no, v); });
@@ -226,7 +236,12 @@ const RENDER = {
           "Pooled: the components of every team are summed before dividing, never an average of team scores.")),
         card("Missed planned work that counted against teams", chartBox(stackedBars(stack("unexcused"),
           { title: "Unexcused missed effort per shift by cause (person minutes)", names: causes.map((cz) => ({ name: cz.replace(/_/g, " ").toLowerCase(), color: causeColor[cz] })), width: HALF, height: 300 }),
-          "Same-team predecessor and overrun claims are only proposed (they need a person's notes); a deviation, or work a replan moved with no disruption on record, has no claim."))),
+          "Same-team predecessor and overrun claims are only proposed (they need a person's notes)."))),
+      card("Missed planned work with no disruption on record", chartBox(stackedBars(d.shifts.map((x) => ({ label: x.label, parts: Object.keys(noDisruption).map((cz) => ({ name: cz,
+        value: ((plain.get(x.shift_no) || {})[cz] || {}).unexcused || 0, color: noDisruption[cz] })) })),
+        { title: "Missed effort per shift with no claim (person minutes)", names: [{ name: "deviation: other work chosen", color: noDisruption.DEVIATION },
+          { name: "replanned: moved by a later plan", color: noDisruption.REPLANNED }], width: FULL, height: 240 }),
+        "Not a cause: nothing outside the team stopped this work, so there is nothing to claim. It counts against the team like any unexcused miss.")),
       h("div", { class: "grid grid-2" },
         card("Missed planned work excused by approved claims", chartBox(stackedBars(stack("excused", excusable),
           { title: "Relieved effort per shift by cause (person minutes)", names: excusable.map((cz) => ({ name: cz.replace(/_/g, " ").toLowerCase(), color: causeColor[cz] })), width: HALF, height: 300 }),
@@ -245,8 +260,22 @@ const RENDER = {
         { label: "Relief (E)", num: true, render: (r) => num(r.E) },
         { label: "Earned (Cp)", num: true, render: (r) => num(r.Cp) }, { label: "Offplan (U)", num: true, render: (r) => num(r.U) },
         { label: "OOS effort", num: true, render: (r) => num(r.oos_effort) },
-        { label: "Missed: part / pred. / absence / overrun / deviation", render: (r) => `${r.missed_part} / ${r.missed_predecessor} / ${r.missed_absence} / ${r.missed_overrun} / ${r.missed_deviation}` },
-        { label: "Utilization", num: true, render: (r) => pct(r.utilization) }], d.teams)));
+        { label: "Missed by cause: part / pred. / absence / overrun", render: (r) => `${r.missed_part} / ${r.missed_predecessor} / ${r.missed_absence} / ${r.missed_overrun}` },
+        { label: "Missed, no disruption", num: true, render: (r) => num(r.missed_deviation) },
+        { label: "Utilization", num: true, render: (r) => pct(r.utilization) }], d.teams)),
+      card(`Team history: ${d.history_team || "—"}`, h("div", { class: "toolbar" }, h("label", {}, "Team ",
+        h("select", { "aria-label": "Team history", onchange: (e) => { ui.historyTeam = e.target.value; route(); } },
+          (d.team_names || []).map((t) => h("option", { value: t, selected: t === d.history_team ? true : null }, t))))),
+        chartBox(lineChart([{ name: "Score", points: d.history.map((x) => ({ x: x.label, y: x.score })) },
+          { name: "Attainment %", points: d.history.map((x) => ({ x: x.label, y: x.attainment === null ? null : x.attainment * 100 })) },
+          { name: "Adherence %", points: d.history.map((x) => ({ x: x.label, y: x.adherence === null ? null : x.adherence * 100 })) }],
+          { title: `${d.history_team}: score, attainment and adherence per shift`, yMax: 100, width: FULL, height: 260 })),
+        paged([{ label: "Shift", key: "label" }, { label: "Score", num: true, render: (r) => (r.score === null ? "—" : `${num(r.score, 1)} ${r.grade || ""}`) },
+          { label: "Status", render: (r) => (r.status_reason ? `${r.status} (${r.status_reason})` : r.status) },
+          { label: "Frozen (B0)", num: true, render: (r) => num(r.B0) }, { label: "Added", num: true, render: (r) => num(r.additions) },
+          { label: "Relief (E)", num: true, render: (r) => num(r.E) }, { label: "Earned (Cp)", num: true, render: (r) => num(r.Cp) },
+          { label: "Offplan (U)", num: true, render: (r) => num(r.U) }, { label: "OOS effort", num: true, render: (r) => num(r.oos_effort) },
+          { label: "Base → final", num: true, render: (r) => (r.base === undefined || r.base === null ? "—" : `${num(r.base, 1)} → ${num(r.final, 1)}`) }], d.history)));
   },
 
   async excusals(body) {

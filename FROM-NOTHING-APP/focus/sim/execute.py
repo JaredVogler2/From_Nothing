@@ -76,7 +76,7 @@ from fractions import Fraction
 from typing import Any, Mapping
 
 from ..domain import EdgeType, PhaseKind, digest_id, from_minute, to_minute
-from ..performance.score import formula
+from ..performance.score import status_and_score
 from .state import SourceState
 
 OT_ALLOWANCE = 60
@@ -678,7 +678,9 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         E = sum(by_key[k].effort for k in relieved)
         U = sum(e for _, e in output.get(team, ()))
         oos_effort = sum(by_key[k].effort for k in charged)
-        result = formula(Fraction(B0 + additions), Fraction(E), Fraction(Cp), Fraction(U), rate * oos_effort, policy)
+        parts = {"B0": Fraction(B0), "B": Fraction(B0 + additions), "E": Fraction(E), "Cp": Fraction(Cp), "U": Fraction(U), "O": rate * oos_effort,
+                 "reasons": []}
+        status, result, why = status_and_score(parts, policy, [])
         for key, u in by_key.items():
             status_, cause, claim, origin, cstatus = facts[key]
             units_rows.append((shift_no, team, u.assignment_id, u.job, u.phase, u.line, u.effort, status_, cause, claim, origin, cstatus,
@@ -694,8 +696,9 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
                      None if result["attainment"] is None else float(result["attainment"]),
                      None if result["adherence"] is None else float(result["adherence"]),
                      round(worked.get(team, 0) / 60 / available, 4) if available else None,
-                     None if score is None else float(score), result["grade"],
-                     policy.str("score.policy_status") if score is not None else "NEUTRAL"))
+                     None if score is None else float(score), result["grade"], status.value.upper(),
+                     None if result["base"] is None else float(result["base"]), float(parts["O"]),
+                     None if result["final"] is None else float(result["final"]), policy.id, policy.hash, "; ".join(why) or None))
     if goals is not None:                                             # remaining phases restart their ordinals after write-back
         for p in done_phase:
             node = phases.get(p)

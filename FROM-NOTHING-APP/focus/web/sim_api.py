@@ -134,6 +134,22 @@ def _rollup(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _pooled(B: int, E: int, Cp: int, U: int, oos_effort: int) -> dict[str, Any]:
+    """The canonical formula over pooled components (an aircraft's goal units across teams)."""
+    from fractions import Fraction
+
+    from ..performance.score import formula
+
+    policy = svc().policy
+    r = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(U), Fraction(policy.str("score.oos_rate")) * oos_effort, policy)
+    return {"B": B, "E": E, "D": B - E, "Cp": Cp, "U": U, "oos_effort": oos_effort, "score": None if r["score"] is None else float(r["score"]),
+            "grade": r["grade"], "attainment": None if r["attainment"] is None else round(float(r["attainment"]), 4),
+            "adherence": None if r["adherence"] is None else round(float(r["adherence"]), 4), "status": "SCORED" if r["score"] is not None else "NEUTRAL"}
+
+
+NO_DISRUPTION = ("DEVIATION", "REPLANNED")     # missed planned work with no disruption on record: never a claim cause
+
+
 def _delta(cur: dict[str, Any], prev: dict[str, Any] | None) -> dict[str, Any]:
     if not prev:
         return {}
@@ -234,9 +250,9 @@ def sim_overview(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     summary="Shift, day and week performance: this shift against the prior shift, day against day, week against week",
     description="Canonical team-shift scores of the simulated execution (S14 formula under the active policy) pooled by shift, production "
                 "day and week: planned effort, approved relief, earned planned effort, offplan output, out-of-sequence charge, attainment, "
-                "adherence, score and grade, missed tasks by cause, labor hours and utilization, with the selected period against the one "
-                "before and per-team detail.",
-    grants=ALL_READERS, read_only=True, query=SHIFT_Q, tags=("simulation",),
+                "adherence, score and grade, missed tasks by cause (and, apart, missed work with no disruption on record), labor hours "
+                "and utilization, with the selected period against the one before, per-team detail and one team's history over the run.",
+    grants=ALL_READERS, read_only=True, query=TEAM_Q, tags=("simulation",),
 )
 def sim_performance(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     _fleet_scope(ctx)
@@ -288,8 +304,16 @@ def sim_performance(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
         cur, p = _rollup([r]), (_rollup([prior_teams[r["team"]]]) if r["team"] in prior_teams else None)
         teams.append({**r, **{key: cur[key] for key in ("score", "grade", "attainment", "adherence", "D", "status")},
                       "score_delta": round(cur["score"] - p["score"], 1) if p and cur["score"] is not None and p["score"] is not None else None})
+    all_teams = sorted({r["team"] for r in rows})
+    who = args.get("team") or (all_teams[0] if all_teams else None)
+    history = [{"shift_no": r["shift_no"], "label": f"{meta[r['shift_no']]['production_day'][5:]} S{meta[r['shift_no']]['shift_number']}",
+                **{key: r.get(key) for key in ("B0", "additions", "B", "E", "Cp", "U", "oos_effort", "score", "grade", "status", "attainment",
+                                               "adherence", "base", "O", "final", "status_reason")}}
+               for r in rows if r["team"] == who and r["shift_no"] in meta]
     data = {"shift": k, "day": day, "week": week, "compare": compare, "shifts": shifts, "days": days, "weeks": weeks, "teams": teams,
-            "missed_by_cause": causes, "scoring": scoring_text(svc().policy)}
+            "missed_by_cause": [c for c in causes if c["cause"] not in NO_DISRUPTION],
+            "missed_without_disruption": [c for c in causes if c["cause"] in NO_DISRUPTION],
+            "team_names": all_teams, "history_team": who, "history": history, "scoring": scoring_text(svc().policy)}
     return ApiResult("ready", _label(data))
 
 
@@ -460,8 +484,16 @@ def sim_aircraft(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
                                "SUM(CASE WHEN outcome = 'slipped' THEN 1 ELSE 0 END) AS slipped FROM exec_assignment WHERE line = ? "
                                "GROUP BY shift_no ORDER BY shift_no", line)
         lines = [r["line"] for r in _rows(con, "SELECT line FROM calc_aircraft WHERE shift_no = ? ORDER BY line", k)]
+        units = _rows(con, "SELECT shift_no, SUM(effort) AS B, SUM(CASE WHEN status = 'MISSED' AND relief = 1 THEN effort ELSE 0 END) AS E, "
+                           "SUM(CASE WHEN status = 'EARNED' THEN effort ELSE 0 END) AS Cp, SUM(CASE WHEN oos_charged = 1 THEN effort ELSE 0 END) "
+                           "AS oos_effort FROM perf_unit WHERE line = ? GROUP BY shift_no ORDER BY shift_no", line)
+        offplan = {r["shift_no"]: r["U"] for r in _rows(con, "SELECT shift_no, SUM(effort) AS U FROM exec_offplan WHERE line = ? GROUP BY shift_no", line)}
+        labels = {r["shift_no"]: f"{r['production_day'][5:]} S{r['shift_number']}" for r in _rows(con, "SELECT shift_no, production_day, shift_number FROM sim_shift")}
+    scores = [{"shift_no": u["shift_no"], "label": labels.get(u["shift_no"], str(u["shift_no"])),
+               **_pooled(u["B"] or 0, u["E"] or 0, u["Cp"] or 0, offplan.get(u["shift_no"], 0) or 0, u["oos_effort"] or 0)} for u in units]
+    overall = _pooled(*(sum(x[key] for x in scores) for key in ("B", "E", "Cp", "U", "oos_effort"))) if scores else None
     return ApiResult("ready", _label({"shift": k, "line": line, "lines": lines, "facts": facts[0] if facts else None, "history": history,
-                            "stations": stations, "shortages": shortages, "execution": execution}))
+                            "stations": stations, "shortages": shortages, "execution": execution, "scores": scores, "score_overall": overall}))
 
 
 @REGISTRY.operation(

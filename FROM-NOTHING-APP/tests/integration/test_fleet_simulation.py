@@ -83,6 +83,15 @@ def test_dashboard_operations_answer_from_the_tables(sims, tmp_path, app_root, m
     assert len(overview["shifts"]) == 3 and len(overview["fleet"]) == 2
     performance = client.get("/api/v1/sim/performance").get_json()["data"]
     assert set(performance["compare"]) == {"shift", "day", "week", "overall"}
+    # an aircraft's score pools its goal units across teams; a team's history is its own rows; no deviation is a cause
+    aircraft = client.get(f"/api/v1/sim/aircraft?line={line}").get_json()["data"]
+    B, Cp = _all(first, f"SELECT SUM(effort), SUM(CASE WHEN status = 'EARNED' THEN effort ELSE 0 END) FROM perf_unit WHERE line = {line}")[0]
+    assert sum(x["B"] for x in aircraft["scores"]) == B and sum(x["Cp"] for x in aircraft["scores"]) == Cp
+    assert aircraft["score_overall"]["B"] == B
+    history = client.get(f"/api/v1/sim/performance?team={team}").get_json()["data"]
+    assert history["history_team"] == team
+    assert [h["shift_no"] for h in history["history"]] == [r[0] for r in _all(first, f"SELECT shift_no FROM perf_team_shift WHERE team = '{team}' ORDER BY shift_no")]
+    assert not {c["cause"] for c in history["missed_by_cause"]} & {"DEVIATION", "REPLANNED"}
     assert client.get("/api/v1/sim/overview?bogus=1").status_code == 400          # unknown parameters are refused
     assert client.get("/simulation").status_code == 200
 
@@ -132,9 +141,10 @@ def test_team_scores_are_the_canonical_formula_over_their_goal_units(sims, app_r
     first, _ = sims
     policy = load_policy(app_root / "config" / "policies", "rebuild-v1")
     rate = Fraction(policy.str("score.oos_rate"))
-    teams = _all(first, "SELECT shift_no, team, B0, additions, B, E, Cp, U, oos_effort, score, grade, status FROM perf_team_shift")
+    teams = _all(first, "SELECT shift_no, team, B0, additions, B, E, Cp, U, oos_effort, score, grade, status, base, O, final, policy_id, "
+                        "policy_hash, status_reason FROM perf_team_shift")
     assert teams
-    for shift_no, team, B0, additions, B, E, Cp, U, oos_effort, score, grade, status in teams:
+    for shift_no, team, B0, additions, B, E, Cp, U, oos_effort, score, grade, status, base, O, final, policy_id, policy_hash, why in teams:
         units = _all(first, f"SELECT effort, status, relief, oos_charged, origin FROM perf_unit WHERE shift_no = {shift_no} AND team = '{team}'")
         assert B0 == sum(u[0] for u in units if u[4] == "ORIGINAL") and additions == sum(u[0] for u in units if u[4] == "AMENDMENT")
         assert B == B0 + additions and Cp == sum(u[0] for u in units if u[1] == "EARNED")
@@ -146,6 +156,10 @@ def test_team_scores_are_the_canonical_formula_over_their_goal_units(sims, app_r
         result = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(U), rate * oos_effort, policy)
         assert (None if result["score"] is None else float(result["score"])) == score and result["grade"] == grade
         assert (status == "NEUTRAL") == (score is None)
+        # status_and_score's parts are stored: base before the OOS charge, the charge O, the clamped final, the policy and why neutral
+        assert O == float(rate * oos_effort) and (policy_id, policy_hash) == (policy.id, policy.hash)
+        assert base == (None if result["base"] is None else float(result["base"])) and final == (None if result["final"] is None else float(result["final"]))
+        assert (why is not None) == (status == "NEUTRAL") and (why is None or why.startswith(("NO_PLAN", "ALL_EXCUSED")))
 
 
 def test_only_verified_excusable_causes_relieve_a_team(sims, app_root) -> None:

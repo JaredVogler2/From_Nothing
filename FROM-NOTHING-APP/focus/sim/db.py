@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS perf_team_shift (
   missed_part INTEGER, missed_absence INTEGER, missed_predecessor INTEGER, missed_overrun INTEGER, missed_deviation INTEGER,
   planned_hours REAL, actual_hours REAL, present INTEGER, available_hours REAL, B0 INTEGER, additions INTEGER, B INTEGER, E INTEGER,
   Cp INTEGER, U INTEGER, oos_effort INTEGER, relieved_units INTEGER, added_units INTEGER, offplan_units INTEGER, oos_units INTEGER,
-  attainment REAL, adherence REAL, utilization REAL, score REAL, grade TEXT, status TEXT);
+  attainment REAL, adherence REAL, utilization REAL, score REAL, grade TEXT, status TEXT, base REAL, O REAL, final REAL,
+  policy_id TEXT, policy_hash TEXT, status_reason TEXT);
 CREATE TABLE IF NOT EXISTS perf_unit (
   shift_no INTEGER, team TEXT, assignment_id TEXT, job_id TEXT, phase TEXT, line INTEGER, effort INTEGER, status TEXT, cause TEXT,
   claim_cause TEXT, origin_team TEXT, claim_status TEXT, relief INTEGER, oos_charged INTEGER, origin TEXT);
