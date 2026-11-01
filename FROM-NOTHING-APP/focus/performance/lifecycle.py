@@ -188,6 +188,69 @@ class GoalRegistry:
                 reg.records[key] = replace(reg.records[key], later_goal_ids=tuple(ids))
         return reg
 
+    @classmethod
+    def from_display(cls, services: Any, plans: list[Any], rejected: list[tuple[str, str]] | None = None) -> "GoalRegistry":
+        """The same registry as ``load``, from accepted plans verified through their display receipts (``focus.display``).
+
+        ``plans`` are ``display.store.VerifiedPlan`` records in acceptance order. The signed display summary carries each
+        plan's obligation dates, frozen goal ids and snapshot; the ``goals:<date>`` parts carry the planned start, end,
+        crew and commitment of every frozen unit's assignment. No artifact is decoded.
+        """
+        from ..data.acquisition import get_run
+        from ..display.store import DisplayError, load_part
+        from ..publication.repository import repository_for
+
+        settings = services.settings
+        reg = cls(settings.scope_key, settings.site, services.policy)
+        reg.rejected = list(rejected or ())
+        repo = repository_for(services)
+        proposals: dict[tuple[str, str], list[str]] = defaultdict(list)
+        for vp in plans:
+            published, summary = vp.published, vp.summary
+            reg.plan_snapshot[published.id] = summary.snapshot_id
+            source = get_run(services.repositories, published.source_run_id)
+            reg.plan_knowledge[published.id] = published.accepted_at if source is None else source[0].cutoff
+            goals = {g.id: g for g in repo.goals(published.frozen_goal_ids)}
+            if set(goals) != set(published.frozen_goal_ids) or any(g.hash != g.computed_hash() for g in goals.values()):
+                reg.rejected.append((published.id, "SECURITY_FAILURE: frozen goals missing or altered"))
+                continue
+            if set(summary.frozen_goal_ids) != set(goals):
+                reg.rejected.append((published.id, "SECURITY_FAILURE: stored goals differ from the signed artifact"))
+                continue
+            reg.goals.update(goals)
+            new_days = [d for d in summary.obligation_dates if d not in reg.day_plan]
+            for d in new_days:
+                reg.day_plan[d] = published.id
+            facts: dict[str, Any] = {}
+            for d in new_days:
+                ref = vp.manifest.part(f"goals:{d.isoformat()}")
+                if ref is None:
+                    continue
+                try:
+                    part = load_part(services.repositories, ref)
+                except DisplayError as exc:
+                    reg.rejected.append((published.id, f"SECURITY_FAILURE: {exc.code}: {exc.message}"))
+                    continue
+                facts.update({f.assignment_id: f for f in part.facts})
+            for g in goals.values():
+                key = (g.team, g.shift_id)
+                if g.shift_start_date in new_days:
+                    reg.records[key] = GoalRecord(g.id, published.id, g.team, g.shift_id, shift_window(reg.policy, g.shift_id), g)
+                    for u in g.earning_units:
+                        f = facts.get(u.assignment_id)
+                        if f is not None:
+                            reg.unit_start[u.id] = f.start
+                            reg.unit_end[u.id] = f.end
+                            reg.unit_crew[u.id] = f.crew
+                            if f.committed:
+                                reg.committed_units.add(u.id)
+                else:
+                    proposals[key].append(g.id)
+        for key, ids in proposals.items():
+            if key in reg.records:
+                reg.records[key] = replace(reg.records[key], later_goal_ids=tuple(ids))
+        return reg
+
     def goal_id_for(self, team: str, shift_id: str) -> str | None:
         record = self.records.get((team, shift_id))
         if record is not None:

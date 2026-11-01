@@ -141,10 +141,15 @@ def test_team_lead_ranks_by_the_dispatch_rule_with_reasons(demo, app_root) -> No
     assert d["team"] == "PROD-B" and d["actions"] and [a["rank"] for a in d["actions"]] == list(range(1, len(d["actions"]) + 1))
     flags = [a["dispatchable"] for a in d["actions"]]
     assert flags == sorted(flags, reverse=True)                               # every dispatchable action ranks first
-    canon = S.Canon.load(svc)
-    plan = {a.id: a for a in canon.plan("EXECUTABLE").assignments}
-    for a in d["actions"]:                                                     # the same rule dispatch_check applies
-        expected = {code for code, _ in assess_action(svc, plan[a["assignment_id"]], canon.snapshot, S.validation_input(canon), svc.clock.now())}
+    from focus.domain import Purpose
+    from focus.validation.input import ValidationInput
+    from focus.web.full_canon import FullCanon
+
+    full = FullCanon.load(svc, S.CACHE)                                         # the whole snapshot and artifact, as dispatch_check reads them
+    plan = {a.id: a for a in full.plan("EXECUTABLE").assignments}
+    inp = ValidationInput.build(full.snapshot, svc.policy, Purpose.EXECUTABLE)
+    for a in d["actions"]:                                                     # the same rule dispatch_check applies, from display parts
+        expected = {code for code, _ in assess_action(svc, plan[a["assignment_id"]], full.snapshot, inp, svc.clock.now())}
         assert {r["code"] for r in a["reasons"]} == expected
         assert all(m["name"] for m in a["crew"])
     assert any(not a["dispatchable"] and "PREDECESSOR_INCOMPLETE" in {r["code"] for r in a["reasons"]} for a in d["actions"])
@@ -168,9 +173,11 @@ def test_turnover_open_units_come_from_the_canonical_evidence(demo, app_root) ->
 def test_budget_gantt_and_capacity_reconcile_with_the_plan(demo, app_root) -> None:
     from focus.web import serializers as S
 
+    from focus.web.full_canon import FullCanon
+
     root, services, _ = demo
     c, svc, _ = client(root, app_root, "manager")
-    plan = S.Canon.load(svc).plan("EXECUTABLE")
+    plan = FullCanon.load(svc, S.CACHE).plan("EXECUTABLE")
     budget = get(c, "/api/v1/budget?date=2026-10-26")["data"]
     gantt = get(c, "/api/v1/gantt?date=2026-10-26")["data"]
     capacity = get(c, "/api/v1/capacity?date=2026-10-26")["data"]

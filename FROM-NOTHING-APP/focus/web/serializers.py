@@ -2,10 +2,15 @@
 
 Every projection reads only immutable facts:
 
-* the admitted source snapshot of the current source head, loaded read-only (a GET never
-  rebuilds or stores a snapshot);
-* the end-to-end verified accepted plans (``publication.service.verify_publication``);
+* the display package of the current source head's admitted snapshot and of each accepted plan
+  (``focus.display``): small typed parts built by the pipeline, verified by content hash, the
+  plans' through their signed display receipts. A GET never loads a snapshot, never decodes a plan
+  artifact and never builds or stores anything;
 * persisted evaluations, observations, claims, decisions and recognition chains.
+
+Each projection asks its canon for the slice it reads (an aircraft, a job's bucket, the team-days of
+a shift, a team's work, the inspection holds) and runs on that slice. A slice exposes exactly what it
+loaded; reading anything else raises ``display.view.NotInSlice``.
 
 It applies the caller's scope to that canonical object and returns a typed ``Projection``.
 Nothing here acquires, schedules, validates, grades, signs or writes, so a GET can never change
@@ -13,8 +18,10 @@ state.
 
 **Caching.** Two process-local LRU caches, both safe across users:
 
-* ``CACHE`` holds content-addressed immutable objects: a snapshot by id, a verified accepted
-  plan by head record and version, and a goal registry by the accepted-plan set and policy hash.
+* ``CACHE`` holds content-addressed immutable objects: a snapshot's verified display summary by id
+  and hash, a verified accepted plan's display by head record and version, and a goal registry by the
+  accepted-plan set and policy hash. Display parts have their own bounded LRU by content hash
+  (``display.store.PART_CACHE``).
   Scope never enters these keys because scope is applied afterwards, on every request.
 * ``PROJECTIONS`` holds scoped snapshot projections keyed by the authorized scope (teams,
   person, economics visibility), the filters and the canonical revision (source run, snapshot,
@@ -37,6 +44,8 @@ from typing import Any, Callable, Iterable
 
 from ..calendar import parse_shift_id
 from ..codec import content_hash
+from ..display.build import NO_TEAM
+from ..display.view import DisplayCanon, accepted_display, slice_input
 from ..domain import PhaseKind
 from .operations import reason
 from .security import ApiError, RequestContext
@@ -105,116 +114,16 @@ def scope_key(ctx: RequestContext) -> tuple:
 
 # ---------------------------------------------------------------------- canonical heads
 
-@dataclass
-class Canon:
-    services: Any
-    source_run_id: str | None
-    snapshot: Any | None
-    executable: Any | None                  # publication.service.CurrentPlan
-    executable_reason: str
-    forecast: Any | None
-    forecast_reason: str
-    stale: bool
-    reasons: list[dict[str, Any]]
-    revision: tuple = ()
+class Canon(DisplayCanon):
+    """The canonical heads of one request: the verified display summaries of the current source run and plan heads.
+
+    Projections slice it (``lines``, ``jobs_slice``, ``pools``, ``work``, ``holds``, ``team_days``, ``commitments``) for
+    the parts they read; see ``focus.display.view``.
+    """
 
     @classmethod
-    def load(cls, services: Any) -> "Canon":
-        from ..data.acquisition import get_run, load_snapshot, source_head_name
-        from ..policy import PolicyError
-        from ..publication.repository import repository_for
-        from ..publication.service import verify_publication
-
-        repos = services.repositories
-        if not repos.available:
-            return cls(services, None, None, None, "REPOSITORY_UNAVAILABLE", None, "REPOSITORY_UNAVAILABLE", False,
-                       [reason("REPOSITORY_UNAVAILABLE", "No repository is configured; the application is in a typed no-data state.",
-                               "Configure FOCUS_SQL_* (live) or use FOCUS_MODE=fixture.")], ("unavailable",))
-        try:
-            policy = services.policy
-        except PolicyError as exc:
-            return cls(services, None, None, None, "POLICY_UNAVAILABLE", None, "POLICY_UNAVAILABLE", False,
-                       [reason("POLICY_UNAVAILABLE", exc.message, "Fix the configured policy bundle.")], ("no-policy",))
-        scope = services.settings.scope_key
-        reasons: list[dict[str, Any]] = []
-        head = repos.head(source_head_name(scope))
-        snapshot = None
-        if head is None:
-            reasons.append(reason("NO_SOURCE_RUN", "No admitted source run exists for this scope.",
-                                  "Run the demo pipeline (fixture) or a source acquisition worker (live)."))
-        else:
-            found = get_run(repos, head.record_id)
-            run = None if found is None else found[0]
-            if run is None or run.status != "COMPLETE" or not run.snapshot_id:
-                reasons.append(reason("SOURCE_RUN_INCOMPLETE", f"The source head names run {head.record_id}, which has no complete admitted snapshot.",
-                                      "Investigate the source run receipt; nothing partial is shown as complete."))
-            else:
-                snapshot = CACHE.get_or_load(("snapshot", run.snapshot_id), lambda: load_snapshot(repos, run.snapshot_id))
-                if snapshot is None:
-                    reasons.append(reason("SNAPSHOT_MISSING", f"Snapshot {run.snapshot_id} of the current source run is missing.",
-                                          "Re-admit the source run."))
-                elif snapshot.policy_hash != policy.hash:
-                    reasons.append(reason("POLICY_CHANGED_SINCE_ADMISSION",
-                                          "The admitted snapshot was built under another policy revision; facts are shown as admitted.",
-                                          "Re-admit or reschedule under the active policy."))
-        plans: dict[str, tuple[Any, str, tuple]] = {}
-        repo = repository_for(services)
-        for purpose in ("EXECUTABLE", "FORECAST"):
-            plan_head = repo.head(scope, purpose)
-            if plan_head is None:
-                plans[purpose] = (None, "NO_ACCEPTED_PLAN", (purpose, None))
-                continue
-            current, why = CACHE.get_or_load(
-                ("plan", plan_head.record_id, plan_head.version),
-                lambda h=plan_head, p=purpose: verify_publication(services, h.record_id, scope=scope, purpose=p, head_version=h.version),
-                keep=lambda v: v[0] is not None)
-            plans[purpose] = (current, why, (purpose, plan_head.record_id, plan_head.version))
-        stale = False
-        if snapshot is not None:
-            stale = services.clock.now() - snapshot.cutoff > timedelta(hours=policy.int("dispatch.max_source_age_hours"))
-            if stale:
-                reasons.append(reason("SOURCE_STALE", f"Source cut off at {snapshot.cutoff.isoformat()} is older than the freshness policy.",
-                                      "Shown for history only; acquire a current source run."))
-        revision = (None if head is None else head.record_id, None if snapshot is None else snapshot.id, policy.hash,
-                    plans["EXECUTABLE"][2], plans["FORECAST"][2], stale)
-        return cls(services, None if head is None else head.record_id, snapshot, plans["EXECUTABLE"][0], plans["EXECUTABLE"][1],
-                   plans["FORECAST"][0], plans["FORECAST"][1], stale, reasons, revision)
-
-    # -- indexes (cheap; built from the cached immutable snapshot)
-    def jobs(self) -> dict[str, Any]:
-        return {j.key.id: j for j in self.snapshot.jobs} if self.snapshot else {}
-
-    def phases(self) -> dict[str, Any]:
-        return {p.key.id: p for p in self.snapshot.phases} if self.snapshot else {}
-
-    def people(self) -> dict[str, Any]:
-        return {p.key.id: p for p in self.snapshot.people} if self.snapshot else {}
-
-    def dispositions(self) -> dict[str, Any]:
-        return {d.job: d for d in self.snapshot.dispositions} if self.snapshot else {}
-
-    def current(self, purpose: str) -> Any:
-        return self.executable if purpose == "EXECUTABLE" else self.forecast
-
-    def plan(self, purpose: str) -> Any:
-        cur = self.current(purpose)
-        return None if cur is None else cur.artifact.candidate
-
-    def plan_id(self, purpose: str) -> str | None:
-        cur = self.current(purpose)
-        return None if cur is None else cur.published.id
-
-    def base_status(self) -> str:
-        if self.snapshot is None:
-            return "unknown" if self.services.repositories.available and self.executable_reason != "POLICY_UNAVAILABLE" else "blocked"
-        return "stale" if self.stale else "ready"
-
-    def plan_reason(self, purpose: str) -> dict[str, Any]:
-        why = self.executable_reason if purpose == "EXECUTABLE" else self.forecast_reason
-        if why in ("NO_ACCEPTED_PLAN", "REPOSITORY_UNAVAILABLE", "POLICY_UNAVAILABLE"):
-            return reason("NO_ACCEPTED_PLAN", f"No accepted {purpose} plan exists for this scope.",
-                          "Schedule, validate and publish a plan through the trusted publication worker.")
-        return reason("PLAN_NOT_VERIFIED", f"The accepted {purpose} head did not verify: {why}", "Investigate the publication receipt; nothing is current.")
+    def load(cls, services: Any) -> "Canon":  # type: ignore[override]
+        return super().load(services, CACHE)
 
 
 def _need_snapshot(canon: Canon) -> Projection | None:
@@ -232,12 +141,27 @@ def cached(op: str, ctx: RequestContext, canon: Canon, filters: dict[str, Any], 
 
 
 def registry(services: Any) -> Any:
-    """Goals of record (verified accepted EXECUTABLE plans), cached by the accepted set and policy."""
+    """Goals of record (accepted EXECUTABLE plans verified through their display receipts), cached by the accepted set and policy."""
     from ..performance.lifecycle import GoalRegistry
     from ..publication.repository import repository_for
 
-    accepted = tuple(repository_for(services).accepted_ids())
-    return CACHE.get_or_load(("registry", accepted, services.policy.hash), lambda: GoalRegistry.load(services))
+    accepted_ids = tuple(repository_for(services).accepted_ids())
+
+    def build() -> Any:
+        plans, bad = accepted_display(services, "EXECUTABLE")
+        return GoalRegistry.from_display(services, plans, bad)
+
+    return CACHE.get_or_load(("registry", accepted_ids, services.policy.hash), build)
+
+
+def scope_teams(ctx: RequestContext) -> set[str] | None:
+    """The teams a caller's scope names (``None``: every team)."""
+    return None if ctx.scope.all_teams else set(ctx.scope.teams)
+
+
+def day_teams(canon: Canon, ctx: RequestContext, day: date | None) -> set[str]:
+    """Teams in scope with a pool on ``day`` (any day for ``None``), from the summary's pool index."""
+    return {p.team for p in canon.summary.pools if (day is None or p.start_date == day) and team_allowed(ctx, p.team)}
 
 
 # ---------------------------------------------------------------------- scope helpers
@@ -321,7 +245,7 @@ def _completion(c: Any) -> dict[str, Any] | None:
     if c is None:
         return None
     return {"status": c.status, "completion_at": c.completion_at, "required_jobs": c.required_jobs, "scheduled_jobs": c.scheduled_jobs,
-            "unresolved_jobs": len(c.unresolved_jobs), "reasons": list(c.reasons)}
+            "unresolved_jobs": c.unresolved_count, "reasons": list(c.reasons)}
 
 
 def _cost(lc: Any) -> dict[str, Any] | None:
@@ -364,8 +288,8 @@ def fleet(canon: Canon, ctx: RequestContext) -> Projection:
     show_cost = can_see_economics(ctx)
     cs = {f.line: f for f in snap.cs_facts}
     fp, ep = canon.plan("FORECAST"), canon.plan("EXECUTABLE")
-    f_comp = {c.line: c for c in fp.aircraft_completion} if fp else {}
-    e_comp = {c.line: c for c in ep.aircraft_completion} if ep else {}
+    f_comp = {c.line: c for c in fp.completion} if fp else {}
+    e_comp = {c.line: c for c in ep.completion} if ep else {}
     costs = {lc.line: lc for lc in (fp or ep).costs.lines} if (fp or ep) else {}
     rows = []
     for c in sorted(snap.census, key=lambda x: x.line):
@@ -391,19 +315,15 @@ def fleet(canon: Canon, ctx: RequestContext) -> Projection:
 
 
 def burndown(plan: Any) -> dict[str, Any] | None:
-    """Remaining open jobs by planned finish day; jobs with no planned finish stay remaining (unknown, never complete)."""
+    """Remaining open jobs by planned finish day; jobs with no planned finish stay remaining (unknown, never complete).
+
+    The signer computed it from the whole plan into the display summary (``display.build.burndown_of``)."""
     if plan is None:
         return None
-    open_jobs = [o for o in plan.job_dispositions if o.disposition.value not in ("verified_complete", "excluded")]
-    finishing: dict[date, int] = defaultdict(int)
-    for o in open_jobs:
-        if o.end is not None and o.disposition.value in ("scheduled", "conditional"):
-            finishing[o.end.date()] += 1
-    remaining, series = len(open_jobs), []
-    for day in sorted(finishing):
-        remaining -= finishing[day]
-        series.append({"date": day, "finishing": finishing[day], "remaining": remaining})
-    return {"purpose": plan.purpose.value, "open_jobs": len(open_jobs), "series": series, "never_finishing": remaining}
+    s = plan.summary
+    return {"purpose": s.purpose.value, "open_jobs": s.open_jobs,
+            "series": [{"date": p.day, "finishing": p.finishing, "remaining": p.remaining} for p in s.burndown],
+            "never_finishing": s.never_finishing}
 
 
 def job_row(job: Any, disposition: Any) -> dict[str, Any]:
@@ -438,10 +358,10 @@ def completion_history(services: Any, line: int) -> list[dict[str, Any]]:
     out = []
     for purpose in ("FORECAST", "EXECUTABLE"):
         for cur in accepted(services, purpose):
-            c = next((x for x in cur.artifact.candidate.aircraft_completion if x.line == line), None)
+            c = next((x for x in cur.summary.completion if x.line == line), None)
             if c is not None:
                 out.append({"plan_id": cur.published.id, "purpose": purpose, "accepted_at": cur.published.accepted_at, "status": c.status,
-                            "completion_at": c.completion_at, "unresolved_jobs": len(c.unresolved_jobs)})
+                            "completion_at": c.completion_at, "unresolved_jobs": c.unresolved_count})
     return sorted(out, key=lambda r: (r["accepted_at"], r["purpose"]))
 
 
@@ -449,10 +369,11 @@ def aircraft(canon: Canon, ctx: RequestContext, line: int) -> Projection:
     missing = _need_snapshot(canon)
     if missing:
         return missing
-    snap = canon.snapshot
-    census = next((c for c in snap.census if c.line == line), None)
+    census = next((c for c in canon.snapshot.census if c.line == line), None)
     if census is None:
         raise ApiError(404, "AIRCRAFT_NOT_FOUND", f"line {line} is not in the admitted census")
+    canon = canon.lines([line])
+    snap = canon.snapshot
     show_cost = can_see_economics(ctx)
     disp = canon.dispositions()
     jobs = sorted((j for j in snap.jobs if j.key.line == line), key=lambda j: j.key.native_id)
@@ -467,8 +388,8 @@ def aircraft(canon: Canon, ctx: RequestContext, line: int) -> Projection:
             "cs": _cs(next((f for f in snap.cs_facts if f.line == line), None)),
             "calendar": next(({"status": c.status, "min_date": c.min_date, "max_date": c.max_date, "holes": list(c.holes), "reasons": list(c.reasons)}
                               for c in snap.calendars if c.line == line), None),
-            "forecast_completion": _completion(next((c for c in fp.aircraft_completion if c.line == line), None)) if fp else None,
-            "executable_completion": _completion(next((c for c in ep.aircraft_completion if c.line == line), None)) if ep else None,
+            "forecast_completion": _completion(next((c for c in fp.completion if c.line == line), None)) if fp else None,
+            "executable_completion": _completion(next((c for c in ep.completion if c.line == line), None)) if ep else None,
             "cost": _cost(next((lc for lc in (fp or ep).costs.lines if lc.line == line), None)) if (fp or ep) and show_cost else None,
             "economics": next((economics_term(e) for e in snap.economics if e.line == line), None) if show_cost else None,
             "shortages": [shortage_row(canon, s) for s in snap.shortages if s.line == line],
@@ -479,31 +400,51 @@ def aircraft(canon: Canon, ctx: RequestContext, line: int) -> Projection:
 
 # ---------------------------------------------------------------------- jobs
 
-def jobs_list(canon: Canon, ctx: RequestContext, *, line: int | None, team: str | None, disposition: str | None) -> tuple[Projection, list[Any]]:
+def jobs_page(canon: Canon, ctx: RequestContext, *, line: int | None, team: str | None, disposition: str | None, offset: int,
+              limit: int) -> tuple[Projection, list[Any], int]:
+    """One page of the jobs in scope matching the filters, in (line, SOI, id) order, and the total.
+
+    The summary counts jobs by aircraft, team and disposition, so the total and the aircraft covering the page are known
+    without loading any; only those aircraft's parts are read."""
     if team is not None:
         require_team(ctx, team)
     missing = _need_snapshot(canon)
     if missing:
-        return missing, []
-    disp = canon.dispositions()
-    rows = []
+        return missing, [], 0
+    per_line: dict[int, int] = defaultdict(int)
     hidden = 0
-    for j in sorted(canon.snapshot.jobs, key=lambda j: (j.key.line, j.key.native_id, j.key.id)):
-        d = disp.get(j.key.id)
-        if line is not None and j.key.line != line:
+    for c in canon.summary.job_counts:
+        if (line is not None and c.line != line) or (team is not None and c.team != team) or (disposition is not None and c.disposition != disposition):
             continue
-        if team is not None and j.team != team:
-            continue
-        if disposition is not None and (d is None or d.disposition.value != disposition):
-            continue
-        if not team_allowed(ctx, j.team):
-            hidden += 1
-            continue
-        rows.append(job_row(j, d))
+        if team_allowed(ctx, c.team):
+            per_line[c.line] += c.jobs
+        else:
+            hidden += c.jobs
+    total = sum(per_line.values())
+    rows: list[Any] = []
+    first = 0
+    for ln in sorted(per_line):
+        n = per_line[ln]
+        if n and first + n > offset and first < offset + limit:
+            part = canon.lines([ln], plans=False)
+            disp = part.dispositions()
+            mine = []
+            for j in sorted(part.snapshot.jobs, key=lambda j: (j.key.line, j.key.native_id, j.key.id)):
+                d = disp.get(j.key.id)
+                if team is not None and j.team != team:
+                    continue
+                if disposition is not None and (d is None or d.disposition.value != disposition):
+                    continue
+                if not team_allowed(ctx, j.team):
+                    continue
+                mine.append(job_row(j, d))
+            rows.extend(mine[max(0, offset - first):max(0, offset + limit - first)])
+        first += n
     reasons = list(canon.reasons)
     if hidden:
         reasons.append(reason("JOBS_OUTSIDE_SCOPE", f"{hidden} matching jobs belong to teams outside your scope and are not listed."))
-    return Projection(canon.base_status() if rows else "empty", None, reasons, coverage_of(canon.snapshot.census), canon.source_run_id), rows
+    return (Projection(canon.base_status() if total else "empty", None, reasons, coverage_of(canon.snapshot.census), canon.source_run_id),
+            rows, total)
 
 
 def _assignment_view(canon: Canon, ctx: RequestContext, a: Any, phases: dict[str, Any], people: dict[str, Any], purpose: str) -> dict[str, Any]:
@@ -524,6 +465,7 @@ def job_detail(canon: Canon, ctx: RequestContext, job_id: str) -> Projection:
     missing = _need_snapshot(canon)
     if missing:
         return missing
+    canon = canon.jobs_slice([job_id])
     snap = canon.snapshot
     jobs = canon.jobs()
     job = jobs.get(job_id)
@@ -594,63 +536,57 @@ def job_detail(canon: Canon, ctx: RequestContext, job_id: str) -> Projection:
 # ---------------------------------------------------------------------- plans
 
 def plan_view(services: Any, ctx: RequestContext, plan_id: str) -> Projection:
-    from ..contracts.planning import CandidatePlan
-    from ..engine.max.optimizer.orchestrator import CANDIDATES
+    from ..display.records import CandidateDigest
+    from ..display.store import DIGESTS, verify_plan_display
     from ..publication.repository import repository_for
-    from ..publication.service import verify_publication
 
     repo = repository_for(services)
     published = repo.published(plan_id)
     if published is not None:
         head = repo.head(published.scope, published.purpose.value)
         current, why = CACHE.get_or_load(("published", plan_id),
-                                         lambda: verify_publication(services, plan_id, scope=published.scope, purpose=published.purpose.value),
+                                         lambda: verify_plan_display(services, plan_id, scope=published.scope, purpose=published.purpose.value),
                                          keep=lambda v: v[0] is not None)
         if current is None:
             return Projection("blocked", {"plan_id": plan_id, "accepted": True, "verified": False},
                               [reason("PLAN_NOT_VERIFIED", why, "Investigate the publication receipt; this plan is not trusted.")], plan_id=plan_id)
-        art = current.artifact
+        s = current.summary
         is_current = head is not None and head.record_id == plan_id
         receipt = published.acceptance_receipt
         return Projection("ready" if is_current else "stale", {
             "plan_id": plan_id, "accepted": True, "verified": True, "current": is_current, "purpose": published.purpose.value,
-            "capability": art.capability, "accepted_at": published.accepted_at, "key_id": published.key_id,
+            "capability": s.capability, "accepted_at": published.accepted_at, "key_id": published.key_id,
             "fixture_readback": receipt.fixture_readback, "head_version": receipt.head_version, "source_run_id": published.source_run_id,
-            "snapshot_id": published.snapshot_id, "policy_id": art.policy_id, "policy_hash": published.policy_hash,
-            "frozen_goal_ids": list(published.frozen_goal_ids), "obligation_dates": list(art.obligation_dates),
-            "validations": {"final": art.final_validation_id, "detached": receipt.detached_validation_id, "readback": receipt.readback_validation_id},
-            "candidate": candidate_summary(art.candidate)},
+            "snapshot_id": published.snapshot_id, "policy_id": s.policy_id, "policy_hash": published.policy_hash,
+            "frozen_goal_ids": list(published.frozen_goal_ids), "obligation_dates": list(s.obligation_dates),
+            "validations": {"final": s.final_validation_id, "detached": receipt.detached_validation_id, "readback": receipt.readback_validation_id},
+            "candidate": candidate_summary(s)},
             [] if is_current else [reason("NOT_CURRENT", "This accepted plan is history; it is not currently executable.")],
             source_run_id=published.source_run_id, plan_id=plan_id, purpose=published.purpose.value)
-    candidate = services.repositories.get_typed(CANDIDATES, plan_id, "CandidatePlan", CandidatePlan)
-    if candidate is None:
+    digest = services.repositories.get_typed(DIGESTS, plan_id, "CandidateDigest", CandidateDigest)
+    if digest is None:
         raise ApiError(404, "PLAN_NOT_FOUND", "no accepted plan or candidate with that id")
-    return Projection("ready", {"plan_id": plan_id, "accepted": False, "verified": False, "current": False, "purpose": candidate.purpose.value,
-                                "capability": "NONE", "candidate": candidate_summary(candidate)},
+    return Projection("ready", {"plan_id": plan_id, "accepted": False, "verified": False, "current": False, "purpose": digest.purpose.value,
+                                "capability": "NONE", "candidate": candidate_summary(digest)},
                       [reason("CANDIDATE_ONLY", "A candidate is not accepted and never executable until published through the acceptance protocol.")],
-                      source_run_id=candidate.source_run_id, plan_id=None, purpose=candidate.purpose.value)
+                      source_run_id=digest.source_run_id, plan_id=None, purpose=digest.purpose.value)
 
 
-def candidate_summary(plan: Any) -> dict[str, Any]:
-    counts: dict[str, int] = defaultdict(int)
-    for o in plan.job_dispositions:
-        counts[o.disposition.value] += 1
-    outcomes: dict[str, int] = defaultdict(int)
-    for r in plan.commitment_results:
-        outcomes[r.outcome] += 1
-    st = plan.algorithm_status
-    return {"candidate_id": plan.id, "purpose": plan.purpose.value, "created_at": plan.created_at, "snapshot_id": plan.snapshot_id,
-            "assignments": len(plan.assignments), "duties": len(plan.duties), "dispositions": dict(sorted(counts.items())),
-            "commitment_outcomes": dict(sorted(outcomes.items())),
+def candidate_summary(d: Any) -> dict[str, Any]:
+    """A plan's counts and status from its digest (a candidate's ``CandidateDigest`` or an accepted plan's display summary)."""
+    st = d.algorithm_status
+    return {"candidate_id": d.candidate_id, "purpose": d.purpose.value, "created_at": d.created_at, "snapshot_id": d.snapshot_id,
+            "assignments": d.assignment_count, "duties": d.duty_count, "dispositions": dict(sorted(d.disposition_counts.items())),
+            "commitment_outcomes": dict(sorted(d.commitment_outcomes.items())),
             "algorithm": {"name": st.name, "version": st.version, "seed": st.seed, "budget_seconds": st.budget_seconds,
                           "deadline_reached": st.deadline_reached, "proof_status": st.proof_status, "paths_used": list(st.paths_used),
-                          "stages": [{"stage": s.stage, "runtime_ms": s.runtime_ms, "candidates": s.candidates, "accepted": s.accepted, "note": s.note}
-                                     for s in st.stages], "incumbent": dict(st.incumbent),
+                          "stages": [{"stage": x.stage, "runtime_ms": x.runtime_ms, "candidates": x.candidates, "accepted": x.accepted, "note": x.note}
+                                     for x in st.stages], "incumbent": dict(st.incumbent),
                           "solver": st.baseline_comparison.get("solver")},
-            "global_optimality_proven": plan.global_optimality_proven,
-            "costs": {"known_total_cents": frac(plan.costs.known_total_cents), "conditional_total_cents": frac(plan.costs.conditional_total_cents),
-                      "controllable_known_cents": frac(plan.costs.controllable_known_cents), "unknown_lines": list(plan.costs.unknown_lines),
-                      "complete": plan.costs.complete, "currency": plan.costs.currency}}
+            "global_optimality_proven": d.global_optimality_proven,
+            "costs": {"known_total_cents": frac(d.costs.known_total_cents), "conditional_total_cents": frac(d.costs.conditional_total_cents),
+                      "controllable_known_cents": frac(d.costs.controllable_known_cents), "unknown_lines": list(d.costs.unknown_lines),
+                      "complete": d.costs.complete, "currency": d.costs.currency}}
 
 
 # ---------------------------------------------------------------------- shift book and my day
@@ -686,6 +622,8 @@ def shiftbook(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
     day = day or default_day(canon)
     site = canon.services.settings.site
     shift_id = f"{site}:{day.isoformat()}:S{shift}" if day else None
+    canon = canon.team_days("EXECUTABLE", [team], [day])
+    plan = canon.plan("EXECUTABLE")
     phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
     rows = []
     for a in sorted(plan.assignments, key=lambda x: (x.start, x.id)):
@@ -743,7 +681,7 @@ def myday(canon: Canon, ctx: RequestContext, *, person_native: str | None, day: 
     people = canon.people()
     if person_id not in people:
         raise ApiError(404, "PERSON_NOT_FOUND", "no admitted person with that key in your scope")
-    teams = sorted({p.key.team for p in canon.snapshot.pools if person_id in p.members})
+    teams = sorted(canon.summary.person_teams.get(person_id, ()))
     own = ctx.scope.person_native == native
     if not own and not any(team_allowed(ctx, t) for t in teams):
         raise ApiError(404, "PERSON_NOT_FOUND", "no admitted person with that key in your scope")
@@ -752,6 +690,9 @@ def myday(canon: Canon, ctx: RequestContext, *, person_native: str | None, day: 
         return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason("EXECUTABLE")], source_run_id=canon.source_run_id)
     day = day or default_day(canon)
     now = canon.services.clock.now()
+    # every day of the plan: the person's planned dates span it; their duties are in their pool teams' team-days
+    canon = canon.team_days("EXECUTABLE", (*canon.summary.person_pool_teams.get(person_id, ()), NO_TEAM), None)
+    plan = canon.plan("EXECUTABLE")
     phases, jobs = canon.phases(), canon.jobs()
     assignments = {a.id: a for a in plan.assignments}
     duties = []
@@ -811,6 +752,7 @@ def workforce(canon: Canon, ctx: RequestContext, *, day: date | None, shift: int
     if missing:
         return missing
     day = day or default_day(canon) or canon.snapshot.cutoff.date()
+    canon = canon.pools(scope_teams(ctx), [day])
     people = canon.people()
     avail = {(a.person, a.pool): a for a in canon.snapshot.availability}
     rows = []
@@ -840,6 +782,9 @@ def capacity(canon: Canon, ctx: RequestContext, *, day: date | None, purpose: st
     if plan is None:
         return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason(purpose)], source_run_id=canon.source_run_id)
     day = day or default_day(canon) or canon.snapshot.cutoff.date()
+    teams = day_teams(canon, ctx, day)
+    canon = canon.pools(teams, [day]).team_days(purpose, teams, [day])
+    plan = canon.plan(purpose)
     avail = {(a.person, a.pool): a for a in canon.snapshot.availability}
     load: dict[tuple[str, str], dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for d in plan.duties:
@@ -872,11 +817,7 @@ def capacity(canon: Canon, ctx: RequestContext, *, day: date | None, purpose: st
                      "regular_capacity_minutes": cap_minutes, "work_minutes": work, "travel_minutes": travel, "other_duty_minutes": other,
                      "ot_minutes": ot, "planned_person_minutes": demand.get((p.key.team, shift_id), 0),
                      "utilization_pct": None if cap_minutes == 0 else ratio_text(Fraction((work + travel + other) * 100, cap_minutes))})
-    bottlenecks: dict[str, int] = defaultdict(int)
-    for o in plan.job_dispositions:
-        if o.disposition.value in ("deferred", "blocked"):
-            for r in o.reasons:
-                bottlenecks[r.split(":")[0]] += 1
+    bottlenecks = plan.summary.unscheduled_reason_codes                   # over the whole plan, counted by the signer
     data = {"date": day, "purpose": purpose, "pools": rows,
             "unscheduled_reason_codes": dict(sorted(bottlenecks.items(), key=lambda kv: (-kv[1], kv[0]))),
             "note": "utilization (minutes against regular capacity) is distinct from activation (distinct people against the 85% cap)"}
@@ -903,8 +844,10 @@ def commitments(canon: Canon, ctx: RequestContext) -> Projection:
                                    "from_version": ev.from_version, "detail": ev.detail} for ev in store.events(line)]})
     tasks = []
     plan = canon.plan("EXECUTABLE")
-    jobs, phases = canon.jobs(), canon.phases()
     if plan is not None:
+        canon = canon.commitments("EXECUTABLE")
+        plan = canon.plan("EXECUTABLE")
+        jobs, phases = canon.jobs(), canon.phases()
         for r in plan.commitment_results:
             j, p = jobs.get(r.job), phases.get(r.phase)
             if not team_allowed(ctx, phase_team(p)):
@@ -972,16 +915,30 @@ def shortage_row(canon: Canon, s: Any) -> dict[str, Any]:
             "reasons": list(s.reasons)}
 
 
-def shortages(canon: Canon, ctx: RequestContext) -> Projection:
+def shortages(canon: Canon, ctx: RequestContext, *, line: int | None = None, offset: int = 0, limit: int | None = None) -> Projection:
+    """Admitted shortages in (line, record) order, one page at a time (the summary counts them by aircraft and status)."""
     missing = _need_snapshot(canon)
     if missing:
         return missing
-    rows = [shortage_row(canon, s) for s in sorted(canon.snapshot.shortages, key=lambda s: (s.line, s.record_id))]
+    counts = [c for c in canon.summary.shortage_counts if line is None or c.line == line]
     by_status: dict[str, int] = defaultdict(int)
-    for r in rows:
-        by_status[r["status"]] += 1
-    return Projection(canon.base_status() if rows else "empty",
-                      {"shortages": rows, "by_status": dict(sorted(by_status.items())),
+    per_line: dict[int, int] = defaultdict(int)
+    for c in counts:
+        by_status[c.status] += c.count
+        per_line[c.line] += c.count
+    total = sum(per_line.values())
+    limit = total if limit is None else limit
+    rows: list[Any] = []
+    first = 0
+    for ln in sorted(per_line):
+        n = per_line[ln]
+        if n and first + n > offset and first < offset + limit:
+            part = canon.lines([ln], plans=False)
+            mine = [shortage_row(part, x) for x in sorted(part.snapshot.shortages, key=lambda x: (x.line, x.record_id))]
+            rows.extend(mine[max(0, offset - first):max(0, offset + limit - first)])
+        first += n
+    return Projection(canon.base_status() if total else "empty",
+                      {"shortages": rows, "by_status": dict(sorted(by_status.items())), "total": total, "offset": offset, "limit": limit,
                        "note": "an ETA is a conditional forecast; only confirmed receipt makes work executable"},
                       list(canon.reasons), None, canon.source_run_id)
 
@@ -990,6 +947,7 @@ def quality(canon: Canon, ctx: RequestContext) -> Projection:
     missing = _need_snapshot(canon)
     if missing:
         return missing
+    canon = canon.holds().pools(["QA"], None)
     jobs, people = canon.jobs(), canon.people()
     plan = canon.plan("EXECUTABLE")
     by_phase = {a.phase: a for a in plan.assignments} if plan else {}
@@ -1047,10 +1005,18 @@ def _evidence_counts(proof: Any) -> dict[str, Any] | None:
             "observation_run_id": proof.observation_run_id}
 
 
-def phase_labels(services: Any) -> dict[str, str]:
-    """Readable phase labels from the current admitted snapshot (empty when none is cached or admitted)."""
+def phase_labels(services: Any, phase_ids: Iterable[str | None]) -> dict[str, str]:
+    """Readable labels of the phases named, from the current admitted snapshot's label parts (empty when none is admitted)."""
     canon = Canon.load(services)
-    return {p.key.id: p.label for p in canon.snapshot.phases} if canon.snapshot is not None else {}
+    wanted = {p for p in phase_ids if p}
+    return canon.labels(wanted) if canon.snapshot is not None and wanted else {}
+
+
+def proof_phases(proof: Any) -> set[str | None]:
+    """Every phase an evaluation's evidence names (units, offplan work, out-of-sequence violations)."""
+    if proof is None:
+        return set()
+    return {f.phase for f in proof.unit_facts} | {o.phase for o in proof.offplan} | {o.phase for o in proof.oos}
 
 
 def unit_view(f: Any, labels: dict[str, str]) -> dict[str, Any]:
@@ -1073,11 +1039,13 @@ def performance(services: Any, ctx: RequestContext, *, shift_id: str | None, tea
         return Projection("empty", {"shift_id": shift_id, "goals": [], "pooled": None}, [reason("AGGREGATES_ONLY", "Your scope has no team detail.")])
     scope = services.settings.scope_key
     records = _visible_records(services, ctx, shift_id, team)
-    labels = phase_labels(services)
-    goals, members = [], []
+    found = []
     for r in records:
         e = history.current(services, scope, history.series_for_goal(services, r.goal_id))
-        proof = history.evidence(services, e.evidence_hash) if e is not None else None
+        found.append((r, e, history.evidence(services, e.evidence_hash) if e is not None else None))
+    labels = phase_labels(services, {p for _, _, proof in found for p in proof_phases(proof)})
+    goals, members = [], []
+    for r, e, proof in found:
         goals.append({"team": r.team, "shift_id": r.shift_id, "goal_id": r.goal_id, "plan_id": r.plan_id, "B0": r.B0,
                       "window": {"start": r.window.start, "end": r.window.end, "credit_deadline": r.window.credit_deadline},
                       "evaluation": None if e is None else summary(e), "evidence": _evidence_counts(proof),
@@ -1254,12 +1222,8 @@ def now_utc(services: Any) -> datetime:
 # ---------------------------------------------------------------------- shared immutable indexes (P20)
 
 def validation_input(canon: Canon) -> Any:
-    """The independent validator's index over the current admitted facts (cached per snapshot and policy)."""
-    from ..domain import Purpose
-    from ..validation.input import ValidationInput
-
-    policy = canon.services.policy
-    return CACHE.get_or_load(("vinput", canon.snapshot.id, policy.hash), lambda: ValidationInput.build(canon.snapshot, policy, Purpose.EXECUTABLE))
+    """The independent validator's index over a work slice of the current admitted facts (``display.view.slice_input``)."""
+    return slice_input(canon)
 
 
 def holding_index(canon: Canon) -> Any:
@@ -1269,13 +1233,11 @@ def holding_index(canon: Canon) -> Any:
 
 
 def accepted(services: Any, purpose: str) -> list[Any]:
-    """Every accepted plan of one purpose, verified end to end, in acceptance order (cached by the accepted set)."""
+    """Every accepted plan of one purpose verified through its display receipt, in acceptance order (cached by the accepted set)."""
     from ..publication.repository import repository_for
-    from ..publication.service import accepted_plans
 
     ids = tuple(repository_for(services).accepted_ids())
-    return CACHE.get_or_load(("accepted", ids, purpose, services.policy.hash),
-                             lambda: accepted_plans(services, services.settings.scope_key, purpose)[0])
+    return CACHE.get_or_load(("accepted", ids, purpose, services.policy.hash), lambda: accepted_display(services, purpose)[0])
 
 
 def shift_instance(canon: Canon, day: date, number: int) -> Any:
@@ -1321,6 +1283,8 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
     day = day or default_day(canon)
     shift_id = f"{services.settings.site}:{day.isoformat()}:S{shift}"
     now = services.clock.now()
+    canon = canon.work([team]).pools([team], [day]).team_days("EXECUTABLE", [team], [day]).commitments("EXECUTABLE")
+    plan = canon.plan("EXECUTABLE")
     inp = validation_input(canon)
     phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
     actions = []
@@ -1387,11 +1351,42 @@ def duty_cert_check(canon: Canon, person_id: str, phase: Any, start: datetime, e
 
 # ---------------------------------------------------------------------- Industrial Engineering (S15 view 4)
 
-def standards(canon: Canon, ctx: RequestContext) -> Projection:
-    """Standards, requirements and team-authority provenance with a review queue of weak or unknown facts."""
+def line_order(lines: Iterable[int]) -> list[int]:
+    """Aircraft in the order their job labels sort: ``"<line>/<SOI>"`` as text, so line 10 comes before line 2."""
+    return sorted(set(lines), key=lambda ln: f"{ln}/")
+
+
+def label_pages(canon: Canon, line: int | None, offset: int, limit: int | None) -> tuple[list[int], int | None]:
+    """The aircraft of one page of a per-job list in job-label order: from the ``offset``-th aircraft until ``limit`` jobs
+    are covered (at least one aircraft), and the next offset (``None`` on the last page)."""
+    if line is not None:
+        return [line], None
+    per_line: dict[int, int] = defaultdict(int)
+    for c in canon.summary.job_counts:
+        per_line[c.line] += c.jobs
+    lines = line_order(set(per_line) | {c.line for c in canon.summary.census})
+    page, covered, i = [], 0, offset
+    while i < len(lines):
+        page.append(lines[i])
+        covered += per_line.get(lines[i], 0)
+        i += 1
+        if limit is not None and covered >= limit:
+            break
+    return page, (i if i < len(lines) else None)
+
+
+def standards(canon: Canon, ctx: RequestContext, *, line: int | None = None, offset: int = 0,
+              limit: int | None = None) -> tuple[Projection, int | None]:
+    """Standards, requirements and team-authority provenance with a review queue of weak or unknown facts.
+
+    Durations and requirements come one page of aircraft at a time in job-label order (``label_pages``); team inference
+    and data gaps come with the first page."""
     missing = _need_snapshot(canon)
     if missing:
-        return missing
+        return missing, None
+    lines, following = label_pages(canon, line, offset, limit)
+    first = offset == 0 or line is not None
+    canon = canon.standards(lines)
     snap = canon.snapshot
     jobs, people = canon.jobs(), canon.people()
     durations = []
@@ -1411,7 +1406,7 @@ def standards(canon: Canon, ctx: RequestContext) -> Projection:
         status = r.status.value if hasattr(r.status, "value") else str(r.status)
         requirements.append({"job_id": r.job, "job": job_label(jobs, r.job), "status": status, "requirement": bundle_text(r.bundle), "basis": r.basis})
     inference = []
-    for t in sorted(snap.inference, key=lambda x: x.person):
+    for t in sorted(snap.inference if first else (), key=lambda x: x.person):
         team = t.effective_team or t.inferred_team
         inference.append(person_view(canon, ctx, t.person, team, people) | {
             "inferred_team": t.inferred_team, "effective_team": t.effective_team, "evidence_count": t.evidence_count,
@@ -1424,11 +1419,11 @@ def standards(canon: Canon, ctx: RequestContext) -> Projection:
     queue += [{"kind": "TEAM_AUTHORITY", "subject": i["name"] if not i.get("redacted") else "person outside your scope",
                "reason": "tie between teams" if i["is_tie"] else ("stale inference" if i["stale"] else i["effective_basis"])}
               for i in inference if i["is_tie"] or i["stale"] or i["effective_team"] is None]
-    queue += [{"kind": "DATA_GAP", "subject": g.scope, "reason": f"{g.code}: {g.detail} ({g.capability_effect})"} for g in snap.gaps]
-    data = {"durations": durations, "requirements": requirements, "inference": inference, "review_queue": queue,
+    queue += [{"kind": "DATA_GAP", "subject": g.scope, "reason": f"{g.code}: {g.detail} ({g.capability_effect})"} for g in (snap.gaps if first else ())]
+    data = {"durations": durations, "requirements": requirements, "inference": inference, "review_queue": queue, "lines": lines,
             "note": "proposals never rewrite issued standards, frozen goals or evaluations"}
-    return Projection(canon.base_status() if (durations or requirements) else "empty", data, list(canon.reasons), coverage_of(snap.census),
-                      canon.source_run_id)
+    return (Projection(canon.base_status() if (durations or requirements) else "empty", data, list(canon.reasons), coverage_of(snap.census),
+                       canon.source_run_id), following)
 
 
 # ---------------------------------------------------------------------- Staffing skill demand (S15 view 5/17)
@@ -1465,14 +1460,20 @@ def skill_demand(canon: Canon, plan: Any, pool: Any, shift_id: str) -> tuple[lis
 
 # ---------------------------------------------------------------------- Schedule Budget (S15 view 10)
 
-def budget(canon: Canon, ctx: RequestContext, *, day: date | None, purpose: str) -> Projection:
+def budget(canon: Canon, ctx: RequestContext, *, day: date | None, purpose: str, line: int | None = None, offset: int = 0,
+           limit: int | None = None) -> tuple[Projection, int | None]:
+    """Team-shift budgets of one day, and job flow budgets one page of aircraft at a time in job-label order."""
     missing = _need_snapshot(canon)
     if missing:
-        return missing
+        return missing, None
     plan = canon.plan(purpose)
     if plan is None:
-        return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason(purpose)], source_run_id=canon.source_run_id)
+        return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason(purpose)], source_run_id=canon.source_run_id), None
+    root = canon
     day = day or default_day(canon) or canon.snapshot.cutoff.date()
+    teams = day_teams(canon, ctx, day)
+    canon = canon.pools(teams, [day]).team_days(purpose, teams, [day])
+    plan = canon.plan(purpose)
     phases, jobs = canon.phases(), canon.jobs()
     avail = {(a.person, a.pool): a for a in canon.snapshot.availability}
     site = canon.services.settings.site
@@ -1498,7 +1499,10 @@ def budget(canon: Canon, ctx: RequestContext, *, day: date | None, purpose: str)
                      "work_minutes": kinds["WORK"], "nva_minutes": nva, "ot_minutes": ot, "regular_capacity_minutes": capacity_minutes,
                      "nva_pct": None if kinds["WORK"] + nva == 0 else ratio_text(Fraction(nva * 100, kinds["WORK"] + nva))})
     by_job = []
-    for o in sorted(plan.job_dispositions, key=lambda o: (job_label(jobs, o.job) or o.job)):
+    lines, following = label_pages(root, line, offset, limit)
+    page = root.lines(lines)
+    jobs = page.jobs()
+    for o in sorted(page.plan(purpose).job_dispositions, key=lambda o: (job_label(jobs, o.job) or o.job)):
         j = jobs.get(o.job)
         if j is None or not team_allowed(ctx, j.team):
             continue
@@ -1508,10 +1512,10 @@ def budget(canon: Canon, ctx: RequestContext, *, day: date | None, purpose: str)
                        "flow_minutes": None if flow is None else flow.critical_flow_minutes,
                        "flow_labor_minutes": None if flow is None else flow.total_labor_minutes,
                        "planned_span_minutes": span, "conditional": o.conditional})
-    data = {"date": day, "purpose": purpose, "team_shifts": rows, "jobs": by_job,
+    data = {"date": day, "purpose": purpose, "team_shifts": rows, "jobs": by_job, "lines": lines,
             "note": "standard person effort is prorated by planned work segments; NVA is travel, wait, tool and other duty"}
-    return Projection(canon.base_status() if rows or by_job else "empty", data, list(canon.reasons), None, canon.source_run_id, canon.plan_id(purpose),
-                      purpose=purpose)
+    return (Projection(canon.base_status() if rows or by_job else "empty", data, list(canon.reasons), None, canon.source_run_id,
+                       canon.plan_id(purpose), purpose=purpose), following)
 
 
 # ---------------------------------------------------------------------- Worker Gantt (S15 view 11)
@@ -1526,6 +1530,9 @@ def gantt(canon: Canon, ctx: RequestContext, *, day: date | None, team: str | No
     if plan is None:
         return Projection("unknown", None, list(canon.reasons) + [canon.plan_reason(purpose)], source_run_id=canon.source_run_id)
     day = day or default_day(canon) or canon.snapshot.cutoff.date()
+    teams = {t for t in day_teams(canon, ctx, day) if team is None or t == team}
+    canon = canon.pools(teams, [day]).team_days(purpose, teams, [day])
+    plan = canon.plan(purpose)
     phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
     assignments = {a.id: a for a in plan.assignments}
     shifts = []
@@ -1569,8 +1576,10 @@ def development(canon: Canon, ctx: RequestContext) -> Projection:
     progress = progression_view(services, ctx, team=None).data or {"teams": []}
     gaps = []
     if canon.snapshot is not None:
-        plan = canon.plan("EXECUTABLE")
         day = default_day(canon) or canon.snapshot.cutoff.date()
+        teams = day_teams(canon, ctx, day)
+        canon = canon.pools(teams, [day]).team_days("EXECUTABLE", teams, [day])
+        plan = canon.plan("EXECUTABLE")
         index = holding_index(canon)
         people = canon.people()
         site = services.settings.site
@@ -1649,14 +1658,19 @@ def turnover(canon: Canon, ctx: RequestContext, *, team: str, day: date | None, 
     shift_id = f"{site}:{day.isoformat()}:S{shift}"
     nxt_day, nxt = (day, shift + 1) if shift < 3 else (day + timedelta(days=1), 1)
     next_id = f"{site}:{nxt_day.isoformat()}:S{nxt}"
+    root = canon
+    canon = canon.team_days("EXECUTABLE", [team], [nxt_day])
+    plan = canon.plan("EXECUTABLE")
+    canon = canon.work([team], {a.line for a in plan.assignments if a.shift_id == next_id}).pools([team], [nxt_day])
+    plan = canon.plan("EXECUTABLE")
     phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
-    labels = {p.key.id: p.label for p in canon.snapshot.phases}
     record = registry(services).record(team, shift_id)
     open_units, evaluation, pending_claims = [], None, []
     if record is not None:
         e = history.current(services, services.settings.scope_key, history.series_for_goal(services, record.goal_id))
         proof = history.evidence(services, e.evidence_hash) if e is not None else None
         if proof is not None:
+            labels = root.labels({f.phase for f in proof.unit_facts if f.status != "EARNED"})
             open_units = [unit_view(f, labels) for f in proof.unit_facts if f.status != "EARNED"]
             evaluation = {"evaluation_id": e.id, "status": e.status.value, "score": None if e.score is None else str(e.score), "revision": e.revision}
         store = ObservationStore(services.repositories, services.settings.scope_key)
@@ -1675,9 +1689,11 @@ def turnover(canon: Canon, ctx: RequestContext, *, team: str, day: date | None, 
         upcoming.append({"assignment_id": a.id, "label": p.label if p else a.phase, "start": a.start, "end": a.end,
                          "crew": [person_view(canon, ctx, r.person, team, people, r.role) for r in a.crew],
                          "blocked": [{"code": c, "detail": d} for c, d in dict.fromkeys(why) if c not in ("SOURCE_STALE",)]})
-    holds = [{"phase_id": p.key.id, "label": p.label, "kind": p.kind.value, "job": job_label(jobs, p.job)} for p in canon.snapshot.phases
+    held = root.holds(plans=False)
+    hold_jobs = held.jobs()
+    holds = [{"phase_id": p.key.id, "label": p.label, "kind": p.kind.value, "job": job_label(hold_jobs, p.job)} for p in held.snapshot.phases
              if p.kind in (PhaseKind.IP_QA, PhaseKind.FINAL_QA, PhaseKind.OTHER_BUYOFF) and p.status == "OPEN"
-             and jobs.get(p.job) is not None and jobs[p.job].team == team]
+             and hold_jobs.get(p.job) is not None and hold_jobs[p.job].team == team]
     nxt_inst = shift_instance(canon, nxt_day, nxt)
     carry = [{"id": c.id, "person": person_view(canon, ctx, c.person, team, people), "kind": c.kind.value if hasattr(c.kind, "value") else str(c.kind),
               "start": c.start, "end": c.end, "line": c.line} for c in canon.snapshot.carry_in
@@ -1707,11 +1723,11 @@ def history_view(services: Any, ctx: RequestContext) -> Projection:
     for purpose in ("EXECUTABLE", "FORECAST"):
         head = repo.head(scope, purpose)
         for cur in accepted(services, purpose):
-            art, pub = cur.artifact, cur.published
-            plans.append({"plan_id": pub.id, "purpose": purpose, "capability": art.capability, "accepted_at": pub.accepted_at,
+            summ, pub = cur.summary, cur.published
+            plans.append({"plan_id": pub.id, "purpose": purpose, "capability": summ.capability, "accepted_at": pub.accepted_at,
                           "head_version": cur.head_version, "current": head is not None and head.record_id == pub.id, "source_run_id": pub.source_run_id,
-                          "obligation_dates": list(art.obligation_dates), "frozen_goals": len(pub.frozen_goal_ids),
-                          "assignments": len(art.candidate.assignments), "fixture_readback": pub.acceptance_receipt.fixture_readback})
+                          "obligation_dates": list(summ.obligation_dates), "frozen_goals": len(pub.frozen_goal_ids),
+                          "assignments": summ.assignment_count, "fixture_readback": pub.acceptance_receipt.fixture_readback})
     plans.sort(key=lambda r: (r["accepted_at"], r["purpose"], r["plan_id"]))
     evaluations = (performance_history(services, ctx, team=None).data or {"series": []})["series"]
     corrections = [{"event_id": ev.id, "team": ev.team, "goal_id": ev.goal_id, "value": frac(ev.value), "supersedes": ev.supersedes,
@@ -1747,11 +1763,11 @@ def scenarios_view(services: Any, ctx: RequestContext, scenario_id: str | None =
     inputs = None
     if canon.snapshot is not None:
         snap = canon.snapshot
+        pools = sorted((p for p in canon.summary.pools if team_allowed(ctx, p.team)), key=lambda x: (x.start_date, x.shift_number, x.team))
         inputs = {"source_run_id": canon.source_run_id,
-                  "pools": [{"team": p.key.team, "date": p.key.start_date, "shift": p.key.shift_number, "n_forecast": p.n_forecast}
-                            for p in _pool_rows(canon, ctx, None, None)],
+                  "pools": [{"team": p.team, "date": p.start_date, "shift": p.shift_number, "n_forecast": p.n_forecast} for p in pools],
                   "releases": [{"release_id": r.id, "label": r.label, "status": r.status.value, "forecast_at": r.forecast_at}
-                               for r in snap.releases if r.status.value != "confirmed"],
+                               for r in canon.releases_slice().snapshot.releases if r.status.value != "confirmed"],
                   "lines": sorted(c.line for c in snap.census), "statistics": ["P50", "P75", "P90"],
                   "current_statistic": services.policy.str("duration.default_statistic")}
     return Projection("ready" if rows else "empty", {"scenarios": rows, "inputs": inputs,
@@ -1778,8 +1794,19 @@ def twin_view(canon: Canon, ctx: RequestContext, *, team: str | None, day: date 
         return Projection("empty", None, list(canon.reasons) + [reason("AGGREGATES_ONLY", "Your scope has no team detail; the twin is per team.")],
                           source_run_id=canon.source_run_id)
     services = canon.services
+    if not services.settings.twin_full_load:
+        return Projection("unknown", None, list(canon.reasons) + [reason(
+            "TWIN_NEEDS_FULL_LOAD", "The digital twin reconciles every job, assignment and duty of the fleet, which the display package "
+                                    "does not precompute yet; it is off so the web never loads a whole snapshot or plan artifact.",
+            "Set FOCUS_TWIN_FULL_LOAD=true on a host with the memory for it (several GB at 50 aircraft), or use the other views.")],
+            source_run_id=canon.source_run_id, plan_id=canon.plan_id("EXECUTABLE"))
+    from .full_canon import FullCanon
+
     repos = services.repositories
-    data = build_twin(services, canon, registry(services), visible=lambda t: team_allowed(ctx, t),
+    full = FullCanon.load(services, CACHE)
+    if full.snapshot is None:
+        return Projection(canon.base_status(), None, list(canon.reasons), source_run_id=canon.source_run_id)
+    data = build_twin(services, full, registry(services), visible=lambda t: team_allowed(ctx, t),
                       load_snapshot=lambda sid: CACHE.get_or_load(("snapshot", sid), lambda: load_snapshot(repos, sid)),
                       team=team, day=day, shift=shift, line=line)
     reasons = list(canon.reasons) + [reason(code, message) for code, message in data.pop("reasons")]

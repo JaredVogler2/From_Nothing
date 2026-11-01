@@ -91,10 +91,10 @@ def get_context(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     if source is not None and policy["status"] == "ready" and ctx.authenticated:
         from .serializers import Canon, default_day
 
-        canon = Canon.load(services)                         # read-only and cached per immutable snapshot
+        canon = Canon.load(services)                         # read-only: verified display summaries, cached per revision
         if canon.snapshot is not None:
-            real = {p.key.team for p in canon.snapshot.pools if p.executable_members}
-            teams = {p.key.team for p in canon.snapshot.pools if ctx.scope.allows_team(p.key.team)}
+            real = {p.team for p in canon.summary.pools if p.executable_members}
+            teams = {p.team for p in canon.summary.pools if ctx.scope.allows_team(p.team)}
             choices["teams"] = sorted(teams, key=lambda t: (t not in real, t))          # real teams first, virtual support last
             choices["lines"] = sorted(c.line for c in canon.snapshot.census)
             choices["default_date"] = default_day(canon) or canon.snapshot.cutoff.date()
@@ -489,6 +489,7 @@ def create_reported_observation(ctx: RequestContext, args: dict[str, Any]) -> Ap
     from .serializers import Canon, phase_team
 
     canon = Canon.load(svc())
+    canon = canon.jobs_slice([args["job_id"]], plans=False) if canon.snapshot is not None else canon
     job = canon.jobs().get(args["job_id"])
     phase = canon.phases().get(args.get("phase_id") or "")
     team = phase_team(phase) if phase is not None and phase.job == args["job_id"] else (job.team if job is not None else None)

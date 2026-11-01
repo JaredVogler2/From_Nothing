@@ -211,6 +211,14 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
 - **The stage/sign split.** `stage_readback` runs `publish(until="readback")`: the unsigned stage plus the independent
   readback validation, with no signing material. `sign_accept` re-reads and re-validates those exact bytes, signs,
   accepts and moves the head last.
+- **The display package.** The web reads small, partitioned parts the pipeline publishes, never a snapshot or a plan
+  artifact (`DISPLAY_PACKAGE.md`). There is no new step:
+  - `acquire` writes the snapshot's parts before it moves the source head;
+  - each `sign_accept` writes the plan's parts and signs their manifest before it moves the plan head.
+
+  A store from before the package is backfilled once with these two commands:
+  - `python -m focus.cli display --current-source` (source role);
+  - `python -m focus.cli display --current-plans` (signer role, because it signs).
 - **Leases.** The default is 900 s (`--lease-seconds`). A live lease returns `LEASED` to a competitor. An expired lease
   is taken over, and the new owner re-runs the idempotent handler. After three attempts the step is `EXHAUSTED`; start
   a new key.

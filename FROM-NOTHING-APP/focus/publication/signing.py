@@ -4,6 +4,10 @@ The signed message is the domain tag ``FOCUS_PLAN_V1\\0`` followed by the canoni
 ``{key_id, scope, purpose, source_sha, policy_sha, payload_sha}``, which is unambiguous. The key
 id is tracked separately from the key.
 
+The same key signs each accepted plan's display package under its own domain tag ``FOCUS_DISPLAY_V1\\0``:
+``{key_id, scope, purpose, plan_id, payload_sha, source_sha, policy_sha, manifest_sha}``. The two messages never
+collide, so a plan signature cannot pass as a display signature or the reverse.
+
 HMAC is symmetric: whoever can verify can also sign, so verify-only custody is never claimed.
 
 Key material comes from the settings reference ``FOCUS_SIGN_KEY_REF``, either ``env:NAME`` or
@@ -27,6 +31,7 @@ from typing import Any, Mapping
 from ..codec import canonical_dumps
 
 DOMAIN = b"FOCUS_PLAN_V1\x00"
+DISPLAY_DOMAIN = b"FOCUS_DISPLAY_V1\x00"            # the display package receipt (focus.display.store)
 FIXTURE_KEY_ID = "fixture-test-key-v1"
 _FIXTURE_LABEL = b"FOCUS fixture TEST signing key: public, deterministic, never valid for live acceptance"
 
@@ -52,6 +57,25 @@ class Signer:
         if key_id != self.key_id or not isinstance(signature_hex, str):
             return False
         expected = self.sign(scope, purpose, source_sha, policy_sha, payload_sha)
+        return hmac.compare_digest(expected, signature_hex)
+
+    # -- display package (focus.display): a separate domain, so neither signature can stand in for the other
+    @staticmethod
+    def display_message(key_id: str, scope: str, purpose: str, plan_id: str, payload_sha: str, source_sha: str, policy_sha: str,
+                        manifest_sha: str) -> bytes:
+        return DISPLAY_DOMAIN + canonical_dumps({"key_id": key_id, "scope": scope, "purpose": purpose, "plan_id": plan_id,
+                                                 "payload_sha": payload_sha, "source_sha": source_sha, "policy_sha": policy_sha,
+                                                 "manifest_sha": manifest_sha})
+
+    def sign_display(self, scope: str, purpose: str, plan_id: str, payload_sha: str, source_sha: str, policy_sha: str, manifest_sha: str) -> str:
+        message = self.display_message(self.key_id, scope, purpose, plan_id, payload_sha, source_sha, policy_sha, manifest_sha)
+        return hmac.new(self._key, message, hashlib.sha256).hexdigest()
+
+    def verify_display(self, signature_hex: str, key_id: str, scope: str, purpose: str, plan_id: str, payload_sha: str, source_sha: str,
+                       policy_sha: str, manifest_sha: str) -> bool:
+        if key_id != self.key_id or not isinstance(signature_hex, str):
+            return False
+        expected = self.sign_display(scope, purpose, plan_id, payload_sha, source_sha, policy_sha, manifest_sha)
         return hmac.compare_digest(expected, signature_hex)
 
 

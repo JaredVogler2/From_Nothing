@@ -31,6 +31,7 @@ COMMANDS: dict[str, str] = {
     "validate": "focus.validation.plan:cli_validate",
     "publish": "focus.publication.service:cli_publish",
     "dispatch-check": "focus.publication.dispatch:cli_dispatch_check",
+    "display": "focus.display.store:cli_display",
     "collect-observations": "focus.performance.actuals:cli_collect_observations",
     "evaluate": "focus.performance.score:cli_evaluate",
     "scenario": "focus.analytics.scenarios:cli_scenario",
@@ -100,6 +101,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("dispatch-check", help="current-action dispatch check against current facts")
     p.add_argument("--plan", required=True)
     p.add_argument("--action", required=True)
+
+    p = sub.add_parser("display", help="build the display package the web reads (snapshot: source role; accepted plan: signer role)")
+    p.add_argument("--snapshot", default=None, help="an admitted snapshot id")
+    p.add_argument("--plan", action="append", default=None, help="an accepted plan id (repeatable); signs its display receipt")
+    p.add_argument("--current-source", action="store_true", help="the current source head's snapshot")
+    p.add_argument("--current-plans", action="store_true", help="the current EXECUTABLE and FORECAST plan heads")
 
     p = sub.add_parser("collect-observations", help="collect lifecycle/actual/claim/decision observations into an evaluation-ready run")
     p.add_argument("--mode", choices=["fixture", "live"], required=True)

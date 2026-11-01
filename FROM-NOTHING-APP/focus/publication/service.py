@@ -13,8 +13,9 @@
    and goals.
 7. Sign exactly those readback-validated bytes together with source, policy and purpose.
 8. Verify the signed artifact.
-9. Write the immutable PublishedPlan, FrozenGoals and AcceptanceReceipt, then move the plan head
-   LAST in the scoped acceptance (lock plus expected version).
+9. Write the display package the web reads instead of the artifact (``focus.display``), signed under its own
+   domain, then the immutable PublishedPlan, FrozenGoals and AcceptanceReceipt, then move the plan head LAST in the
+   scoped acceptance (lock plus expected version).
 10. Run the idempotent post-acceptance obligations:
     * the new accepted incumbent for task defense (P14);
     * delivery commitments (``projections.record_accepted``).
@@ -50,6 +51,14 @@ from ..validation.publication import publication_capability, validate_artifact
 from .repository import FixturePublicationRepository, PlanStage, PublicationError, PublishedPayload, repository_for
 from .serializer import artifact_bytes, build_artifact, decode_artifact, payload_sha256
 from .signing import Signer, resolve_signer
+
+
+def publish_plan_display(repos: Any, signer: Signer, snapshot: PlanningSnapshot, artifact: PlanArtifact, plan_id: str, payload_sha: str,
+                         created_at: datetime) -> Any:
+    """The accepted plan's display package (``focus.display``): parts, manifest and its signed receipt."""
+    from ..display.store import publish_plan_display as publish_display
+
+    return publish_display(repos, signer, snapshot, artifact, plan_id, payload_sha, created_at)
 
 
 @dataclass
@@ -163,7 +172,7 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
     # recovery: an acceptance receipt for exactly this content already exists
     existing = repo.receipt(plan_id)
     if existing is not None:
-        return _reconcile(services, repo, snapshot, plan, existing, result)
+        return _reconcile(services, repo, snapshot, plan, existing, result, artifact=artifact, signer=signer, signer_role=until is None)
     current = repo.head(plan.scope, plan.purpose.value)
     if current is not None:
         prior = repo.published(current.record_id)
@@ -230,9 +239,13 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
         result.reasons = ("SIGNATURE_INVALID",)
         return result
     result.steps.append("verify")
-    # 9. immutable acceptance, head LAST
     prior_record = repo.published(plan_id)
     accepted_at = prior_record.accepted_at if prior_record is not None else now
+    # 9a. the display package the web reads instead of this artifact, signed before the head can name the plan
+    publish_plan_display(repos, signer, snapshot, artifact, plan_id, signed_sha, accepted_at)
+    result.steps.append("display")
+    fault("after_display")
+    # 9. immutable acceptance, head LAST
     receipt = AcceptanceReceipt(plan_id, stage_id, rb.id, final.id, detached.id, signed_sha, plan.source_run_id, snapshot.hash, policy.hash,
                                 plan.scope, plan.purpose, signer.key_id, signature, isinstance(repo, FixturePublicationRepository), accepted_at,
                                 expected_version + 1)
@@ -266,7 +279,7 @@ def _cutoff(repos: Any, published: PublishedPlan) -> datetime:
 
 
 def _reconcile(services: Any, repo: Any, snapshot: PlanningSnapshot, plan: CandidatePlan, receipt: AcceptanceReceipt,
-               result: PublishResult) -> PublishResult:
+               result: PublishResult, *, artifact: PlanArtifact, signer: Signer | None, signer_role: bool) -> PublishResult:
     published = repo.published(receipt.plan_id)
     payload = repo.payload(receipt.plan_id)
     result.receipt = receipt
@@ -276,7 +289,9 @@ def _reconcile(services: Any, repo: Any, snapshot: PlanningSnapshot, plan: Candi
     head = repo.head(plan.scope, plan.purpose.value)
     if head is not None and head.record_id == receipt.plan_id:
         result.status, result.head_version = "ALREADY_ACCEPTED", head.version
+        _ensure_display(services, snapshot, artifact, receipt, published, result, signer, signer_role)
     elif (head.version if head else 0) == receipt.head_version - 1:
+        _ensure_display(services, snapshot, artifact, receipt, published, result, signer, signer_role)
         result.head_version = repo.accept(published, payload, tuple(repo.goals(published.frozen_goal_ids)), receipt.head_version - 1)
         result.status = "RECOVERED"
     else:
@@ -285,6 +300,24 @@ def _reconcile(services: Any, repo: Any, snapshot: PlanningSnapshot, plan: Candi
     result.steps.append("reconcile")
     result.steps.extend(_post_acceptance(services, snapshot, published, plan))
     return result
+
+
+def _ensure_display(services: Any, snapshot: PlanningSnapshot, artifact: PlanArtifact, receipt: AcceptanceReceipt, published: PublishedPlan,
+                    result: PublishResult, signer: Signer | None, signer_role: bool) -> None:
+    """A recovered acceptance gets its display package when it has none (an older build, or a crash before it was signed).
+
+    Only the signer role signs it, with the trusted key; the stager never resolves signing material.
+    """
+    from ..display.store import has_plan_display
+
+    if has_plan_display(services.repositories, receipt.plan_id):
+        return
+    trusted = resolve_signer(services.settings)[0] if signer_role else None
+    if trusted is None or (signer is not None and signer.key_id != trusted.key_id) or trusted.key_id != receipt.key_id:
+        result.steps.append("display_pending")
+        return
+    publish_plan_display(services.repositories, trusted, snapshot, artifact, receipt.plan_id, receipt.payload_sha256, published.accepted_at)
+    result.steps.append("display")
 
 
 # ---------------------------------------------------------------------- read path

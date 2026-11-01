@@ -85,8 +85,8 @@ def test_accepted_plan_is_signed_frozen_and_reloaded(world) -> None:
     w = world
     receipt = w.t.p0.receipt
     assert head_id(w) == w.t.p0.plan_id and receipt.fixture_readback and receipt.key_id == "fixture-test-key-v1"
-    assert w.t.p0.steps[:9] == ["final_validation", "serialize", "detached_validation", "stage", "readback", "readback_validation", "sign",
-                                "verify", "accept"]                                        # the one canonical order
+    assert w.t.p0.steps[:10] == ["final_validation", "serialize", "detached_validation", "stage", "readback", "readback_validation", "sign",
+                                 "verify", "display", "accept"]                            # the one canonical order
     current, why = current_plan(w.services, "DEMO-787", "EXECUTABLE")
     assert why == "OK" and current.published.id == w.t.p0.plan_id and current.artifact.candidate.id == w.t.p0c.id
     goals = w.repo.goals(current.published.frozen_goal_ids)
@@ -146,6 +146,8 @@ CRASHES = [
     ("after_stage", "service", "ACCEPTED"),
     ("after_readback", "service", "ACCEPTED"),
     ("after_sign", "service", "ACCEPTED"),
+    ("after_display", "service", "ACCEPTED"),
+    ("after_put:display_receipts", "store", "ACCEPTED"),
     ("after_put:published_plans", "store", "ACCEPTED"),
     (f"before_head:{HEAD}", "store", "RECOVERED"),
     (f"after_head:{HEAD}", "store", "ALREADY_ACCEPTED"),

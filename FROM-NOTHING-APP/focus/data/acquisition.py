@@ -6,7 +6,8 @@
 4. Read every dataset back (detached) and verify run lineage and hashes. A
    dataset from another run, or a forged hash, fails admission.
 5. Admit the coherent snapshot; the census must reconcile. A complete-empty
-   dataset needs an affirmative receipt.
+   dataset needs an affirmative receipt. Store it with its display package
+   (``focus.display``), the small parts the web reads instead of the snapshot.
 6. Mark COMPLETE, then move the scoped source head LAST with compare-and-set.
    A failed or rejected run never moves the head.
 7. Replaying the same idempotency key reconciles the existing run (e.g. a
@@ -145,6 +146,7 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
             if run.cutoff != cutoff:
                 raise StoreError("IDEMPOTENCY_CONFLICT", "idempotency key reused with a different cutoff")
             if run.status == "COMPLETE":
+                _ensure_display(repos, run)
                 moved, head_version = _promote(repos, run, fault)
                 return AcquisitionOutcome(run.id, run.status, True, run.snapshot_id, moved, head_version, None,
                                           {d.name: d.status for d in run.datasets}, ("replay reconciled existing COMPLETE run",))
@@ -229,6 +231,7 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
         _remember(repos, snapshot)
         for stat in build.statistics:
             repos.put_record("statistics", "DurationStatistics", stat.id, stat, source_run_id=run.id, policy_hash=policy.hash)
+        write_snapshot_display(repos, snapshot)          # the web's parts of this snapshot exist before the head names it
         fault("before_complete")
         run = replace(run, status="COMPLETE", capture_end=_now(services), manifest_sha=manifest_sha, snapshot_id=snapshot.id,
                       snapshot_hash=snapshot.hash, statistics_ids=snapshot.statistics_ids)
@@ -236,6 +239,23 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
         moved, head_version = _promote(repos, run, fault)
         return AcquisitionOutcome(run.id, "COMPLETE", replayed, snapshot.id, moved, head_version, None,
                                   {d.name: d.status for d in run.datasets}, tuple(build.notes))
+
+
+def write_snapshot_display(repos: Any, snapshot: PlanningSnapshot) -> Any:
+    """The snapshot's display package (``focus.display``): the parts the web reads instead of the snapshot."""
+    from ..display.store import write_snapshot_display as write
+
+    return write(repos, snapshot)
+
+
+def _ensure_display(repos: Any, run: SourceRunRecord) -> None:
+    """A COMPLETE run replayed before promotion gets its snapshot's display package if an older build never wrote one."""
+    from ..display.store import MANIFESTS
+
+    if run.snapshot_id and repos.get_raw(MANIFESTS, run.snapshot_id) is None:
+        snapshot = load_snapshot(repos, run.snapshot_id)
+        if snapshot is not None:
+            write_snapshot_display(repos, snapshot)
 
 
 def _promote(repos: Any, run: SourceRunRecord, fault: Callable[[str], None]) -> tuple[bool, int | None]:

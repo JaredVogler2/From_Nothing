@@ -786,6 +786,9 @@ def _solve(services: Any, ctx: EngineContext, defense: Any, *, budget_seconds: f
     else:
         services.repositories.put_record(CANDIDATES, "CandidatePlan", plan.id, plan, source_run_id=plan.source_run_id,
                                          policy_hash=plan.policy_hash, purpose=plan.purpose.value)
+    from ....display.store import write_candidate_digest
+
+    write_candidate_digest(services.repositories, plan)        # the web's plan view reads this, never the candidate
     from ....validation.plan import load_incumbent, persist_receipt, validate
 
     run.validation = validate(snapshot, policy, plan, incumbent=load_incumbent(services.repositories, plan.incumbent_id), kind="FINAL",

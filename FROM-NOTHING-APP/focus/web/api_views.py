@@ -12,10 +12,11 @@ from typing import Any, Callable
 
 from ..codec import content_hash
 from ..data.store import StoreUnavailable
+from ..display.store import DisplayError
 from ..policy import PolicyError
 from . import serializers as S
 from .api import ALL_READERS, ID_PATTERN, svc
-from .operations import PAGE_QUERY, REGISTRY, ApiResult, decode_cursor, encode_cursor
+from .operations import PAGE_QUERY, REGISTRY, ApiResult, decode_cursor, encode_cursor, reason
 from .security import ApiError, RequestContext
 
 ECONOMICS_READERS = S.ECONOMICS_GRANTS
@@ -41,12 +42,20 @@ def _result(services: Any, p: S.Projection) -> ApiResult:
                      evaluation_id=p.evaluation_id, purpose=p.purpose, coverage=p.coverage, reasons=list(p.reasons), next_cursor=p.next_cursor)
 
 
+def _unverified(services: Any, exc: DisplayError) -> ApiResult:
+    """A display part that fails its hash or decode is a security failure: a typed blocked state, never partial data."""
+    return _result(services, S.Projection("blocked", None, [reason("DISPLAY_NOT_VERIFIED", f"A display part did not verify ({exc.code}: {exc.message}).",
+                                                                   "Rebuild the display package in the pipeline; nothing unverified is shown.")]))
+
+
 def _read(build: Callable[[Any], S.Projection]) -> ApiResult:
     services = svc()
     try:
         return _result(services, build(services))
     except StoreUnavailable:
         raise ApiError(503, "REPOSITORY_UNAVAILABLE", "the repository is unavailable; retry later") from None
+    except DisplayError as exc:
+        return _unverified(services, exc)
 
 
 def _canon(services: Any) -> S.Canon:
@@ -105,19 +114,40 @@ def list_jobs(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     limit = min(int(args.get("limit", policy.int("api.page_default"))), policy.int("api.page_max"))
     try:
         canon = _canon(services)
+        version = content_hash(list(map(repr, canon.revision)))
+        secret = services.settings.session_secret.reveal()
+        offset = decode_cursor(secret, ctx, "list_jobs", filters, version, args["cursor"]) if "cursor" in args else 0
+        proj, page, total = S.jobs_page(canon, ctx, line=filters.get("line"), team=filters.get("team"), disposition=filters.get("disposition"),
+                                        offset=offset, limit=limit)
     except StoreUnavailable:
         raise ApiError(503, "REPOSITORY_UNAVAILABLE", "the repository is unavailable; retry later") from None
-    proj, rows = S.cached("jobs", ctx, canon, filters, lambda: S.jobs_list(canon, ctx, line=filters.get("line"), team=filters.get("team"),
-                                                                          disposition=filters.get("disposition")))
-    version = content_hash(list(map(repr, canon.revision)))
-    secret = services.settings.session_secret.reveal()
-    offset = decode_cursor(secret, ctx, "list_jobs", filters, version, args["cursor"]) if "cursor" in args else 0
-    page = rows[offset:offset + limit]
-    more = offset + limit < len(rows)
-    out = S.Projection(proj.status, {"jobs": page, "total": len(rows), "offset": offset, "limit": limit} if canon.snapshot is not None else None,
+    except DisplayError as exc:
+        return _unverified(services, exc)
+    more = offset + limit < total
+    out = S.Projection(proj.status, {"jobs": page, "total": total, "offset": offset, "limit": limit} if canon.snapshot is not None else None,
                        list(proj.reasons), proj.coverage, proj.source_run_id,
                        next_cursor=encode_cursor(secret, ctx, "list_jobs", filters, version, offset + limit) if more else None)
     return _result(services, out)
+
+
+def _paged(op: str, ctx: RequestContext, args: dict[str, Any], filters: dict[str, Any],
+           build: Callable[[S.Canon, int, int], tuple[S.Projection, int | None]]) -> ApiResult:
+    """A projection paged by an opaque cursor bound to the caller's scope, the filters and the canonical revision."""
+    services = svc()
+    policy = services.policy
+    limit = min(int(args.get("limit", policy.int("api.page_default"))), policy.int("api.page_max"))
+    try:
+        canon = _canon(services)
+        version = content_hash(list(map(repr, canon.revision)))
+        secret = services.settings.session_secret.reveal()
+        offset = decode_cursor(secret, ctx, op, filters, version, args["cursor"]) if "cursor" in args else 0
+        proj, following = build(canon, offset, limit)
+    except StoreUnavailable:
+        raise ApiError(503, "REPOSITORY_UNAVAILABLE", "the repository is unavailable; retry later") from None
+    except DisplayError as exc:
+        return _unverified(services, exc)
+    proj.next_cursor = None if following is None else encode_cursor(secret, ctx, op, filters, version, following)
+    return _result(services, proj)
 
 
 @REGISTRY.operation(
@@ -225,12 +255,20 @@ def get_economics(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
 
 @REGISTRY.operation(
     "get_shortages", "GET", "/api/v1/shortages",
-    summary="Material shortages: used-on, root and descendant impact, ECD versus confirmed receipt",
-    description="Every admitted shortage with its root job, affected jobs and part release status.",
-    grants=ALL_READERS, read_only=True, tags=("supply",),
+    summary="Material shortages: used-on, root and descendant impact, ECD versus confirmed receipt (paginated)",
+    description="Admitted shortages in line and record order with their root job, affected jobs and part release status, optionally for "
+                "one aircraft line; status counts cover every page. Pages use opaque cursors bound to your scope and the source revision.",
+    grants=ALL_READERS, read_only=True, query=_query(line={"type": "integer", "minimum": 1, "maximum": 999999}, **PAGE_QUERY), tags=("supply",),
 )
 def get_shortages(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
-    return _snapshot_read("shortages", ctx, {}, lambda canon: S.shortages(canon, ctx))
+    line = args.get("line")
+
+    def build(canon: S.Canon, offset: int, limit: int) -> tuple[S.Projection, int | None]:
+        proj = S.shortages(canon, ctx, line=line, offset=offset, limit=limit)
+        total = (proj.data or {}).get("total", 0)
+        return proj, (offset + limit if offset + limit < total else None)
+
+    return _paged("get_shortages", ctx, args, {"line": line}, build)
 
 
 @REGISTRY.operation(
@@ -338,24 +376,33 @@ def get_team_lead(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     "get_standards", "GET", "/api/v1/standards",
     summary="Duration standards, certificate requirements and team authority with provenance and a review queue",
     description="Sourced duration statistics and methods, requirement status and bundles, team-inference evidence and data gaps; weak or "
-                "unknown facts form the IE review queue. Proposals never rewrite issued standards.",
-    grants=ALL_READERS, read_only=True, tags=("improve",),
+                "unknown facts form the IE review queue. Proposals never rewrite issued standards. Durations and requirements come one "
+                "page of aircraft at a time in job-label order (or for one line); team inference and data gaps come with the first page.",
+    grants=ALL_READERS, read_only=True, query=_query(line={"type": "integer", "minimum": 1, "maximum": 999999}, **PAGE_QUERY),
+    tags=("improve",),
 )
 def get_standards(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
-    return _snapshot_read("standards", ctx, {}, lambda canon: S.standards(canon, ctx))
+    line = args.get("line")
+    return _paged("get_standards", ctx, args, {"line": line},
+                  lambda canon, offset, limit: S.standards(canon, ctx, line=line, offset=offset, limit=limit))
 
 
 @REGISTRY.operation(
     "get_budget", "GET", "/api/v1/budget",
     summary="Schedule budget: standard person effort, planned duty, NVA and OT by team-shift and job flow budgets",
     description="Per team-shift: prorated standard person-minutes of planned work, duty minutes by kind, non-value-added minutes, OT and "
-                "regular capacity. Per job: flow budget versus planned span.",
-    grants=ALL_READERS, read_only=True, query=_query(date=DAY, purpose={"type": "string", "enum": ["EXECUTABLE", "FORECAST"]}), tags=("plan",),
+                "regular capacity. Per job: flow budget versus planned span, one page of aircraft at a time in job-label order (or for "
+                "one line).",
+    grants=ALL_READERS, read_only=True,
+    query=_query(date=DAY, purpose={"type": "string", "enum": ["EXECUTABLE", "FORECAST"]}, line={"type": "integer", "minimum": 1, "maximum": 999999},
+                 **PAGE_QUERY), tags=("plan",),
 )
 def get_budget(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     day = S.parse_day(args.get("date"))
     purpose = args.get("purpose", "EXECUTABLE")
-    return _snapshot_read("budget", ctx, {"date": day, "purpose": purpose}, lambda canon: S.budget(canon, ctx, day=day, purpose=purpose))
+    line = args.get("line")
+    return _paged("get_budget", ctx, args, {"date": day.isoformat() if day else None, "purpose": purpose, "line": line},
+                  lambda canon, offset, limit: S.budget(canon, ctx, day=day, purpose=purpose, line=line, offset=offset, limit=limit))
 
 
 @REGISTRY.operation(

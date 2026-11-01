@@ -31,14 +31,15 @@ from focus.runtime import build_services
 from focus.web.app import create_app
 from tests.conftest import OBSERVATION_SHIFT, login
 
-# Paths a scenario or command may add: its own namespace, candidate and validation receipts, worker run state, idempotency
-# keys and locks. Everything else (heads, goals, plans, commitments, actuals, evaluations, recognition) must stay byte-identical.
-SCENARIO_WRITES = ("objects/scenario_snapshots/", "objects/scenario_results/", "objects/candidates/", "objects/validations/",
+# Paths a scenario or command may add: its own namespace, candidates with their digests and validation receipts, worker run
+# state, idempotency keys and locks. Everything else (heads, goals, plans, commitments, actuals, evaluations, recognition) must stay byte-identical.
+SCENARIO_WRITES = ("objects/scenario_snapshots/", "objects/scenario_results/", "objects/candidates/", "objects/candidate_digests/", "objects/validations/",
                    "objects/run_cancel_requests/", "state/worker_runs/", "idem/", "locks/")
 
 
 def services_on(root: Path, app_root: Path, **overrides: Any):
     overrides.setdefault("inprocess_worker", False)
+    overrides.setdefault("twin_full_load", True)              # the twin reconciles the whole fleet: opt-in (FOCUS_TWIN_FULL_LOAD)
     settings = Settings.from_env({}, app_root=app_root, **overrides)
     clock = FixedClock(FIXTURE_CUTOFF)
     return build_services(settings, repositories=Repositories(FixtureStore(root), mode="fixture", scope_key=settings.scope_key, clock=clock),
@@ -93,9 +94,11 @@ def twin(c: Any, query: str = "") -> dict[str, Any]:
 
 
 def canon(services: Any) -> Any:
-    from focus.web.serializers import Canon
+    """The whole admitted snapshot and accepted artifacts: the independent truth the twin is checked against."""
+    from focus.web.full_canon import FullCanon
+    from focus.web.serializers import CACHE
 
-    return Canon.load(services)
+    return FullCanon.load(services, CACHE)
 
 
 def minutes(d: Any) -> int:
@@ -323,6 +326,7 @@ def test_twin_correction_appends_an_evaluation_revision_and_still_reconciles(obs
 
 def test_twin_without_accepted_plans_is_honest_and_still_reconciles(demo, app_root) -> None:
     services, _, snapshot = demo
+    services = replace(services, settings=services.settings.replace(twin_full_load=True))
     app = create_app(services=services)
     app.config["TESTING"] = True
     c = app.test_client()
