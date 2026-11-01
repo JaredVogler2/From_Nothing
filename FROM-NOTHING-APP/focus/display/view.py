@@ -194,6 +194,7 @@ class DisplayCanon:
     _extra: dict[str, dict[str, Any]] = field(default_factory=dict)  # plan-snapshot phases and jobs for lookups
     _plans: dict[str, dict[str, list[Any]]] = field(default_factory=dict)
     _seen: dict[str, dict[str, set[str]]] = field(default_factory=dict)
+    edge_labels: dict[str, str] = field(default_factory=dict)       # job buckets: labels of edge ends outside them
 
     @classmethod
     def load(cls, services: Any, cache: Any) -> "DisplayCanon":
@@ -358,7 +359,7 @@ class DisplayCanon:
                             self.forecast_reason, self.stale, self.reasons, self.revision,
                             {k: list(v) for k, v in self._snap.items()}, {k: dict(v) for k, v in self._extra.items()},
                             {p: {k: list(v) for k, v in c.items()} for p, c in self._plans.items()},
-                            {k: {n: set(s) for n, s in v.items()} for k, v in self._seen.items()})
+                            {k: {n: set(s) for n, s in v.items()} for k, v in self._seen.items()}, dict(self.edge_labels))
 
     def _add(self, name: str, records: Iterable[Any]) -> None:
         _merge(self._snap, self._seen.setdefault("snap", {}), name, records, _KEYS[name])
@@ -418,7 +419,7 @@ class DisplayCanon:
                 out._add("durations", part.durations)
                 out._add("requirements", part.requirements)
                 out._add("shortages", part.shortages)
-                out._add_extra("phases", part.other_phases)
+                out.edge_labels.update(part.edge_labels)
                 out._add_extra("jobs", part.other_jobs)
         if plans:
             for purpose in PURPOSES:

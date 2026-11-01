@@ -30,7 +30,7 @@ evidence references. Each part is stored once, under the SHA-256 of its canonica
 | `summary` | Census, CS facts, calendars, economics, gaps, people, certificates, carry-in, a pool index, counts of jobs by aircraft, team and disposition, and shortages by aircraft and status | Header, costs, completions, counts, burndown, unscheduled reason codes, team-day index |
 | `line:<n>` | One aircraft's jobs, dispositions and shortages | Its job outcomes |
 | `standards:<n>` | One aircraft's duration standards and requirements | |
-| `jobs:<b>` (1,024 buckets by job id) | Each job's phases, graph neighborhood, releases, durations, requirements and shortages | Its assignments and outcomes |
+| `jobs:<b>` (1,024 buckets by job id) | Each job's phases, edges, the labels of the far edge ends, releases, durations, requirements and shortages | Its assignments and outcomes |
 | `labels:<b>` | Phase labels of the bucket | |
 | `pools:<team>:<date>` | One team's pools and availability on one day | |
 | `work:<team>:<n>` | One team's phases on one aircraft, with the dispatch rule's inputs (below) | |
@@ -42,10 +42,11 @@ evidence references. Each part is stored once, under the SHA-256 of its canonica
 | `commitments` | | Task-commitment results with their phases and jobs |
 
 **Dispatch facts.** `work:<team>:<n>` carries every record `ValidationInput` and the dispatch rule read for those phases:
-- hard edges into them;
-- predecessor phases and their dispositions;
-- the inputs of AND release phases;
-- release predecessors;
+- hard edges into them, and their predecessor phases (with dispositions) and releases;
+- what the readiness check of an emergency addition can read before its answer is fixed (`build.ready_reach`). The
+  check (`performance.amendments._ready`) walks open AND release phases input by input and stops at the first input that
+  can never be ready, so the part holds only that walk's reach. Including every input of every AND release instead made
+  the parts 8 GB at 50 aircraft;
 - the shortages naming the jobs.
 
 The rule also reads the unconfirmed PART releases among a phase's ancestors, up to verified completion. Those can sit
@@ -150,5 +151,10 @@ process opening every view. Its results will be added here.
 - `tests/integration/test_display_dispatch.py` (3 tests). On a synthetic two-aircraft fleet with unconfirmed parts
   upstream of most work, each team's work parts give `ValidationInput`, `assess_addition` and `assess_action` the same
   answers as the whole snapshot.
-- `tests/unit/test_display_build.py` (61 tests). On random graphs spanning several aircraft, with completed phases,
-  cycles, concurrency edges and edges between aircraft, the graph parts' ancestor walk equals `ValidationInput.ancestors`.
+- `tests/unit/test_display_build.py` (141 tests), on random graphs:
+  - spanning several aircraft, with completed phases, cycles, concurrency edges and edges between aircraft, the graph
+    parts' ancestor walk equals `ValidationInput.ancestors`;
+  - with AND release phases, completed inputs and releases of every status received before or after the request time,
+    `_ready` on a slice holding only the readiness reach answers as on the whole graph.
+- `tests/unit/test_seal_bytes.py` (16 tests). The single-encoding envelope writer gives the same bytes as `seal`, with
+  and without the native encoder.

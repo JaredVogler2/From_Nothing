@@ -75,3 +75,54 @@ def test_a_completed_phase_hides_what_is_above_it() -> None:
     (g,) = line_graphs(snap)
     assert unreceived_ancestors(g, "J1.WORK.0") == {"R1"}                       # the completed phase still names its own input
     assert unreceived_ancestors(g, "J1.WORK.1") == frozenset()                  # but nothing above it gates the work below
+
+
+# ---------------------------------------------------------------------- the readiness walk's reach
+
+def ready_graph(seed: int):
+    """Random phases (some AND release phases), releases of every status with past or future receipts, completed phases."""
+    from datetime import UTC, datetime, timedelta
+
+    from focus.domain import PhaseKind
+
+    rng = random.Random(1000 + seed)
+    base = datetime(2026, 11, 1, 12, tzinfo=UTC)
+    phases = [SimpleNamespace(key=SimpleNamespace(id=f"P{seed}.{i}"), job=f"J{seed}.{i % 4}", line=1, actual_end=None, label=f"phase {i}",
+                              kind=rng.choice([PhaseKind.WORK, PhaseKind.WORK, PhaseKind.RELEASE]),
+                              status=rng.choice(["OPEN", "OPEN", "OPEN", "COMPLETE"])) for i in range(rng.randint(4, 12))]
+    releases = [SimpleNamespace(id=f"R{seed}.{i}", kind=ReleaseKind.PART, status=rng.choice(list(ReleaseStatus)), label=f"part {i}",
+                                ready_at=rng.choice([None, base - timedelta(hours=2), base + timedelta(hours=2)])) for i in range(rng.randint(1, 4))]
+    nodes = [p.key.id for p in phases] + [r.id for r in releases] + ["MISSING"]
+    edges = [SimpleNamespace(id=f"E{n}", pred_phase=rng.choice(nodes), succ_phase=rng.choice([p.key.id for p in phases]), hard=True,
+                             type=EdgeType.FS) for n in range(rng.randint(len(phases), 3 * len(phases)))]
+    dispositions = [SimpleNamespace(job=f"J{seed}.{k}", disposition=rng.choice([Disposition.ADMITTED] * 3 + [Disposition.VERIFIED_COMPLETE]),
+                                    reasons=(), executable_reasons=()) for k in range(4)]
+    return SimpleNamespace(phases=tuple(phases), releases=tuple(releases), edges=tuple(edges), dispositions=tuple(dispositions)), base
+
+
+@pytest.mark.parametrize("seed", range(80))
+def test_the_readiness_reach_holds_everything_ready_reads(seed) -> None:
+    """``_ready`` on a slice holding only the reach (and each AND release's input prefix) answers as on the whole graph,
+    at request times before, between and after the receipts."""
+    from datetime import timedelta
+
+    from focus.display.build import ready_reach
+    from focus.domain import to_minute
+    from focus.performance.amendments import _ready
+
+    snap, base = ready_graph(seed)
+    full = validator(snap)
+    inputs: dict[str, list[int]] = {}
+    for i, e in enumerate(snap.edges):
+        inputs.setdefault(e.succ_phase, []).append(i)
+    done = {p.key.id for p in snap.phases if full.satisfied(p) is not None}
+    for e in snap.edges:
+        reach: set[str] = set()
+        prefix: dict[str, int] = {}
+        ready_reach(e.pred_phase, frozenset(), reach, prefix, releases=full.releases, phases=full.phases, done=done, inputs=inputs, edges=snap.edges)
+        part = validator(snap)
+        part.phases = {n: full.phases[n] for n in reach if n in full.phases}
+        part.releases = {n: full.releases[n] for n in reach if n in full.releases}
+        part.hard_in = {n: [snap.edges[i] for i in inputs[n][:k]] for n, k in prefix.items()}
+        for now in (base - timedelta(hours=3), base, base + timedelta(hours=3)):
+            assert _ready(part, e.pred_phase, to_minute(now)) == _ready(full, e.pred_phase, to_minute(now)), (seed, e.pred_phase, now)

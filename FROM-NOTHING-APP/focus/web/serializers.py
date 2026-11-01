@@ -45,6 +45,7 @@ from typing import Any, Callable, Iterable
 from ..calendar import parse_shift_id
 from ..codec import content_hash
 from ..display.build import NO_TEAM
+from ..display.records import edge_end_label
 from ..display.view import DisplayCanon, accepted_display, slice_input
 from ..domain import PhaseKind
 from .operations import reason
@@ -482,9 +483,8 @@ def job_detail(canon: Canon, ctx: RequestContext, job_id: str) -> Projection:
             return releases[node].label
         p = phases.get(node)
         if p is None:
-            return node
-        j = jobs.get(p.job)
-        return f"{j.key.line}/{j.key.native_id} {p.kind.value} {p.ordinal}" if j else node
+            return canon.edge_labels.get(node, node)                      # the far end of an edge, labeled by the display build
+        return edge_end_label(node, p, jobs.get(p.job))
 
     edges_in = [_edge(e, label) for e in snap.edges if e.hard and e.succ_phase in own_ids and e.pred_phase not in own_ids]
     edges_out = [_edge(e, label) for e in snap.edges if e.hard and e.pred_phase in own_ids and e.succ_phase not in own_ids]

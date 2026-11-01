@@ -17,7 +17,7 @@ from .records import (BUCKETS, BurndownPoint, CompletionRow, LineCount, LineGrap
                       PlanSummary, PlanTeamDay,
                       PoolIndex, SnapshotHolds, SnapshotJobs, SnapshotLabels, SnapshotLine, SnapshotPools, SnapshotReleases, SnapshotStandards,
                       SnapshotSummary,
-                      SnapshotWork, StatusCount, UnitFact, bucket_of)
+                      SnapshotWork, StatusCount, UnitFact, bucket_of, edge_end_label)
 
 HOLD_KINDS = (PhaseKind.IP_QA, PhaseKind.FINAL_QA, PhaseKind.OTHER_BUYOFF)
 NO_TEAM = "~"                                       # team-day part of duties no pool of that day lists
@@ -81,6 +81,36 @@ def line_graphs(snapshot: Any) -> Iterator[LineGraph]:
                         satisfied=tuple(i for i, n in enumerate(order) if n in satisfied),
                         unreceived=tuple(i for i, n in enumerate(order) if n in unreceived),
                         releases=tuple(strip(unreceived[n]) for n in order if n in unreceived))
+
+
+def ready_reach(node: str, trail: frozenset[str], reach: set[str], prefix: dict[str, int], *, releases: dict[str, Any], phases: dict[str, Any],
+                done: set[str], inputs: dict[str, list[int]], edges: Any) -> bool:
+    """Mark what ``performance.amendments._ready`` can read from ``node`` before an answer no request time can change, and
+    return True when it stops there.
+
+    A release that is not confirmed, an unknown node, an open phase that is not an AND release, and a release phase
+    without inputs each stop it. A confirmed release may still wait on ``now``, so the walk goes on past it. An open AND
+    release goes on through its inputs in order (``inputs``: ``ValidationInput.hard_in`` as edge indexes), and ``prefix``
+    keeps how many of each one's inputs are read. ``done`` holds the verified-complete phases."""
+    rel = releases.get(node)
+    if rel is not None:
+        reach.add(node)
+        return not (rel.status is ReleaseStatus.CONFIRMED and rel.ready_at is not None)
+    phase = phases.get(node)
+    if phase is None:
+        return True
+    reach.add(node)
+    if node in done:
+        return False
+    if phase.kind is PhaseKind.RELEASE and node not in trail:
+        mine = inputs.get(node, [])
+        for k, i in enumerate(mine):
+            prefix[node] = max(prefix.get(node, 0), k + 1)
+            if ready_reach(edges[i].pred_phase, trail | {node}, reach, prefix, releases=releases, phases=phases, done=done, inputs=inputs,
+                           edges=edges):
+                return True
+        return not mine
+    return True
 
 
 # ---------------------------------------------------------------------- snapshot
@@ -192,15 +222,14 @@ def snapshot_parts(snapshot: Any, buckets: int = BUCKETS) -> Iterator[tuple[str,
         ends = {n for i in edge_idx for n in (snap.edges[i].pred_phase, snap.edges[i].succ_phase)}
         other_phase_ids = sorted((n for n in ends if n not in own_phases and n in phase_by_id))
         shorts = sorted({i for j in own for i in shortages_of_job.get(j, ())})
-        named = {phase_by_id[n].job for n in other_phase_ids}
-        named |= {j for i in shorts for j in (*snap.shortages[i].affected_jobs, snap.shortages[i].root_job, snap.shortages[i].resolved_job) if j}
+        named = {j for i in shorts for j in (*snap.shortages[i].affected_jobs, snap.shortages[i].root_job, snap.shortages[i].resolved_job) if j}
         named = {j for j in named if j not in own and j in jobs}
         rel_idx = sorted({i for j in own for i in scoped.get(j, ())} | {release_index[n] for n in ends if n in releases}
                          | {release_index[snap.shortages[i].release_id] for i in shorts if snap.shortages[i].release_id in releases})
         yield f"jobs:{b}", SnapshotJobs(
             bucket=b, jobs=tuple(strip(j) for j in mine), dispositions=tuple(disp[j.id] for j in mine if j.id in disp),
             phases=tuple(snap.phases[i] for i in phase_idx), edges=tuple(strip(snap.edges[i]) for i in edge_idx),
-            other_phases=tuple(phase_by_id[n] for n in sorted(other_phase_ids, key=phase_index.__getitem__)),
+            edge_labels={n: edge_end_label(n, phase_by_id[n], jobs.get(phase_by_id[n].job)) for n in other_phase_ids},
             other_jobs=tuple(strip(jobs[j]) for j in sorted(named, key=job_index.__getitem__)),
             releases=tuple(strip(snap.releases[i]) for i in rel_idx),
             durations=tuple(durations[j.id] for j in mine if j.id in durations),
@@ -229,6 +258,15 @@ def snapshot_parts(snapshot: Any, buckets: int = BUCKETS) -> Iterator[tuple[str,
     # each aircraft's dependency graph, then team work by aircraft
     for graph in line_graphs(snap):
         yield f"graph:{graph.line}", graph
+    from ..validation.input import CONCURRENCY_EDGES
+
+    ready_in: dict[str, list[int]] = defaultdict(list)                       # ValidationInput.hard_in, as edge indexes in order
+    for i, e in enumerate(snap.edges):
+        if e.hard and e.type not in CONCURRENCY_EDGES:
+            ready_in[e.succ_phase].append(i)
+    done = {p.key.id for p in snap.phases
+            if (disp.get(p.job) is not None and disp[p.job].disposition is Disposition.VERIFIED_COMPLETE) or p.status == "COMPLETE"}
+
     work: dict[tuple[str, int], list[int]] = defaultdict(list)
     for i, p in enumerate(snap.phases):
         team = phase_team(p)
@@ -238,22 +276,17 @@ def snapshot_parts(snapshot: Any, buckets: int = BUCKETS) -> Iterator[tuple[str,
         mine = [snap.phases[i] for i in idx]
         own = {p.key.id for p in mine}
         job_ids = sorted({p.job for p in mine if p.job in jobs}, key=job_index.__getitem__)
-        edge_set = {i for pid in own for i in into.get(pid, ())}
+        edge_set = {i for pid in own for i in into.get(pid, ())}             # assess_action reads every edge into the phase
         preds = {snap.edges[i].pred_phase for i in edge_set}
-        # an AND release phase among the predecessors is ready only when its own inputs are (performance.amendments._ready)
-        frontier = [n for n in preds if n in phase_by_id and phase_by_id[n].kind is PhaseKind.RELEASE]
-        expanded: set[str] = set()
-        while frontier:
-            n = frontier.pop()
-            if n in expanded:
-                continue
-            expanded.add(n)
-            for i in into.get(n, ()):
-                edge_set.add(i)
-                pred = snap.edges[i].pred_phase
-                preds.add(pred)
-                if pred in phase_by_id and phase_by_id[pred].kind is PhaseKind.RELEASE:
-                    frontier.append(pred)
+        reach: set[str] = set()
+        prefix: dict[str, int] = {}
+        for pid in own:                                                       # what assess_addition's readiness walk can reach
+            for i in ready_in.get(pid, ()):
+                ready_reach(snap.edges[i].pred_phase, frozenset(), reach, prefix, releases=releases, phases=phase_by_id, done=done,
+                            inputs=ready_in, edges=snap.edges)
+        for node, k in prefix.items():
+            edge_set.update(ready_in[node][:k])
+        preds |= reach
         edge_idx = sorted(edge_set)
         pred_phases = sorted((n for n in preds if n not in own and n in phase_by_id), key=phase_index.__getitem__)
         own_jobs = set(job_ids)

@@ -54,6 +54,14 @@ def bucket_of(job_id: str, buckets: int = BUCKETS) -> int:
     return (int(digits, 16) if digits else sum(job_id.encode())) % buckets
 
 
+def edge_end_label(node: str, phase: Any, job: Any) -> str:
+    """How a job's detail labels the phase at the far end of one of its edges: ``<line>/<SOI> <KIND> <ordinal>``, or the
+    node id when the phase or its job is not admitted. One rule for the display build and the projection."""
+    if phase is None or job is None:
+        return node
+    return f"{job.key.line}/{job.key.native_id} {phase.kind.value} {phase.ordinal}"
+
+
 def job_of_phase(phase_id: str) -> str:
     """The job id of a phase id (``<job id>.<KIND>.<ordinal>``)."""
     return phase_id.split(".", 1)[0]
@@ -216,8 +224,8 @@ class SnapshotJobs:
     dispositions: tuple[JobDisposition, ...]
     phases: tuple[Phase, ...]
     edges: tuple[Edge, ...]                            # every hard edge touching one of the bucket's phases
-    other_phases: tuple[Phase, ...]                    # edge ends outside the bucket
-    other_jobs: tuple[Job, ...]                        # their jobs, and jobs the bucket's shortages name
+    edge_labels: dict[str, str]                        # the label of each edge end outside the bucket (``edge_end_label``)
+    other_jobs: tuple[Job, ...]                        # jobs of another bucket the bucket's shortages name
     releases: tuple[ReleaseMilestone, ...]             # releases scoped to the jobs or ending one of the edges
     durations: tuple[DurationEstimate, ...]
     requirements: tuple[JobRequirement, ...]
