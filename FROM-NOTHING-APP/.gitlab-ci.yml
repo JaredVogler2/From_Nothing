@@ -119,7 +119,7 @@ schedule_validate:
   stage: schedule
   needs: [acquire_admit, { job: native_wheel, artifacts: true }]
   environment: { name: focus-app }
-  tags: [focus-scheduler]                           # a runner with at least 4 vCPU and 16 GB (50 aircraft peaked at 6-9 GB)
+  tags: [focus-scheduler]                           # at least 4 vCPU and 16 GB; 32 GB at 50 aircraft (loading the stored snapshot peaks near 15 GB)
   variables:
     FOCUS_NATIVE_CORE: "true"                       # the Rust core: the same plans as the Python core, far faster
   script:

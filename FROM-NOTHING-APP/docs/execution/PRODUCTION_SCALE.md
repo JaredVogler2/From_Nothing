@@ -130,9 +130,29 @@ Five things the synthetic run cannot show, each to measure on a real extract:
      but is far too slow at 50 aircraft.
    - Build the wheel with `native_wheel`, or bake it into a prebuilt image so the job spends no time installing.
    - With one core the search moves decode one at a time: the same plan, about 90 s more.
-   - Not yet measured at 50 aircraft: the draft pipeline passes the admitted snapshot from `acquire_admit` to
-     `schedule_validate` through the store. The simulation admits and plans in one process, so time that hand-off on
-     the real server. If it is slow, run admission and planning in one job (keeping each role's credentials).
+   - **The store hand-off is measured, and it is heavy.** Each role process loads the admitted snapshot from the
+     store: it parses the stored JSON, builds the objects and verifies the hash. The simulation never does this,
+     because it admits and plans in one process. Measured on this machine (`load_snapshot`, November 1, 2026):
+
+     | Fleet | Stored snapshot | First load in a process | Again in the same process | Peak memory |
+     | --- | --- | --- | --- | --- |
+     | 5 aircraft | 325 MB | 34 s | 0.5 s | 2.8 GB |
+     | 10 aircraft | 472 MB | 46 s | 0.6 s | 4.0 GB |
+     | 20 aircraft | 737 MB | 77 s | 1.2 s | 6.0 GB |
+     | 50 aircraft (shift 40) | 1.8 GB | projected about 3.5 min | about 3 s | projected 14 to 15 GB |
+
+     At 50 aircraft the measuring process was killed for memory at 14 GB on this 16 GB machine.
+
+   - **Cold loads on the executable path.** Before speed item 2 there were seven:
+     - admit;
+     - schedule and validate, each loading again;
+     - staging and signing, each also loading the current plan's snapshot to read its cutoff.
+
+     Now there are three: schedule, stage and sign. The admit step reuses the snapshot acquisition stored, validate
+     reuses the one schedule loaded, and the cutoff comes from the source run. A whole pipeline goes from 13 cold loads
+     to 6, about 24 minutes of loading at 50 aircraft by the projection above.
+   - **Runner memory.** At 50 aircraft, tag the roles that load the snapshot (app, stager and signer) to runners with at
+     least 32 GB. A faster, leaner snapshot decoder is the next lever.
 5. **Headroom.** 9.6 minutes fits the 10-minute target with little margin.
    - The repeatable knobs are fewer search moves (they accepted nothing at this scale) and fewer repair boosts.
    - The bigger lever would be a detailed horizon with a coarser projection beyond it, which changes how completions are

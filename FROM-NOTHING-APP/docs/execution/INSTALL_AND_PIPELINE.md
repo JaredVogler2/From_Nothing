@@ -194,10 +194,14 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
     records the drift (`planning.drift_check`): cost, deferred work and aircraft completion dates, repair minus full.
   - `docs/execution/PLAN_REPAIR.md` explains the method, the measurements and the limits.
 - **Admitted data is read once per process.** A process parses and verifies the admitted snapshot the first time it
-  loads it. Later steps in the same process reuse it while the stored bytes are unchanged; every load still reads and
-  hashes those bytes, so a changed record is parsed and verified again. A role that runs `schedule` and `validate`, or
-  `all` roles in one process, therefore loads the snapshot once. Publishing reads the current plan's source cutoff (the
-  stale-replay check) from its source run, not by loading that plan's snapshot.
+  loads it.
+  - Later steps in the same process reuse it while the stored bytes are unchanged. Every load still reads and hashes
+    those bytes, so a changed record is parsed and verified again.
+  - Acquisition registers the snapshot it just stored, so the `admit` step of the same run does not parse it at all.
+  - A role that runs `schedule` and `validate`, or `all` roles in one process, loads the snapshot once.
+  - Publishing reads the current plan's source cutoff (the stale-replay check) from its source run, not by loading that
+    plan's snapshot.
+  - At 50 aircraft a cold load is projected at about 3.5 minutes and 14 to 15 GB (`PRODUCTION_SCALE.md`).
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never
   runs without the accepted plan's frozen goals.
@@ -222,7 +226,8 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included. `sign_accept` is
   `when: manual` and holds the only signing reference.
 - **The scheduling job** (`schedule_validate`) does the heavy work: it associates jobs with people and start times.
-  - Tag it to a runner with at least 4 vCPU and 16 GB.
+  - Tag it to a runner with at least 4 vCPU and 16 GB, or 32 GB at 50 aircraft: loading the stored snapshot then
+    peaks near 15 GB (`PRODUCTION_SCALE.md`). The stager and signer jobs load it too.
   - It installs the native wheel that `native_wheel` built from the same commit (an artifact, never an index copy) and
     sets `FOCUS_NATIVE_CORE=true`. A wheel built for another protocol is refused and the Python core runs, with the
     reason in the run receipt.
