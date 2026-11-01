@@ -334,3 +334,25 @@ def test_recognition_is_the_frozen_value_of_earned_goal_units(sims, app_root) ->
     decided = _all(first, "SELECT COUNT(*) FROM perf_claim WHERE decision IN ('APPROVED', 'REJECTED')")[0][0]
     assert data["streams"].get("excusal_decided", 0) == decided
     assert data["not_derived"] == {}                                                 # a new run stores every fact the rules need
+
+
+def test_auto_planning_repairs_the_previous_plan_between_daily_full_solves(tmp_path) -> None:
+    """The day's first shift gets the full solve; the next two repair the plan the shift before accepted. Every plan is
+    still independently valid, and the floor works the repaired plans."""
+    import json
+
+    rows: list[dict] = []
+
+    def log(message: str) -> None:
+        if message.startswith("{"):
+            rows.append(json.loads(message))
+
+    db = tmp_path / "auto.db"
+    run(replace(SPEC, planning="auto"), db, log=log)
+    shifts = _all(db, "SELECT shift_no, valid, stop_reason FROM sim_shift ORDER BY shift_no")
+    assert shifts == [(0, 1, "move_bound"), (1, 1, "repair"), (2, 1, "repair")]
+    ran = [{purpose: record["ran"] for purpose, record in row["planning"].items()} for row in rows]
+    assert ran == [{"EXECUTABLE": "full", "FORECAST": "full"}] + [{"EXECUTABLE": "repair", "FORECAST": "repair"}] * 2
+    assert "the daily full solve" in rows[0]["planning"]["EXECUTABLE"]["reason"]
+    assert all(row["planning"]["EXECUTABLE"]["kept"] > 0 for row in rows[1:])            # the accepted plan is kept where it holds
+    assert {s for (s,) in _all(db, "SELECT DISTINCT shift_no FROM exec_assignment")} == {0, 1, 2}

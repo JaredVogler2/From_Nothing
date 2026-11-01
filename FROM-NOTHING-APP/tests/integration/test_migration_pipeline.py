@@ -326,6 +326,29 @@ def test_executable_plan_is_accepted_before_the_forecast_is_scheduled(pipeline_s
     assert forecast.published.source_run_id == executable.published.source_run_id                   # the same admitted snapshot
 
 
+def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> None:
+    """``auto`` at the fixture cutoff (06:00 local, shift 1) is the daily full solve and measures the repair it replaced;
+    a ``repair`` pipeline then repairs both plans the first one accepted."""
+    services = pipeline_services
+    first = _pid(services, "plan-auto")
+    assert O.load(services, first)[0]["request"]["planning"] == services.policy.str("planning.default_mode") == "auto"
+    for role in ROLE_SEQUENCE:
+        O.run_role(services, first, role)
+    steps = O.load(services, first)[0]["steps"]
+    auto = steps["schedule"]["output"]["EXECUTABLE"]["planning"]
+    assert (auto["requested"], auto["ran"]) == ("auto", "full") and "daily full solve" in auto["reason"]
+    assert auto["drift"]["repair_seconds"] >= 0                                    # the bootstrap incumbent was repaired for comparison
+    assert steps["forecast"]["output"]["FORECAST"]["planning"]["ran"] == "full"
+    second = O.create(services, key="plan-repair", budget_seconds=10, max_moves=10, planning="repair")["pipeline_id"]
+    for role in ROLE_SEQUENCE:
+        O.run_role(services, second, role)
+    assert O.status(services, second)["state"] == "completed"
+    steps = O.load(services, second)[0]["steps"]
+    for step, purpose in (("schedule", "EXECUTABLE"), ("forecast", "FORECAST")):
+        record = steps[step]["output"][purpose]["planning"]
+        assert (record["requested"], record["ran"]) == ("repair", "repair") and record["kept"] + record["rehomed"] <= record["hints"]
+
+
 def test_a71_cli_role_that_only_waited_is_not_a_success(pipeline_services) -> None:
     services = pipeline_services
     args = Namespace(key="cli", role="signer", step=None, status=False, scenario=None, budget_seconds=10, max_moves=10, lease_seconds=900)

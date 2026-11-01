@@ -30,6 +30,7 @@ APP_ROOT = Path(__file__).resolve().parents[2]
 
 from ..calendar import ShiftPolicy, build_shift  # noqa: E402
 from ..clock import FixedClock  # noqa: E402
+from ..codec import to_jsonable  # noqa: E402
 from ..config import Settings  # noqa: E402
 from ..data.fullscale_fixture import FLEET_FACTS, FleetSpec, build_fullscale_fixture  # noqa: E402
 from ..data.repositories import Repositories  # noqa: E402
@@ -60,6 +61,7 @@ class SimSpec:
     cutoff_lead_minutes: int = 15
     seed: int = 20261026
     shifts: int | None = None                   # stop after this many shifts (a trial); None runs every shift of every day
+    planning: str = "full"                      # full | repair | auto: how each shift's plans are made (orchestrator.plan_by_mode)
 
 
 def _iso(minute: int | None) -> str | None:
@@ -141,12 +143,17 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         order = [name for name in spec.purposes if name != dispatch_name] + [dispatch_name]
         timings.update(plan_s=0.0, validate_s=0.0, write_s=0.0)
         accepted: dict[str, Any] = {}
+        planning: dict[str, Any] = {}
         dispatch = None
         for purpose_name in order:
             t = time.time()
             sp = plan(services, snapshot, Purpose(purpose_name), incumbent=incumbent.get(purpose_name) if incumbent else None,
-                      max_moves=spec.max_moves, budget_seconds=spec.budget_seconds, created_at=cutoff, max_repairs=spec.max_repairs)
+                      max_moves=spec.max_moves, budget_seconds=spec.budget_seconds, created_at=cutoff, max_repairs=spec.max_repairs,
+                      mode=spec.planning)
             timings["plan_s"] += time.time() - t
+            timings[f"plan_{purpose_name.lower()}_s"] = time.time() - t
+            if sp.run.planning:
+                planning[purpose_name] = sp.run.planning
             timings["validate_s"] += sp.validate_s
             t = time.time()
             _write_plan(db, k, purpose_name, sp, shift, tz)
@@ -198,7 +205,8 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         db.commit()
         done = Counter(r[11] for r in outcome.rows)
         row = {"shift": k, "id": shift.id, "valid": val.valid, "assignments": len(dispatch.plan.assignments), "executed": dict(done),
-               "jobs_completed": outcome.completed_jobs, **{key: round(v, 1) for key, v in timings.items()}, "rss_mb": round(rss)}
+               "jobs_completed": outcome.completed_jobs, **{key: round(v, 1) for key, v in timings.items()}, "rss_mb": round(rss),
+               **({"planning": to_jsonable(planning)} if planning else {})}
         del snapshot, build, dispatch, outcome
         row["rss_after_mb"] = round(_release_memory())
         summary.append(row)
@@ -332,11 +340,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--teams", type=int, default=30)
     parser.add_argument("--team-size", default="10,30")
     parser.add_argument("--shifts", type=int, default=None, help="stop after this many shifts (a trial run)")
+    parser.add_argument("--planning", choices=["full", "repair", "auto"], default="full",
+                        help="full solve every shift (default), repair the previous plan, or auto (repair between daily full solves)")
     args = parser.parse_args(argv)
     lo, hi = (int(x) for x in args.team_size.split(","))
     spec = SimSpec(fleet=FleetSpec(n_aircraft=args.aircraft, baseline=args.baseline, edges=args.edges, rework_total=args.rework, teams=args.teams,
                                    team_size=(lo, hi)), days=args.days, purposes=tuple(p.strip() for p in args.purposes.split(",")),
-                   max_moves=args.max_moves, max_repairs=args.max_repairs, shifts=args.shifts)
+                   max_moves=args.max_moves, max_repairs=args.max_repairs, shifts=args.shifts, planning=args.planning)
     db_path = Path(args.db)
     if db_path.exists():
         print(f"{db_path} exists; remove it or choose another --db", file=sys.stderr)

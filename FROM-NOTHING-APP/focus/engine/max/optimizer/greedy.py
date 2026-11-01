@@ -25,6 +25,10 @@ economic redispatch or a neighbourhood perturbation). For each phase it does the
 * **Waiting crew.** With ``qa.crew_during_ip = WAIT``, the production crew of the segment
   before an in-process inspection holds WAIT duty until the inspection ends. This is booked
   atomically with the inspector.
+* **Repair hints.** A repair keeps the accepted incumbent: each hinted phase is dispatched after
+  the commitments, in its incumbent start order, and tried first at its incumbent slot with its
+  incumbent crew (the same checks as a defended phase). If that slot no longer holds, it is placed
+  by the ordinary search at once. New and changed work then fills the remaining capacity.
 * **Defended commitments.** Ready commitments are dispatched first and the phases that must
   precede a commitment come second, ahead of all other work. Each defended phase is tried in
   two attempts: first the exact start and full crew, then the same start with an alternate
@@ -44,7 +48,7 @@ from ...crew_selection import choose_crew
 from ...ledger import DutyLedger, LedgerError
 from ...model import EngineContext
 
-LEAD_DEFENDED, LEAD_CONE, LEAD_OTHER = 0, 1, 2       # dispatch classes ahead of the caller's priority key
+LEAD_DEFENDED, LEAD_CONE, LEAD_HINT, LEAD_OTHER = 0, 1, 2, 3   # dispatch classes ahead of the caller's priority key
 REQUEUE = "DEFENSE_FAILED_REQUEUED"
 
 
@@ -109,6 +113,8 @@ class DecodeResult:
     ledger: DutyLedger | None = None
     paths_used: set[str] = field(default_factory=set)
     attempts: int = 0
+    kept: int = 0                                                    # repair hints placed at their incumbent slot and crew
+    rehomed: int = 0                                                 # repair hints whose slot no longer held: searched again
     waits: dict[str, int] = field(default_factory=dict)              # ordinary placed phase -> minutes past its earliest start
 
 
@@ -165,11 +171,12 @@ def _candidate_starts(ctx: EngineContext, ledger: DutyLedger, shift, pool_id: st
 
 class Decoder:
     def __init__(self, ctx: EngineContext, priority: Callable[[str], tuple], *, defended: Mapping[str, DefendedTask] | None = None,
-                 committed: Callable[[str], tuple] | None = None):
+                 committed: Callable[[str], tuple] | None = None, hints: Mapping[str, DefendedTask] | None = None):
         self.ctx = ctx
         self.priority = priority
         self.committed = committed or priority       # order of defended phases and their prerequisites (the first classes)
         self.defended = dict(defended or {})
+        self.hints = dict(hints or {})               # repair: incumbent slots kept when they still hold
         self._cone = self._commitment_cone()
         self._requeued: set[str] = set()
 
@@ -189,6 +196,9 @@ class Decoder:
             return (LEAD_DEFENDED, *self.committed(pid))
         if pid in self._cone:
             return (LEAD_CONE, *self.committed(pid))
+        hint = self.hints.get(pid)
+        if hint is not None:
+            return (LEAD_HINT, hint.start, *self.priority(pid))
         return (LEAD_OTHER, *self.priority(pid))
 
     # ---------------------------------------------------------------- driver
@@ -287,6 +297,14 @@ class Decoder:
         if unmet:
             return None, unmet
         defended = self.defended.get(phase.key.id)
+        hint = self.hints.get(phase.key.id) if defended is None else None
+        if hint is not None:
+            placement = self._keep(phase, hint, start_floor, end_floor, conditional, result, before=before)
+            if placement is not None:
+                result.kept += 1
+                result.waits[phase.key.id] = placement.start - start_floor
+                return placement, "KEPT"
+            result.rehomed += 1
         if defended is None:
             placement, reason = self._search_bounded(phase, start_floor, end_floor, conditional, result, before=before)
             if placement is not None:
@@ -490,6 +508,24 @@ class Decoder:
             return placement
         self._record(d, phase, "PENDING_MOVE", reason1, reason2, "both attempts failed; minimal audited move next", None, result)
         return None
+
+    def _keep(self, phase: Phase, hint: DefendedTask, start_floor: int, end_floor: int, conditional: bool, result: DecodeResult,
+              before: int | None = None) -> PhasePlacement | None:
+        """A repair hint at its incumbent slot and crew, under the checks a defended phase gets; None when it no longer holds."""
+        ctx = self.ctx
+        shift = next((s for s in ctx.line_shifts(ctx.jobs[phase.job].line) if s.id == hint.shift_id), None)
+        if shift is None or start_floor > hint.start or not shift.valid_start(hint.start) or (before is not None and hint.start >= before):
+            return None
+        fit = shift.advance(hint.start, phase.work_minutes, 0) or shift.advance(hint.start, phase.work_minutes, ctx.shift_policy.ot_minutes)
+        latest = ctx.job_latest(phase.job)
+        if fit is None or fit[0] < end_floor or (latest is not None and fit[0] > latest):
+            return None
+        pool = ctx.pool_for(phase.role_demands[0].team, shift)
+        if pool is None:
+            return None
+        result.paths_used.add("repair_hints")
+        placement, _ = self._book(phase, shift, pool.id, fit[1], conditional, result, exact_crew=hint.crew)
+        return placement
 
     def _unreached_commitments(self, result: DecodeResult) -> None:
         """A defended phase that never reached placement (late part, blocked predecessor, not placeable) is UNSAFE with its cause."""

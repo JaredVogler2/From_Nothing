@@ -98,17 +98,23 @@ def _blank_step(defn: StepDef, ordinal: int) -> dict[str, Any]:
 
 
 def create(services: Any, *, key: str, scenario: str | None = None, budget_seconds: float | None = None,
-           max_moves: int | None = None) -> dict[str, Any]:
-    """Create (or return) the pipeline for ``key`` in this scope; the request is fixed at creation (idempotent)."""
+           max_moves: int | None = None, planning: str | None = None) -> dict[str, Any]:
+    """Create (or return) the pipeline for ``key`` in this scope; the request is fixed at creation (idempotent).
+
+    ``planning`` (full | repair | auto; default policy ``planning.default_mode``) is how both plans are made: ``auto``
+    repairs the accepted plan between daily full solves (``orchestrator.planning_mode``)."""
     repos = services.repositories
     scope = services.settings.scope_key
     pid = pipeline_id(scope, key)
     found = repos.get_state(PIPELINES, pid)
     if found is not None:
         return found[0]
+    planning = planning or str(services.policy.optional("planning.default_mode", "full"))
+    if planning not in ("full", "repair", "auto"):
+        raise StepFailed("BAD_PLANNING_MODE", f"planning must be full, repair or auto, not {planning!r}")
     doc = {"schema_version": 1, "pipeline_id": pid, "scope": scope, "key": key, "created_at": services.clock.now(),
            "request": {"scenario": scenario or services.settings.scenario_id, "budget_seconds": budget_seconds, "max_moves": max_moves,
-                       "mode": services.settings.mode, "policy_id": services.policy.id},
+                       "planning": planning, "mode": services.settings.mode, "policy_id": services.policy.id},
            "steps": {d.name: _blank_step(d, i) for i, d in enumerate(STEPS)}}
     try:
         repos.put_state(PIPELINES, pid, doc, 0)
@@ -310,9 +316,9 @@ def _schedule_one(services: Any, doc: dict[str, Any], inputs: dict[str, Any], pu
 
     request = doc["request"]
     plan, run = schedule(services, source_run=inputs["admit"]["source_run_id"], purpose=Purpose(purpose),
-                         budget_seconds=request["budget_seconds"], max_moves=request["max_moves"])
+                         budget_seconds=request["budget_seconds"], max_moves=request["max_moves"], mode=request.get("planning", "full"))
     return {"candidate_id": plan.id, "valid": run.validation.valid, "violations": len(run.validation.violations),
-            "solver": run.solver.get("status")}
+            "solver": run.solver.get("status"), "planning": run.planning or None}
 
 
 def _validate_one(services: Any, inputs: dict[str, Any], purpose: str, item: Mapping[str, Any]) -> dict[str, Any]:
@@ -390,7 +396,8 @@ def step_sign_accept(services: Any, doc: dict[str, Any], inputs: dict[str, Any])
 def step_forecast(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
     """The full-horizon forecast on the same admitted snapshot, after the executable plan is out: scheduled and validated."""
     scheduled = _schedule_one(services, doc, inputs, "FORECAST")
-    return {"FORECAST": {**_validate_one(services, inputs, "FORECAST", scheduled), "solver": scheduled["solver"]}}
+    return {"FORECAST": {**_validate_one(services, inputs, "FORECAST", scheduled), "solver": scheduled["solver"],
+                         "planning": scheduled["planning"]}}
 
 
 def step_forecast_stage_readback(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
@@ -431,7 +438,7 @@ def cli_pipeline(services: Any, args: Any) -> dict[str, Any]:
     if getattr(args, "status", False):
         return status(services, pid)
     create(services, key=key, scenario=getattr(args, "scenario", None), budget_seconds=getattr(args, "budget_seconds", None),
-           max_moves=getattr(args, "max_moves", None))
+           max_moves=getattr(args, "max_moves", None), planning=getattr(args, "planning", None))
     lease = float(getattr(args, "lease_seconds", 900.0) or 900.0)
     if getattr(args, "step", None):
         step = args.step

@@ -156,6 +156,7 @@ class Defense:
     other_results: tuple[CommitmentResult, ...] = ()
     status: str = "NO_INCUMBENT"
     detail: str = ""
+    plan: IncumbentPlan | None = None           # the loaded incumbent, which a repair keeps beyond the defended horizon
 
     def receipt(self) -> dict[str, str]:
         return {"id": self.incumbent_id or "", "status": self.status, "detail": self.detail, "defended": str(len(self.defended))}
@@ -172,17 +173,12 @@ def defended_tasks(services: Any, ctx: EngineContext) -> Defense:
     return defense_for(ctx, found.plan, status=found.status, detail=found.detail)
 
 
-def defense_for(ctx: EngineContext, plan: IncumbentPlan, *, status: str, detail: str) -> Defense:
-    """The defended tasks and other commitment outcomes of ``plan`` (an accepted incumbent) against this context."""
-    horizon = ctx.policy.int("commitment.horizon_calendar_days")
+def _located(ctx: EngineContext, plan: IncumbentPlan):
+    """Each incumbent assignment found in this context: (n, assignment, incumbent id, day offset, job, phase, performed)."""
     today = ctx.snapshot.cutoff.astimezone(ctx.shift_policy.tz).date()
     by_key = {(j.line, j.key.native_id): j for j in ctx.jobs.values()}
     positions = plan.positions if len(plan.positions) == len(plan.assignments) else ()
-    out = Defense(incumbent_id=plan.id, status=status, detail=detail)
-    others: list[CommitmentResult] = []
     for n, a in enumerate(plan.assignments):
-        aid = digest_id("INCA", plan.id, n)
-        offset = (a.day - today).days
         job = by_key.get((a.line, a.soi))
         phase, performed = None, False
         if job is not None:
@@ -193,6 +189,35 @@ def defense_for(ctx: EngineContext, plan: IncumbentPlan, *, status: str, detail:
                 phase, performed = located
             else:
                 phase = next((p for p in ctx.job_phases[job.id] if p.kind is kind and p.ordinal == a.ordinal), None)
+        yield n, a, digest_id("INCA", plan.id, n), (a.day - today).days, job, phase, performed
+
+
+def _slot(ctx: EngineContext, plan: IncumbentPlan, a: IncumbentAssignment, aid: str, phase: Any, offset: int) -> DefendedTask:
+    start = shift_local_minute(a.day, a.shift, a.start_local, ctx.shift_policy, ctx.site)     # S3 starts after midnight: next day
+    crew = tuple(PersonKey(native, plan.namespace).id for native in a.crew)
+    return DefendedTask(phase.key.id, aid, shift_id_of(ctx.site, a.day, a.shift), start, crew, offset)
+
+
+def repair_hints(ctx: EngineContext, plan: IncumbentPlan, defended: Mapping[str, DefendedTask]) -> dict[str, DefendedTask]:
+    """Every open incumbent phase outside the commitment defense, at its incumbent slot and crew: what a repair keeps when
+    it is still feasible (the decoder re-places it only when it is not). Completed and performed work, and phases the
+    snapshot no longer has, keep nothing."""
+    hints: dict[str, DefendedTask] = {}
+    for _, a, aid, offset, job, phase, performed in _located(ctx, plan):
+        if job is None or phase is None or performed or ctx.dispositions[job.id].disposition is Disposition.VERIFIED_COMPLETE:
+            continue
+        if phase.key.id not in defended and phase.key.id not in hints:
+            hints[phase.key.id] = _slot(ctx, plan, a, aid, phase, offset)
+    return hints
+
+
+def defense_for(ctx: EngineContext, plan: IncumbentPlan, *, status: str, detail: str) -> Defense:
+    """The defended tasks and other commitment outcomes of ``plan`` (an accepted incumbent) against this context."""
+    horizon = ctx.policy.int("commitment.horizon_calendar_days")
+    positions = plan.positions if len(plan.positions) == len(plan.assignments) else ()
+    out = Defense(incumbent_id=plan.id, status=status, detail=detail, plan=plan)
+    others: list[CommitmentResult] = []
+    for n, a, aid, offset, job, phase, performed in _located(ctx, plan):
         if job is not None and ctx.dispositions[job.id].disposition is Disposition.VERIFIED_COMPLETE:
             others.append(CommitmentResult(phase.key.id if phase else job.id, job.id, aid, offset, "COMPLETED", "not needed", "not needed",
                                            "verified complete since acceptance", None))
@@ -215,9 +240,7 @@ def defense_for(ctx: EngineContext, plan: IncumbentPlan, *, status: str, detail:
                                            f"REMAINING_WORK_RESPLIT: this slot's work is now part of {phase.label}, defended from an earlier "
                                            f"slot", None))
             continue
-        start = shift_local_minute(a.day, a.shift, a.start_local, ctx.shift_policy, ctx.site)     # S3 starts after midnight: next day
-        crew = tuple(PersonKey(native, plan.namespace).id for native in a.crew)
-        out.defended[phase.key.id] = DefendedTask(phase.key.id, aid, shift_id_of(ctx.site, a.day, a.shift), start, crew, offset)
+        out.defended[phase.key.id] = _slot(ctx, plan, a, aid, phase, offset)
     out.other_results = tuple(others)
     return out
 
