@@ -160,12 +160,20 @@ def snapshot_parts(snapshot: Any, buckets: int = BUCKETS) -> Iterator[tuple[str,
             releases=tuple(strip(releases[r]) for r in sorted(rels, key=release_index.__getitem__)),
             other_jobs=tuple(strip(jobs[j]) for j in sorted(named, key=job_index.__getitem__)))
 
-    # standards and requirements of each aircraft
+    # standards and requirements of each aircraft (snapshot order within each)
+    line_of_job = {j.id: j.key.line for j in snap.jobs}
+    durations_of_line: dict[int, list[Any]] = defaultdict(list)
+    for d in snap.durations:
+        if d.job in line_of_job:
+            durations_of_line[line_of_job[d.job]].append(d)
+    requirements_of_line: dict[int, list[Any]] = defaultdict(list)
+    for r in snap.requirements:
+        if r.job in line_of_job:
+            requirements_of_line[line_of_job[r.job]].append(strip(r))
     for line in lines:
-        own = {snap.jobs[i].id for i in jobs_of_line.get(line, ())}
-        yield f"standards:{line}", SnapshotStandards(
-            line=line, durations=tuple(d for d in snap.durations if d.job in own),
-            requirements=tuple(strip(r) for r in snap.requirements if r.job in own))
+        yield f"standards:{line}", SnapshotStandards(line=line, durations=tuple(durations_of_line.get(line, ())),
+                                                     requirements=tuple(requirements_of_line.get(line, ())))
+    del durations_of_line, requirements_of_line
 
     # job buckets
     jobs_of_bucket: dict[int, list[int]] = defaultdict(list)
