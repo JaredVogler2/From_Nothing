@@ -832,6 +832,22 @@ def seal(
     )
 
 
+def seal_bytes(type_name: str, record_id: str, payload_bytes: bytes, *, created_at: datetime, source_run_id: str | None = None,
+               policy_hash: str | None = None, purpose: str | None = None) -> bytes:
+    """``seal(...).to_bytes()`` for a payload already encoded by ``canonical_dumps``.
+
+    The envelope's own members are encoded once and the payload bytes are spliced in at their sorted place, so a large
+    record is encoded once (natively when the encoder is installed) instead of converted to JSON-native data and encoded
+    twice. Canonical JSON encodes each member independently in sorted key order, so the bytes are identical."""
+    if not type_name or not record_id:
+        raise CodecError("BAD_ENVELOPE", "envelope type and id are required")
+    head = _native_dumps({"created_at_utc": format_utc(created_at), "id": record_id})
+    tail = _native_dumps({"policy_hash": policy_hash, "purpose": purpose, "schema_version": SCHEMA_VERSION, "source_run_id": source_run_id,
+                          "type": type_name})
+    body = head[:-1] + b',"payload":' + payload_bytes + b"," + tail[1:]
+    return _ENVELOPE_HEAD + hashlib.sha256(body).hexdigest().encode("ascii") + b'",' + body[1:]
+
+
 def _check_envelope_fields(data: Any, expected_type: str | None) -> None:
     if not isinstance(data, dict):
         raise CodecError("BAD_ENVELOPE", "envelope must be a JSON object")

@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Iterable
 
-from ..codec import CodecError, content_hash, from_jsonable, open_envelope, seal
+from ..codec import CodecError, canonical_dumps, content_hash, from_jsonable, open_envelope, seal_bytes, sha256_hex
 from ..data.store import ImmutableConflict
 from .build import plan_parts, snapshot_parts
 from .records import BUCKETS, BUILDER, DISPLAY_SCHEMA, PART_TYPES, CandidateDigest, DisplayManifest, DisplayReceipt, PartRef
@@ -49,11 +49,11 @@ class DisplayError(RuntimeError):
 
 # ---------------------------------------------------------------------- writing
 
-def _put_part(repos: Any, sha: str, kind: str, record: Any, created_at: datetime) -> int:
+def _put_part(repos: Any, sha: str, kind: str, payload: bytes, created_at: datetime) -> int:
     raw = repos.get_raw(PARTS, sha)
     if raw is not None:
         return len(raw)                                     # content-addressed: the same hash is the same part
-    data = seal(kind, sha, record, created_at=created_at).to_bytes()
+    data = seal_bytes(kind, sha, payload, created_at=created_at)
     try:
         repos.store.put_immutable(PARTS, sha, data)
     except ImmutableConflict:
@@ -62,12 +62,15 @@ def _put_part(repos: Any, sha: str, kind: str, record: Any, created_at: datetime
 
 
 def write_parts(repos: Any, parts: Iterable[tuple[str, Any]], created_at: datetime) -> tuple[PartRef, ...]:
-    """Store each part once under its content hash, as it is built; only the references are kept."""
+    """Store each part once under its content hash, as it is built; only the references are kept. Each part is encoded
+    once: its canonical bytes give both its hash and the envelope's payload (``codec.seal_bytes``)."""
     refs = []
     for name, record in parts:
-        sha = content_hash(record)
+        payload = canonical_dumps(record)
+        sha = sha256_hex(payload)
         kind = type(record).__name__
-        refs.append(PartRef(name, sha, kind, _put_part(repos, sha, kind, record, created_at)))
+        refs.append(PartRef(name, sha, kind, _put_part(repos, sha, kind, payload, created_at)))
+        del payload
     return tuple(refs)
 
 
