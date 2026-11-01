@@ -709,6 +709,50 @@ def _decode_dataclass(cls: type, data: Any, path: Any) -> Any:
     return from_jsonable(cls, data, path)
 
 
+def from_jsonable_releasing(tp: Any, data: Any, path: Any = "$") -> Any:
+    """``from_jsonable(tp, data)`` for a dataclass ``tp``, consuming ``data`` as it goes.
+
+    Each field is removed from ``data`` as it is decoded, and the items of a variable-length tuple field are released
+    one by one. The parsed JSON and the objects built from it therefore never both hold everything: for a snapshot of
+    a million edges that is the difference between holding the data twice and once. The rules and errors are those of
+    ``from_jsonable``; anything that is not a dataclass from an object goes to it unchanged.
+    """
+    if not (dataclasses.is_dataclass(tp) and isinstance(tp, type) and isinstance(data, dict)):
+        return from_jsonable(tp, data, path)
+    hints = _hints(tp)
+    fields = [(f.name, hints[f.name], f.default is not dataclasses.MISSING or f.default_factory is not dataclasses.MISSING)  # type: ignore[misc]
+              for f in dataclasses.fields(tp) if f.init]
+    unknown = sorted(set(data) - {name for name, _, _ in fields})
+    if unknown:
+        raise CodecError("UNKNOWN_FIELD", f"{_p(path)}: unknown field(s) {unknown} for {tp.__name__}")
+    kwargs: dict[str, Any] = {}
+    for name, hint, has_default in fields:
+        if name not in data:
+            if has_default:
+                continue
+            raise CodecError("MISSING_FIELD", f"{_p(path)}: missing field {name!r} for {tp.__name__}")
+        value = data.pop(name)
+        where = (path, f".{name}")
+        args = get_args(hint)
+        if get_origin(hint) is tuple and len(args) == 2 and args[1] is Ellipsis and isinstance(value, list):
+            item = _DECODERS.get(args[0]) or _compile(args[0])
+            out = []
+            for i in range(len(value)):
+                out.append(item(value[i], (where, i)))
+                value[i] = None                              # this item's parsed JSON is released now
+            kwargs[name] = tuple(out)
+        else:
+            kwargs[name] = (_DECODERS.get(hint) or _compile(hint))(value, where)
+        del value
+    try:
+        return tp(**kwargs)
+    except CodecError:
+        raise
+    except (ValueError, TypeError) as exc:
+        code = getattr(exc, "code", "INVALID_RECORD")
+        raise CodecError(code, f"{_p(path)}: {exc}") from exc
+
+
 def decode(cls: type, payload: bytes | str) -> Any:
     return from_jsonable(cls, strict_loads(payload))
 
@@ -788,8 +832,7 @@ def seal(
     )
 
 
-def open_envelope(raw: bytes | str, expected_type: str | None = None) -> Envelope:
-    data = strict_loads(raw)
+def _check_envelope_fields(data: Any, expected_type: str | None) -> None:
     if not isinstance(data, dict):
         raise CodecError("BAD_ENVELOPE", "envelope must be a JSON object")
     keys = set(data)
@@ -801,6 +844,66 @@ def open_envelope(raw: bytes | str, expected_type: str | None = None) -> Envelop
         raise CodecError("SCHEMA_VERSION", f"unsupported schema_version {data['schema_version']!r}")
     if expected_type is not None and data["type"] != expected_type:
         raise CodecError("WRONG_TYPE", f"expected envelope type {expected_type!r}, got {data['type']!r}")
+
+
+# A canonical envelope starts with this member: ``content_sha256`` sorts before every other envelope key.
+_ENVELOPE_HEAD = b'{"content_sha256":"'
+_HEX = frozenset(b"0123456789abcdef")
+
+
+def canonical_envelope_hashes(raw: Any) -> tuple[str, str] | None:
+    """For bytes laid out as a canonical envelope: the content hash they claim, and the SHA-256 of the canonical body
+    they hold. That body is the bytes without their first member, so it is hashed in place, with no second copy and no
+    re-encoding. None for any other layout (the strict path then decides)."""
+    head = len(_ENVELOPE_HEAD)
+    if not isinstance(raw, (bytes, bytearray)) or not raw.startswith(_ENVELOPE_HEAD) or raw[head + 64:head + 66] != b'",':
+        return None
+    claimed = bytes(raw[head:head + 64])
+    if not set(claimed) <= _HEX:
+        return None
+    body = hashlib.sha256()
+    body.update(b"{")
+    body.update(memoryview(raw)[head + 66:])
+    return claimed.decode("ascii"), body.hexdigest()
+
+
+def parse_json_text(text: str) -> Any:
+    """``json.loads`` with the strict constant and number rules. It does not reject duplicate keys by itself: the
+    caller proves the bytes canonical (``canonical_envelope_payload``) or uses ``strict_loads``."""
+    try:
+        return json.loads(text, parse_constant=_reject_constant, parse_float=_finite_float)
+    except CodecError:
+        raise
+    except (ValueError, RecursionError) as exc:
+        raise CodecError("BAD_JSON", f"malformed JSON: {exc}") from exc
+
+
+def canonical_envelope_payload(data: Any, expected_type: str | None, raw_sha256: str, hashes: tuple[str, str]) -> Any:
+    """The payload of an envelope parsed from canonical bytes, after every check ``open_envelope`` makes; None when the
+    bytes were not exactly the canonical encoding of what was parsed (the caller then takes the strict path, which also
+    rejects duplicate keys).
+
+    The canonical proof streams the parsed value's canonical encoding into SHA-256 (bounded memory) and compares it with
+    the stored bytes' digest, and the envelope hash comes from ``canonical_envelope_hashes``. Unlike ``open_envelope``,
+    no copy of the bytes is re-encoded in memory.
+    """
+    try:
+        canonical = isinstance(data, dict) and streamed_content_hash(data) == raw_sha256
+    except Exception:  # noqa: BLE001 - not provably canonical: the strict path decides
+        canonical = False
+    if not canonical:
+        return None
+    _check_envelope_fields(data, expected_type)
+    claimed, body = hashes
+    if data["content_sha256"] != claimed or claimed != body:
+        raise CodecError("HASH_MISMATCH", f"envelope {data.get('id')!r} content hash mismatch")
+    parse_utc(data["created_at_utc"])
+    return data["payload"]
+
+
+def open_envelope(raw: bytes | str, expected_type: str | None = None) -> Envelope:
+    data = strict_loads(raw)
+    _check_envelope_fields(data, expected_type)
     expected = _envelope_hash(data)
     if expected != data["content_sha256"]:
         raise CodecError("HASH_MISMATCH", f"envelope {data.get('id')!r} content hash mismatch")

@@ -26,12 +26,18 @@ def _stored(services, snapshot_id):
     return services.repositories.store.root / "objects" / SNAPSHOTS / f"{_file_token(snapshot_id)}.json"
 
 
+def _spy_decoders(monkeypatch, parsed: list[str]) -> None:
+    """Record every snapshot decode, whichever decoder the load path uses."""
+    for name in ("from_jsonable", "from_jsonable_releasing"):
+        real = getattr(acquisition, name)
+        monkeypatch.setattr(acquisition, name, lambda cls, *a, _real=real, **k: parsed.append(cls.__name__) or _real(cls, *a, **k))
+
+
 def test_a_verified_snapshot_is_reused_while_its_stored_bytes_are_unchanged(demo, monkeypatch) -> None:
     services, outcome, _ = demo
     first = load_snapshot(services.repositories, outcome.snapshot_id)
     parsed: list[str] = []
-    real = acquisition.from_jsonable
-    monkeypatch.setattr(acquisition, "from_jsonable", lambda cls, *a, **k: parsed.append(cls.__name__) or real(cls, *a, **k))
+    _spy_decoders(monkeypatch, parsed)
     assert load_snapshot(services.repositories, outcome.snapshot_id) is first and parsed == []     # no second parse or hash
     path = _stored(services, outcome.snapshot_id)
     original = path.read_bytes()
@@ -54,8 +60,7 @@ def test_the_admit_step_reuses_the_snapshot_its_acquisition_just_stored(services
     the snapshot acquisition sealed instead of parsing it again. A change to the stored bytes is still parsed."""
     services = services_factory()
     parsed: list[str] = []
-    real = acquisition.from_jsonable
-    monkeypatch.setattr(acquisition, "from_jsonable", lambda cls, *a, **k: parsed.append(cls.__name__) or real(cls, *a, **k))
+    _spy_decoders(monkeypatch, parsed)
     outcome = acquire_demo(services, key="admit-reuse")
     snapshot = load_snapshot(services.repositories, outcome.snapshot_id)
     assert "PlanningSnapshot" not in parsed and snapshot.id == outcome.snapshot_id               # never parsed back
