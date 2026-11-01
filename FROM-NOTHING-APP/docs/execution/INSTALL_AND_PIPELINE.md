@@ -213,8 +213,12 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   accepts and moves the head last.
 - **The display package.** The web reads small, partitioned parts the pipeline publishes, never a snapshot or a plan
   artifact (`DISPLAY_PACKAGE.md`). There is no new step:
-  - `acquire` writes the snapshot's parts before it moves the source head;
-  - each `sign_accept` writes the plan's parts and signs their manifest before it moves the plan head.
+  - `acquire` writes the snapshot's parts before it moves the source head. At 50 aircraft that takes 162 s and writes
+    4.8 GB;
+  - each `sign_accept` writes the plan's parts and signs their manifest before it moves the plan head. At 50 aircraft
+    that is 10 s for the executable plan and 23 s for the forecast.
+
+  Neither raises the job's peak memory.
 
   A store from before the package is backfilled once with these two commands:
   - `python -m focus.cli display --current-source` (source role);

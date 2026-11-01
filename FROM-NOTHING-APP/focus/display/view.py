@@ -195,6 +195,7 @@ class DisplayCanon:
     _plans: dict[str, dict[str, list[Any]]] = field(default_factory=dict)
     _seen: dict[str, dict[str, set[str]]] = field(default_factory=dict)
     edge_labels: dict[str, str] = field(default_factory=dict)       # job buckets: labels of edge ends outside them
+    _memo: dict[Any, Any] = field(default_factory=dict, repr=False, compare=False)   # views of this slice, built once
 
     @classmethod
     def load(cls, services: Any, cache: Any) -> "DisplayCanon":
@@ -282,11 +283,17 @@ class DisplayCanon:
                    why_plan["FORECAST"], stale, reasons, revision)
 
     # -- the canonical surface the projections read
+    def _once(self, key: Any, build: Any) -> Any:
+        """A view of this slice, built on first use (projections read ``snapshot``, ``plan`` and the indexes in loops)."""
+        if key not in self._memo:
+            self._memo[key] = build()
+        return self._memo[key]
+
     @property
     def snapshot(self) -> SnapshotSlice | None:
         if self.summary is None:
             return None
-        return SnapshotSlice(self.summary, {k: tuple(v) for k, v in self._snap.items()})
+        return self._once("snapshot", lambda: SnapshotSlice(self.summary, {k: tuple(v) for k, v in self._snap.items()}))
 
     @property
     def executable(self) -> PlanRef | None:
@@ -306,27 +313,31 @@ class DisplayCanon:
         vp = self.verified.get(purpose)
         if vp is None:
             return None
-        return PlanSlice(vp.summary, {k: tuple(v) for k, v in self._plans.get(purpose, {}).items()})
+        return self._once(("plan", purpose), lambda: PlanSlice(vp.summary, {k: tuple(v) for k, v in self._plans.get(purpose, {}).items()}))
 
     def plan_id(self, purpose: str) -> str | None:
         vp = self.verified.get(purpose)
         return None if vp is None else vp.published.id
 
     def jobs(self) -> dict[str, Any]:
-        out = dict(self._extra.get("jobs", {}))
-        out.update({j.key.id: j for j in self._snap.get("jobs", ())})
-        return out
+        def build() -> dict[str, Any]:
+            out = dict(self._extra.get("jobs", {}))
+            out.update({j.key.id: j for j in self._snap.get("jobs", ())})
+            return out
+        return self._once("jobs", build)
 
     def phases(self) -> dict[str, Any]:
-        out = dict(self._extra.get("phases", {}))
-        out.update({p.key.id: p for p in self._snap.get("phases", ())})
-        return out
+        def build() -> dict[str, Any]:
+            out = dict(self._extra.get("phases", {}))
+            out.update({p.key.id: p for p in self._snap.get("phases", ())})
+            return out
+        return self._once("phases", build)
 
     def people(self) -> dict[str, Any]:
-        return {p.key.id: p for p in self.summary.people} if self.summary else {}
+        return self._once("people", lambda: {p.key.id: p for p in self.summary.people} if self.summary else {})
 
     def dispositions(self) -> dict[str, Any]:
-        return {d.job: d for d in self._snap.get("dispositions", ())}
+        return self._once("dispositions", lambda: {d.job: d for d in self._snap.get("dispositions", ())})
 
     def base_status(self) -> str:
         if self.summary is None:
@@ -362,21 +373,26 @@ class DisplayCanon:
                             {k: {n: set(s) for n, s in v.items()} for k, v in self._seen.items()}, dict(self.edge_labels))
 
     def _add(self, name: str, records: Iterable[Any]) -> None:
+        self._memo.clear()
         _merge(self._snap, self._seen.setdefault("snap", {}), name, records, _KEYS[name])
 
     def _add_plan(self, purpose: str, name: str, records: Iterable[Any]) -> None:
+        self._memo.clear()
         _merge(self._plans.setdefault(purpose, {}), self._seen.setdefault(purpose, {}), name, records, _KEYS[name])
 
     def _add_extra(self, name: str, records: Iterable[Any]) -> None:
+        self._memo.clear()
         bucket = self._extra.setdefault(name, {})
         for r in records:
             bucket.setdefault(_KEYS[name](r), r)
 
     def _ensure(self, name: str) -> None:
         """Declare a collection loaded even when no part added to it (an empty selection is a loaded, empty slice)."""
+        self._memo.clear()
         self._snap.setdefault(name, [])
 
     def _ensure_plan(self, purpose: str, name: str) -> None:
+        self._memo.clear()
         if self.verified.get(purpose) is not None:
             self._plans.setdefault(purpose, {}).setdefault(name, [])
 

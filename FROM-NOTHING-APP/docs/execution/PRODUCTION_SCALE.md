@@ -160,6 +160,12 @@ Five things the synthetic run cannot show, each to measure on a real extract:
      to 6, about 12 minutes of loading at 50 aircraft with the lean load.
    - **Runner memory.** At 50 aircraft, 16 GB runners are enough for every role: the heaviest job peaked at 7.5 GB. An
      8 GB runner is not. A streaming or native snapshot decoder would lower the peak further.
+   - **The display package** (`DISPLAY_PACKAGE.md`) adds time but no peak memory:
+     - acquisition writes the snapshot's parts in 162 s (4.8 GB stored);
+     - the signer writes a plan's parts in 10 s (executable, 291 MB) or 23 s (forecast, 845 MB).
+
+     The web reads only those parts. One process opening every view peaked at 857 MB, where the snapshot alone used to
+     take 7.0 GB to load.
 5. **Headroom.** 9.6 minutes fits the 10-minute target with little margin.
    - The repeatable knobs are fewer search moves (they accepted nothing at this scale) and fewer repair boosts.
    - The bigger lever would be a detailed horizon with a coarser projection beyond it, which changes how completions are

@@ -132,8 +132,55 @@ precompute yet.
 
 ## Measured at 50 aircraft
 
-A 50-aircraft measurement is running: the cost of building the package in acquisition and in the signer, and the web
-process opening every view. Its results will be added here.
+These are measured on the stored 50-aircraft run (298,009 jobs, 445,688 phases, 1,258,325 edges), November 1, 2026,
+with the native encoder.
+
+**Building the package.** The build added time but not peak memory. Each process peak stayed at the 7.0 GB of loading
+the snapshot.
+
+| Package | Built by | Time | Parts | Stored |
+| --- | --- | --- | --- | --- |
+| Snapshot | acquisition | 162 s | 7,933 | 4.8 GB |
+| Executable plan (38,626 assignments, 114,311 duties) | signer | 10 s | 1,876 | 291 MB |
+| Forecast plan (147,679 assignments, 471,310 duties) | signer | 23 s | 2,549 | 845 MB |
+
+Most of the snapshot package is the team work parts (2.4 GB) and the job buckets (1.6 GB). A phase and its edges appear
+in both, once for its job's detail and once for its team's dispatch.
+
+The largest parts the web loads are:
+- the holds, 19.7 MB once per snapshot;
+- an aircraft, 8 MB;
+- a team's work on one aircraft, 3.1 MB;
+- a job bucket, 1.9 MB;
+- a team-day, under 1 MB.
+
+**The web process.** One fresh process opened every view against that store, then the team-lead view for five more
+teams.
+- After verifying both heads and loading the summaries it held 67 MB (0.6 s).
+- It peaked at 857 MB, with the part cache at its 192 MB budget of stored JSON.
+- Before the package, the same process had to load the snapshot (a 7.0 GB peak) and decode both artifacts (370 MB and
+  599 MB of JSON) before its first page.
+
+| View | Time | Response |
+| --- | --- | --- |
+| fleet, economics, plan view, history | under 0.1 s | up to 144 KB |
+| aircraft | 1.0 s | 5.1 MB |
+| jobs: a page near the end, or a team's first page | 0.01 to 1.0 s | 100 rows |
+| job detail | 0.2 s | 6 KB |
+| shift book, My Day, workforce | 0.1 to 0.8 s | up to 629 KB |
+| capacity | about 4 s | 69 KB |
+| budget (first page), Gantt (every team) | 1.3 s, 1.7 s | 1.0 MB, 8.4 MB |
+| quality (every hold), standards (first page) | 2.0 s, 0.4 s | 3.8 MB, 3.7 MB |
+| turnover | 3.1 s | 136 KB |
+| team lead, first request for a team | 6 to 18 s | up to 3.9 MB |
+| team lead, again | 2.4 s | |
+
+**The team lead view.** Its first request for a team loads that team's work on every aircraft (about 80 MB stored),
+because its emergency-addition proposals cover every open phase of the team (6,053 for T21). Later requests reuse the
+cached parts.
+
+**The part cache.** `FOCUS_DISPLAY_CACHE_MB` trades memory for reloads: Python objects take about three to four times
+their stored JSON.
 
 ## Tests
 
