@@ -254,8 +254,13 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
 
 
 def _cutoff(repos: Any, published: PublishedPlan) -> datetime:
-    from ..data.acquisition import load_snapshot
+    """The source cutoff of an accepted plan: its source run's cutoff, which its snapshot was built at. Loading the
+    snapshot itself (several GB at 50 aircraft) is only the fallback for a plan without a stored run."""
+    from ..data.acquisition import get_run, load_snapshot
 
+    found = get_run(repos, published.source_run_id)
+    if found is not None:
+        return found[0].cutoff
     snap = load_snapshot(repos, published.snapshot_id)
     return snap.cutoff if snap is not None else datetime.min.replace(tzinfo=published.accepted_at.tzinfo)
 

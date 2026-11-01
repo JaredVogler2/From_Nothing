@@ -193,6 +193,11 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
     `planning.repair_max_incumbent_age_hours` (12) old. Each such full solve also decodes the repair it replaces and
     records the drift (`planning.drift_check`): cost, deferred work and aircraft completion dates, repair minus full.
   - `docs/execution/PLAN_REPAIR.md` explains the method, the measurements and the limits.
+- **Admitted data is read once per process.** A process parses and verifies the admitted snapshot the first time it
+  loads it. Later steps in the same process reuse it while the stored bytes are unchanged; every load still reads and
+  hashes those bytes, so a changed record is parsed and verified again. A role that runs `schedule` and `validate`, or
+  `all` roles in one process, therefore loads the snapshot once. Publishing reads the current plan's source cutoff (the
+  stale-replay check) from its source run, not by loading that plan's snapshot.
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never
   runs without the accepted plan's frozen goals.

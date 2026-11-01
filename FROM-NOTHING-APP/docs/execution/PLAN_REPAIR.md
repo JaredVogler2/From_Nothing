@@ -6,7 +6,7 @@ On November 1, 2026 the owner asked for three speed changes to the shift cycle:
 2. reuse admitted data between shifts;
 3. repair the previous plan instead of rebuilding it.
 
-This page covers item 3. Item 1 is in `INSTALL_AND_PIPELINE.md` section 4.
+This page covers item 3. Items 1 and 2 are in `INSTALL_AND_PIPELINE.md` section 4.
 
 ## Why
 
