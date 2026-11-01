@@ -225,6 +225,7 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
         snapshot = build.snapshot
         repos.put_record(MANIFESTS, "SourceManifest", run.id, manifest, source_run_id=run.id, policy_hash=policy.hash)
         repos.put_record(SNAPSHOTS, "PlanningSnapshot", snapshot.id, snapshot, source_run_id=run.id, policy_hash=policy.hash)
+        _remember(repos, snapshot)
         for stat in build.statistics:
             repos.put_record("statistics", "DurationStatistics", stat.id, stat, source_run_id=run.id, policy_hash=policy.hash)
         fault("before_complete")
@@ -311,11 +312,27 @@ _VERIFIED: dict[str, tuple[str, PlanningSnapshot]] = {}
 _VERIFIED_LOCK = threading.Lock()
 
 
+def _digest(raw: Any) -> str:
+    return hashlib.sha256(raw if isinstance(raw, (bytes, bytearray)) else str(raw).encode("utf-8")).hexdigest()
+
+
+def _remember(repos: Any, snapshot: PlanningSnapshot) -> None:
+    """The snapshot this process just sealed and stored is the verified one for the bytes now stored (read back and
+    hashed), so the admit step of the same run does not parse them again. Other processes still parse and verify."""
+    raw = repos.get_raw(SNAPSHOTS, snapshot.id)
+    if raw is None:
+        return
+    snapshot.verify()
+    with _VERIFIED_LOCK:
+        _VERIFIED.clear()
+        _VERIFIED[snapshot.id] = (_digest(raw), snapshot)
+
+
 def load_snapshot(repos: Any, snapshot_id: str) -> PlanningSnapshot | None:
     raw = repos.get_raw(SNAPSHOTS, snapshot_id)
     if raw is None:
         return None
-    digest = hashlib.sha256(raw if isinstance(raw, (bytes, bytearray)) else str(raw).encode("utf-8")).hexdigest()
+    digest = _digest(raw)
     with _VERIFIED_LOCK:
         hit = _VERIFIED.get(snapshot_id)
     if hit is not None and hit[0] == digest:

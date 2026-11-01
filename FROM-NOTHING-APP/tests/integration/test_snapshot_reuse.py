@@ -49,6 +49,23 @@ def test_a_verified_snapshot_is_reused_while_its_stored_bytes_are_unchanged(demo
     assert load_snapshot(services.repositories, outcome.snapshot_id) is first                   # the verified bytes are back
 
 
+def test_the_admit_step_reuses_the_snapshot_its_acquisition_just_stored(services_factory, monkeypatch) -> None:
+    """Acquire and admit run in the same source process: admit reads the stored bytes back and hashes them, and reuses
+    the snapshot acquisition sealed instead of parsing it again. A change to the stored bytes is still parsed."""
+    services = services_factory()
+    parsed: list[str] = []
+    real = acquisition.from_jsonable
+    monkeypatch.setattr(acquisition, "from_jsonable", lambda cls, *a, **k: parsed.append(cls.__name__) or real(cls, *a, **k))
+    outcome = acquire_demo(services, key="admit-reuse")
+    snapshot = load_snapshot(services.repositories, outcome.snapshot_id)
+    assert "PlanningSnapshot" not in parsed and snapshot.id == outcome.snapshot_id               # never parsed back
+    snapshot.verify()
+    path = _stored(services, outcome.snapshot_id)
+    path.write_bytes(path.read_bytes().replace(b'"site":"', b'"site":"X', 1))
+    with pytest.raises(CodecError):
+        load_snapshot(services.repositories, outcome.snapshot_id)
+
+
 def test_publishing_reads_the_previous_cutoff_from_its_source_run(services_factory, monkeypatch) -> None:
     services = services_factory()
     late = acquire_demo(services, key="late")
