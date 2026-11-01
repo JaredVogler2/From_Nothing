@@ -160,14 +160,24 @@ pretends.
 
 ```bash
 python -m focus.cli pipeline --key 2026-10-26 --role source
-python -m focus.cli pipeline --key 2026-10-26 --role app
+python -m focus.cli pipeline --key 2026-10-26 --role app        # the executable plan
+python -m focus.cli pipeline --key 2026-10-26 --role stager
+python -m focus.cli pipeline --key 2026-10-26 --role signer     # the executable plan is out
+python -m focus.cli pipeline --key 2026-10-26 --role app        # the forecast, on the same snapshot
 python -m focus.cli pipeline --key 2026-10-26 --role stager
 python -m focus.cli pipeline --key 2026-10-26 --role signer
 python -m focus.cli pipeline --key 2026-10-26 --role evaluator
 python -m focus.cli pipeline --key 2026-10-26 --status
 ```
 
-Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept -> observe_evaluate`.
+Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept`, then
+`forecast -> forecast_stage_readback -> forecast_sign_accept`, and `observe_evaluate` after `sign_accept`.
+
+- **Executable first.** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only the executable plan, the one
+  crews are dispatched on. `forecast` needs the accepted executable plan, so each role's first run stops before the
+  forecast and the shift's dispatch never waits for it. The forecast (delivery dates, days late and penalties for every
+  aircraft) still runs on every pipeline, on the same admitted snapshot, and is staged, read back and signed the same
+  way. The GitLab draft runs it as `forecast_schedule_validate`, `forecast_stage_readback` and `forecast_sign_accept`.
 
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never

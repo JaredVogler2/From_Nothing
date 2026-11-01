@@ -37,7 +37,7 @@ variables:
   FOCUS_SCOPE_KEY: "DEMO-787"
   PIPELINE_KEY: "ci-$CI_PIPELINE_ID"
 
-stages: [verify, source, schedule, stage, sign, observe]
+stages: [verify, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
 
 # ---------------------------------------------------------------------- verify (fixture only, no secrets)
 
@@ -146,6 +146,39 @@ sign_accept:
   script:
     - mkdir -p ci-receipts && python -m focus.cli preflight --role signer > ci-receipts/preflight-signer.json
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role signer > ci-receipts/signer.json
+
+# the forecast (delivery dates, days late, penalties for every aircraft) runs on the same admitted snapshot once the
+# executable plan is accepted, so it never delays the shift's dispatch
+forecast_schedule_validate:
+  extends: .live
+  stage: forecast
+  needs: [sign_accept, { job: native_wheel, artifacts: true }]
+  environment: { name: focus-app }
+  tags: [focus-scheduler]
+  variables:
+    FOCUS_NATIVE_CORE: "true"
+  script:
+    - python -m pip install --disable-pip-version-check --no-index dist/focus_native-*.whl
+    - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app > ci-receipts/forecast-app.json
+
+forecast_stage_readback:
+  extends: .live
+  stage: forecast_stage
+  needs: [forecast_schedule_validate]
+  environment: { name: focus-stager }
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role stager > ci-receipts/forecast-stager.json
+
+forecast_sign_accept:
+  extends: .live
+  stage: forecast_sign
+  needs: [forecast_stage_readback]
+  when: manual                                      # the same operator promotion as the executable plan
+  allow_failure: false
+  environment: { name: focus-signer }
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli preflight --role signer > ci-receipts/preflight-forecast-signer.json
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role signer > ci-receipts/forecast-signer.json
 
 observe_evaluate:
   extends: .live
