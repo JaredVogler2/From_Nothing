@@ -66,6 +66,9 @@ ALLOWED_KEYS = frozenset({
     "FOCUS_MAX_CONTENT_LENGTH",
     "FOCUS_SECURE_COOKIES",
     "FOCUS_LOG_LEVEL",
+    # display package (focus.display): the web's part cache and the twin's opt-in whole-snapshot load
+    "FOCUS_DISPLAY_CACHE_MB",
+    "FOCUS_TWIN_FULL_LOAD",
 })
 
 PLATFORM_KEYS = frozenset({"PORT", "VCAP_APPLICATION", "VCAP_SERVICES", "RSTUDIO_PRODUCT", "CONNECT_CONTENT_GUID", "CONNECT_SERVER"})
@@ -283,6 +286,7 @@ class Settings:
     mcp_enabled: bool = False
     proxy_fix: int = 0
     inprocess_worker: bool = False
+    twin_full_load: bool = False             # the digital twin loads whole snapshots and artifacts (off: the web reads display parts only)
     max_content_length: int = 1_048_576
     secure_cookies: bool = False
     log_level: str = "INFO"
@@ -341,6 +345,7 @@ class Settings:
             "identity_provider": self.identity_provider,
             "mcp_enabled": self.mcp_enabled,
             "inprocess_worker": self.inprocess_worker,
+            "twin_full_load": self.twin_full_load,
             "session_secret": "ephemeral" if self.session_secret_ephemeral else "configured",
             "sign_key": "configured" if self.sign_key_ref else ("fixture-test-key" if self.mode == "fixture" else "absent"),
             "ignored_setting_names": list(self.ignored_keys),
@@ -439,6 +444,7 @@ class Settings:
             mcp_enabled=_parse_bool("FOCUS_MCP_ENABLED", get("FOCUS_MCP_ENABLED"), False),
             proxy_fix=_parse_int("FOCUS_PROXY_FIX", get("FOCUS_PROXY_FIX"), 1 if platform in ("tanzu", "posit_connect") else 0, 0, 5),
             inprocess_worker=_parse_bool("FOCUS_INPROCESS_WORKER", get("FOCUS_INPROCESS_WORKER"), mode == "fixture"),
+            twin_full_load=_parse_bool("FOCUS_TWIN_FULL_LOAD", get("FOCUS_TWIN_FULL_LOAD"), False),
             max_content_length=_parse_int("FOCUS_MAX_CONTENT_LENGTH", get("FOCUS_MAX_CONTENT_LENGTH"), 1_048_576, 1024, 16 * 1_048_576),
             secure_cookies=_parse_bool("FOCUS_SECURE_COOKIES", get("FOCUS_SECURE_COOKIES"), platform != "local"),
             log_level=(get("FOCUS_LOG_LEVEL") or "INFO").upper(),

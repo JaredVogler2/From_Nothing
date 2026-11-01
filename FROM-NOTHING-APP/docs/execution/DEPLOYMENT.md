@@ -118,6 +118,12 @@ Connect content settings ("Vars"):
 | `FOCUS_SESSION_SECRET` | random 32+ bytes (secret) |
 | `FOCUS_SOURCE_TIMEZONE_MAP_JSON` | source datetime2 timezone policy: `{"*": "UTC"}`, because database columns hold UTC (owner, 2026-10-31). The app shows times in the site's zone (policy `shift.timezone`). |
 | `FOCUS_MCP_ENABLED` | `false` until MCP access is approved |
+| `FOCUS_DISPLAY_CACHE_MB` | the display parts the web keeps verified in memory, in MB of stored JSON (default 192) |
+| `FOCUS_TWIN_FULL_LOAD` | leave `false`: the digital twin would load whole snapshots and plan artifacts (`DISPLAY_PACKAGE.md`) |
+
+**Memory.** The web reads only the display package the pipeline publishes, never a snapshot or a plan artifact
+(`DISPLAY_PACKAGE.md`). At 50 aircraft one process opening every view peaked at 857 MB with the default part cache, so
+give the content at least 1.5 GB. Lowering `FOCUS_DISPLAY_CACHE_MB` lowers that peak at the cost of reloading parts.
 
 Before publishing, run `python -m focus.cli preflight --role web` with the content's variables. It checks:
 

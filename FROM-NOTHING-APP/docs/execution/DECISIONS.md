@@ -160,6 +160,15 @@ attendance. A conditional ETA is never physical receipt.
     repair falls back to the full solve. Each scheduled full solve records how far the repair would have landed
     (`PLAN_REPAIR.md`).
 
+- **D-23 Display package (owner direction, November 1, 2026).** The web reads small, partitioned display parts that the
+  pipeline publishes, and never loads a snapshot or decodes a plan artifact (`DISPLAY_PACKAGE.md`).
+  - Acquisition writes the snapshot's parts before the source head moves. The signer writes each plan's parts and signs
+    their manifest under its own domain (`FOCUS_DISPLAY_V1`) before the plan head moves.
+  - Every projection runs on the slice it needs. Whole-fleet lists page. The goal registry comes from the signed
+    summaries.
+  - The digital twin stays on the whole-snapshot path behind `FOCUS_TWIN_FULL_LOAD` until its fleet-wide base is
+    precomputed.
+
 ## Semantic gaps (live), each a precise readiness effect
 
 These are the policy file's `open_decisions`. None of them blocks local

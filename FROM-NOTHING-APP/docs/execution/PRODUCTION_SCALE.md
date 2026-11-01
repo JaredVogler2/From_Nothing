@@ -130,18 +130,25 @@ Five things the synthetic run cannot show, each to measure on a real extract:
      but is far too slow at 50 aircraft.
    - Build the wheel with `native_wheel`, or bake it into a prebuilt image so the job spends no time installing.
    - With one core the search moves decode one at a time: the same plan, about 90 s more.
-   - **The store hand-off is measured, and it is heavy.** Each role process loads the admitted snapshot from the
-     store: it parses the stored JSON, builds the objects and verifies the hash. The simulation never does this,
-     because it admits and plans in one process. Measured on this machine (`load_snapshot`, November 1, 2026):
+   - **The store hand-off is measured.** Each role process loads the admitted snapshot from the store: it parses the
+     stored JSON, builds the objects and verifies the hash. The simulation never does this, because it admits and
+     plans in one process.
+     - The first decode held the stored bytes, a text copy, two full re-encodings (the canonical check and the
+       envelope hash) and the parsed JSON while it built the objects.
+     - The lean load hashes the envelope in place, releases each copy as soon as the next one exists, proves the bytes
+       canonical with a streamed hash, and releases the parsed JSON item by item while it builds the objects.
 
-     | Fleet | Stored snapshot | First load in a process | Again in the same process | Peak memory |
+     Measured in fresh processes on this machine with the native encoder (November 1, 2026), the same snapshot hash
+     both ways:
+
+     | Fleet | Stored snapshot | First decode | Lean load | Again in the same process |
      | --- | --- | --- | --- | --- |
-     | 5 aircraft | 325 MB | 34 s | 0.5 s | 2.8 GB |
-     | 10 aircraft | 472 MB | 46 s | 0.6 s | 4.0 GB |
-     | 20 aircraft | 737 MB | 77 s | 1.2 s | 6.0 GB |
-     | 50 aircraft (shift 40) | 1.8 GB | projected about 3.5 min | about 3 s | projected 14 to 15 GB |
+     | 20 aircraft | 738 MB | 91 s, 5.3 GB peak | 49 s, 3.1 GB peak | about 1 s |
+     | 50 aircraft (1.26 million edges) | 1.7 GB | 224 s, 12.1 GB peak | 121 s, 7.0 GB peak | about 3 s |
 
-     At 50 aircraft the measuring process was killed for memory at 14 GB on this 16 GB machine.
+     The heaviest job, a 50-aircraft load followed by a full forecast solve and its FINAL validation in one process,
+     took 615 s and peaked at 7.5 GB. An earlier projection of 14 to 15 GB came from a process that still held its
+     own admission data.
 
    - **Cold loads on the executable path.** Before speed item 2 there were seven:
      - admit;
@@ -150,9 +157,15 @@ Five things the synthetic run cannot show, each to measure on a real extract:
 
      Now there are three: schedule, stage and sign. The admit step reuses the snapshot acquisition stored, validate
      reuses the one schedule loaded, and the cutoff comes from the source run. A whole pipeline goes from 13 cold loads
-     to 6, about 24 minutes of loading at 50 aircraft by the projection above.
-   - **Runner memory.** At 50 aircraft, tag the roles that load the snapshot (app, stager and signer) to runners with at
-     least 32 GB. A faster, leaner snapshot decoder is the next lever.
+     to 6, about 12 minutes of loading at 50 aircraft with the lean load.
+   - **Runner memory.** At 50 aircraft, 16 GB runners are enough for every role: the heaviest job peaked at 7.5 GB. An
+     8 GB runner is not. A streaming or native snapshot decoder would lower the peak further.
+   - **The display package** (`DISPLAY_PACKAGE.md`) adds time but no peak memory:
+     - acquisition writes the snapshot's parts in 162 s (4.8 GB stored);
+     - the signer writes a plan's parts in 10 s (executable, 291 MB) or 23 s (forecast, 845 MB).
+
+     The web reads only those parts. One process opening every view peaked at 857 MB, where the snapshot alone used to
+     take 7.0 GB to load.
 5. **Headroom.** 9.6 minutes fits the 10-minute target with little margin.
    - The repeatable knobs are fewer search moves (they accepted nothing at this scale) and fewer repair boosts.
    - The bigger lever would be a detailed horizon with a coarser projection beyond it, which changes how completions are

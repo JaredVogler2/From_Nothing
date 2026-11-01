@@ -201,7 +201,8 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   - A role that runs `schedule` and `validate`, or `all` roles in one process, loads the snapshot once.
   - Publishing reads the current plan's source cutoff (the stale-replay check) from its source run, not by loading that
     plan's snapshot.
-  - At 50 aircraft a cold load is projected at about 3.5 minutes and 14 to 15 GB (`PRODUCTION_SCALE.md`).
+  - The first load in a process holds as little at once as the checks allow: at 50 aircraft it takes about 2 minutes
+    and peaks at 7.0 GB (`PRODUCTION_SCALE.md`).
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never
   runs without the accepted plan's frozen goals.
@@ -210,6 +211,18 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
 - **The stage/sign split.** `stage_readback` runs `publish(until="readback")`: the unsigned stage plus the independent
   readback validation, with no signing material. `sign_accept` re-reads and re-validates those exact bytes, signs,
   accepts and moves the head last.
+- **The display package.** The web reads small, partitioned parts the pipeline publishes, never a snapshot or a plan
+  artifact (`DISPLAY_PACKAGE.md`). There is no new step:
+  - `acquire` writes the snapshot's parts before it moves the source head. At 50 aircraft that takes 162 s and writes
+    4.8 GB;
+  - each `sign_accept` writes the plan's parts and signs their manifest before it moves the plan head. At 50 aircraft
+    that is 10 s for the executable plan and 23 s for the forecast.
+
+  Neither raises the job's peak memory.
+
+  A store from before the package is backfilled once with these two commands:
+  - `python -m focus.cli display --current-source` (source role);
+  - `python -m focus.cli display --current-plans` (signer role, because it signs).
 - **Leases.** The default is 900 s (`--lease-seconds`). A live lease returns `LEASED` to a competitor. An expired lease
   is taken over, and the new owner re-runs the idempotent handler. After three attempts the step is `EXHAUSTED`; start
   a new key.
@@ -226,8 +239,9 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included. `sign_accept` is
   `when: manual` and holds the only signing reference.
 - **The scheduling job** (`schedule_validate`) does the heavy work: it associates jobs with people and start times.
-  - Tag it to a runner with at least 4 vCPU and 16 GB, or 32 GB at 50 aircraft: loading the stored snapshot then
-    peaks near 15 GB (`PRODUCTION_SCALE.md`). The stager and signer jobs load it too.
+  - Tag it to a runner with at least 4 vCPU and 16 GB. At 50 aircraft, loading the snapshot and running a full
+    forecast solve peaked at 7.5 GB (`PRODUCTION_SCALE.md`). The stager and signer jobs load the snapshot too and fit
+    the same size.
   - It installs the native wheel that `native_wheel` built from the same commit (an artifact, never an index copy) and
     sets `FOCUS_NATIVE_CORE=true`. A wheel built for another protocol is refused and the Python core runs, with the
     reason in the run receipt.

@@ -6,7 +6,8 @@
 4. Read every dataset back (detached) and verify run lineage and hashes. A
    dataset from another run, or a forged hash, fails admission.
 5. Admit the coherent snapshot; the census must reconcile. A complete-empty
-   dataset needs an affirmative receipt.
+   dataset needs an affirmative receipt. Store it with its display package
+   (``focus.display``), the small parts the web reads instead of the snapshot.
 6. Mark COMPLETE, then move the scoped source head LAST with compare-and-set.
    A failed or rejected run never moves the head.
 7. Replaying the same idempotency key reconciles the existing run (e.g. a
@@ -24,7 +25,8 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from ..codec import CodecError, content_hash, from_jsonable, open_envelope, parse_utc, strict_loads
+from ..codec import (CodecError, canonical_envelope_hashes, canonical_envelope_payload, content_hash, from_jsonable,
+                     from_jsonable_releasing, open_envelope, parse_json_text, parse_utc, strict_loads)
 from ..contracts.planning import PlanningSnapshot
 from ..domain import aware_utc
 from .datasets import DATASETS
@@ -144,6 +146,7 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
             if run.cutoff != cutoff:
                 raise StoreError("IDEMPOTENCY_CONFLICT", "idempotency key reused with a different cutoff")
             if run.status == "COMPLETE":
+                _ensure_display(repos, run)
                 moved, head_version = _promote(repos, run, fault)
                 return AcquisitionOutcome(run.id, run.status, True, run.snapshot_id, moved, head_version, None,
                                           {d.name: d.status for d in run.datasets}, ("replay reconciled existing COMPLETE run",))
@@ -228,6 +231,7 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
         _remember(repos, snapshot)
         for stat in build.statistics:
             repos.put_record("statistics", "DurationStatistics", stat.id, stat, source_run_id=run.id, policy_hash=policy.hash)
+        write_snapshot_display(repos, snapshot)          # the web's parts of this snapshot exist before the head names it
         fault("before_complete")
         run = replace(run, status="COMPLETE", capture_end=_now(services), manifest_sha=manifest_sha, snapshot_id=snapshot.id,
                       snapshot_hash=snapshot.hash, statistics_ids=snapshot.statistics_ids)
@@ -235,6 +239,23 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
         moved, head_version = _promote(repos, run, fault)
         return AcquisitionOutcome(run.id, "COMPLETE", replayed, snapshot.id, moved, head_version, None,
                                   {d.name: d.status for d in run.datasets}, tuple(build.notes))
+
+
+def write_snapshot_display(repos: Any, snapshot: PlanningSnapshot) -> Any:
+    """The snapshot's display package (``focus.display``): the parts the web reads instead of the snapshot."""
+    from ..display.store import write_snapshot_display as write
+
+    return write(repos, snapshot)
+
+
+def _ensure_display(repos: Any, run: SourceRunRecord) -> None:
+    """A COMPLETE run replayed before promotion gets its snapshot's display package if an older build never wrote one."""
+    from ..display.store import MANIFESTS
+
+    if run.snapshot_id and repos.get_raw(MANIFESTS, run.snapshot_id) is None:
+        snapshot = load_snapshot(repos, run.snapshot_id)
+        if snapshot is not None:
+            write_snapshot_display(repos, snapshot)
 
 
 def _promote(repos: Any, run: SourceRunRecord, fault: Callable[[str], None]) -> tuple[bool, int | None]:
@@ -329,6 +350,13 @@ def _remember(repos: Any, snapshot: PlanningSnapshot) -> None:
 
 
 def load_snapshot(repos: Any, snapshot_id: str) -> PlanningSnapshot | None:
+    """The stored snapshot, verified, holding as little at once as the checks allow (at 50 aircraft it is 1.8 GB stored).
+
+    Canonical bytes (every stored envelope) are hashed in place, decoded to text and released, parsed and the text
+    released, proven canonical by a streamed hash, and built into objects while the parsed JSON is released item by
+    item. Any other layout takes the strict path (``open_envelope``), which also rejects duplicate keys. The checks are
+    those of ``open_envelope`` plus the snapshot's own hash; only the memory differs.
+    """
     raw = repos.get_raw(SNAPSHOTS, snapshot_id)
     if raw is None:
         return None
@@ -337,8 +365,29 @@ def load_snapshot(repos: Any, snapshot_id: str) -> PlanningSnapshot | None:
         hit = _VERIFIED.get(snapshot_id)
     if hit is not None and hit[0] == digest:
         return hit[1]
-    env = open_envelope(raw, "PlanningSnapshot")
-    snap = from_jsonable(PlanningSnapshot, env.payload)
+    payload = None
+    hashes = canonical_envelope_hashes(raw)
+    if hashes is not None:
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            text = None                                       # the strict path reports it
+        if text is not None:
+            raw = None                                        # from here the text, then the parsed JSON, is the only copy
+            data = parse_json_text(text)
+            text = None
+            payload = canonical_envelope_payload(data, "PlanningSnapshot", digest, hashes)
+            data = None
+    if payload is None:
+        if raw is None:
+            raw = repos.get_raw(SNAPSHOTS, snapshot_id)
+            if raw is None:
+                return None
+            digest = _digest(raw)
+        payload = open_envelope(raw, "PlanningSnapshot").payload
+        raw = None
+    snap = from_jsonable_releasing(PlanningSnapshot, payload)
+    payload = None
     snap.verify()
     with _VERIFIED_LOCK:
         _VERIFIED.clear()
