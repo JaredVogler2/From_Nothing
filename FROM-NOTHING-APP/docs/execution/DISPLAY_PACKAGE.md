@@ -34,6 +34,7 @@ evidence references. Each part is stored once, under the SHA-256 of its canonica
 | `labels:<b>` | Phase labels of the bucket | |
 | `pools:<team>:<date>` | One team's pools and availability on one day | |
 | `work:<team>:<n>` | One team's phases on one aircraft, with the dispatch rule's inputs (below) | |
+| `graph:<n>` | One aircraft's hard dependency graph by index, for the dispatch rule's ancestor walk | |
 | `holds` | Every inspection-hold phase | The plan's assignments of them |
 | `releases` | Every release milestone | |
 | `team-day:<team>:<date>` | | One team's assignments of one day, the duties of its pool members, and the plan snapshot's phases and jobs for them |
@@ -45,11 +46,16 @@ evidence references. Each part is stored once, under the SHA-256 of its canonica
 - predecessor phases and their dispositions;
 - the inputs of AND release phases;
 - release predecessors;
-- the shortages naming the jobs;
-- for each phase, the unconfirmed PART releases among its ancestors up to verified completion.
+- the shortages naming the jobs.
 
-Those ancestors are the only part of the whole graph the rule reads (`display.build.release_ancestors`), so the team
-lead and turnover views give the same dispatch reasons and emergency-addition proposals as the whole snapshot.
+The rule also reads the unconfirmed PART releases among a phase's ancestors, up to verified completion. Those can sit
+anywhere upstream. So each aircraft's `graph:<n>` part holds its dependency graph by index: its phases and their whole
+upstream closure, which phases are verified complete, and the unconfirmed part releases with their records.
+
+The web walks that graph for the phases a request asks about (`records.unreceived_ancestors`), which is the same walk as
+`ValidationInput.ancestors`. So the team lead and turnover views give the same dispatch reasons and emergency-addition
+proposals as the whole snapshot. Precomputing the ancestors of every phase was tried and dropped: at 50 aircraft that
+relation is too large to store, hundreds of MB.
 
 The scheduler also writes a small `CandidateDigest` beside each stored candidate, so the plan view never loads a
 candidate.
@@ -144,5 +150,5 @@ process opening every view. Its results will be added here.
 - `tests/integration/test_display_dispatch.py` (3 tests). On a synthetic two-aircraft fleet with unconfirmed parts
   upstream of most work, each team's work parts give `ValidationInput`, `assess_addition` and `assess_action` the same
   answers as the whole snapshot.
-- `tests/unit/test_display_build.py` (61 tests). On random graphs with completed phases, cycles and concurrency edges,
-  the release ancestors equal `ValidationInput.ancestors`.
+- `tests/unit/test_display_build.py` (61 tests). On random graphs spanning several aircraft, with completed phases,
+  cycles, concurrency edges and edges between aircraft, the graph parts' ancestor walk equals `ValidationInput.ancestors`.

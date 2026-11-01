@@ -30,8 +30,7 @@ from typing import Any, Iterable
 
 from .records import (DisplayManifest, PlanCommitments, PlanGoals, PlanHolds, PlanJobs, PlanLine, PlanSummary, PlanTeamDay, SnapshotHolds,
                       SnapshotJobs, SnapshotLabels, SnapshotLine, SnapshotPools, SnapshotReleases, SnapshotStandards, SnapshotSummary,
-                      SnapshotWork, bucket_of,
-                      job_of_phase)
+                      SnapshotWork, LineGraph, bucket_of, job_of_phase, unreceived_ancestors)
 from .store import VerifiedPlan, load_part
 
 PURPOSES = ("EXECUTABLE", "FORECAST")
@@ -195,7 +194,6 @@ class DisplayCanon:
     _extra: dict[str, dict[str, Any]] = field(default_factory=dict)  # plan-snapshot phases and jobs for lookups
     _plans: dict[str, dict[str, list[Any]]] = field(default_factory=dict)
     _seen: dict[str, dict[str, set[str]]] = field(default_factory=dict)
-    facts: dict[str, tuple[str, ...]] = field(default_factory=dict)  # work parts: phase -> unconfirmed PART release ancestors
 
     @classmethod
     def load(cls, services: Any, cache: Any) -> "DisplayCanon":
@@ -360,7 +358,7 @@ class DisplayCanon:
                             self.forecast_reason, self.stale, self.reasons, self.revision,
                             {k: list(v) for k, v in self._snap.items()}, {k: dict(v) for k, v in self._extra.items()},
                             {p: {k: list(v) for k, v in c.items()} for p, c in self._plans.items()},
-                            {k: {n: set(s) for n, s in v.items()} for k, v in self._seen.items()}, dict(self.facts))
+                            {k: {n: set(s) for n, s in v.items()} for k, v in self._seen.items()})
 
     def _add(self, name: str, records: Iterable[Any]) -> None:
         _merge(self._snap, self._seen.setdefault("snap", {}), name, records, _KEYS[name])
@@ -476,8 +474,11 @@ class DisplayCanon:
             out._add("edges", part.edges)
             out._add("releases", part.releases)
             out._add("shortages", part.shortages)
-            out.facts.update({f.phase: f.release_ancestors for f in part.facts})
         return out
+
+    def graph(self, line: int) -> LineGraph | None:
+        """One aircraft's dependency graph (the dispatch rule's ancestor walk)."""
+        return self._part(self.manifest, f"graph:{line}")
 
     def holds(self, *, plans: bool = True) -> "DisplayCanon":
         out = self._child()
@@ -580,10 +581,11 @@ class _SliceFacts:
 
 
 def slice_input(canon: DisplayCanon, purpose: Any = None) -> Any:
-    """``ValidationInput`` over a work slice; its ancestors are the release ancestors the work parts recorded.
+    """``ValidationInput`` over a work slice, whose ancestor walk runs on the phase's aircraft graph part.
 
-    ``assess_action`` and ``assess_addition`` read only the unconfirmed PART releases among a phase's ancestors, which is
-    exactly what the work parts carry (``build.release_ancestors``), so both rules decide as they do on the whole graph.
+    ``assess_action`` and ``assess_addition`` read only the unconfirmed PART releases among a phase's ancestors. The
+    walk returns exactly those (``records.unreceived_ancestors``, the same walk as ``ValidationInput.ancestors``), and
+    adds their release records, so both rules decide as they do on the whole graph. Graphs load on first use.
     """
     from dataclasses import dataclass as _dc, field as _field
 
@@ -592,13 +594,26 @@ def slice_input(canon: DisplayCanon, purpose: Any = None) -> Any:
 
     @_dc
     class SliceInput(ValidationInput):
-        release_ancestors: dict[str, tuple[str, ...]] = _field(default_factory=dict)
+        graph_of: Any = None
+        graphs: dict[int, Any] = _field(default_factory=dict)
+        walks: dict[int, dict[int, frozenset[int]]] = _field(default_factory=dict)
 
         def ancestors(self, node: str, memo: dict[str, frozenset[str]]) -> frozenset[str]:
-            return frozenset(self.release_ancestors.get(node, ()))
+            phase = self.phases.get(node)
+            if phase is None or self.graph_of is None:
+                return frozenset()
+            if phase.line not in self.graphs:
+                graph = self.graph_of(phase.line)
+                self.graphs[phase.line] = graph
+                for r in (graph.releases if graph is not None else ()):
+                    self.releases.setdefault(r.id, r)
+            graph = self.graphs[phase.line]
+            if graph is None:
+                return frozenset()
+            return unreceived_ancestors(graph, node, self.walks.setdefault(phase.line, {}))
 
     inp = SliceInput.build(_SliceFacts(canon.snapshot), canon.services.policy, purpose or Purpose.EXECUTABLE)
-    inp.release_ancestors = dict(canon.facts)
+    inp.graph_of = canon.graph
     return inp
 
 

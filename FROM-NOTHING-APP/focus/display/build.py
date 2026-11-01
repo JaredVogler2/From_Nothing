@@ -13,7 +13,7 @@ from typing import Any, Iterable, Iterator
 
 from ..calendar import parse_shift_id
 from ..domain import Disposition, PhaseKind, ReleaseKind, ReleaseStatus
-from .records import (BUCKETS, BurndownPoint, CompletionRow, LineCount, PhaseFacts, PlanCommitments, PlanGoals, PlanHolds, PlanJobs, PlanLine,
+from .records import (BUCKETS, BurndownPoint, CompletionRow, LineCount, LineGraph, PlanCommitments, PlanGoals, PlanHolds, PlanJobs, PlanLine,
                       PlanSummary, PlanTeamDay,
                       PoolIndex, SnapshotHolds, SnapshotJobs, SnapshotLabels, SnapshotLine, SnapshotPools, SnapshotReleases, SnapshotStandards,
                       SnapshotSummary,
@@ -42,16 +42,11 @@ def _ordered(records: Iterable[Any], keep: set[int]) -> tuple[Any, ...]:
     return tuple(r for i, r in enumerate(records) if i in keep)
 
 
-# ---------------------------------------------------------------------- dispatch facts
+# ---------------------------------------------------------------------- dispatch graph
 
-def release_ancestors(snapshot: Any) -> dict[str, tuple[str, ...]]:
-    """For every node, the unconfirmed PART releases among its hard-edge ancestors up to verified completion.
-
-    This is exactly the part of ``ValidationInput.ancestors`` the dispatch rule reads (``assess_action`` and
-    ``assess_addition`` report only ancestors that are PART releases not yet confirmed). Each such release is walked
-    forward instead: every node it reaches is marked, and the walk continues only through nodes that are not satisfied
-    phases, as the backward walk never passes through one. Cycles are safe (a visited set per release).
-    """
+def line_graphs(snapshot: Any) -> Iterator[LineGraph]:
+    """Each aircraft's hard dependency graph by index: its phases and their whole upstream closure, the verified-complete
+    phases, and the unconfirmed PART releases with their records (``records.unreceived_ancestors`` walks it)."""
     from ..validation.input import CONCURRENCY_EDGES
 
     disp = {d.job: d for d in snapshot.dispositions}
@@ -60,25 +55,32 @@ def release_ancestors(snapshot: Any) -> dict[str, tuple[str, ...]]:
         d = disp.get(p.job)
         if (d is not None and d.disposition is Disposition.VERIFIED_COMPLETE) or p.status == "COMPLETE":
             satisfied.add(p.key.id)
-    out_edges: dict[str, list[str]] = defaultdict(list)
+    preds_of: dict[str, list[str]] = defaultdict(list)
     for e in snapshot.edges:
         if e.hard and e.type not in CONCURRENCY_EDGES:
-            out_edges[e.pred_phase].append(e.succ_phase)
-    found: dict[str, set[str]] = defaultdict(set)
-    for r in snapshot.releases:
-        if r.kind is not ReleaseKind.PART or r.status is ReleaseStatus.CONFIRMED:
-            continue
-        seen = {r.id}
-        stack = list(out_edges.get(r.id, ()))
-        while stack:
-            n = stack.pop()
-            if n in seen:
-                continue
-            seen.add(n)
-            found[n].add(r.id)
-            if n not in satisfied:
-                stack.extend(out_edges.get(n, ()))
-    return {n: tuple(sorted(rs)) for n, rs in found.items()}
+            preds_of[e.succ_phase].append(e.pred_phase)
+    phases_of_line: dict[int, list[str]] = defaultdict(list)
+    for p in snapshot.phases:
+        phases_of_line[p.line].append(p.key.id)
+    unreceived = {r.id: r for r in snapshot.releases if r.kind is ReleaseKind.PART and r.status is not ReleaseStatus.CONFIRMED}
+    for line in sorted(phases_of_line):
+        order: list[str] = []
+        index: dict[str, int] = {}
+        for n in phases_of_line[line]:
+            if n not in index:
+                index[n] = len(order)
+                order.append(n)
+        k = 0
+        while k < len(order):                                       # the upstream closure, breadth first
+            for pred in preds_of.get(order[k], ()):
+                if pred not in index:
+                    index[pred] = len(order)
+                    order.append(pred)
+            k += 1
+        yield LineGraph(line=line, nodes=tuple(order), preds=tuple(tuple(index[x] for x in preds_of.get(n, ())) for n in order),
+                        satisfied=tuple(i for i, n in enumerate(order) if n in satisfied),
+                        unreceived=tuple(i for i, n in enumerate(order) if n in unreceived),
+                        releases=tuple(strip(unreceived[n]) for n in order if n in unreceived))
 
 
 # ---------------------------------------------------------------------- snapshot
@@ -224,8 +226,9 @@ def snapshot_parts(snapshot: Any, buckets: int = BUCKETS) -> Iterator[tuple[str,
         yield f"pools:{team}:{day.isoformat()}", SnapshotPools(
             team=team, start_date=day, pools=tuple(pools), availability=tuple(strip(a) for p in pools for a in availability_of.get(p.id, ())))
 
-    # team work by aircraft, with the dispatch facts of each phase
-    ancestors = release_ancestors(snap)
+    # each aircraft's dependency graph, then team work by aircraft
+    for graph in line_graphs(snap):
+        yield f"graph:{graph.line}", graph
     work: dict[tuple[str, int], list[int]] = defaultdict(list)
     for i, p in enumerate(snap.phases):
         team = phase_team(p)
@@ -256,14 +259,13 @@ def snapshot_parts(snapshot: Any, buckets: int = BUCKETS) -> Iterator[tuple[str,
         own_jobs = set(job_ids)
         pred_jobs = sorted({phase_by_id[n].job for n in pred_phases if phase_by_id[n].job in disp and phase_by_id[n].job not in own_jobs},
                            key=lambda j: job_index.get(j, -1))
-        facts = tuple(PhaseFacts(p.key.id, ancestors[p.key.id]) for p in mine if ancestors.get(p.key.id))
-        rel_ids = {n for n in preds if n in releases} | {r for f in facts for r in f.release_ancestors}
+        rel_ids = {n for n in preds if n in releases}
         shorts = sorted({i for j in job_ids for i in shortages_of_job.get(j, ())})
         yield f"work:{team}:{line}", SnapshotWork(
             team=team, line=line, phases=tuple(mine), jobs=tuple(strip(jobs[j]) for j in job_ids),
             dispositions=tuple(disp[j] for j in job_ids if j in disp), edges=tuple(strip(snap.edges[i]) for i in edge_idx),
             predecessors=tuple(phase_by_id[n] for n in pred_phases), predecessor_dispositions=tuple(disp[j] for j in pred_jobs),
-            releases=tuple(strip(releases[r]) for r in sorted(rel_ids, key=release_index.__getitem__)), facts=facts,
+            releases=tuple(strip(releases[r]) for r in sorted(rel_ids, key=release_index.__getitem__)),
             shortages=tuple(strip(snap.shortages[i]) for i in shorts))
 
     # every inspection hold

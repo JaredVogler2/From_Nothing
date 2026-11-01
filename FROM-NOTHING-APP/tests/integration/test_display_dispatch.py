@@ -1,7 +1,8 @@
 """The dispatch rule decides the same on display work parts as on the whole admitted graph.
 
 A synthetic two-aircraft fleet has unconfirmed part releases upstream of most work and an AND release phase in front of
-every job. For every team, the work parts of that team (with its pools) must give ``ValidationInput`` and the dispatch rule
+every job. For every team, the work parts of that team (with its pools and the aircraft graph parts the ancestor walk
+loads) must give ``ValidationInput`` and the dispatch rule
 (``publication.dispatch.assess_action``, ``performance.amendments.assess_addition``) the same answers as the whole
 snapshot: satisfaction, placeability, readiness of every hard predecessor, the unconfirmed part releases among the
 ancestors, and the full outcome of an emergency addition or of releasing a planned action in each early shift.
@@ -20,7 +21,8 @@ from focus.config import Settings
 from focus.contracts.planning import Assignment, CrewRole
 from focus.data.repositories import Repositories
 from focus.data.store import FixtureStore
-from focus.display.build import phase_team, release_ancestors
+from focus.display.build import line_graphs, phase_team
+from focus.display.records import unreceived_ancestors
 from focus.display.store import load_part, write_snapshot_display
 from focus.display.view import DisplayCanon, slice_input
 from focus.domain import DomainError, Purpose, ReleaseKind, ReleaseStatus, from_minute
@@ -68,17 +70,17 @@ def decided(call: Any) -> Any:
 
 
 def test_the_fleet_exercises_part_ancestors_and_and_releases(fleet) -> None:
-    _, snap, _, _, _ = fleet
-    anc = release_ancestors(snap)
-    assert sum(1 for p in snap.phases if anc.get(p.key.id)) > 500                    # most work waits on an unreceived part
+    _, snap, _, full, _ = fleet
+    memo: dict = {}
+    assert sum(1 for p in snap.phases if unconfirmed_parts(snap, full.ancestors(p.key.id, memo))) > 500   # most work waits on a part
     assert any(p.kind.value == "RELEASE" for p in snap.phases)
 
 
-def test_release_ancestors_are_the_unconfirmed_parts_the_whole_graph_finds(fleet) -> None:
+def test_the_aircraft_graph_walk_finds_the_unconfirmed_parts_the_whole_graph_finds(fleet) -> None:
     _, snap, _, full, _ = fleet
-    anc, memo = release_ancestors(snap), {}
+    graphs, memo = {g.line: g for g in line_graphs(snap)}, {}
     for p in snap.phases:
-        assert list(anc.get(p.key.id, ())) == unconfirmed_parts(snap, full.ancestors(p.key.id, memo)), p.label
+        assert sorted(unreceived_ancestors(graphs[p.line], p.key.id)) == unconfirmed_parts(snap, full.ancestors(p.key.id, memo)), p.label
 
 
 def test_dispatch_rule_decides_the_same_on_each_teams_work_parts(fleet) -> None:

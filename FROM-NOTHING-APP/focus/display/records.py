@@ -21,7 +21,8 @@ Part names (``BUCKETS`` job buckets share jobs by their id):
 ``jobs:<b>``                    one job bucket: the jobs' phases, graph neighborhood, releases, durations and
                                 requirements (snapshot); their assignments and outcomes (plan)
 ``pools:<team>:<date>``         one team's pools and availability on one shift start date (snapshot)
-``work:<team>:<n>``             one team's phases on one aircraft with their dispatch facts (snapshot)
+``work:<team>:<n>``             one team's phases on one aircraft with the records the dispatch rule reads (snapshot)
+``graph:<n>``                   one aircraft's hard dependency graph by index, for the dispatch rule's ancestor walk (snapshot)
 ``labels:<b>``                  one job bucket's phase labels (snapshot)
 ``releases``                    every release milestone (snapshot)
 ``holds``                       every inspection-hold phase (snapshot); the plan's assignments of them (plan)
@@ -232,11 +233,71 @@ class SnapshotPools:
 
 
 @dataclass(frozen=True, slots=True)
-class PhaseFacts:
-    """Dispatch facts of one phase that need the whole graph: the release ancestors up to verified completion."""
+class LineGraph:
+    """One aircraft's hard dependency graph, compactly, for the dispatch rule's ancestor walk.
 
-    phase: str
-    release_ancestors: tuple[str, ...]
+    The nodes are the aircraft's phases and every node upstream of them (release milestones, and phases of another
+    aircraft when an edge crosses). ``preds`` holds each node's hard predecessors by index (concurrency edges excluded),
+    ``satisfied`` the verified-complete phases the walk never passes, and ``unreceived`` the PART releases not yet
+    confirmed, whose records come with the graph."""
+
+    line: int
+    nodes: tuple[str, ...]
+    preds: tuple[tuple[int, ...], ...]
+    satisfied: tuple[int, ...]
+    unreceived: tuple[int, ...]
+    releases: tuple[ReleaseMilestone, ...]
+
+
+def unreceived_ancestors(graph: LineGraph, node: str, memo: dict[int, frozenset[int]] | None = None) -> frozenset[str]:
+    """The unconfirmed PART releases among a node's hard-edge ancestors up to verified completion: exactly the ancestors
+    ``ValidationInput.ancestors`` walks, restricted to what the dispatch rule reports (``assess_action``,
+    ``assess_addition``). The walk includes no satisfied phase and never passes through one; cycles are safe."""
+    index = _node_index(graph)
+    start = index.get(node)
+    if start is None:
+        return frozenset()
+    memo = {} if memo is None else memo
+    satisfied = _satisfied_set(graph)
+    seen: set[int] = set()
+    stack = list(graph.preds[start])
+    while stack:
+        n = stack.pop()
+        if n in seen or n in satisfied:
+            continue
+        seen.add(n)
+        if n in memo:
+            seen |= memo[n]
+            continue
+        stack.extend(graph.preds[n])
+    memo[start] = frozenset(seen)
+    unreceived = _unreceived_set(graph)
+    return frozenset(graph.nodes[n] for n in seen if n in unreceived)
+
+
+_GRAPH_INDEXES: dict[int, tuple[Any, dict[str, int], frozenset[int], frozenset[int]]] = {}
+
+
+def _graph_sets(graph: LineGraph) -> tuple[dict[str, int], frozenset[int], frozenset[int]]:
+    found = _GRAPH_INDEXES.get(id(graph))
+    if found is None or found[0] is not graph:
+        if len(_GRAPH_INDEXES) > 512:
+            _GRAPH_INDEXES.clear()
+        found = (graph, {n: i for i, n in enumerate(graph.nodes)}, frozenset(graph.satisfied), frozenset(graph.unreceived))
+        _GRAPH_INDEXES[id(graph)] = found
+    return found[1], found[2], found[3]
+
+
+def _node_index(graph: LineGraph) -> dict[str, int]:
+    return _graph_sets(graph)[0]
+
+
+def _satisfied_set(graph: LineGraph) -> frozenset[int]:
+    return _graph_sets(graph)[1]
+
+
+def _unreceived_set(graph: LineGraph) -> frozenset[int]:
+    return _graph_sets(graph)[2]
 
 
 @dataclass(frozen=True, slots=True)
@@ -248,11 +309,10 @@ class SnapshotWork:
     phases: tuple[Phase, ...]                          # phases whose demand (or team) is this team
     jobs: tuple[Job, ...]
     dispositions: tuple[JobDisposition, ...]
-    edges: tuple[Edge, ...]                            # hard edges into those phases
+    edges: tuple[Edge, ...]                            # hard edges into those phases (and into AND release predecessors)
     predecessors: tuple[Phase, ...]                    # their phase predecessors outside ``phases``
     predecessor_dispositions: tuple[JobDisposition, ...]
-    releases: tuple[ReleaseMilestone, ...]             # release predecessors and release ancestors
-    facts: tuple[PhaseFacts, ...]
+    releases: tuple[ReleaseMilestone, ...]             # release predecessors
     shortages: tuple[Shortage, ...]                    # shortages naming one of the jobs
 
 
@@ -408,6 +468,7 @@ class CandidateDigest:
 
 
 PART_TYPES: dict[str, type] = {cls.__name__: cls for cls in (
-    SnapshotSummary, SnapshotLine, SnapshotStandards, SnapshotJobs, SnapshotLabels, SnapshotReleases, SnapshotPools, SnapshotWork, SnapshotHolds,
+    SnapshotSummary, SnapshotLine, SnapshotStandards, SnapshotJobs, SnapshotLabels, SnapshotReleases, SnapshotPools, SnapshotWork, LineGraph,
+    SnapshotHolds,
     PlanSummary, PlanCommitments, PlanLine, PlanJobs, PlanTeamDay, PlanGoals, PlanHolds)}
 

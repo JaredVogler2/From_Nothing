@@ -1,8 +1,9 @@
-"""``display.build.release_ancestors`` against ``ValidationInput.ancestors`` on random graphs.
+"""The aircraft graph parts' ancestor walk against ``ValidationInput.ancestors`` on random graphs.
 
-Random graphs with release milestones of every kind and status, completed phases and verified-complete jobs, concurrency
-edges and cycles: for every node, the release ancestors the display build records must be exactly the unconfirmed PART
-releases among the ancestors the validator walks (up to verified completion, never through it).
+Random graphs over several aircraft, with release milestones of every kind and status, completed phases and
+verified-complete jobs, concurrency edges, edges between aircraft and cycles: for every phase, the walk over its aircraft's
+graph part (``display.build.line_graphs``, ``display.records.unreceived_ancestors``) must find exactly the unconfirmed
+PART releases among the ancestors the validator walks (up to verified completion, never through it).
 """
 from __future__ import annotations
 
@@ -11,7 +12,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from focus.display.build import release_ancestors
+from focus.display.build import line_graphs
+from focus.display.records import unreceived_ancestors
 from focus.domain import Disposition, EdgeType, Purpose, ReleaseKind, ReleaseStatus
 from focus.validation.input import CONCURRENCY_EDGES, ValidationInput
 
@@ -20,10 +22,10 @@ def graph(seed: int):
     rng = random.Random(seed)
     jobs = [f"J{seed:03d}{i:03d}" for i in range(rng.randint(3, 8))]
     phases = []
-    for j in jobs:
+    for n, j in enumerate(jobs):
         for k in range(rng.randint(1, 4)):
-            phases.append(SimpleNamespace(key=SimpleNamespace(id=f"{j}.WORK.{k}"), job=j, status=rng.choice(["OPEN"] * 4 + ["COMPLETE"]),
-                                          actual_end=None))
+            phases.append(SimpleNamespace(key=SimpleNamespace(id=f"{j}.WORK.{k}"), job=j, line=1 + n % 3, actual_end=None,
+                                          status=rng.choice(["OPEN"] * 4 + ["COMPLETE"])))
     dispositions = [SimpleNamespace(job=j, disposition=rng.choice([Disposition.ADMITTED] * 5 + [Disposition.VERIFIED_COMPLETE]),
                                     reasons=(), executable_reasons=()) for j in jobs]
     releases = [SimpleNamespace(id=f"R{seed:03d}{i}", kind=rng.choice(list(ReleaseKind)), status=rng.choice(list(ReleaseStatus)))
@@ -49,20 +51,27 @@ def validator(snap) -> ValidationInput:
 
 
 @pytest.mark.parametrize("seed", range(60))
-def test_release_ancestors_match_the_validators_walk(seed) -> None:
+def test_the_graph_walk_matches_the_validators_walk(seed) -> None:
     snap = graph(seed)
     inp = validator(snap)
-    found = release_ancestors(snap)
+    graphs = {g.line: g for g in line_graphs(snap)}
     unconfirmed = {r.id for r in snap.releases if r.kind is ReleaseKind.PART and r.status is not ReleaseStatus.CONFIRMED}
-    for node in [p.key.id for p in snap.phases] + [r.id for r in snap.releases]:
-        assert list(found.get(node, ())) == sorted(unconfirmed & inp.ancestors(node, {})), node
+    shared: dict[int, dict] = {}
+    for p in snap.phases:
+        expected = frozenset(unconfirmed & inp.ancestors(p.key.id, {}))
+        assert unreceived_ancestors(graphs[p.line], p.key.id) == expected, p.key.id
+        assert unreceived_ancestors(graphs[p.line], p.key.id, shared.setdefault(p.line, {})) == expected, p.key.id   # memo reuse
+    for g in graphs.values():                                           # each graph carries the records of its unreceived parts
+        assert {r.id for r in g.releases} == {g.nodes[i] for i in g.unreceived} <= unconfirmed
 
 
 def test_a_completed_phase_hides_what_is_above_it() -> None:
     part = SimpleNamespace(id="R1", kind=ReleaseKind.PART, status=ReleaseStatus.CONDITIONAL)
-    a = SimpleNamespace(key=SimpleNamespace(id="J1.WORK.0"), job="J1", status="COMPLETE", actual_end=None)
-    b = SimpleNamespace(key=SimpleNamespace(id="J1.WORK.1"), job="J1", status="OPEN", actual_end=None)
+    a = SimpleNamespace(key=SimpleNamespace(id="J1.WORK.0"), job="J1", line=1, status="COMPLETE", actual_end=None)
+    b = SimpleNamespace(key=SimpleNamespace(id="J1.WORK.1"), job="J1", line=1, status="OPEN", actual_end=None)
     snap = SimpleNamespace(phases=(a, b), dispositions=(SimpleNamespace(job="J1", disposition=Disposition.ADMITTED),), releases=(part,),
                            edges=(SimpleNamespace(pred_phase="R1", succ_phase="J1.WORK.0", hard=True, type=EdgeType.FS),
                                   SimpleNamespace(pred_phase="J1.WORK.0", succ_phase="J1.WORK.1", hard=True, type=EdgeType.FS)))
-    assert release_ancestors(snap) == {"J1.WORK.0": ("R1",)}                     # the completed phase still names its own input
+    (g,) = line_graphs(snap)
+    assert unreceived_ancestors(g, "J1.WORK.0") == {"R1"}                       # the completed phase still names its own input
+    assert unreceived_ancestors(g, "J1.WORK.1") == frozenset()                  # but nothing above it gates the work below
