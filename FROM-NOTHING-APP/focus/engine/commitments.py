@@ -188,7 +188,7 @@ def defense_for(ctx: EngineContext, plan: IncumbentPlan, *, status: str, detail:
         if job is not None:
             # by position in the job's remaining work: written-back progress re-splits and renumbers what is left
             kind = PhaseKind(a.phase)
-            located = locate_position(ctx.job_phases[job.id], kind, positions[n]) if positions and positions[n] is not None else None
+            located = locate_position(ctx.job_chain[job.id], kind, positions[n]) if positions and positions[n] is not None else None
             if located is not None:
                 phase, performed = located
             else:
