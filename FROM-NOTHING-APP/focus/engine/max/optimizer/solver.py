@@ -241,11 +241,12 @@ def _solve(model: Any, bounds: dict[str, float], cancel: Callable[[], bool]) -> 
 
 
 def improve(optimizer: Any, run: Any, *, enabled: str, bounds: dict[str, float] | None,
-            cancel: Callable[[], bool] = lambda: False) -> SolverStatus:
-    """The optional ordering stage after the heuristic; ``run.best`` changes only when the result is IMPROVED."""
+            cancel: Callable[[], bool] = lambda: False, off_reason: str | None = None) -> SolverStatus:
+    """The optional ordering stage after the heuristic; ``run.best`` changes only when the result is IMPROVED.
+    ``off_reason`` says why the caller kept the stage off when that is not the switches (a plan repair)."""
     if not enabled:
         return SolverStatus(name=SOLVER_NAME, enabled_by="", available=None, version=None, proof_scope=PROOF_SCOPE, status="DISABLED",
-                            reason="optional solver is off (policy solver.enabled=false, FOCUS_SOLVER_ENABLED unset)")
+                            reason=off_reason or "optional solver is off (policy solver.enabled=false, FOCUS_SOLVER_ENABLED unset)")
     available, version, why = solver_available()
     base = dict(name=SOLVER_NAME, enabled_by=enabled, available=available, version=version, proof_scope=PROOF_SCOPE, budgets=dict(bounds or {}))
     if not available:

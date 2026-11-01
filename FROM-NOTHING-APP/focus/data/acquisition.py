@@ -17,6 +17,8 @@ retained as history, never promoted over a newer one.
 """
 from __future__ import annotations
 
+import hashlib
+import threading
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -223,6 +225,7 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
         snapshot = build.snapshot
         repos.put_record(MANIFESTS, "SourceManifest", run.id, manifest, source_run_id=run.id, policy_hash=policy.hash)
         repos.put_record(SNAPSHOTS, "PlanningSnapshot", snapshot.id, snapshot, source_run_id=run.id, policy_hash=policy.hash)
+        _remember(repos, snapshot)
         for stat in build.statistics:
             repos.put_record("statistics", "DurationStatistics", stat.id, stat, source_run_id=run.id, policy_hash=policy.hash)
         fault("before_complete")
@@ -300,13 +303,46 @@ def load_run_datasets(repos: Any, run_id: str) -> tuple[dict[str, tuple[dict[str
     return datasets, run
 
 
+# The last snapshot this process loaded and verified, with the SHA-256 of the stored bytes it came from. A snapshot is
+# immutable and its id is content-derived, so while the stored bytes are unchanged it is the same snapshot: a pipeline
+# process that loads it in several steps (schedule then validate, stage, sign) parses and verifies it once. Every load
+# still reads and hashes the stored bytes, so any change to them is parsed and verified again (tampering still fails).
+# One entry: at 50 aircraft a snapshot is several GB.
+_VERIFIED: dict[str, tuple[str, PlanningSnapshot]] = {}
+_VERIFIED_LOCK = threading.Lock()
+
+
+def _digest(raw: Any) -> str:
+    return hashlib.sha256(raw if isinstance(raw, (bytes, bytearray)) else str(raw).encode("utf-8")).hexdigest()
+
+
+def _remember(repos: Any, snapshot: PlanningSnapshot) -> None:
+    """The snapshot this process just sealed and stored is the verified one for the bytes now stored (read back and
+    hashed), so the admit step of the same run does not parse them again. Other processes still parse and verify."""
+    raw = repos.get_raw(SNAPSHOTS, snapshot.id)
+    if raw is None:
+        return
+    snapshot.verify()
+    with _VERIFIED_LOCK:
+        _VERIFIED.clear()
+        _VERIFIED[snapshot.id] = (_digest(raw), snapshot)
+
+
 def load_snapshot(repos: Any, snapshot_id: str) -> PlanningSnapshot | None:
     raw = repos.get_raw(SNAPSHOTS, snapshot_id)
     if raw is None:
         return None
+    digest = _digest(raw)
+    with _VERIFIED_LOCK:
+        hit = _VERIFIED.get(snapshot_id)
+    if hit is not None and hit[0] == digest:
+        return hit[1]
     env = open_envelope(raw, "PlanningSnapshot")
     snap = from_jsonable(PlanningSnapshot, env.payload)
     snap.verify()
+    with _VERIFIED_LOCK:
+        _VERIFIED.clear()
+        _VERIFIED[snapshot_id] = (digest, snap)
     return snap
 
 

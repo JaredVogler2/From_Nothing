@@ -76,6 +76,13 @@ has ruled).
 | C7 | minor | Owner decision (2026-10-31): the app shows local time | The simulation dashboard showed UTC, and the workspace hard-coded New York with an "ET" label. | browser | FIXED: every page carries the site zone (policy `shift.timezone`) and shows times in it, labelled, for example `EDT` |
 | C8 | — | OD-01 TOTAL_MECHANICS semantics | Open decision: live jobs carried `FLOW_SEMANTICS_UNCONFIRMED`. | — | DECIDED (owner, October 31, 2026): TOTAL_MECHANICS is the number of mechanics that must be on the job at once (authority `owner_decision`) |
 
+## D. Found while speeding up the shift cycle (November 1, 2026)
+
+| # | Sev. | Requirement | Deviation | Verified | Status |
+| --- | --- | --- | --- | --- | --- |
+| D1 | major | S12 l.1617 "Attempt1 exact incumbent day/shift/start"; B22 | The engine located an incumbent task by its minutes to go along the job's phases in id order (FINAL_QA, IP_QA, ..., WORK), not in chain order. A WORK position still matched, but an in-process QA hold never did: every accepted hold came back UNSAFE (`INCUMBENT_PHASE_MISSING`) and was left undefended. The validator reads the chain in order, so it located them. | probe + test | FIXED: positions are located along the job's chain (`EngineContext.job_chain`); a hold accepted in one plan is KEPT in the next |
+| D2 | minor | Owner direction (2026-11-01): reuse admitted data | Every pipeline step parsed and verified the admitted snapshot again, even in the same process, and each publication loaded the current plan's whole snapshot only to read its cutoff. At 50 aircraft a snapshot is over a million edges. | code + test | FIXED: a process reuses a snapshot it verified while the stored bytes are unchanged (re-read and hashed on every load); acquisition registers the snapshot it stored, so admit does not parse it; the cutoff comes from the plan's source run. A cold load at 50 aircraft is still projected at about 3.5 minutes and 14 to 15 GB (`PRODUCTION_SCALE.md`) |
+
 ## Checked and correct
 
 - Delivery hysteresis (2-day hold, 7-day bad news, sustained replans).

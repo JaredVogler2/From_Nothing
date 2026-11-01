@@ -21,6 +21,9 @@ navigation over the same modules). More options:
 
 - `--shifts N` stops after N shifts, for a trial run.
 - `--purposes` chooses the plans made each shift (default `EXECUTABLE,FORECAST`). The floor works the EXECUTABLE plan.
+- `--planning` chooses how each plan is made (default `full`). `repair` keeps the previous shift's accepted plan where
+  it still holds and re-places only what changed. `auto` runs the full solve for the day's first shift and repairs the
+  next two, as the pipeline does (`docs/execution/PLAN_REPAIR.md`). Each shift's log line shows what ran and why.
 - `--max-moves`, `--max-repairs`, `--baseline`, `--edges`, `--rework`, `--teams` and `--team-size` change the defaults
   below.
 
@@ -44,6 +47,9 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
    - the cost-of-delay redispatch, through each aircraft's Registry weight;
    - delay repair, with `--max-repairs` boosts;
    - `--max-moves` search moves, half of them aimed at the longest waits.
+
+   With `--planning repair` or `auto`, a repaired shift replaces these four passes with a decode that keeps the
+   incumbent where it holds, followed by the cost-of-delay redispatch of that repair (`docs/execution/PLAN_REPAIR.md`).
 
    Each purpose's previous valid plan is its incumbent, so its three-day commitments are defended. The incumbent is
    accepted by the simulation without the stage, readback and sign protocol, and its defense says so (`SIMULATED`).

@@ -45,6 +45,17 @@ is false.
 8. Optional, default off (P22): a CP-SAT pooled relaxation proposes job orders that the same
    named decoder, validator and exact comparison judge (``solver.improve``). Its typed status is
    recorded in every receipt (``baseline_comparison["solver"]``); it never yields a plan itself.
+
+**Repair** (``mode="repair"``) replaces steps 3-6 when an accepted incumbent exists: one decode keeps
+every incumbent placement whose slot and crew still hold (``commitments.repair_hints``), after the
+defended commitments, and fills new and changed work around them in neutral critical-path order; a
+second decode redispatches that repair by the cost of delay (step 4), and the exact comparison keeps
+the better. It re-plans the whole horizon, so a shift's shortfall still moves delivery dates and
+penalties, but it keeps the accepted plan wherever it still holds. The FINAL validation gates it like any plan; a repair that finds no
+incumbent, or whose plan fails validation, falls back to the full run. ``mode="auto"`` (the pipeline
+default) repairs between daily full solves (``planning_mode``), and each scheduled full solve also
+decodes the repair and records how far it landed from the full plan (``repair_drift``). The receipt's
+``planning`` entry says what was asked, what ran and why.
 """
 from __future__ import annotations
 
@@ -133,7 +144,8 @@ class MaxRun:
     solver: dict[str, Any] = field(default_factory=dict)   # optional CP-SAT stage receipt (P22); DISABLED by default
     native: dict[str, Any] = field(default_factory=dict)   # which ledger/crew core ran; never part of the candidate
     urgency: dict[str, int] = field(default_factory=dict)  # phase -> cost of delay used by the economic passes
-    stop_reason: str = "move_bound"                        # move_bound | no_moves (repeatable) or deadline | cancelled
+    stop_reason: str = "move_bound"                        # move_bound | no_moves | repair (repeatable) or deadline | cancelled
+    planning: dict[str, Any] = field(default_factory=dict) # requested and resolved planning mode, why, repair counts, drift check
 
 
 def make_priority(ctx: EngineContext, state: PriorityState, urgency: Mapping[str, int] | None,
@@ -158,8 +170,11 @@ class MaxOptimizer:
     def __init__(self, ctx: EngineContext, *, defended: Mapping[str, DefendedTask] | None = None, budget_seconds: float | None = None,
                  seed: int | None = None, max_moves: int | None = None, cancel: Callable[[], bool] | None = None,
                  clock: Callable[[], float] = time.monotonic, gate: bool = True, incumbent_id: str | None = None,
-                 fixed_ranks: Mapping[str, int] | None = None, max_repairs: int = 20):
+                 fixed_ranks: Mapping[str, int] | None = None, max_repairs: int = 20,
+                 hints: Mapping[str, DefendedTask] | None = None, repair: bool = False):
         self.ctx = ctx
+        self.hints = dict(hints or {})                 # repair: incumbent slots kept where they still hold
+        self.repair = repair
         self.fixed_ranks = dict(fixed_ranks or {})
         self.gate = gate
         self.incumbent_id = incumbent_id
@@ -202,7 +217,7 @@ class MaxOptimizer:
     def decode(self, state: PriorityState, urgency: Mapping[str, int] | None) -> DecodeResult:
         # committed work (defended phases and their prerequisites) is dispatched in the seed's order by every candidate
         return Decoder(self.ctx, make_priority(self.ctx, state, urgency, self.fixed_ranks), defended=self.defended,
-                       committed=make_priority(self.ctx, PriorityState(), None, self.fixed_ranks)).run()
+                       committed=make_priority(self.ctx, PriorityState(), None, self.fixed_ranks), hints=self.hints).run()
 
     def _decode_all(self, states: list[PriorityState], urgency: Mapping[str, int] | None) -> list[Evaluation]:
         """Decode and evaluate each state, results in order. With the native core the decodes run on threads: the Rust
@@ -278,7 +293,39 @@ class MaxOptimizer:
         return True
 
     # ------------------------------------------------------------------ pipeline
+    def _run_repair(self) -> MaxRun:
+        """Repair the incumbent in two decodes, the better of which is the plan.
+
+        1. Keep each incumbent placement whose slot and crew still hold and place new and changed work around them in
+           neutral order.
+        2. The full solve's cost-of-delay redispatch on that repair: incumbent slots still lead, and new, changed and
+           re-placed work is dispatched by the cost of delaying it (``urgency.cost_of_delay``, from the first decode).
+
+        The exact comparison keeps the second only when it is strictly better. No delay repair or search, and no
+        in-search validation: the FINAL validation gates the plan."""
+        def summary(d: DecodeResult) -> str:
+            return (f"{d.kept} of {len(self.hints)} incumbent placements kept at their slot and crew, {d.rehomed} re-placed; "
+                    f"{len(d.placements)} placed, {len(d.deferred)} deferred")
+
+        t = self.clock()
+        neutral = PriorityState()
+        repaired = self.evaluate(self.decode(neutral, None))
+        weight_records = self.registry.derive_priority_weights(completion_minutes(repaired.completions))
+        urgency = cost_of_delay(self.ctx, self.registry, repaired.decode, weight_records)
+        t_econ = self.clock()
+        econ = self.evaluate(self.decode(neutral, urgency))
+        accepted = self.better(econ, repaired)
+        best = econ if accepted else repaired
+        stages = [StageMetric("repair", int((t_econ - t) * 1000), 1, 1, summary(repaired.decode)),
+                  StageMetric("repair_redispatch", int((self.clock() - t_econ) * 1000), 1, int(accepted),
+                              f"{urgency_summary(urgency)}; {summary(econ.decode)}; exact complete-candidate comparison")]
+        run = MaxRun(repaired, best, dict(weight_records), stages, urgency=dict(urgency) if accepted else {})
+        run.stop_reason = "repair"
+        return run
+
     def run(self) -> MaxRun:
+        if self.repair:
+            return self._run_repair()
         start = self.clock()
 
         def stage(name: str, began: float, candidates: int, accepted: int, note: str) -> StageMetric:
@@ -495,11 +542,13 @@ def build_candidate(ctx: EngineContext, run: MaxRun, *, created_at: datetime, in
             "baseline_deferred_phases": len(run.baseline.decode.deferred), "final_deferred_phases": len(decode.deferred),
             "final_travel_minutes": best.travel_minutes, "final_wait_minutes": best.wait_minutes, "final_ot_minutes": best.ot_minutes,
             "moves": run.moves, "accepted_moves": run.accepted_moves, "complete_fleet_cost": fin.complete,
-            "stop_reason": run.stop_reason, "repeatable": run.stop_reason in ("move_bound", "no_moves"),
+            "stop_reason": run.stop_reason, "repeatable": run.stop_reason in ("move_bound", "no_moves", "repair"),
+            **({"planning": run.planning} if run.planning else {}),
             "long_wait_jobs": len(long_waits(best.decode)), "cost_of_delay_phases": len(run.urgency),
             "solver": run.solver or None,
         }),
-        paths_used=tuple(sorted(decode.paths_used | {"economics_registry", "exact_evaluator", "neighborhoods", "delay_repair"}
+        paths_used=tuple(sorted(decode.paths_used | {"economics_registry", "exact_evaluator"}
+                                | (set() if run.stop_reason == "repair" else {"neighborhoods", "delay_repair"})
                                 | ({"cpsat_relaxation_order"} if run.solver.get("model") else set()))),
         incumbent=dict(incumbent or {"id": incumbent_id or "", "status": "NOT_LOOKED_UP", "detail": "no incumbent lookup was requested",
                                      "defended": "0"}))
@@ -571,43 +620,158 @@ def receipt(plan: CandidatePlan) -> dict[str, Any]:
 CANDIDATES = "candidates"
 
 
+SCHEDULE_MODES = ("full", "repair", "auto")
+
+
 def schedule(services: Any, *, source_run: str, purpose: Purpose, budget_seconds: float | None = None,
-             max_moves: int | None = None, solver: bool | None = None) -> tuple[CandidatePlan, MaxRun]:
+             max_moves: int | None = None, solver: bool | None = None, mode: str = "full") -> tuple[CandidatePlan, MaxRun]:
     from ....data.acquisition import snapshot_for_run
 
     snapshot = snapshot_for_run(services, source_run, services.policy)
-    return schedule_snapshot(services, snapshot, purpose=purpose, budget_seconds=budget_seconds, max_moves=max_moves, solver=solver)
+    return schedule_snapshot(services, snapshot, purpose=purpose, budget_seconds=budget_seconds, max_moves=max_moves, solver=solver,
+                             mode=mode)
+
+
+def planning_mode(ctx: EngineContext, defense: Any, requested: str) -> tuple[str, str]:
+    """The mode a run uses, and why. ``auto`` (the pipeline default) repairs the accepted plan between daily full solves.
+    A run plans the shift that contains its cutoff plus ``planning.cutoff_lead_minutes`` (a pipeline runs shortly before
+    each shift). ``auto`` runs a full solve when that shift is one of ``planning.full_solve_shifts``, when there is no
+    accepted incumbent, or when the incumbent's cutoff is more than ``planning.repair_max_incumbent_age_hours`` old."""
+    if requested != "auto":
+        return requested, f"{requested} requested"
+    from ....calendar import shift_containing
+
+    policy = ctx.policy
+    shift = shift_containing(ctx.cutoff_minute + policy.int("planning.cutoff_lead_minutes"), ctx.shift_policy, ctx.site)
+    full_shifts = sorted(int(n) for n in policy.seq("planning.full_solve_shifts"))
+    if shift is None or shift.number in full_shifts:
+        where = shift.label if shift is not None else "no shift"
+        return "full", f"the run plans {where}: the daily full solve runs for shifts {full_shifts} (planning.full_solve_shifts)"
+    if defense.plan is None:
+        return "full", f"no accepted incumbent to repair ({defense.status})"
+    age = (ctx.snapshot.cutoff - defense.plan.previous_cutoff).total_seconds() / 3600
+    limit = policy.int("planning.repair_max_incumbent_age_hours")
+    if age > limit:
+        return "full", f"the incumbent's cutoff is {age:.1f} h old, over planning.repair_max_incumbent_age_hours ({limit})"
+    return "repair", f"the run plans {shift.label} and the incumbent's cutoff is {age:.1f} h old"
+
+
+def repair_drift(repaired: Evaluation, full: Evaluation) -> dict[str, Any]:
+    """How far a repair of the incumbent lands from the full solve on the same snapshot (the daily drift check).
+    Differences are repair minus full: a positive cost means the repair would have cost more. Costs compare only when
+    both leave the same aircraft with unknown completion."""
+    moved, worst = 0, 0.0
+    for line in sorted(set(full.completions) | set(repaired.completions)):
+        a = full.completions[line].completion_at if line in full.completions else None
+        b = repaired.completions[line].completion_at if line in repaired.completions else None
+        if a != b:
+            moved += 1
+            if a is not None and b is not None:
+                worst = max(worst, abs((b - a).total_seconds()) / 86400)
+    rs, fs = repaired.summary, full.summary
+    return {"repair_controllable_known_cents": rs.controllable_known_cents, "full_controllable_known_cents": fs.controllable_known_cents,
+            "controllable_delta_cents": rs.controllable_known_cents - fs.controllable_known_cents,
+            "costs_comparable": set(rs.unknown_lines) == set(fs.unknown_lines),
+            "repair_unknown_aircraft": len(rs.unknown_lines), "full_unknown_aircraft": len(fs.unknown_lines),
+            "repair_deferred_phases": len(repaired.decode.deferred), "full_deferred_phases": len(full.decode.deferred),
+            "aircraft_completion_moved": moved, "max_completion_days_moved": round(worst, 2)}
 
 
 def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy: Any = None, budget_seconds: float | None = None,
                       max_moves: int | None = None, fixed_ranks: Mapping[str, int] | None = None,
                       cancel: Callable[[], bool] | None = None, solver: bool | None = None,
-                      solver_budget_seconds: float | None = None) -> tuple[CandidatePlan, MaxRun]:
+                      solver_budget_seconds: float | None = None, mode: str = "full") -> tuple[CandidatePlan, MaxRun]:
     """Rich MAX over one sealed snapshot (admitted or an isolated scenario copy), then FINAL validation; persists the candidate.
 
     ``fixed_ranks`` (scenario planned task priorities) and ``cancel`` (a cooperative stop) are for SCENARIO runs only.
     ``solver`` forces the optional CP-SAT stage on or off; None follows policy ``solver.enabled``, then FOCUS_SOLVER_ENABLED.
+    ``mode="repair"`` keeps the accepted incumbent's placements where they still hold, re-places what changed and
+    redispatches by the cost of delay: two decodes, no search. Without an incumbent, or when the repaired plan fails FINAL validation, it runs the full solve.
+    ``mode="auto"`` picks one by ``planning_mode``; its scheduled full solve also measures how far a repair would have
+    landed (``repair_drift``, policy ``planning.drift_check``). The receipt's ``planning`` entry records what was asked,
+    what ran and why (``mode="full"``, the default for direct calls, records nothing, so its candidate is unchanged).
     """
     from ...commitments import defended_tasks
     from ....domain import DomainError
 
+    if mode not in SCHEDULE_MODES:
+        raise DomainError("SCHEDULE_MODE_UNKNOWN", f"mode must be one of {list(SCHEDULE_MODES)}, not {mode!r}")
     if fixed_ranks and purpose is not Purpose.SCENARIO:
         raise DomainError("PRIORITY_SCENARIO_ONLY", "planned task priorities are scenario inputs, never executable or forecast settings")
     policy = policy or services.policy
-    from ...native import status as native_status
-
     requested = bool(getattr(services.settings, "native_core", False))
     ctx = EngineContext(snapshot, policy, purpose, native=requested)
     defense = defended_tasks(services, ctx)
+    return plan_by_mode(ctx, defense, mode, lambda hints, planning, reference: _solve(
+        services, ctx, defense, budget_seconds=budget_seconds, max_moves=max_moves, fixed_ranks=fixed_ranks, cancel=cancel, solver=solver,
+        solver_budget_seconds=solver_budget_seconds, requested=requested, planning=planning, hints=hints, reference=reference),
+        fixed_ranks=fixed_ranks)
+
+
+def plan_by_mode(ctx: EngineContext, defense: Any, mode: str, solve: Callable[..., Any], *, fixed_ranks: Mapping[str, int] | None = None,
+                 max_repairs: int = 20) -> Any:
+    """Run ``solve(hints, planning, reference)`` as the mode decides; its result is ``(candidate, run, ...)``.
+
+    A repair is ``solve`` with the incumbent's hints; when its FINAL validation fails, the full solve replaces it. The full
+    solve is ``solve`` without hints. An ``auto`` full solve with an incumbent also gets ``reference``: the repair it
+    replaces (its evaluation and seconds), so the receipt can record the drift. ``planning`` says what was asked, what
+    ran and why; a plain ``full`` request records nothing."""
+    from ...commitments import repair_hints
+
+    ran, why = planning_mode(ctx, defense, mode)
+    planning = {"requested": mode, "ran": ran, "reason": why} if mode != "full" else {}
+    reference = None
+    if ran == "repair":
+        if defense.plan is None:
+            planning.update(ran="full", reason=f"REPAIR_NO_INCUMBENT: {defense.status}: {defense.detail}")
+        else:
+            result = solve(repair_hints(ctx, defense.plan, defense.defended), planning, None)
+            candidate, validation = result[0], result[1].validation
+            if validation.valid:
+                return result
+            codes = sorted({f"{v.check}:{v.code}" for v in validation.violations})
+            planning = {**planning, "ran": "full",
+                        "reason": f"REPAIR_INVALID: repaired candidate {candidate.id} failed FINAL validation with "
+                                  f"{len(validation.violations)} violations ({', '.join(codes[:4]) or 'required checks skipped'})"}
+    elif mode == "auto" and defense.plan is not None and ctx.policy.bool("planning.drift_check"):
+        began = time.monotonic()
+        repaired = MaxOptimizer(ctx, defended=defense.defended, incumbent_id=defense.incumbent_id, fixed_ranks=fixed_ranks,
+                                max_repairs=max_repairs, hints=repair_hints(ctx, defense.plan, defense.defended), repair=True).run().best
+        reference = (repaired, time.monotonic() - began)
+    return solve(None, planning, reference)
+
+
+def record_planning(run: MaxRun, planning: Mapping[str, Any], hints: Mapping[str, DefendedTask] | None,
+                    reference: tuple[Evaluation, float] | None) -> None:
+    """The run's planning receipt: the mode decision, a repair's counts, and the drift check against the repair."""
+    run.planning = dict(planning)
+    if hints is not None:
+        d = run.best.decode
+        run.planning.update(hints=len(hints), kept=d.kept, rehomed=d.rehomed, deferred=sum(1 for pid in hints if pid in d.deferred))
+    if reference is not None:
+        run.planning["drift"] = {**repair_drift(reference[0], run.best), "repair_seconds": round(reference[1], 3)}
+
+
+def _solve(services: Any, ctx: EngineContext, defense: Any, *, budget_seconds: float | None, max_moves: int | None,
+           fixed_ranks: Mapping[str, int] | None, cancel: Callable[[], bool] | None, solver: bool | None,
+           solver_budget_seconds: float | None, requested: bool, planning: Mapping[str, Any],
+           hints: Mapping[str, DefendedTask] | None = None, reference: tuple[Evaluation, float] | None = None) -> tuple[CandidatePlan, MaxRun]:
+    """One planning run (a repair when ``hints`` is given, else the full solve), the candidate persisted, then FINAL
+    validation. ``reference`` is the drift check's repair (its evaluation and seconds), compared with the full plan."""
+    from ...native import status as native_status
+
+    snapshot, policy, repair = ctx.snapshot, ctx.policy, hints is not None
     optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves, incumbent_id=defense.incumbent_id,
-                             fixed_ranks=fixed_ranks, cancel=cancel)
+                             fixed_ranks=fixed_ranks, cancel=cancel, hints=hints, repair=repair)
     run = optimizer.run()
+    record_planning(run, planning, hints, reference)
     from .solver import budgets, enabled_by, improve
 
-    switch = enabled_by(policy, services.settings, solver)
+    switch = "" if repair else enabled_by(policy, services.settings, solver)
     began = time.monotonic()
     outcome = improve(optimizer, run, enabled=switch, bounds=budgets(policy, solver_budget_seconds) if switch else None,
-                      cancel=cancel or (lambda: False))
+                      cancel=cancel or (lambda: False),
+                      off_reason="a repair keeps the accepted plan where it holds; the optional solver runs only in a full solve" if repair else None)
     run.solver = outcome.receipt()
     run.native = native_status(requested)
     run.validated, run.validator_rejections = optimizer._gate_count, list(optimizer._gate_log)
@@ -640,9 +804,9 @@ def worker_schedule(services: Any, run: Any) -> dict[str, Any]:
         raise DomainError("POLICY_MISMATCH", f"active policy is {services.policy.id}, not {req.get('policy_id')}")
     budget = min(float(req.get("budget_seconds", run.budget_seconds)), float(run.budget_seconds))
     plan, mrun = schedule(services, source_run=str(req.get("source_run_id", "")), purpose=Purpose(req.get("purpose", "EXECUTABLE")),
-                          budget_seconds=budget)
+                          budget_seconds=budget, mode=str(req.get("planning", "full")))
     return {"status": "scheduled", **receipt(plan), "validation": receipt_summary(mrun.validation, limit=20),
-            "publishable": mrun.validation.valid, "published": False, "solver": mrun.solver, "engine": mrun.native,
+            "publishable": mrun.validation.valid, "published": False, "solver": mrun.solver, "engine": mrun.native, "planning": mrun.planning,
             "note": "a candidate is never executable; signing and promotion stay in the trusted publication worker or CLI"}
 
 
@@ -651,7 +815,8 @@ def cli_schedule(services: Any, args: Any) -> dict[str, Any]:
         return {"status": "invalid", "error": {"code": "POLICY_MISMATCH", "message": f"active policy is {services.policy.id}, not {args.policy}"}}
     from ....validation.plan import receipt_summary
 
-    plan, run = schedule(services, source_run=args.source_run, purpose=Purpose(args.purpose), budget_seconds=args.budget_seconds)
+    plan, run = schedule(services, source_run=args.source_run, purpose=Purpose(args.purpose), budget_seconds=args.budget_seconds,
+                         mode=getattr(args, "planning", None) or "full")
     return {"status": "ok", **receipt(plan), "validation": receipt_summary(run.validation, limit=20), "publishable": run.validation.valid,
             "search_validation": {"validated": run.validated, "rolled_back": run.validator_rejections, "seed_valid": run.seed_valid},
-            "solver": run.solver, "engine": run.native, "published": False}
+            "solver": run.solver, "engine": run.native, "planning": run.planning, "published": False}

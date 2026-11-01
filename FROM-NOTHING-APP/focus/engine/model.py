@@ -89,6 +89,9 @@ class EngineContext:
         self.job_phases: dict[str, list[Phase]] = defaultdict(list)
         for p in snapshot.phases:
             self.job_phases[p.job].append(p)
+        # each job's phases in chain order, as the graph emits them (WORK, IP_QA holds between WORK pieces, QA, release):
+        # incumbent positions are measured along this chain at publication, so they are located along it too
+        self.job_chain: dict[str, tuple[Phase, ...]] = {job: tuple(plist) for job, plist in self.job_phases.items()}
         for plist in self.job_phases.values():
             plist.sort(key=lambda p: (p.kind is PhaseKind.RELEASE, p.key.id))
         # ---- pools, members, windows and caps for the purpose

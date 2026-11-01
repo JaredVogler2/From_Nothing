@@ -159,16 +159,49 @@ pretends.
 ## 4. The pipeline (`focus/orchestration.py`)
 
 ```bash
-python -m focus.cli pipeline --key 2026-10-26 --role source
-python -m focus.cli pipeline --key 2026-10-26 --role app
+python -m focus.cli pipeline --key 2026-10-26 --role source      # --planning auto|full|repair (default: policy)
+python -m focus.cli pipeline --key 2026-10-26 --role app        # the executable plan
+python -m focus.cli pipeline --key 2026-10-26 --role stager
+python -m focus.cli pipeline --key 2026-10-26 --role signer     # the executable plan is out
+python -m focus.cli pipeline --key 2026-10-26 --role app        # the forecast, on the same snapshot
 python -m focus.cli pipeline --key 2026-10-26 --role stager
 python -m focus.cli pipeline --key 2026-10-26 --role signer
 python -m focus.cli pipeline --key 2026-10-26 --role evaluator
 python -m focus.cli pipeline --key 2026-10-26 --status
 ```
 
-Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept -> observe_evaluate`.
+Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept`, then
+`forecast -> forecast_stage_readback -> forecast_sign_accept`, and `observe_evaluate` after `sign_accept`.
 
+- **Executable first.** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only the executable plan, the one
+  crews are dispatched on. `forecast` needs the accepted executable plan, so each role's first run stops before the
+  forecast and the shift's dispatch never waits for it. The forecast (delivery dates, days late and penalties for every
+  aircraft) still runs on every pipeline, on the same admitted snapshot, and is staged, read back and signed the same
+  way. The GitLab draft runs it as `forecast_schedule_validate`, `forecast_stage_readback` and `forecast_sign_accept`.
+
+- **Planning mode.** A pipeline's request fixes how both plans are made (`--planning`, default policy
+  `planning.default_mode` = `auto`). The schedule and forecast step outputs, and each candidate's receipt
+  (`algorithm_status.baseline_comparison.planning`), record what was asked, what ran and why.
+  - `full`: the complete solve (seed, cost-of-delay redispatch, delay repair, neighbourhood search).
+  - `repair`: a decode that keeps the accepted plan of the same purpose wherever its slot and crew still hold and places
+    new and changed work around it, then the cost-of-delay redispatch of that repair (the better one is kept). It re-plans the whole horizon, so a shift's shortfall still moves delivery
+    dates and penalties. The FINAL validation gates it like any plan. With no accepted plan, or when the repaired plan
+    fails validation, the full solve runs instead and the receipt says why (`REPAIR_NO_INCUMBENT`, `REPAIR_INVALID`).
+  - `auto`: repair between daily full solves. A run plans the shift that contains its cutoff plus
+    `planning.cutoff_lead_minutes` (60). It gets the full solve when that shift is in `planning.full_solve_shifts` ([1]),
+    when there is no accepted plan, or when the accepted plan's cutoff is more than
+    `planning.repair_max_incumbent_age_hours` (12) old. Each such full solve also decodes the repair it replaces and
+    records the drift (`planning.drift_check`): cost, deferred work and aircraft completion dates, repair minus full.
+  - `docs/execution/PLAN_REPAIR.md` explains the method, the measurements and the limits.
+- **Admitted data is read once per process.** A process parses and verifies the admitted snapshot the first time it
+  loads it.
+  - Later steps in the same process reuse it while the stored bytes are unchanged. Every load still reads and hashes
+    those bytes, so a changed record is parsed and verified again.
+  - Acquisition registers the snapshot it just stored, so the `admit` step of the same run does not parse it at all.
+  - A role that runs `schedule` and `validate`, or `all` roles in one process, loads the snapshot once.
+  - Publishing reads the current plan's source cutoff (the stale-replay check) from its source run, not by loading that
+    plan's snapshot.
+  - At 50 aircraft a cold load is projected at about 3.5 minutes and 14 to 15 GB (`PRODUCTION_SCALE.md`).
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never
   runs without the accepted plan's frozen goals.
@@ -193,7 +226,8 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included. `sign_accept` is
   `when: manual` and holds the only signing reference.
 - **The scheduling job** (`schedule_validate`) does the heavy work: it associates jobs with people and start times.
-  - Tag it to a runner with at least 4 vCPU and 16 GB.
+  - Tag it to a runner with at least 4 vCPU and 16 GB, or 32 GB at 50 aircraft: loading the stored snapshot then
+    peaks near 15 GB (`PRODUCTION_SCALE.md`). The stager and signer jobs load it too.
   - It installs the native wheel that `native_wheel` built from the same commit (an artifact, never an index copy) and
     sets `FOCUS_NATIVE_CORE=true`. A wheel built for another protocol is refused and the Python core runs, with the
     reason in the run receipt.

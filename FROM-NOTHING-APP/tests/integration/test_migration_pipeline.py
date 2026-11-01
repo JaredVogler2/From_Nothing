@@ -282,13 +282,17 @@ def _published(services) -> list[str]:
     return services.repositories.list_ids("published_plans")
 
 
+ROLE_SEQUENCE = ("source", "app", "stager", "signer", "app", "stager", "signer", "evaluator")   # executable first, then the forecast
+
+
 def test_a71_roles_order_and_idempotent_replay(pipeline_services) -> None:
     services = pipeline_services
     pid = _pid(services)
     assert O.run_role(services, pid, "signer")[0]["outcome"] == "BLOCKED"            # no signing before a clean readback
     assert O.run_step(services, pid, "acquire", role="app")["outcome"] == "ROLE_MISMATCH"
-    for role in ("source", "app", "stager", "signer", "evaluator"):
-        assert all(r["outcome"] == "COMPLETED" for r in O.run_role(services, pid, role)), role
+    for role in ROLE_SEQUENCE:
+        ran = [r for r in O.run_role(services, pid, role) if r["outcome"] != "ALREADY_COMPLETED"]
+        assert ran and all(r["outcome"] in ("COMPLETED", "BLOCKED") for r in ran) and ran[0]["outcome"] == "COMPLETED", (role, ran)
     status = O.status(services, pid)
     assert status["state"] == "completed" and len(status["outbox"]) == len(O.STEPS)
     stage = O.load(services, pid)[0]["steps"]["stage_readback"]["output"]["EXECUTABLE"]
@@ -297,6 +301,52 @@ def test_a71_roles_order_and_idempotent_replay(pipeline_services) -> None:
     replay = O.run_role(services, pid, "all")
     assert {r["outcome"] for r in replay} == {"ALREADY_COMPLETED"}
     assert _published(services) == plans and O.status(services, pid)["outbox"] == status["outbox"]
+
+
+def test_executable_plan_is_accepted_before_the_forecast_is_scheduled(pipeline_services) -> None:
+    """The shift's dispatch never waits for the forecast; the forecast still runs and publishes on the same snapshot."""
+    from focus.publication.service import current_plan
+
+    services = pipeline_services
+    pid = _pid(services, "exec-first")
+    scope = services.settings.scope_key
+    O.run_role(services, pid, "source")
+    app = {r["step"]: r["outcome"] for r in O.run_role(services, pid, "app")}
+    assert app == {"schedule": "COMPLETED", "validate": "COMPLETED", "forecast": "BLOCKED"}      # no forecast before acceptance
+    O.run_role(services, pid, "stager")
+    O.run_role(services, pid, "signer")
+    executable, _ = current_plan(services, scope, "EXECUTABLE")
+    assert executable is not None and O.load(services, pid)[0]["steps"]["forecast"]["status"] == "pending"
+    O.run_role(services, pid, "app")
+    O.run_role(services, pid, "stager")
+    O.run_role(services, pid, "signer")
+    steps = O.load(services, pid)[0]["steps"]
+    forecast, _ = current_plan(services, scope, "FORECAST")
+    assert forecast is not None and steps["forecast_sign_accept"]["output"]["FORECAST"]["plan_id"] == forecast.published.id
+    assert forecast.published.source_run_id == executable.published.source_run_id                   # the same admitted snapshot
+
+
+def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> None:
+    """``auto`` at the fixture cutoff (06:00 local, shift 1) is the daily full solve and measures the repair it replaced;
+    a ``repair`` pipeline then repairs both plans the first one accepted."""
+    services = pipeline_services
+    first = _pid(services, "plan-auto")
+    assert O.load(services, first)[0]["request"]["planning"] == services.policy.str("planning.default_mode") == "auto"
+    for role in ROLE_SEQUENCE:
+        O.run_role(services, first, role)
+    steps = O.load(services, first)[0]["steps"]
+    auto = steps["schedule"]["output"]["EXECUTABLE"]["planning"]
+    assert (auto["requested"], auto["ran"]) == ("auto", "full") and "daily full solve" in auto["reason"]
+    assert auto["drift"]["repair_seconds"] >= 0                                    # the bootstrap incumbent was repaired for comparison
+    assert steps["forecast"]["output"]["FORECAST"]["planning"]["ran"] == "full"
+    second = O.create(services, key="plan-repair", budget_seconds=10, max_moves=10, planning="repair")["pipeline_id"]
+    for role in ROLE_SEQUENCE:
+        O.run_role(services, second, role)
+    assert O.status(services, second)["state"] == "completed"
+    steps = O.load(services, second)[0]["steps"]
+    for step, purpose in (("schedule", "EXECUTABLE"), ("forecast", "FORECAST")):
+        record = steps[step]["output"][purpose]["planning"]
+        assert (record["requested"], record["ran"]) == ("repair", "repair") and record["kept"] + record["rehomed"] <= record["hints"]
 
 
 def test_a71_cli_role_that_only_waited_is_not_a_success(pipeline_services) -> None:
@@ -389,7 +439,7 @@ def test_a51_crash_inside_publication_never_reports_signed_but_uncommitted(pipel
     second = O.run_step(services, pid, "sign_accept", role="signer")
     assert second["outcome"] == "COMPLETED"
     plans = second["output"]
-    assert plans["EXECUTABLE"]["status"] == "ACCEPTED" and len(_published(services)) == 2   # one plan per purpose, no duplicate
+    assert plans["EXECUTABLE"]["status"] == "ACCEPTED" and len(_published(services)) == 1   # the executable plan once, no duplicate
 
 
 def test_a50_takeover_after_acceptance_does_not_duplicate_commitments(pipeline_services) -> None:
@@ -426,7 +476,7 @@ def test_retention_archives_only_unreferenced_candidates_and_restores_them(pipel
 
     services = pipeline_services
     pid = _pid(services, "retention")
-    for role in ("source", "app", "stager", "signer"):
+    for role in ROLE_SEQUENCE[:-1]:
         O.run_role(services, pid, role)
     source_run = O.load(services, pid)[0]["steps"]["admit"]["output"]["source_run_id"]
     extra, _ = schedule(services, source_run=source_run, purpose=Purpose.EXECUTABLE, budget_seconds=5, max_moves=3)   # superseded what-if
@@ -440,7 +490,8 @@ def test_retention_archives_only_unreferenced_candidates_and_restores_them(pipel
     assert all(item["id"] != extra.id for item in held["eligible"])                   # a legal hold always wins
     old = R.plan(services, keep_days=30)
     ids = {(i["collection"], i["id"]) for i in old["eligible"]}
-    used = {O.load(services, pid)[0]["steps"]["schedule"]["output"][p]["candidate_id"] for p in ("EXECUTABLE", "FORECAST")}
+    steps = O.load(services, pid)[0]["steps"]
+    used = {steps["schedule"]["output"]["EXECUTABLE"]["candidate_id"], steps["forecast"]["output"]["FORECAST"]["candidate_id"]}
     assert extra.id not in used and ("candidates", extra.id) in ids                   # the superseded candidate is eligible
     assert not any(c == "candidates" and i in used for c, i in ids)                   # accepted plans' candidates are preserved
     assert old["preserved_collections"]["published_plans"] == 2
@@ -467,18 +518,23 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
             jobs[current] = ""
         elif current:
             jobs[current] += line + "\n"
+    # the executable plan is scheduled, staged and signed first; the forecast follows its acceptance
     order = [("acquire_admit", "--role source"), ("schedule_validate", "--role app"), ("stage_readback", "--role stager"),
-             ("sign_accept", "--role signer"), ("observe_evaluate", "--role evaluator")]
+             ("sign_accept", "--role signer"), ("forecast_schedule_validate", "--role app"), ("forecast_stage_readback", "--role stager"),
+             ("forecast_sign_accept", "--role signer")]
     for (job, role), previous in zip(order, [None] + [j for j, _ in order]):
         assert role in jobs[job], job
         if previous:
             assert f"needs: [{previous}]" in jobs[job] or f"needs: [{previous}," in jobs[job], job   # each role needs the one before it
+    assert "--role evaluator" in jobs["observe_evaluate"] and "needs: [sign_accept]" in jobs["observe_evaluate"]
     # P23: every verification precedes acquisition, and the scheduler runs the native wheel built from the same commit
     for verify in ("import_and_lint", "unit_and_integration", "ui", "fixture_pipeline_rehearsal", "native_wheel"):
         assert verify in jobs["acquire_admit"].split("needs:")[1].splitlines()[0], verify
     assert "{ job: native_wheel, artifacts: true }" in jobs["schedule_validate"] and "dist/focus_native-" in jobs["schedule_validate"]
     assert "focus-native==" not in jobs["schedule_validate"]                     # never an index wheel from another commit
     assert "when: manual" in jobs["sign_accept"] and "focus-signer" in jobs["sign_accept"]
+    assert "when: manual" in jobs["forecast_sign_accept"] and "focus-signer" in jobs["forecast_sign_accept"]
+    assert "dist/focus_native-" in jobs["forecast_schedule_validate"] and "FOCUS_SIGN_KEY_REF" not in jobs["forecast_stage_readback"]
     assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[".live"]
     assert "image: python:3.12-slim" in jobs["default"]
     assert "--role all" in jobs["fixture_pipeline_rehearsal"] and "FOCUS_SIGN_KEY_REF" not in jobs["stage_readback"]

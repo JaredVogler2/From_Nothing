@@ -271,3 +271,20 @@ def test_s3_commitment_after_local_midnight_is_defended_at_its_real_start(demo) 
     s3 = build_shift(day, 3, ctx.shift_policy, ctx.site)
     assert task.start == to_minute(_at(_tz(services), day + timedelta(days=1), "01:00"))   # not 24 hours before the shift
     assert s3.start <= task.start < s3.end and s3.valid_start(task.start)
+
+
+def test_in_process_qa_holds_are_defended_at_their_chain_position(demo) -> None:
+    """Positions are measured along each job's chain when a plan is accepted; an in-process QA hold is found there again.
+    The context keeps phases sorted by id elsewhere, where a hold's position would never match (it was UNSAFE)."""
+    from focus.publication.service import publish
+
+    services, outcome, _ = demo
+    first, _ = schedule(services, source_run=outcome.run_id, purpose=Purpose.EXECUTABLE, budget_seconds=5, max_moves=5)
+    assert publish(services, first.id).status == "ACCEPTED"
+    holds = {a.phase for a in first.assignments if a.kind is PhaseKind.IP_QA}
+    assert len(holds) == 2                                                          # ROOT3's two in-process holds
+    again = acquire_demo(services, key="ip-qa-again")
+    plan, _ = schedule(services, source_run=again.run_id, purpose=Purpose.EXECUTABLE, budget_seconds=5, max_moves=5)
+    assert not [c for c in plan.commitment_results if c.outcome == "UNSAFE"]
+    defended = {c.phase: c.outcome for c in plan.commitment_results if c.phase in holds}
+    assert defended == {phase: "KEPT" for phase in holds}

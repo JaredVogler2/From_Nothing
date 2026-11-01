@@ -85,6 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--policy", required=True)
     p.add_argument("--budget-seconds", type=float, default=30.0)
     p.add_argument("--purpose", choices=["FORECAST", "EXECUTABLE"], default="EXECUTABLE")
+    p.add_argument("--planning", choices=["full", "repair", "auto"], default="full",
+                   help="full solve (default), repair of the accepted plan (falls back to full), or auto as the pipeline decides")
 
     p = sub.add_parser("validate", help="independent nine-check validation of a candidate")
     p.add_argument("--candidate", required=True)
@@ -154,6 +156,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--scenario", default=None)
     p.add_argument("--budget-seconds", type=float, default=None)
     p.add_argument("--max-moves", type=int, default=None)
+    p.add_argument("--planning", choices=["auto", "full", "repair"], default=None,
+                   help="full solve, repair of the accepted plan, or auto (repair between daily full solves); default: policy planning.default_mode")
     p.add_argument("--lease-seconds", type=float, default=900.0)
 
     p = sub.add_parser("retain-history", help="non-destructive retention plan; --apply archives eligible fixture records (never deletes)")

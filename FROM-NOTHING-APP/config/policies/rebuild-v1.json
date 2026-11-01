@@ -2,7 +2,7 @@
   "schema_version": 1,
   "type": "PolicyFile",
   "policy_id": "rebuild-v1",
-  "revision": 2,
+  "revision": 3,
   "scope": "DEMO",
   "mode": "fixture",
   "effective_from_utc": "2026-01-01T00:00:00Z",
@@ -660,6 +660,31 @@
       "value": 1,
       "authority": "fixture_default",
       "ref": "S12 optional CP-SAT ordering stage: search workers (1 with a fixed seed is reproducible; more trade determinism for speed)"
+    },
+    "planning.default_mode": {
+      "value": "auto",
+      "authority": "fixture_default",
+      "ref": "Owner direction 2026-11-01 (speed item 3): pipelines repair the accepted plan between daily full solves. full | repair | auto"
+    },
+    "planning.full_solve_shifts": {
+      "value": [1],
+      "authority": "fixture_default",
+      "ref": "auto mode: a run that plans one of these shift numbers gets the full solve (once per production day); other shifts repair"
+    },
+    "planning.cutoff_lead_minutes": {
+      "value": 60,
+      "authority": "fixture_default",
+      "ref": "auto mode: a run plans the shift containing its cutoff plus this lead (a pipeline runs shortly before each shift)"
+    },
+    "planning.repair_max_incumbent_age_hours": {
+      "value": 12,
+      "authority": "fixture_default",
+      "ref": "auto mode: an accepted incumbent whose cutoff is older than this gets a full solve instead of a repair"
+    },
+    "planning.drift_check": {
+      "value": true,
+      "authority": "fixture_default",
+      "ref": "auto mode: each scheduled full solve also decodes the repair and records how far it landed from the full plan"
     },
     "llm.provider": {
       "value": "none",

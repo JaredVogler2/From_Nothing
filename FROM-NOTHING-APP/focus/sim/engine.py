@@ -7,7 +7,9 @@ the snapshot and read it again): the builder's input and output are the same, an
 
 ``plan`` runs the rich MAX optimizer with the previous shift's published plan as the incumbent (three-day commitment
 defense), builds the candidate and validates it independently against the snapshot and that incumbent, all checks
-required. Nothing here writes to the application's record store; the simulation tables keep the results.
+required. ``mode`` (full | repair | auto) chooses a full solve or a repair of that incumbent exactly as the pipeline does
+(``orchestrator.plan_by_mode``). Nothing here writes to the application's record store; the simulation tables keep the
+results.
 """
 from __future__ import annotations
 
@@ -23,8 +25,8 @@ from ..data.datasets import DATASETS
 from ..data.snapshot_builder import build_snapshot
 from ..data.sourcetime import policy_from_receipts
 from ..domain import Purpose, digest_id
-from ..engine.commitments import defense_for
-from ..engine.max.optimizer.orchestrator import MaxOptimizer, MaxRun, build_candidate
+from ..engine.commitments import Defense, defense_for
+from ..engine.max.optimizer.orchestrator import MaxOptimizer, MaxRun, build_candidate, plan_by_mode, record_planning
 from ..engine.model import EngineContext
 from ..engine.native import status as native_status
 from ..publication.service import incumbent_from
@@ -68,22 +70,28 @@ class ShiftPlan:
 
 
 def plan(services: Any, snapshot: PlanningSnapshot, purpose: Purpose, *, incumbent: IncumbentPlan | None, max_moves: int,
-         budget_seconds: float, created_at: datetime, max_repairs: int = 20) -> ShiftPlan:
+         budget_seconds: float, created_at: datetime, max_repairs: int = 20, mode: str = "full") -> ShiftPlan:
     policy = services.policy
     native = bool(getattr(services.settings, "native_core", False))
     ctx = EngineContext(snapshot, policy, purpose, native=native)
     defense = (defense_for(ctx, incumbent, status="SIMULATED", detail="the previous shift's valid plan, accepted by the simulation without the "
-                           "stage/readback/sign protocol (synthetic demonstration)") if incumbent else None)
-    optimizer = MaxOptimizer(ctx, defended=defense.defended if defense else None, budget_seconds=budget_seconds, max_moves=max_moves,
-                             incumbent_id=defense.incumbent_id if defense else None, max_repairs=max_repairs)
-    run = optimizer.run()
-    run.native = native_status(native)
-    run.validated, run.validator_rejections = optimizer._gate_count, list(optimizer._gate_log)
-    candidate = build_candidate(ctx, run, created_at=created_at, incumbent_id=defense.incumbent_id if defense else None,
-                                extra_commitments=defense.other_results if defense else (), incumbent=defense.receipt() if defense else None)
-    began = time.perf_counter()
-    run.validation = validate(snapshot, policy, candidate, incumbent=incumbent, kind="FINAL", inp=optimizer._vinp, created_at=created_at)
-    return ShiftPlan(purpose, candidate, run, incumbent, ctx, time.perf_counter() - began)
+                           "stage/readback/sign protocol (synthetic demonstration)") if incumbent
+               else Defense(status="NO_INCUMBENT", detail="no plan accepted yet in this simulation"))
+
+    def solve(hints, planning, reference) -> tuple[CandidatePlan, MaxRun, ShiftPlan]:
+        optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves,
+                                 incumbent_id=defense.incumbent_id, max_repairs=max_repairs, hints=hints, repair=hints is not None)
+        run = optimizer.run()
+        record_planning(run, planning, hints, reference)
+        run.native = native_status(native)
+        run.validated, run.validator_rejections = optimizer._gate_count, list(optimizer._gate_log)
+        candidate = build_candidate(ctx, run, created_at=created_at, incumbent_id=defense.incumbent_id,
+                                    extra_commitments=defense.other_results, incumbent=defense.receipt() if incumbent else None)
+        began = time.perf_counter()
+        run.validation = validate(snapshot, policy, candidate, incumbent=incumbent, kind="FINAL", inp=optimizer._vinp, created_at=created_at)
+        return candidate, run, ShiftPlan(purpose, candidate, run, incumbent, ctx, time.perf_counter() - began)
+
+    return plan_by_mode(ctx, defense, mode, solve, max_repairs=max_repairs)[2]
 
 
 def published_incumbent(snapshot: PlanningSnapshot, shift_plan: ShiftPlan, accepted_at: datetime) -> IncumbentPlan:

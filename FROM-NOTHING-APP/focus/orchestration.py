@@ -1,6 +1,12 @@
 """Durable pipeline orchestration with roles, leases, dependency hashes and an outbox (S17 WORKERS, P23).
 
-``acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept -> observe_evaluate``
+``acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept``, then
+``forecast -> forecast_stage_readback -> forecast_sign_accept`` and ``observe_evaluate``.
+
+The executable plan, the one crews are dispatched on, is scheduled, validated, staged and signed first. The forecast
+(delivery dates, days late and penalties for every aircraft, on the same admitted snapshot) runs only after the
+executable plan is accepted, so it never delays the shift's dispatch. It still runs on every pipeline, and it is
+published through the same stage, readback and sign protocol.
 
 Every step:
 
@@ -42,7 +48,6 @@ PIPELINES = "pipelines"
 OUTBOX = "outbox"
 ROLES = ("source", "app", "stager", "signer", "evaluator")
 MAX_ATTEMPTS = 3
-PURPOSES = ("EXECUTABLE", "FORECAST")
 
 
 class StepFailed(RuntimeError):
@@ -67,6 +72,10 @@ STEPS: tuple[StepDef, ...] = (
     StepDef("validate", "app", ("schedule", "admit"), "step_validate"),
     StepDef("stage_readback", "stager", ("validate",), "step_stage_readback"),
     StepDef("sign_accept", "signer", ("stage_readback",), "step_sign_accept"),
+    # the forecast waits for the accepted executable plan, so a role's run stops before it until the shift's dispatch is out
+    StepDef("forecast", "app", ("sign_accept", "admit"), "step_forecast"),
+    StepDef("forecast_stage_readback", "stager", ("forecast",), "step_forecast_stage_readback"),
+    StepDef("forecast_sign_accept", "signer", ("forecast_stage_readback",), "step_forecast_sign_accept"),
     StepDef("observe_evaluate", "evaluator", ("sign_accept",), "step_observe_evaluate"),
 )
 BY_NAME = {s.name: s for s in STEPS}
@@ -89,17 +98,23 @@ def _blank_step(defn: StepDef, ordinal: int) -> dict[str, Any]:
 
 
 def create(services: Any, *, key: str, scenario: str | None = None, budget_seconds: float | None = None,
-           max_moves: int | None = None) -> dict[str, Any]:
-    """Create (or return) the pipeline for ``key`` in this scope; the request is fixed at creation (idempotent)."""
+           max_moves: int | None = None, planning: str | None = None) -> dict[str, Any]:
+    """Create (or return) the pipeline for ``key`` in this scope; the request is fixed at creation (idempotent).
+
+    ``planning`` (full | repair | auto; default policy ``planning.default_mode``) is how both plans are made: ``auto``
+    repairs the accepted plan between daily full solves (``orchestrator.planning_mode``)."""
     repos = services.repositories
     scope = services.settings.scope_key
     pid = pipeline_id(scope, key)
     found = repos.get_state(PIPELINES, pid)
     if found is not None:
         return found[0]
+    planning = planning or str(services.policy.optional("planning.default_mode", "full"))
+    if planning not in ("full", "repair", "auto"):
+        raise StepFailed("BAD_PLANNING_MODE", f"planning must be full, repair or auto, not {planning!r}")
     doc = {"schema_version": 1, "pipeline_id": pid, "scope": scope, "key": key, "created_at": services.clock.now(),
            "request": {"scenario": scenario or services.settings.scenario_id, "budget_seconds": budget_seconds, "max_moves": max_moves,
-                       "mode": services.settings.mode, "policy_id": services.policy.id},
+                       "planning": planning, "mode": services.settings.mode, "policy_id": services.policy.id},
            "steps": {d.name: _blank_step(d, i) for i, d in enumerate(STEPS)}}
     try:
         repos.put_state(PIPELINES, pid, doc, 0)
@@ -295,47 +310,39 @@ def step_admit(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> di
     return {"source_run_id": run_id, "snapshot_id": snapshot.id, "snapshot_hash": snapshot.hash, "head_version": head.version}
 
 
-def step_schedule(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+def _schedule_one(services: Any, doc: dict[str, Any], inputs: dict[str, Any], purpose: str) -> dict[str, Any]:
     from .domain import Purpose
     from .engine.max.optimizer.orchestrator import schedule
 
     request = doc["request"]
-    out: dict[str, Any] = {}
-    for purpose in PURPOSES:
-        plan, run = schedule(services, source_run=inputs["admit"]["source_run_id"], purpose=Purpose(purpose),
-                             budget_seconds=request["budget_seconds"], max_moves=request["max_moves"])
-        out[purpose] = {"candidate_id": plan.id, "valid": run.validation.valid, "violations": len(run.validation.violations),
-                        "solver": run.solver.get("status")}
-    return out
+    plan, run = schedule(services, source_run=inputs["admit"]["source_run_id"], purpose=Purpose(purpose),
+                         budget_seconds=request["budget_seconds"], max_moves=request["max_moves"], mode=request.get("planning", "full"))
+    return {"candidate_id": plan.id, "valid": run.validation.valid, "violations": len(run.validation.violations),
+            "solver": run.solver.get("status"), "planning": run.planning or None}
 
 
-def step_validate(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
-    """Independent FINAL validation of each candidate against the admitted snapshot (same source, every required check)."""
+def _validate_one(services: Any, inputs: dict[str, Any], purpose: str, item: Mapping[str, Any]) -> dict[str, Any]:
+    """Independent FINAL validation of one candidate against the admitted snapshot (same source, every required check)."""
     from .contracts.planning import CandidatePlan
     from .data.acquisition import load_snapshot
     from .validation.plan import CANDIDATES, load_incumbent, persist_receipt, validate
 
     snapshot = load_snapshot(services.repositories, inputs["admit"]["snapshot_id"])
-    out: dict[str, Any] = {}
-    for purpose, item in inputs["schedule"].items():
-        plan = services.repositories.get_typed(CANDIDATES, item["candidate_id"], "CandidatePlan", CandidatePlan)
-        if plan is None or plan.source_run_id != inputs["admit"]["source_run_id"] or plan.snapshot_hash != snapshot.hash:
-            raise StepFailed("SOURCE_MISMATCH", f"{purpose} candidate is not bound to the admitted source run and snapshot")
-        receipt = validate(snapshot, services.policy, plan, incumbent=load_incumbent(services.repositories, plan.incumbent_id), kind="FINAL",
-                           created_at=services.clock.now())
-        persist_receipt(services.repositories, receipt, plan)
-        out[purpose] = {"candidate_id": plan.id, "validation_id": receipt.id, "valid": receipt.valid, "violations": len(receipt.violations),
-                        "required_skips": list(receipt.required_skips)}
-    if not out["EXECUTABLE"]["valid"]:
-        raise StepFailed("EXECUTABLE_INVALID", f"{out['EXECUTABLE']['violations']} violations: nothing is staged or published")
-    return out
+    plan = services.repositories.get_typed(CANDIDATES, item["candidate_id"], "CandidatePlan", CandidatePlan)
+    if plan is None or plan.source_run_id != inputs["admit"]["source_run_id"] or plan.snapshot_hash != snapshot.hash:
+        raise StepFailed("SOURCE_MISMATCH", f"{purpose} candidate is not bound to the admitted source run and snapshot")
+    receipt = validate(snapshot, services.policy, plan, incumbent=load_incumbent(services.repositories, plan.incumbent_id), kind="FINAL",
+                       created_at=services.clock.now())
+    persist_receipt(services.repositories, receipt, plan)
+    return {"candidate_id": plan.id, "validation_id": receipt.id, "valid": receipt.valid, "violations": len(receipt.violations),
+            "required_skips": list(receipt.required_skips)}
 
 
-def step_stage_readback(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+def _stage(services: Any, validated: Mapping[str, Any]) -> dict[str, Any]:
     from .publication.service import publish
 
     out: dict[str, Any] = {}
-    for purpose, item in inputs["validate"].items():
+    for purpose, item in validated.items():
         if not item["valid"]:
             out[purpose] = {"status": "NOT_STAGED", "reason": "invalid candidate"}
             continue
@@ -347,11 +354,11 @@ def step_stage_readback(services: Any, doc: dict[str, Any], inputs: dict[str, An
     return out
 
 
-def step_sign_accept(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+def _sign(services: Any, staged: Mapping[str, Any]) -> dict[str, Any]:
     from .publication.service import publish
 
     out: dict[str, Any] = {}
-    for purpose, item in inputs["stage_readback"].items():
+    for purpose, item in staged.items():
         if item.get("status") == "NOT_STAGED":
             out[purpose] = {"status": "NOT_PUBLISHED"}
             continue
@@ -361,9 +368,44 @@ def step_sign_accept(services: Any, doc: dict[str, Any], inputs: dict[str, Any])
         if result.status not in ("ACCEPTED", "RECOVERED", "ALREADY_ACCEPTED"):
             raise StepFailed("ACCEPTANCE_REFUSED", f"{purpose}: {result.status} {list(result.reasons)[:3]}")
         out[purpose] = {"status": result.status, "plan_id": result.plan_id, "head_version": result.head_version}
+    return out
+
+
+def step_schedule(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+    return {"EXECUTABLE": _schedule_one(services, doc, inputs, "EXECUTABLE")}
+
+
+def step_validate(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+    out = {purpose: _validate_one(services, inputs, purpose, item) for purpose, item in inputs["schedule"].items()}
+    if not out["EXECUTABLE"]["valid"]:
+        raise StepFailed("EXECUTABLE_INVALID", f"{out['EXECUTABLE']['violations']} violations: nothing is staged or published")
+    return out
+
+
+def step_stage_readback(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+    return _stage(services, inputs["validate"])
+
+
+def step_sign_accept(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+    out = _sign(services, inputs["stage_readback"])
     if out.get("EXECUTABLE", {}).get("plan_id") is None:
         raise StepFailed("NO_EXECUTABLE_PLAN", "the executable plan was not accepted")
     return out
+
+
+def step_forecast(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+    """The full-horizon forecast on the same admitted snapshot, after the executable plan is out: scheduled and validated."""
+    scheduled = _schedule_one(services, doc, inputs, "FORECAST")
+    return {"FORECAST": {**_validate_one(services, inputs, "FORECAST", scheduled), "solver": scheduled["solver"],
+                         "planning": scheduled["planning"]}}
+
+
+def step_forecast_stage_readback(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+    return _stage(services, inputs["forecast"])
+
+
+def step_forecast_sign_accept(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
+    return _sign(services, inputs["forecast_stage_readback"])
 
 
 def step_observe_evaluate(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:
@@ -396,7 +438,7 @@ def cli_pipeline(services: Any, args: Any) -> dict[str, Any]:
     if getattr(args, "status", False):
         return status(services, pid)
     create(services, key=key, scenario=getattr(args, "scenario", None), budget_seconds=getattr(args, "budget_seconds", None),
-           max_moves=getattr(args, "max_moves", None))
+           max_moves=getattr(args, "max_moves", None), planning=getattr(args, "planning", None))
     lease = float(getattr(args, "lease_seconds", 900.0) or 900.0)
     if getattr(args, "step", None):
         step = args.step
