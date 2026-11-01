@@ -201,7 +201,8 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   - A role that runs `schedule` and `validate`, or `all` roles in one process, loads the snapshot once.
   - Publishing reads the current plan's source cutoff (the stale-replay check) from its source run, not by loading that
     plan's snapshot.
-  - At 50 aircraft a cold load is projected at about 3.5 minutes and 14 to 15 GB (`PRODUCTION_SCALE.md`).
+  - The first load in a process holds as little at once as the checks allow: at 50 aircraft it takes about 2 minutes
+    and peaks at 7.0 GB (`PRODUCTION_SCALE.md`).
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never
   runs without the accepted plan's frozen goals.
@@ -226,8 +227,9 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included. `sign_accept` is
   `when: manual` and holds the only signing reference.
 - **The scheduling job** (`schedule_validate`) does the heavy work: it associates jobs with people and start times.
-  - Tag it to a runner with at least 4 vCPU and 16 GB, or 32 GB at 50 aircraft: loading the stored snapshot then
-    peaks near 15 GB (`PRODUCTION_SCALE.md`). The stager and signer jobs load it too.
+  - Tag it to a runner with at least 4 vCPU and 16 GB. At 50 aircraft, loading the snapshot and running a full
+    forecast solve peaked at 7.5 GB (`PRODUCTION_SCALE.md`). The stager and signer jobs load the snapshot too and fit
+    the same size.
   - It installs the native wheel that `native_wheel` built from the same commit (an artifact, never an index copy) and
     sets `FOCUS_NATIVE_CORE=true`. A wheel built for another protocol is refused and the Python core runs, with the
     reason in the run receipt.
