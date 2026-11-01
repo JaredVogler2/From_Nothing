@@ -48,8 +48,8 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
    - delay repair, with `--max-repairs` boosts;
    - `--max-moves` search moves, half of them aimed at the longest waits.
 
-   With `--planning repair` or `auto`, a repaired shift replaces these four passes with one decode that keeps the
-   incumbent where it holds (`docs/execution/PLAN_REPAIR.md`).
+   With `--planning repair` or `auto`, a repaired shift replaces these four passes with a decode that keeps the
+   incumbent where it holds, followed by the cost-of-delay redispatch of that repair (`docs/execution/PLAN_REPAIR.md`).
 
    Each purpose's previous valid plan is its incumbent, so its three-day commitments are defended. The incumbent is
    accepted by the simulation without the stage, readback and sign protocol, and its defense says so (`SIMULATED`).

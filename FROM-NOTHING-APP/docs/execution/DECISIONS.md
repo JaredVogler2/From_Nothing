@@ -155,8 +155,8 @@ attendance. A conditional ETA is never physical receipt.
   - The pipeline publishes the executable plan first; the forecast follows on the same admitted snapshot, so dispatch
     never waits for it (`INSTALL_AND_PIPELINE.md` section 4).
   - Pipelines repair the accepted plan between daily full solves (policy `planning.*`, default `auto`). A repair keeps
-    each accepted placement whose slot and crew still hold and re-places the rest over the whole horizon, so delivery
-    dates and penalties still follow every shift's results. The FINAL validation gates it; a failed or impossible
+    each accepted placement whose slot and crew still hold, re-places the rest over the whole horizon and redispatches
+    by the cost of delay, so delivery dates and penalties still follow every shift's results. The FINAL validation gates it; a failed or impossible
     repair falls back to the full solve. Each scheduled full solve records how far the repair would have landed
     (`PLAN_REPAIR.md`).
 

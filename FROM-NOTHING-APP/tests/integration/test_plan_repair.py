@@ -1,6 +1,6 @@
 """Plan repair (speed item 3): keep the accepted plan where it holds, re-place only what changed, fall back to the full solve.
 
-A repair re-plans the whole horizon in one decode, so delivery dates and penalties still follow every change; the
+A repair re-plans the whole horizon without a search, so delivery dates and penalties still follow every change; the
 FINAL validation gates it like any plan. ``auto`` (the pipeline default) repairs between daily full solves, and each
 scheduled full solve records how far the repair would have landed (the drift check).
 """
@@ -82,13 +82,28 @@ def test_repair_keeps_the_incumbent_where_it_holds_and_runs_no_search(demo) -> N
     assert not work.committed                                                       # kept as planned, not a defended commitment
     assert sorted((c.job, c.outcome) for c in plan.commitment_results) == sorted((c.job, c.outcome) for c in full.commitment_results)
     status = plan.algorithm_status
-    assert run.stop_reason == "repair" and [s.stage for s in status.stages] == ["repair"] and run.validated == 0
+    assert run.stop_reason == "repair" and [s.stage for s in status.stages] == ["repair", "repair_redispatch"] and run.validated == 0
     assert status.baseline_comparison["planning"]["ran"] == "repair" and status.baseline_comparison["repeatable"] is True
     assert "repair_hints" in status.paths_used and not {"neighborhoods", "delay_repair"} & set(status.paths_used)
     assert run.solver["status"] == "DISABLED" and "repair" in run.solver["reason"]
     assert run.validation.valid and run.validation.kind == "FINAL" and not reconstruct(snapshot, services.policy, plan).violations
     again, _ = schedule(services, source_run=outcome.run_id, purpose=Purpose.EXECUTABLE, mode="repair")
     assert again.id == plan.id                                                      # repeatable: the same inputs give the same plan
+
+
+@pytest.mark.parametrize("redispatch_better", [True, False])
+def test_the_repair_keeps_its_cost_of_delay_redispatch_only_when_it_is_better(demo, monkeypatch, redispatch_better) -> None:
+    """The second decode dispatches new and re-placed work by the cost of delay; the exact comparison decides."""
+    from focus.engine.max.optimizer.orchestrator import MaxOptimizer
+
+    services, outcome, snapshot = demo
+    import_fixture_incumbent(services)
+    monkeypatch.setattr(MaxOptimizer, "better", staticmethod(lambda candidate, best: redispatch_better))
+    plan, run = schedule(services, source_run=outcome.run_id, purpose=Purpose.EXECUTABLE, mode="repair")
+    first, second = plan.algorithm_status.stages
+    assert (first.stage, second.stage, second.accepted) == ("repair", "repair_redispatch", int(redispatch_better))
+    assert (run.best is run.baseline) is (not redispatch_better) and bool(run.urgency) is redispatch_better
+    assert run.validation.valid
 
 
 def test_repair_moves_what_no_longer_holds_and_the_delivery_date_follows(services_factory) -> None:

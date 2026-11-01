@@ -183,8 +183,8 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   `planning.default_mode` = `auto`). The schedule and forecast step outputs, and each candidate's receipt
   (`algorithm_status.baseline_comparison.planning`), record what was asked, what ran and why.
   - `full`: the complete solve (seed, cost-of-delay redispatch, delay repair, neighbourhood search).
-  - `repair`: one decode that keeps the accepted plan of the same purpose wherever its slot and crew still hold, and
-    places new and changed work around it. It re-plans the whole horizon, so a shift's shortfall still moves delivery
+  - `repair`: a decode that keeps the accepted plan of the same purpose wherever its slot and crew still hold and places
+    new and changed work around it, then the cost-of-delay redispatch of that repair (the better one is kept). It re-plans the whole horizon, so a shift's shortfall still moves delivery
     dates and penalties. The FINAL validation gates it like any plan. With no accepted plan, or when the repaired plan
     fails validation, the full solve runs instead and the receipt says why (`REPAIR_NO_INCUMBENT`, `REPAIR_INVALID`).
   - `auto`: repair between daily full solves. A run plans the shift that contains its cutoff plus

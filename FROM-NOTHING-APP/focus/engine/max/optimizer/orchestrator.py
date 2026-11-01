@@ -48,9 +48,10 @@ is false.
 
 **Repair** (``mode="repair"``) replaces steps 3-6 when an accepted incumbent exists: one decode keeps
 every incumbent placement whose slot and crew still hold (``commitments.repair_hints``), after the
-defended commitments, and fills new and changed work around them in neutral critical-path order.
-It re-plans the whole horizon, so a shift's shortfall still moves delivery dates and penalties, but
-it re-places only what changed. The FINAL validation gates it like any plan; a repair that finds no
+defended commitments, and fills new and changed work around them in neutral critical-path order; a
+second decode redispatches that repair by the cost of delay (step 4), and the exact comparison keeps
+the better. It re-plans the whole horizon, so a shift's shortfall still moves delivery dates and
+penalties, but it keeps the accepted plan wherever it still holds. The FINAL validation gates it like any plan; a repair that finds no
 incumbent, or whose plan fails validation, falls back to the full run. ``mode="auto"`` (the pipeline
 default) repairs between daily full solves (``planning_mode``), and each scheduled full solve also
 decodes the repair and records how far it landed from the full plan (``repair_drift``). The receipt's
@@ -293,15 +294,32 @@ class MaxOptimizer:
 
     # ------------------------------------------------------------------ pipeline
     def _run_repair(self) -> MaxRun:
-        """One decode that keeps the incumbent where it still holds and places new and changed work around it in neutral
-        order. No redispatch, delay repair or search, and no in-search validation: the FINAL validation gates the plan."""
+        """Repair the incumbent in two decodes, the better of which is the plan.
+
+        1. Keep each incumbent placement whose slot and crew still hold and place new and changed work around them in
+           neutral order.
+        2. The full solve's cost-of-delay redispatch on that repair: incumbent slots still lead, and new, changed and
+           re-placed work is dispatched by the cost of delaying it (``urgency.cost_of_delay``, from the first decode).
+
+        The exact comparison keeps the second only when it is strictly better. No delay repair or search, and no
+        in-search validation: the FINAL validation gates the plan."""
+        def summary(d: DecodeResult) -> str:
+            return (f"{d.kept} of {len(self.hints)} incumbent placements kept at their slot and crew, {d.rehomed} re-placed; "
+                    f"{len(d.placements)} placed, {len(d.deferred)} deferred")
+
         t = self.clock()
-        repaired = self.evaluate(self.decode(PriorityState(), None))
+        neutral = PriorityState()
+        repaired = self.evaluate(self.decode(neutral, None))
         weight_records = self.registry.derive_priority_weights(completion_minutes(repaired.completions))
-        d = repaired.decode
-        note = (f"{d.kept} of {len(self.hints)} incumbent placements kept at their slot and crew, {d.rehomed} re-placed; "
-                f"{len(d.placements)} placed, {len(d.deferred)} deferred")
-        run = MaxRun(repaired, repaired, dict(weight_records), [StageMetric("repair", int((self.clock() - t) * 1000), 1, 1, note)])
+        urgency = cost_of_delay(self.ctx, self.registry, repaired.decode, weight_records)
+        t_econ = self.clock()
+        econ = self.evaluate(self.decode(neutral, urgency))
+        accepted = self.better(econ, repaired)
+        best = econ if accepted else repaired
+        stages = [StageMetric("repair", int((t_econ - t) * 1000), 1, 1, summary(repaired.decode)),
+                  StageMetric("repair_redispatch", int((self.clock() - t_econ) * 1000), 1, int(accepted),
+                              f"{urgency_summary(urgency)}; {summary(econ.decode)}; exact complete-candidate comparison")]
+        run = MaxRun(repaired, best, dict(weight_records), stages, urgency=dict(urgency) if accepted else {})
         run.stop_reason = "repair"
         return run
 
@@ -667,8 +685,8 @@ def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy:
 
     ``fixed_ranks`` (scenario planned task priorities) and ``cancel`` (a cooperative stop) are for SCENARIO runs only.
     ``solver`` forces the optional CP-SAT stage on or off; None follows policy ``solver.enabled``, then FOCUS_SOLVER_ENABLED.
-    ``mode="repair"`` keeps the accepted incumbent's placements where they still hold and re-places only what changed: one
-    decode, no search. Without an incumbent, or when the repaired plan fails FINAL validation, it runs the full solve.
+    ``mode="repair"`` keeps the accepted incumbent's placements where they still hold, re-places what changed and
+    redispatches by the cost of delay: two decodes, no search. Without an incumbent, or when the repaired plan fails FINAL validation, it runs the full solve.
     ``mode="auto"`` picks one by ``planning_mode``; its scheduled full solve also measures how far a repair would have
     landed (``repair_drift``, policy ``planning.drift_check``). The receipt's ``planning`` entry records what was asked,
     what ran and why (``mode="full"``, the default for direct calls, records nothing, so its candidate is unchanged).
