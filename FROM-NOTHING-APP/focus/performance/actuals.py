@@ -698,6 +698,13 @@ def amendment_from_row(row: Mapping[str, Any], ident: Identity, registry: Any, s
     goal_id = registry.goal_id_for(team, shift_id)
     if goal_id is None:
         raise RowError("GOAL_NOT_FOUND", f"no accepted obligation plan covers {team} {shift_id}")
+    from .lifecycle import shift_window
+
+    window, decided = shift_window(registry.policy, shift_id), _utc(row, "DECISION_AT_UTC")
+    if decided < window.start:                  # the same rule as the amendment command (D-26)
+        raise RowError("SHIFT_NOT_STARTED", "approved before the shift started: the shift's goal is the plan accepted before it starts")
+    if decided >= window.end:
+        raise RowError("SHIFT_ENDED", "approved after the shift ended: work completed after the shift is offplan output, not an addition")
     ref = parse_work_refs([_json_obj(row, "WORK_REF")])[0]
     if ref.segment is not None:
         raise RowError("BAD_WORK_REF", "an amendment adds exactly one whole phase")

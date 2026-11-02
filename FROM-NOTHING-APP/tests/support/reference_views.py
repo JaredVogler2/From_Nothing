@@ -1319,6 +1319,8 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
                 "window": {"start": record.window.start, "end": record.window.end}}
         if at >= record.window.end:
             proposal_reasons.append(reason("SHIFT_ENDED", f"The shift ended before the knowledge time {at.isoformat()}; work after it is offplan output, not an addition."))
+        elif at < record.window.start:
+            proposal_reasons.append(reason("SHIFT_NOT_STARTED", "The shift has not started; its goal is the plan accepted before it starts, and additions open when it does."))
         else:
             store = ObservationStore(services.repositories, services.settings.scope_key)
             taken = {u.phase for u in record.original_units} | {u.phase for x in store.known(AMENDMENTS, at) if x.goal_id == record.goal_id for u in x.units}
@@ -1638,7 +1640,7 @@ def turnover(canon: Canon, ctx: RequestContext, *, team: str, day: date | None, 
         e = history.current(services, services.settings.scope_key, history.series_for_goal(services, record.goal_id))
         proof = history.evidence(services, e.evidence_hash) if e is not None else None
         if proof is not None:
-            open_units = [unit_view(f, labels) for f in proof.unit_facts if f.status != "EARNED"]
+            open_units = [unit_view(f, labels) for f in proof.unit_facts if f.status not in ("EARNED", "DONE_BEFORE_SHIFT")]
             evaluation = {"evaluation_id": e.id, "status": e.status.value, "score": None if e.score is None else str(e.score), "revision": e.revision}
         store = ObservationStore(services.repositories, services.settings.scope_key)
         at = knowledge_time(services)

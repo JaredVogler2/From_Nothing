@@ -11,6 +11,7 @@ read back from the evaluator. Mutating cases run on private copies of the world.
 """
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -533,6 +534,20 @@ def test_an_amendment_waits_for_its_shift_to_start(published, tmp_path, app_root
                    change={"kind": "ADD_EMERGENCY_WORK", "team": "PROD-B", "shift_id": s2, "phase_id": "J0.WORK.0"},
                    reason="emergency rework found before the shift began", allowed_teams="*", at=FIXTURE_CUTOFF)
     assert err.value.code == "SHIFT_NOT_STARTED"
+
+
+def test_a_feed_amendment_follows_the_same_shift_window_rule(published, tmp_path, app_root) -> None:
+    """D-26: the amendment feed quarantines additions approved before the shift started or after it ended, like the command."""
+    base = json.loads((INPUTS / "observations" / "goal_amendments.json").read_text(encoding="utf-8"))
+    row = base["rows"][0]                                                                     # approved 12:30 in S1 (10:00-18:30)
+    rows = [row | {"AMENDMENT_KEY": "AMD-EARLY", "DECISION_AT_UTC": "2026-10-26T09:59:00Z", "OBSERVED_AT_UTC": "2026-10-26T10:01:00Z"},
+            row | {"AMENDMENT_KEY": "AMD-LATE", "DECISION_AT_UTC": "2026-10-26T18:30:00Z", "OBSERVED_AT_UTC": "2026-10-26T18:31:00Z"},
+            row]
+    services = copy_of(published, tmp_path, app_root)
+    run = collect_observations(services, as_of=P1, reader=FixtureObservationReader(INPUTS, overrides={"goal_amendments": base | {"rows": rows}}))
+    assert {q.source_key: q.code for q in run.quarantine if q.feed == "goal_amendments"} == {"AMD-EARLY": "SHIFT_NOT_STARTED",
+                                                                                             "AMD-LATE": "SHIFT_ENDED"}
+    assert run.feed("goal_amendments").admitted == 1
 
 
 # ---------------------------------------------------------------------- commands through durable worker runs

@@ -166,8 +166,22 @@ def test_turnover_open_units_come_from_the_canonical_evidence(demo, app_root) ->
     d = get(c, "/api/v1/turnover?team=QA&date=2026-10-26&shift=1")["data"]
     e = history.current(services, services.settings.scope_key, history.series_for_goal(services, d["goal_id"]))
     proof = history.evidence(services, e.evidence_hash)
-    assert {u["unit_id"] for u in d["open_units"]} == {f.unit_id for f in proof.unit_facts if f.status != "EARNED"}
+    # work verified complete before the shift began (D-26) is done, not open
+    assert {u["unit_id"] for u in d["open_units"]} == {f.unit_id for f in proof.unit_facts if f.status not in ("EARNED", "DONE_BEFORE_SHIFT")}
     assert d["evaluation"]["evaluation_id"] == e.id and d["next_shift_id"] == "DEMO:2026-10-26:S2"
+
+
+def test_team_lead_offers_no_addition_before_the_shift_starts(demo, app_root, monkeypatch) -> None:
+    """D-26: a shift's goal of record is fixed when it starts, and the amendment command refuses earlier additions."""
+    from datetime import UTC, datetime
+
+    from focus.performance import actuals
+
+    root, _, _ = demo
+    c, _, _ = client(root, app_root, "lead-prod-b")
+    monkeypatch.setattr(actuals, "knowledge_time", lambda services, at=None: datetime(2026, 10, 26, 9, 0, tzinfo=UTC))
+    d = get(c, "/api/v1/team-lead?date=2026-10-26&shift=1")["data"]
+    assert [r["code"] for r in d["proposal_reasons"]] == ["SHIFT_NOT_STARTED"] and d["proposals"] == []
 
 
 def test_budget_gantt_and_capacity_reconcile_with_the_plan(demo, app_root) -> None:
