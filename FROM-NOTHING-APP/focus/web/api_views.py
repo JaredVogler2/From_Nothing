@@ -43,7 +43,13 @@ def _result(services: Any, p: S.Projection) -> ApiResult:
 
 
 def _unverified(services: Any, exc: DisplayError) -> ApiResult:
-    """A display part that fails its hash or decode is a security failure: a typed blocked state, never partial data."""
+    """A display part that fails its hash or decode is a security failure: a typed blocked state, never partial data. A
+    part that is not stored is a typed blocked state too, with the command that rebuilds it."""
+    if exc.code == "PART_MISSING":
+        return _result(services, S.Projection("blocked", None, [reason(
+            "DISPLAY_PARTS_MISSING", f"A display part is not stored ({exc.message}).",
+            "Rebuild the package: python -m focus.cli display --current-source (source role) or --current-plans (signer role). "
+            "Display retention never removes a current package.")]))
     return _result(services, S.Projection("blocked", None, [reason("DISPLAY_NOT_VERIFIED", f"A display part did not verify ({exc.code}: {exc.message}).",
                                                                    "Rebuild the display package in the pipeline; nothing unverified is shown.")]))
 

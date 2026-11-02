@@ -249,10 +249,11 @@ def write_snapshot_display(repos: Any, snapshot: PlanningSnapshot) -> Any:
 
 
 def _ensure_display(repos: Any, run: SourceRunRecord) -> None:
-    """A COMPLETE run replayed before promotion gets its snapshot's display package if an older build never wrote one."""
-    from ..display.store import MANIFESTS
+    """A COMPLETE run replayed before promotion gets its snapshot's whole display package if an older build never wrote
+    one or a part of it is not stored."""
+    from ..display.store import snapshot_display_complete
 
-    if run.snapshot_id and repos.get_raw(MANIFESTS, run.snapshot_id) is None:
+    if run.snapshot_id and not snapshot_display_complete(repos, run.snapshot_id):
         snapshot = load_snapshot(repos, run.snapshot_id)
         if snapshot is not None:
             write_snapshot_display(repos, snapshot)

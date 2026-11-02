@@ -6,7 +6,9 @@
 * versioned mutable state with optimistic compare-and-set;
 * versioned heads updated with compare-and-set (always written last);
 * idempotency index (kind, key) -> record id;
-* scoped locks.
+* scoped locks;
+* deletion of derived records only (``DERIVED_COLLECTIONS``: display parts, which are rebuilt from kept records, D-24).
+  Every other collection is history, and the store refuses to delete from it.
 
 ``FixtureStore`` persists under ``fixtures/runtime/<scenario>`` and survives
 independent CLI processes and server restarts. Every write is atomic (temp file,
@@ -32,6 +34,9 @@ from ..codec import CodecError, format_utc, parse_utc, sha256_hex, strict_loads
 UTC = timezone.utc
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$")
 _SAFE_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+# The only collections a record may ever be deleted from (D-24): display parts are a cache, each rebuilt byte for byte from
+# records kept forever and checked against its kept manifest. Everything else is history and is never deleted (D-21).
+DERIVED_COLLECTIONS = frozenset({"display_parts"})
 
 
 class StoreError(RuntimeError):
@@ -79,7 +84,10 @@ class Store(Protocol):
     def available(self) -> bool: ...
     def put_immutable(self, collection: str, record_id: str, data: bytes) -> bool: ...
     def get(self, collection: str, record_id: str) -> bytes | None: ...
+    def exists(self, collection: str, record_id: str) -> bool: ...
     def list_ids(self, collection: str) -> list[str]: ...
+    def stored_ids(self, collection: str) -> list[str]: ...
+    def delete_immutable(self, collection: str, record_id: str) -> int | None: ...
     def get_state(self, collection: str, record_id: str) -> StateRecord | None: ...
     def list_state_ids(self, collection: str) -> list[str]: ...
     def put_state(self, collection: str, record_id: str, data: bytes, expected_version: int) -> StateRecord: ...
@@ -184,6 +192,10 @@ class FixtureStore:
         except FileNotFoundError:
             return None
 
+    def exists(self, collection: str, record_id: str) -> bool:
+        _check_collection(collection)
+        return (self._dir("objects", collection) / f"{_file_token(record_id)}.json").is_file()
+
     def list_ids(self, collection: str) -> list[str]:
         _check_collection(collection)
         directory = self._dir("objects", collection)
@@ -198,6 +210,45 @@ class FixtureStore:
             if isinstance(data, dict) and isinstance(data.get("id"), str):
                 ids.append(data["id"])
         return sorted(ids)
+
+    def stored_ids(self, collection: str) -> list[str]:
+        """Every stored record id, from file names: a record is opened only when its id is not a safe file name
+        (``list_ids`` opens every record, which for a collection of large records reads gigabytes)."""
+        _check_collection(collection)
+        directory = self._dir("objects", collection)
+        if not directory.is_dir():
+            return []
+        ids = []
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                if entry.name.startswith(".") or not entry.name.endswith(".json"):
+                    continue                                           # temporary files of an unfinished write
+                stem = entry.name[:-5]
+                if not stem.startswith("h-"):
+                    ids.append(stem)                                   # a safe id is its own file name (``_file_token``)
+                    continue
+                try:
+                    data = strict_loads(Path(entry.path).read_bytes())
+                except (CodecError, FileNotFoundError):
+                    continue
+                if isinstance(data, dict) and isinstance(data.get("id"), str):
+                    ids.append(data["id"])
+        return sorted(ids)
+
+    def delete_immutable(self, collection: str, record_id: str) -> int | None:
+        """Delete one derived record; returns the bytes freed, or None when it was not stored. History is refused."""
+        _check_collection(collection)
+        if collection not in DERIVED_COLLECTIONS:
+            raise StoreError("NOT_DELETABLE", f"{collection} holds history; only {sorted(DERIVED_COLLECTIONS)} may be deleted")
+        target = self._dir("objects", collection) / f"{_file_token(record_id)}.json"
+        self._fault(f"before_delete:{collection}")
+        try:
+            size = target.stat().st_size
+            target.unlink()
+        except FileNotFoundError:
+            return None
+        self._fault(f"after_delete:{collection}")
+        return size
 
     # --- mutable versioned state --------------------------------------------
     def get_state(self, collection: str, record_id: str) -> StateRecord | None:
@@ -294,12 +345,13 @@ class FixtureStore:
         while True:
             try:
                 os.mkdir(lock_dir)
-                (lock_dir / "owner").write_text(json.dumps({"owner": owner, "at": time.time(), "pid": os.getpid()}))
+                (lock_dir / "owner").write_text(json.dumps({"owner": owner, "at": time.time(), "pid": os.getpid(), "ttl": ttl_seconds}))
                 break
             except FileExistsError:
                 try:
                     info = json.loads((lock_dir / "owner").read_text())
-                    stale = time.time() - float(info.get("at", 0)) > ttl_seconds
+                    # stale by the holder's own time-to-live: a short holder never blocks a long waiter for the waiter's ttl
+                    stale = time.time() - float(info.get("at", 0)) > float(info.get("ttl", ttl_seconds))
                 except (FileNotFoundError, ValueError):
                     stale = False
                 if stale:
@@ -340,8 +392,17 @@ class UnavailableStore:
     def get(self, collection: str, record_id: str) -> bytes | None:
         return None
 
+    def exists(self, collection: str, record_id: str) -> bool:
+        return False
+
     def list_ids(self, collection: str) -> list[str]:
         return []
+
+    def stored_ids(self, collection: str) -> list[str]:
+        return []
+
+    def delete_immutable(self, collection: str, record_id: str) -> int | None:
+        raise self._refuse()
 
     def get_state(self, collection: str, record_id: str) -> StateRecord | None:
         return None

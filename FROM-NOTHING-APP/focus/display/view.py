@@ -250,6 +250,9 @@ class DisplayCanon:
                 if summary is None and why == "DISPLAY_NOT_BUILT":
                     reasons.append(reason("DISPLAY_NOT_BUILT", f"Snapshot {run.snapshot_id} of the current source run has no display package.",
                                           "Build it in the source role: python -m focus.cli display --current-source."))
+                elif summary is None and why.startswith("PART_MISSING"):
+                    reasons.append(reason("DISPLAY_PARTS_MISSING", f"A part of snapshot {run.snapshot_id}'s display package is not stored: {why}",
+                                          "Rebuild it in the source role: python -m focus.cli display --current-source."))
                 elif summary is None:
                     reasons.append(reason("DISPLAY_NOT_VERIFIED", f"The display package of snapshot {run.snapshot_id} did not verify: {why}",
                                           "Rebuild it in the source role; nothing unverified is shown."))

@@ -13,7 +13,8 @@ Every rollback preserves:
 - evaluations, recognition and badges.
 
 Nothing in this application deletes that history, and retention only archives unreferenced fixture candidates
-(`retain-history`).
+(`retain-history`). The one thing deleted is display parts nothing reads any more (`display-retention`, D-24), a cache
+rebuilt from the kept records with `python -m focus.cli display` and checked against its kept manifest.
 
 ## 1. Application rollback (code)
 

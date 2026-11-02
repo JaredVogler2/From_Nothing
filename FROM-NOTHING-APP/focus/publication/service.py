@@ -304,7 +304,8 @@ def _reconcile(services: Any, repo: Any, snapshot: PlanningSnapshot, plan: Candi
 
 def _ensure_display(services: Any, snapshot: PlanningSnapshot, artifact: PlanArtifact, receipt: AcceptanceReceipt, published: PublishedPlan,
                     result: PublishResult, signer: Signer | None, signer_role: bool) -> None:
-    """A recovered acceptance gets its display package when it has none (an older build, or a crash before it was signed).
+    """A recovered acceptance gets its display package when it has none or a part of it is not stored (an older build, or
+    a crash before it was signed).
 
     Only the signer role signs it, with the trusted key; the stager never resolves signing material.
     """

@@ -74,6 +74,8 @@ candidate.
 
 Any failure makes nothing current, and the view returns a typed reason:
 - `DISPLAY_NOT_BUILT` when a package is missing;
+- `DISPLAY_PARTS_MISSING` when a part the manifest names is not stored, with the command that rebuilds it (retention
+  never removes a current package, so this means an operator or storage fault);
 - `DISPLAY_NOT_VERIFIED` when a part, manifest or snapshot binding fails;
 - `PLAN_NOT_VERIFIED` (`SECURITY_FAILURE`) when a plan receipt or signature fails.
 
@@ -117,18 +119,85 @@ precompute yet.
 
 ## Operations
 
-- **Pipeline.** Nothing new to run: `acquire` and the two `sign_accept` steps write the package.
+- **Pipeline.** `acquire` and the two `sign_accept` steps write the package. A retention job before acquisition deletes
+  the parts nothing reads any more (below).
 - **Backfill** for stores from before the package:
   - `python -m focus.cli display --current-source` (source role);
   - `python -m focus.cli display --current-plans` (signer role: it signs). It writes the same bytes the pipeline writes.
 - **Recovery.**
-  - An acquisition replay rebuilds a missing snapshot package before promoting.
-  - A publication retry in the signer role signs a missing plan package. The stager never does, and reports
-    `display_pending`.
-- **Not yet done:**
-  - Retention of old parts.
-  - The live SQL mapping of the three display collections, which is the same pending live adapter as every other
-    collection (`focus/data/sql_store.py`).
+  - An acquisition replay rebuilds a missing snapshot package, or the missing parts of one, before promoting.
+  - A publication retry in the signer role signs a missing plan package, or puts back its missing parts. The stager
+    never does, and reports `display_pending`.
+  - Every writer checks each part its manifest names, not just the manifest, and puts back what is missing. The build
+    is deterministic, so a rebuilt part hashes to the stored manifest.
+- **Not yet done:** the live SQL mapping of the display collections (parts, manifests, receipts, candidate digests, the
+  retention ledger and its receipts). It is the same pending live adapter as every other collection
+  (`focus/data/sql_store.py`), and for parts it must also implement the store's retention operations (below).
+
+## Retention (D-24)
+
+```bash
+python -m focus.cli display-retention [--grace-minutes 60] [--apply]
+```
+
+Without retention, every shift adds a whole new package: up to 5.9 GB at 50 aircraft, less where a part did not change
+since the last shift. Retention deletes the parts nothing reads any more.
+
+**Why deleting is allowed here.** A part is a cache. It is rebuilt from records kept forever (the admitted snapshot, or
+the accepted plan's payload) and must hash to its manifest, which for a plan is signed. Manifests, display receipts and
+candidate digests are never deleted. So every deleted part can be rebuilt with `python -m focus.cli display` and checked
+against the original manifest and signature. The store itself refuses to delete from any other collection
+(`focus.data.store.DERIVED_COLLECTIONS`).
+
+Each package gets one verdict (`focus/display/retention.py`):
+
+| Verdict | Packages | Parts kept |
+| --- | --- | --- |
+| Kept whole | The current packages: the source head's snapshot and each plan head | all |
+| Kept whole | Packages that can still become current. Heads move only forward, so these are exactly: a snapshot whose run is not rejected and whose cutoff is not behind the source head's (a replay promotes it); an accepted plan whose acceptance names a head version the head has not reached (recovery moves the head to it); a plan not yet accepted whose cutoff is not behind the head plan's (it can still be accepted) | all |
+| Kept whole | Every package of a scope and kind whose head moved less than the grace period ago (60 minutes by default), because a request may still be reading what that head replaced | all |
+| History | Every other accepted plan | `summary` and `goals:<date>`, forever: the accepted plan list, the completion history and the goals of record read exactly these |
+| Released | Older snapshots, and plans that can no longer be accepted | none |
+
+Every stored part that no kept package and no history names is then deleted. That includes parts no manifest names at
+all, from a write that never finished.
+
+**A run reads only what is new.** A released package can never become current again, so it goes into a ledger
+(`display_retention/ledger`) with the history parts it keeps, and no later run opens it. Each run opens only the packages
+not yet released, a handful per shift, never the whole history. A released package can still be rebuilt for a look; the
+next run removes its parts again.
+
+**Safety.**
+- Every package writer holds the display parts lock (`display.store.writing`) while it writes. Retention holds it while
+  it decides and deletes. So it never deletes a part that a writer found already stored and is about to name.
+- The ledger is written before anything is deleted. A crash at any point leaves only parts for the next run, never a
+  missing current part.
+- The current packages of every scope it sees, and of the configured scope, are kept whatever the ledger says.
+- A lock held by a crashed process expires after its holder's own time-to-live: 15 minutes for retention, 2 hours for a
+  writer.
+- Without `--apply` it only reports. With it, it writes a receipt (`display_retention_runs`): what was kept whole and
+  why, what was released, and the count, bytes and a SHA-256 of the deleted part ids.
+
+**When it runs.** The GitLab draft runs it as the `display_retention` job before acquisition, in the scope's resource
+group, with retention credentials only. At that point the previous package has been out of use for a whole shift, so
+the store holds at most the current package and the one the pipeline is building. The job is `allow_failure`: if a
+writer holds the lock it reports `DISPLAY_RETENTION_BUSY`, deletes nothing, and the next pipeline retries.
+
+**Measured at 50 aircraft** (the stored run above, November 2, 2026). Only one generation fits on this machine's disk,
+so these runs forced the verdicts to "superseded", which is what the next shift's heads give. Everything else is the
+real code path.
+
+| What | Result |
+| --- | --- |
+| Releasing a whole generation (snapshot plus both plans), real files | 12,353 parts and 5.89 GB deleted in 6.4 s, including the sync to disk |
+| What the two plans keep forever | 4 parts, 3.3 MB (each plan's summary and goals) |
+| Listing the store's 12,357 parts | 0.02 s, from file names, never opening a part |
+| A report without `--apply` | 0.2 s |
+| The next run, with nothing new | under 0.01 s |
+
+So at 50 aircraft the display package stops growing by up to 5.9 GB per shift. What remains per shift is 3.3 MB of
+history parts and 1.7 MB of manifests, about 5.5 GB a year at three shifts a day. The store peaks at two packages
+(the current one and the one being built), about 12 GB at 50 aircraft.
 
 ## Measured at 50 aircraft
 
@@ -205,3 +274,18 @@ their stored JSON.
     `_ready` on a slice holding only the readiness reach answers as on the whole graph.
 - `tests/unit/test_seal_bytes.py` (16 tests). The single-encoding envelope writer gives the same bytes as `seal`, with
   and without the native encoder.
+- `tests/integration/test_display_retention.py` (17 tests), over two to five pipeline generations:
+  - the first generation's snapshot package is released whole and its plans keep exactly their summary and goals parts;
+  - every read endpoint still answers, and the goals of record are equal field by field;
+  - a released package is never opened again;
+  - a rebuilt package matches its signed manifest and is released again;
+  - writers put back missing parts, through the acquisition replay and the publication recovery too;
+  - a crashed publication, an unmoved head and an unpromoted run are kept whole until they can no longer become
+    current;
+  - writers and retention take turns on one lock;
+  - a crash at four points loses nothing the web reads;
+  - another scope's current packages are kept, and storage stays flat over generations.
+
+  Ten deliberate breaks of the rule (dropping each keep rule, the lock, the restore, the head guard) each fail a test.
+- `tests/unit/test_store_delete.py` (4 tests). Only display parts can be deleted. `stored_ids` lists exactly what
+  `list_ids` lists without opening safe records. A lock is stale by its holder's own time-to-live.

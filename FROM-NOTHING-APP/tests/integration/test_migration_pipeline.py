@@ -536,5 +536,13 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     assert "when: manual" in jobs["forecast_sign_accept"] and "focus-signer" in jobs["forecast_sign_accept"]
     assert "dist/focus_native-" in jobs["forecast_schedule_validate"] and "FOCUS_SIGN_KEY_REF" not in jobs["forecast_stage_readback"]
     assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[".live"]
+    # D-24: display retention runs before acquisition (the store holds the current package and the one being built), as
+    # housekeeping that never holds the shift's plan back, with retention credentials only
+    retain = jobs["display_retention"]
+    assert "display-retention --apply" in retain and "allow_failure: true" in retain and "focus-retention" in retain
+    assert "extends: .live" in retain and "display_retention" in jobs["acquire_admit"].split("needs:")[1].splitlines()[0]
+    stages = text.split("stages: [")[1].split("]")[0].split(", ")
+    assert stages.index("verify") < stages.index("retain") < stages.index("source")
+    assert "display-retention --apply" in jobs["fixture_pipeline_rehearsal"]
     assert "image: python:3.12-slim" in jobs["default"]
     assert "--role all" in jobs["fixture_pipeline_rehearsal"] and "FOCUS_SIGN_KEY_REF" not in jobs["stage_readback"]

@@ -85,6 +85,9 @@ class Repositories:
             return None
         return from_jsonable(cls, env.payload, f"$<{type_name}:{record_id}>")
 
+    def exists(self, collection: str, record_id: str) -> bool:
+        return self.store.exists(collection, record_id)
+
     def list_ids(self, collection: str) -> list[str]:
         return self.store.list_ids(collection)
 

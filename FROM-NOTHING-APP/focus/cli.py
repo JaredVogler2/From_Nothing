@@ -32,6 +32,7 @@ COMMANDS: dict[str, str] = {
     "publish": "focus.publication.service:cli_publish",
     "dispatch-check": "focus.publication.dispatch:cli_dispatch_check",
     "display": "focus.display.store:cli_display",
+    "display-retention": "focus.display.retention:cli_display_retention",
     "collect-observations": "focus.performance.actuals:cli_collect_observations",
     "evaluate": "focus.performance.score:cli_evaluate",
     "scenario": "focus.analytics.scenarios:cli_scenario",
@@ -107,6 +108,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--plan", action="append", default=None, help="an accepted plan id (repeatable); signs its display receipt")
     p.add_argument("--current-source", action="store_true", help="the current source head's snapshot")
     p.add_argument("--current-plans", action="store_true", help="the current EXECUTABLE and FORECAST plan heads")
+
+    p = sub.add_parser("display-retention", help="report (default) or --apply the deletion of display parts nothing reads any more "
+                                                 "(the current packages, packages that can still become current and every "
+                                                 "accepted plan's history parts are kept)")
+    p.add_argument("--grace-minutes", type=int, default=60,
+                   help="keep every package of a head that moved less than this long ago (default 60, at least 1)")
+    p.add_argument("--apply", action="store_true", help="delete; without it the run only reports")
 
     p = sub.add_parser("collect-observations", help="collect lifecycle/actual/claim/decision observations into an evaluation-ready run")
     p.add_argument("--mode", choices=["fixture", "live"], required=True)
