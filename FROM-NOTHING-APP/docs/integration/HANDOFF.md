@@ -247,8 +247,9 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
 ### 5.3 Two timing risks to settle before go-live
 
 - **Verification inside the live window.**
-  - The draft makes acquisition wait for every verify job (P23), including the whole test suite. A full non-UI run
-    takes well over 15 minutes in this environment, so it does not fit the 15–20 minute window.
+  - The draft makes acquisition wait for every verify job (P23), including the whole test suite. The full non-UI suite
+    alone took 10.5 minutes here (906 tests). With the installs, the UI suite and the rehearsal, verification would
+    use most of the 15–20 minute window before acquisition could start.
   - Recommendation: run the live schedules from a protected branch or tag whose merge pipeline already passed. Keep
     `import_and_lint` and the preflights in the live path, and drop the suite from it. This changes a recorded
     decision (P23), so it needs the owner.
