@@ -59,6 +59,7 @@ class SimSpec:
     max_repairs: int = 2
     budget_seconds: float = 3600.0
     cutoff_lead_minutes: int = 15
+    cutoff_gap: bool = True                     # what happens after the next cutoff reaches the source only after it (D-26)
     seed: int = 20261026
     shifts: int | None = None                   # stop after this many shifts (a trial); None runs every shift of every day
     planning: str = "full"                      # full | repair | auto: how each shift's plans are made (orchestrator.plan_by_mode)
@@ -114,6 +115,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
     rework_rate = spec.fleet.rework_total / (5 * spec.fleet.stay_days * 3)
     incumbent = None
     day_goals: DayGoals | None = None                            # goals in force: each shift's own valid plan freezes them (D-26)
+    pending = None                                               # the previous shift's work after this shift's cutoff (D-26)
     summary: list[dict[str, Any]] = []
     for k in range(min(spec.days * 3, spec.shifts or spec.days * 3)):
         day = first_day + timedelta(days=k // 3)
@@ -186,8 +188,14 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         if day_goals is not None:
             db.insert("perf_goal_day", [(day_goals.shift_no, day.isoformat(), day_goals.plan_id, team, n, len(us), sum(u.effort for u in us))
                                         for (team, n), us in sorted(day_goals.units.items()) if n == number])
+        if pending is not None:                                       # it reaches the source now, after this shift's data cut
+            pending.apply()
+            db.insert("exec_event", pending.events)
         outcome = execute_shift(state, floor_plan, shift, shift_no=k, week=week, rng=rng, spec=spec.floor, rework_rate=rework_rate,
-                                rework_minutes=rework_minutes, cert_of_team=cert_of_team, tz=tz, policy=services.policy, goals=day_goals)
+                                rework_minutes=rework_minutes, cert_of_team=cert_of_team, tz=tz, policy=services.policy, goals=day_goals,
+                                cutoff_lead=spec.cutoff_lead_minutes if spec.cutoff_gap else 0,
+                                done_before=pending.done if pending is not None else None)
+        pending = outcome.deferred
         timings["execute_s"] = time.time() - t
         db.insert("exec_assignment", outcome.rows)
         db.insert("exec_event", outcome.events)

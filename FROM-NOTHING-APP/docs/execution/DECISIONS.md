@@ -242,6 +242,16 @@ attendance. A conditional ETA is never physical receipt.
     twice.
   - **Amendments** are accepted once the shift has started, when its goal of record is fixed (`SHIFT_NOT_STARTED`
     before that).
+  - **Late events are captured after the fact (owner, November 2, 2026).** Data retrieval and the scheduler run in
+    the last 15–20 minutes of a shift. Completions and new constraints in those minutes are few but real, and the
+    performance record still captures them:
+    - each shift's score is computed from timestamped completions once its window and overtime close, and is revised
+      when data arrives late;
+    - a job the next plan still holds but the previous shift already finished is `DONE_BEFORE_SHIFT` in the next shift;
+    - a constraint the next plan missed (a kit found short, rework found) is excused through the claim review or added
+      as an amendment, and the following plan sees it.
+
+    The simulation models this gap (`SimSpec.cutoff_gap`, the cutoff `cutoff_lead_minutes` before the shift ends).
   - **Run time.** Each shift's plan must be accepted before the shift starts, which is why the cycle's run time is
     critical (D-22). The GitLab draft's signing step is a manual operator promotion. A plan promoted after its shift
     starts is a proposal for that shift, and the previous plan stays its goal of record.

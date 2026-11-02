@@ -61,6 +61,12 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
 6. **Freeze the shift's goals.** Each shift is scored against the plan published for it, as `GoalRegistry` does in
    production (D-26). The scheduler runs before every shift; its valid EXECUTABLE plan freezes that shift's team-shift
    goals. If a shift's plan is invalid, the day's last valid plan stands in for it.
+   - **The cutoff gap** (`cutoff_gap`, on by default). The plan is made `cutoff_lead_minutes` before the previous shift
+     ends. What the previous shift does after that cutoff reaches the source only after this admission: jobs finished
+     then, kits found short then, and rework found then (each rework gets a discovery time within its shift).
+   - The floor does not work a job this plan still holds but the previous shift already finished; its goal unit is
+     `DONE_BEFORE_SHIFT`. The previous shift's score counts the completion after the fact.
+   - Part arrivals and slips, and overrun progress, are still written at the shift's end.
 7. **Publish.** Both plans' assignments, duties, aircraft completions, costs and exceptions are written to tables, with
    every commitment's defense outcome.
 8. **Execute.** A seeded shop-floor model works the EXECUTABLE assignments that start in the shift (see below). The

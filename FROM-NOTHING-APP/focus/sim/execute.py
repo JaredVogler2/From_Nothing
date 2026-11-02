@@ -12,6 +12,13 @@ minutes at freezing. When a shift's plan is invalid, the last valid plan of the 
 - Completion is tracked per job, kind and frozen ordinal: once progress is written back, a job's remaining phases
   restart their ordinals.
 
+**The cutoff gap (D-26).** The next shift's plan is made from the source as it stands at its cutoff, before this shift
+ends (``SimSpec.cutoff_lead_minutes``). What happens after that cutoff reaches the source only after the next admission:
+jobs finished then, kits found short at the point of use then, and rework found then (rework gets a discovery time within
+the shift). So the next plan may still hold work that is already done. The next shift does not work it, and its unit is
+``DONE_BEFORE_SHIFT``, while this shift's score counts the completion after the fact. Part arrivals and slips, and
+overrun progress, are still written at the shift's end.
+
 **The floor.** At the start of the shift a few present people call off (``late_absence``), and the calls are written to
 attendance. Then every dispatched assignment that starts in the shift is worked in start order:
 - **predecessors:**
@@ -199,6 +206,18 @@ def freeze_day(plan: Any, ctx: Any, day: date, windows: Mapping[int, tuple[int, 
 
 
 @dataclass
+class Deferred:
+    """What happened after the next shift's cutoff: it reaches the source only after the next admission (D-26)."""
+    ops: list[Any] = field(default_factory=list)                   # source writes, applied after the next admission
+    done: dict[str, int] = field(default_factory=dict)             # phase id -> completion minute, for the next shift
+    events: list[tuple] = field(default_factory=list)
+
+    def apply(self) -> None:
+        for op in self.ops:
+            op()
+
+
+@dataclass
 class Outcome:
     rows: list[tuple]
     events: list[tuple]
@@ -210,6 +229,7 @@ class Outcome:
     completed_jobs: int
     amendments: list[tuple] = field(default_factory=list)
     unlocks: list[tuple] = field(default_factory=list)
+    deferred: Deferred | None = None
 
 
 def _local(dt_utc: datetime, tz) -> str:
@@ -229,7 +249,7 @@ def attendance_rows(state: SourceState, day: date, rng: random.Random, absence: 
 
 def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: int, week: int, rng: random.Random, spec: FloorSpec,
                   rework_rate: float, rework_minutes: list[int], cert_of_team: dict[str, str], tz, policy: Any,
-                  goals: DayGoals | None) -> Outcome:
+                  goals: DayGoals | None, cutoff_lead: int = 0, done_before: Mapping[str, int] | None = None) -> Outcome:
     ctx = shift_plan.context
     plan = shift_plan.plan
     s0, s1 = shift.start, shift.end
@@ -240,6 +260,10 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
     done_phase: dict[str, int] = {}                                   # phase -> actual end minute (this shift)
     satisfied = {p.key.id for job, plist in ctx.job_phases.items() for p in plist
                  if ctx.dispositions.get(job) is not None and ctx.dispositions[job].disposition.value == "verified_complete"}
+    late = dict(done_before or {})                                    # finished by the previous shift after this plan's cutoff
+    satisfied |= set(late)
+    gap_start = s1 - cutoff_lead if cutoff_lead > 0 else None          # the next shift's plan cannot see what happens after this
+    deferred = Deferred()
     open_short: dict[tuple[int, str], dict] = {}
     for r in state.all("etracs_active"):
         open_short[(int(r["LINE_NUMBER"]), str(r["USED_ON"]))] = r
@@ -266,7 +290,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
             present[roster_team[r["BEMS_ID"]]] += 1
 
     found_missing: set[int] = set()
-    kit_short: list[tuple[int, Any]] = []                             # shortages found at the point of use this shift
+    kit_short: list[tuple[int, Any, int]] = []                        # shortages found at the point of use this shift (and when)
 
     def open_record(line: int, soi: str, at_minute: int) -> int | None:
         """The shortage record keeping the part off the floor at ``at_minute``, if any (no side effects)."""
@@ -334,7 +358,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         amendments.append((shift_no, team, digest_id("SIMAMD", shift_no, team, a.phase), a.id, a.job, a.phase, a.line, p.standard_person_minutes,
                            "ASSIGNED_IN_ACCEPTED_PLAN", f"sim-lead:{team}", f"emergency rework {job.key.native_id} found after the goals froze"))
     deviating = {team for team in sorted({team_of_phase.get(a.phase) or "?" for a in todo}) if rng.random() < spec.deviation}
-    taken: set[str] = set()
+    taken: set[str] = set(late)
     rows, oos_rows, offplan_rows = [], [], []
     worked_on: dict[str, str] = {}                                    # phase -> why it was worked outside the dispatch
     by_team: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
@@ -374,6 +398,9 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         phase, job = phases.get(a.phase), ctx.jobs.get(a.job)
         if phase is None or job is None:
             continue
+        if a.phase in late:                                           # the previous shift finished it after this plan's cutoff
+            events.append((shift_no, "done_before_shift", job.line, job.key.native_id, None, f"{a.phase} finished before the shift"))
+            continue
         team = team_of_phase.get(a.phase) or "?"
         start, end = to_minute(a.start), to_minute(a.end)
         planned = a.work_minutes or (end - start)
@@ -397,7 +424,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
                 cause, evidence = "part", f"ETRACS:{rec}"
             elif rng.random() < spec.kit_shortage:
                 rec = 800000000 + shift_no * 100000 + len(kit_short)
-                kit_short.append((rec, job))
+                kit_short.append((rec, job, start))
                 cause, evidence = "part", f"ETRACS:{rec}"
         if cause is None:
             gone = [native_of.get(c.person, c.person) for c in a.crew if native_of.get(c.person, c.person) in called_off]
@@ -474,6 +501,9 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         row = state.get("master_task_list", job.line, job.key.native_id)
         if row is None:
             continue
+        # a job finished after the next plan's cutoff reaches the source only after the next admission (D-26)
+        late_job = gap_start is not None and not cut and any(done_phase[p] > gap_start for p in pids)   # overrun progress: at the end
+        write = deferred.ops.append if late_job else (lambda op: op())
         left = [p for p in ctx.job_phases.get(job_id, ()) if p.kind is not PhaseKind.RELEASE and p.key.id not in done_phase
                 and p.key.id not in satisfied]
         work_left = sum(stopped[p.key.id][2] - stopped[p.key.id][1] if p.key.id in stopped else p.work_minutes
@@ -485,31 +515,44 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
                 done_phase[p.key.id] = max(t1, min(s1, t1 + p.work_minutes))
                 buyoff.add(p.key.id)
             finish_at = max(done_phase[p] for p in pids + [p.key.id for p in left])
-            state.upsert("master_task_list", {**row, "SHOP_ORDER_STATUS": "COMPLETE", "ACT_START": row.get("ACT_START") or _local(from_minute(t0), tz),
-                                              "ACT_COMP": _local(from_minute(finish_at), tz), "LOAD_TIMESTAMP": load_ts})
+            write(lambda row=row, t0=t0, finish_at=finish_at: state.upsert(
+                "master_task_list", {**row, "SHOP_ORDER_STATUS": "COMPLETE", "ACT_START": row.get("ACT_START") or _local(from_minute(t0), tz),
+                                     "ACT_COMP": _local(from_minute(finish_at), tz), "LOAD_TIMESTAMP": load_ts}))
             completed += 1
             if row.get("IS_REWORK"):
                 link = state.get("neo_graph_rework", job.line, job.key.native_id)
-                if link is not None:
-                    state.upsert("neo_graph_rework", {**link, "CHILD_STATUS": "COMPLETE", "SNAPSHOT_TS": load_ts})   # the master vocabulary
+                if link is not None:                                 # the master vocabulary
+                    write(lambda link=link: state.upsert("neo_graph_rework", {**link, "CHILD_STATUS": "COMPLETE", "SNAPSHOT_TS": load_ts}))
             if any(p.kind is PhaseKind.FINAL_QA for p in ctx.job_phases.get(job_id, ())) and rng.random() < spec.qa_reject:
-                _new_rework(state, job.line, row, rng, rework_minutes, cert_of_team, load_ts, shift_no, "QA reject", events)
+                notes = deferred.events if late_job else events
+                write(lambda row=row, line=job.line, notes=notes: _new_rework(state, line, row, rng, rework_minutes, cert_of_team, load_ts,
+                                                                              shift_no, "QA reject", notes))
+            if late_job:
+                deferred.done.update({p: done_phase[p] for p in pids + [p.key.id for p in left]})
         else:
             prog = state.get("work_progress", job.line, job.key.native_id)
             performed = ((int(prog["PERFORMED_ELAPSED_MINUTES"]) if prog else 0) + sum(phases[p].work_minutes for p in pids
                                                                                       if phases[p].kind is PhaseKind.WORK)
                          + sum(stopped[p][1] - stopped[p][0] for p in cut))
-            state.upsert("work_progress", {"LINE_NUMBER": job.line, "SOI": job.key.native_id, "PERFORMED_ELAPSED_MINUTES": performed,
-                                           "REMAINING_ELAPSED_MINUTES": work_left, "AS_OF_UTC": from_minute(s1 - 20).isoformat(),
-                                           "EVIDENCE_REF": f"SIM-PROGRESS:{shift_no}:{job.key.native_id}"})
-            state.upsert("master_task_list", {**row, "SHOP_ORDER_STATUS": "IN WORK", "ACT_START": row.get("ACT_START") or _local(from_minute(t0), tz),
-                                              "LOAD_TIMESTAMP": load_ts})
-    for rec, job in kit_short:                                        # shortages found at the point of use are entered
+            progress = {"LINE_NUMBER": job.line, "SOI": job.key.native_id, "PERFORMED_ELAPSED_MINUTES": performed,
+                        "REMAINING_ELAPSED_MINUTES": work_left, "AS_OF_UTC": from_minute(s1 - 20).isoformat(),
+                        "EVIDENCE_REF": f"SIM-PROGRESS:{shift_no}:{job.key.native_id}"}
+            write(lambda progress=progress: state.upsert("work_progress", progress))
+            write(lambda row=row, t0=t0: state.upsert(
+                "master_task_list", {**row, "SHOP_ORDER_STATUS": "IN WORK", "ACT_START": row.get("ACT_START") or _local(from_minute(t0), tz),
+                                     "LOAD_TIMESTAMP": load_ts}))
+            if late_job:
+                deferred.done.update({p: done_phase[p] for p in pids})
+    for rec, job, found in kit_short:                                 # shortages found at the point of use are entered
         row = state.get("master_task_list", job.line, job.key.native_id) or {}
         new = (from_minute(s1).astimezone(tz).date() + timedelta(days=rng.randint(1, 3))).isoformat()
-        state.upsert("etracs_active", {"RECORD_ID": rec, "LINE_NUMBER": job.line, "MINOR_MODEL_IDENT": row.get("MINOR_MODEL_IDENT"),
-                                       "USED_ON": job.key.native_id, "ETRAC_ECD": new, "TEAM": row.get("TEAM"), "REASON_CODE": "KIT",
-                                       "ETRAC_CREATED_DT": shift_day.isoformat(), "ITEM_NUMBER": f"K-{rec}", "LOAD_TIMESTAMP": load_ts})
+        entry = {"RECORD_ID": rec, "LINE_NUMBER": job.line, "MINOR_MODEL_IDENT": row.get("MINOR_MODEL_IDENT"),
+                 "USED_ON": job.key.native_id, "ETRAC_ECD": new, "TEAM": row.get("TEAM"), "REASON_CODE": "KIT",
+                 "ETRAC_CREATED_DT": shift_day.isoformat(), "ITEM_NUMBER": f"K-{rec}", "LOAD_TIMESTAMP": load_ts}
+        if gap_start is not None and found > gap_start:              # found after the next plan's cutoff: entered after it
+            deferred.ops.append(lambda entry=entry: state.upsert("etracs_active", entry))
+        else:
+            state.upsert("etracs_active", entry)
         events.append((shift_no, "kit_short_at_point_of_use", job.line, job.key.native_id, None, f"expected {new}"))
     # rework found on the floor, against open or just-finished tasks of each aircraft's current station
     by_line_station: dict[int, str] = {}
@@ -529,7 +572,12 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
             # the defect may come from another team's finished work at the station (explicit defect-origin fact)
             upstream = [t for t in done_teams if t != parent["TEAM"]]
             origin = upstream[rng.randrange(len(upstream))] if upstream and rng.random() < spec.upstream_defect else parent["TEAM"]
-            _new_rework(state, line, parent, rng, rework_minutes, cert_of_team, load_ts, shift_no, "found on the floor", events, origin)
+            found = s0 + rng.random() * (s1 - s0)                    # when it was found: after the next cutoff it is entered after it
+            if gap_start is not None and found > gap_start:
+                deferred.ops.append(lambda line=line, parent=parent, origin=origin: _new_rework(
+                    state, line, parent, rng, rework_minutes, cert_of_team, load_ts, shift_no, "found on the floor", deferred.events, origin))
+            else:
+                _new_rework(state, line, parent, rng, rework_minutes, cert_of_team, load_ts, shift_no, "found on the floor", events, origin)
         if rng.random() < spec.new_undated_per_aircraft_shift and candidates:
             target = candidates[rng.randrange(len(candidates))]
             if target["SHOP_ORDER_STATUS"] != "COMPLETE" and (line, target["SHOP_ORDER_IDENTIFIER"]) not in open_short:
@@ -587,7 +635,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
     if goals is not None:
         goals.done.update({frozen_key(p): t for p, t in done_phase.items() if phases.get(p) is not None and phases[p].kind is not PhaseKind.RELEASE})
         goals.unlocked.update({frozen_key(p): jobs for p, jobs in released_by(ctx, done_phase, satisfied, open_record).items()})
-    known_records = {int(r["RECORD_ID"]) for r in open_short.values()} | {rec for rec, _ in kit_short}
+    known_records = {int(r["RECORD_ID"]) for r in open_short.values()} | {rec for rec, _, _ in kit_short}
 
     def culprit(pid: str, at: int, trail: frozenset[str]) -> tuple[str, str | None, str]:
         """The cause a blocking phase passes on (``disruption.culpable_blockers``): a RELEASE node passes it to its unfinished
@@ -650,15 +698,15 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         facts: dict[tuple[str, str, int], tuple[str, str | None, str | None, str | None, str | None]] = {}
         unexplained: list[tuple[str, str, int]] = []
         for key, u in by_key.items():
-            if u.origin != "AMENDMENT" and goals is not None and goals.done.get(key, s0) < s0:
+            now = u.ordinal - base.get((u.job, u.kind), 0)
+            cur = f"{u.job}.{u.kind}.{now}"
+            if u.origin != "AMENDMENT" and (cur in late or (goals is not None and goals.done.get(key, s0) < s0)):
                 facts[key] = ("DONE_BEFORE_SHIFT", None, None, None, None)     # finished before the shift: out of D with the relief
                 continue
             if (u.phase in done_phase) if u.origin == "AMENDMENT" else (goals is not None and key in goals.done):
                 facts[key] = ("EARNED", None, None, None, None)
                 unlock_rows.extend((shift_no, team, u.assignment_id, u.phase, u.line, job) for job in (goals.unlocked.get(key, ()) if goals else ()))
                 continue
-            now = u.ordinal - base.get((u.job, u.kind), 0)
-            cur = f"{u.job}.{u.kind}.{now}"
             info = missed.get(cur) if now >= 0 else None
             if info is None and cur in phases:
                 # not worked this shift (a replan moved it): what kept it from its frozen start
@@ -757,7 +805,8 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
             if node is not None and node.kind is not PhaseKind.RELEASE:
                 k = (node.job, node.kind.value)
                 goals.progress[k] = goals.progress.get(k, 0) + 1
-    return Outcome(rows, events, perf, units_rows, claims, offplan_rows, oos_rows, completed, amendments, unlock_rows)
+    return Outcome(rows, events, perf, units_rows, claims, offplan_rows, oos_rows, completed, amendments, unlock_rows,
+                   deferred if (deferred.ops or deferred.done) else None)
 
 
 def released_by(ctx: Any, done: Mapping[str, int], satisfied: set[str], open_record: Any) -> dict[str, tuple[str, ...]]:
