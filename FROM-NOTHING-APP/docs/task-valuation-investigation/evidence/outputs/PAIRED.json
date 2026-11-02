@@ -1,0 +1,639 @@
+{
+ "runs": {
+  "N0_s6": {
+   "name": "N0_s6",
+   "shifts": 12,
+   "deviation": 0.0,
+   "pull_ahead": 0.0,
+   "seed": 20261026,
+   "seconds": 653.1,
+   "B0": 703534,
+   "B": 718494,
+   "E": 30755,
+   "D": 687739,
+   "Cp": 675809,
+   "U": 2335,
+   "oos": 210,
+   "offplan_by_kind": {
+    "outside_goals": 2335
+   },
+   "throughput_spm": 678144,
+   "open_work_spm_at_last_cutoff": 3621354,
+   "open_work_spm_at_first_cutoff": 3907275,
+   "open_jobs_at_last_cutoff": 25346,
+   "last_calc_shift": 11,
+   "jobs_completed": 6177,
+   "jobs_completed_before_last_cutoff": 5765,
+   "throughput_before_last_cutoff": 633594,
+   "missed_by_cause_spm": {
+    "absence": 14435,
+    "overrun": 1480,
+    "part": 2785,
+    "predecessor": 16800,
+    "replanned": 70,
+    "rework": 7115
+   },
+   "claims_spm": {
+    "CAPACITY_SHORTAGE:APPROVED": 14435,
+    "CROSS_TEAM_PREDECESSOR:APPROVED": 8595,
+    "DURATION_OVERRUN:PROPOSED": 1480,
+    "LATE_PART:APPROVED": 3230,
+    "REWORK_INJECTION:APPROVED": 4495,
+    "REWORK_INJECTION:REJECTED": 2620,
+    "SAME_TEAM_PREDECESSOR:PROPOSED": 7760
+   },
+   "deviations": [
+    0,
+    0
+   ],
+   "exec_slipped_by_cause": {
+    "absence": 135,
+    "overrun": 6,
+    "part": 19,
+    "predecessor": 11
+   },
+   "open_work_by_line": {
+    "1201": 624470,
+    "1202": 528215,
+    "1203": 308775,
+    "1204": 220049,
+    "1205": 32145,
+    "1206": 643995,
+    "1207": 508285,
+    "1208": 379090,
+    "1209": 236120,
+    "1210": 140210
+   },
+   "utilization_mean": 0.6094,
+   "worked_hours": 11451.9,
+   "available_hours": 18404.3,
+   "classifiers_spm": {},
+   "scores": {
+    "team_shifts": 371,
+    "R0_mean": 98.63,
+    "R5_mean": 98.26,
+    "R5_P2_mean": 98.26,
+    "R0_grades": {
+     "A": 357,
+     "B": 13,
+     "D": 1
+    },
+    "R5_grades": {
+     "A": 351,
+     "B": 14,
+     "C": 5,
+     "F": 1
+    },
+    "R5_minus_R0_mean": -0.37,
+    "R5_vs_R5P2_max_abs_diff": 0.0,
+    "R5_vs_R5P2dispatch_max_abs_diff": 0.0,
+    "R5_P2dispatch_mean": 98.26
+   }
+  },
+  "PA_s6": {
+   "name": "PA_s6",
+   "shifts": 12,
+   "deviation": 0.0,
+   "pull_ahead": 1.0,
+   "seed": 20261026,
+   "seconds": 641.5,
+   "B0": 703618,
+   "B": 751138,
+   "E": 31480,
+   "D": 719658,
+   "Cp": 712728,
+   "U": 32775,
+   "oos": 0,
+   "offplan_by_kind": {
+    "outside_goals": 4925,
+    "pull_ahead": 27850
+   },
+   "throughput_spm": 745503,
+   "open_work_spm_at_last_cutoff": 3549218,
+   "open_work_spm_at_first_cutoff": 3907275,
+   "open_jobs_at_last_cutoff": 24741,
+   "last_calc_shift": 11,
+   "jobs_completed": 6721,
+   "jobs_completed_before_last_cutoff": 6284,
+   "throughput_before_last_cutoff": 689248,
+   "missed_by_cause_spm": {
+    "absence": 13690,
+    "overrun": 1915,
+    "part": 1530,
+    "predecessor": 12405,
+    "rework": 8870
+   },
+   "claims_spm": {
+    "CAPACITY_SHORTAGE:APPROVED": 13690,
+    "CROSS_TEAM_PREDECESSOR:APPROVED": 8055,
+    "DURATION_OVERRUN:PROPOSED": 1915,
+    "LATE_PART:APPROVED": 1570,
+    "REWORK_INJECTION:APPROVED": 8165,
+    "REWORK_INJECTION:REJECTED": 705,
+    "SAME_TEAM_PREDECESSOR:PROPOSED": 4310
+   },
+   "deviations": [
+    0,
+    0
+   ],
+   "exec_slipped_by_cause": {
+    "absence": 131,
+    "overrun": 9,
+    "part": 13,
+    "predecessor": 9
+   },
+   "open_work_by_line": {
+    "1201": 617685,
+    "1202": 524610,
+    "1203": 302300,
+    "1204": 210515,
+    "1205": 25469,
+    "1206": 642150,
+    "1207": 496305,
+    "1208": 365120,
+    "1209": 228715,
+    "1210": 136349
+   },
+   "utilization_mean": 0.6736,
+   "worked_hours": 12575.8,
+   "available_hours": 18404.3,
+   "classifiers_spm": {
+    "P2_dispatch:additive->additive": 27850,
+    "P2_goal_units:additive->additive": 27850
+   },
+   "scores": {
+    "team_shifts": 372,
+    "R0_mean": 97.88,
+    "R5_mean": 99.39,
+    "R5_P2_mean": 99.39,
+    "R0_grades": {
+     "A": 360,
+     "B": 9,
+     "C": 3
+    },
+    "R5_grades": {
+     "A": 364,
+     "B": 8
+    },
+    "R5_minus_R0_mean": 1.51,
+    "R5_vs_R5P2_max_abs_diff": 0.0,
+    "R5_vs_R5P2dispatch_max_abs_diff": 0.0,
+    "R5_P2dispatch_mean": 99.39
+   }
+  },
+  "DV_s6": {
+   "name": "DV_s6",
+   "shifts": 12,
+   "deviation": 1.0,
+   "pull_ahead": 0.0,
+   "seed": 20261026,
+   "seconds": 652.9,
+   "B0": 701164,
+   "B": 730644,
+   "E": 34505,
+   "D": 696139,
+   "Cp": 648014,
+   "U": 18370,
+   "oos": 690,
+   "offplan_by_kind": {
+    "deviation": 15555,
+    "outside_goals": 2815
+   },
+   "throughput_spm": 666384,
+   "open_work_spm_at_last_cutoff": 3627819,
+   "open_work_spm_at_first_cutoff": 3907275,
+   "open_jobs_at_last_cutoff": 25377,
+   "last_calc_shift": 11,
+   "jobs_completed": 6135,
+   "jobs_completed_before_last_cutoff": 5727,
+   "throughput_before_last_cutoff": 618644,
+   "missed_by_cause_spm": {
+    "absence": 13905,
+    "deviation": 35635,
+    "overrun": 1270,
+    "part": 1070,
+    "predecessor": 24995,
+    "rework": 5755
+   },
+   "claims_spm": {
+    "CAPACITY_SHORTAGE:APPROVED": 13905,
+    "CROSS_TEAM_PREDECESSOR:APPROVED": 15560,
+    "DURATION_OVERRUN:PROPOSED": 1270,
+    "LATE_PART:APPROVED": 1250,
+    "REWORK_INJECTION:APPROVED": 3790,
+    "REWORK_INJECTION:REJECTED": 1965,
+    "SAME_TEAM_PREDECESSOR:PROPOSED": 9255
+   },
+   "deviations": [
+    326,
+    35635
+   ],
+   "exec_slipped_by_cause": {
+    "absence": 134,
+    "deviation": 359,
+    "overrun": 7,
+    "part": 13,
+    "predecessor": 57
+   },
+   "open_work_by_line": {
+    "1201": 621941,
+    "1202": 530695,
+    "1203": 307870,
+    "1204": 223290,
+    "1205": 35255,
+    "1206": 644860,
+    "1207": 508930,
+    "1208": 375400,
+    "1209": 238983,
+    "1210": 140595
+   },
+   "utilization_mean": 0.6047,
+   "worked_hours": 11338.5,
+   "available_hours": 18404.3,
+   "classifiers_spm": {
+    "P2_dispatch:substitutive->substitutive": 15555,
+    "P2_goal_units:substitutive->additive": 2375,
+    "P2_goal_units:substitutive->substitutive": 13180
+   },
+   "scores": {
+    "team_shifts": 372,
+    "R0_mean": 94.05,
+    "R5_mean": 92.9,
+    "R5_P2_mean": 92.96,
+    "R0_grades": {
+     "A": 316,
+     "B": 48,
+     "C": 8
+    },
+    "R5_grades": {
+     "A": 305,
+     "B": 53,
+     "C": 12,
+     "D": 2
+    },
+    "R5_minus_R0_mean": -1.15,
+    "R5_vs_R5P2_max_abs_diff": 10.621,
+    "R5_vs_R5P2dispatch_max_abs_diff": 0.0,
+    "R5_P2dispatch_mean": 92.9
+   }
+  },
+  "N0_s7": {
+   "name": "N0_s7",
+   "shifts": 12,
+   "deviation": 0.0,
+   "pull_ahead": 0.0,
+   "seed": 20261027,
+   "seconds": 640.7,
+   "B0": 705956,
+   "B": 718936,
+   "E": 25575,
+   "D": 693361,
+   "Cp": 683821,
+   "U": 1174,
+   "oos": 0,
+   "offplan_by_kind": {
+    "outside_goals": 1174
+   },
+   "throughput_spm": 684995,
+   "open_work_spm_at_last_cutoff": 3605294,
+   "open_work_spm_at_first_cutoff": 3907275,
+   "open_jobs_at_last_cutoff": 25196,
+   "last_calc_shift": 11,
+   "jobs_completed": 6225,
+   "jobs_completed_before_last_cutoff": 5840,
+   "throughput_before_last_cutoff": 641405,
+   "missed_by_cause_spm": {
+    "absence": 11575,
+    "overrun": 960,
+    "part": 1555,
+    "predecessor": 13655,
+    "replanned": 45,
+    "rework": 7325
+   },
+   "claims_spm": {
+    "CAPACITY_SHORTAGE:APPROVED": 11575,
+    "CROSS_TEAM_PREDECESSOR:APPROVED": 4895,
+    "DURATION_OVERRUN:PROPOSED": 960,
+    "LATE_PART:APPROVED": 4650,
+    "REWORK_INJECTION:APPROVED": 4455,
+    "REWORK_INJECTION:REJECTED": 2870,
+    "SAME_TEAM_PREDECESSOR:PROPOSED": 5665
+   },
+   "deviations": [
+    0,
+    0
+   ],
+   "exec_slipped_by_cause": {
+    "absence": 105,
+    "overrun": 6,
+    "part": 16,
+    "predecessor": 6
+   },
+   "open_work_by_line": {
+    "1201": 619875,
+    "1202": 530740,
+    "1203": 308574,
+    "1204": 218960,
+    "1205": 31490,
+    "1206": 646135,
+    "1207": 503425,
+    "1208": 369005,
+    "1209": 238075,
+    "1210": 139015
+   },
+   "utilization_mean": 0.6185,
+   "worked_hours": 11575.9,
+   "available_hours": 18392.1,
+   "classifiers_spm": {},
+   "scores": {
+    "team_shifts": 372,
+    "R0_mean": 98.91,
+    "R5_mean": 98.56,
+    "R5_P2_mean": 98.56,
+    "R0_grades": {
+     "A": 359,
+     "B": 11,
+     "C": 2
+    },
+    "R5_grades": {
+     "A": 353,
+     "B": 13,
+     "D": 1,
+     "C": 5
+    },
+    "R5_minus_R0_mean": -0.35,
+    "R5_vs_R5P2_max_abs_diff": 0.0,
+    "R5_vs_R5P2dispatch_max_abs_diff": 0.0,
+    "R5_P2dispatch_mean": 98.56
+   }
+  },
+  "PA_s7": {
+   "name": "PA_s7",
+   "shifts": 12,
+   "deviation": 0.0,
+   "pull_ahead": 1.0,
+   "seed": 20261027,
+   "seconds": 648.5,
+   "B0": 701733,
+   "B": 746943,
+   "E": 26520,
+   "D": 720423,
+   "Cp": 712498,
+   "U": 32470,
+   "oos": 0,
+   "offplan_by_kind": {
+    "outside_goals": 5360,
+    "pull_ahead": 27110
+   },
+   "throughput_spm": 744968,
+   "open_work_spm_at_last_cutoff": 3548347,
+   "open_work_spm_at_first_cutoff": 3907275,
+   "open_jobs_at_last_cutoff": 24732,
+   "last_calc_shift": 11,
+   "jobs_completed": 6726,
+   "jobs_completed_before_last_cutoff": 6293,
+   "throughput_before_last_cutoff": 689033,
+   "missed_by_cause_spm": {
+    "absence": 11625,
+    "overrun": 1835,
+    "part": 1740,
+    "predecessor": 13255,
+    "rework": 5990
+   },
+   "claims_spm": {
+    "CAPACITY_SHORTAGE:APPROVED": 11625,
+    "CROSS_TEAM_PREDECESSOR:APPROVED": 5505,
+    "DURATION_OVERRUN:PROPOSED": 1835,
+    "LATE_PART:APPROVED": 4730,
+    "REWORK_INJECTION:APPROVED": 4660,
+    "REWORK_INJECTION:REJECTED": 1330,
+    "SAME_TEAM_PREDECESSOR:PROPOSED": 4760
+   },
+   "deviations": [
+    0,
+    0
+   ],
+   "exec_slipped_by_cause": {
+    "absence": 108,
+    "overrun": 12,
+    "part": 16,
+    "predecessor": 8
+   },
+   "open_work_by_line": {
+    "1201": 618455,
+    "1202": 523410,
+    "1203": 299940,
+    "1204": 209275,
+    "1205": 28622,
+    "1206": 641900,
+    "1207": 496255,
+    "1208": 363880,
+    "1209": 230390,
+    "1210": 136220
+   },
+   "utilization_mean": 0.6758,
+   "worked_hours": 12581.3,
+   "available_hours": 18392.1,
+   "classifiers_spm": {
+    "P2_dispatch:additive->additive": 27110,
+    "P2_goal_units:additive->additive": 27110
+   },
+   "scores": {
+    "team_shifts": 372,
+    "R0_mean": 97.89,
+    "R5_mean": 99.32,
+    "R5_P2_mean": 99.32,
+    "R0_grades": {
+     "A": 359,
+     "B": 12,
+     "C": 1
+    },
+    "R5_grades": {
+     "A": 368,
+     "B": 3,
+     "C": 1
+    },
+    "R5_minus_R0_mean": 1.43,
+    "R5_vs_R5P2_max_abs_diff": 0.0,
+    "R5_vs_R5P2dispatch_max_abs_diff": 0.0,
+    "R5_P2dispatch_mean": 99.32
+   }
+  },
+  "DV_s7": {
+   "name": "DV_s7",
+   "shifts": 12,
+   "deviation": 1.0,
+   "pull_ahead": 0.0,
+   "seed": 20261027,
+   "seconds": 655.5,
+   "B0": 704540,
+   "B": 734020,
+   "E": 30315,
+   "D": 703705,
+   "Cp": 655995,
+   "U": 16355,
+   "oos": 330,
+   "offplan_by_kind": {
+    "deviation": 14235,
+    "outside_goals": 2120
+   },
+   "throughput_spm": 672350,
+   "open_work_spm_at_last_cutoff": 3612522,
+   "open_work_spm_at_first_cutoff": 3907275,
+   "open_jobs_at_last_cutoff": 25241,
+   "last_calc_shift": 11,
+   "jobs_completed": 6155,
+   "jobs_completed_before_last_cutoff": 5769,
+   "throughput_before_last_cutoff": 625510,
+   "missed_by_cause_spm": {
+    "absence": 11905,
+    "deviation": 36445,
+    "overrun": 785,
+    "part": 1560,
+    "predecessor": 21110,
+    "rework": 6220
+   },
+   "claims_spm": {
+    "CAPACITY_SHORTAGE:APPROVED": 11905,
+    "CROSS_TEAM_PREDECESSOR:APPROVED": 12175,
+    "DURATION_OVERRUN:PROPOSED": 785,
+    "LATE_PART:APPROVED": 1690,
+    "REWORK_INJECTION:APPROVED": 4545,
+    "REWORK_INJECTION:REJECTED": 1675,
+    "SAME_TEAM_PREDECESSOR:PROPOSED": 8805
+   },
+   "deviations": [
+    325,
+    36445
+   ],
+   "exec_slipped_by_cause": {
+    "absence": 113,
+    "deviation": 360,
+    "overrun": 4,
+    "part": 16,
+    "predecessor": 45
+   },
+   "open_work_by_line": {
+    "1201": 622240,
+    "1202": 530007,
+    "1203": 307920,
+    "1204": 219585,
+    "1205": 34110,
+    "1206": 643710,
+    "1207": 501890,
+    "1208": 377360,
+    "1209": 237660,
+    "1210": 138040
+   },
+   "utilization_mean": 0.6092,
+   "worked_hours": 11388.5,
+   "available_hours": 18392.1,
+   "classifiers_spm": {
+    "P2_dispatch:substitutive->substitutive": 14235,
+    "P2_goal_units:substitutive->additive": 2095,
+    "P2_goal_units:substitutive->substitutive": 12140
+   },
+   "scores": {
+    "team_shifts": 372,
+    "R0_mean": 94.35,
+    "R5_mean": 93.16,
+    "R5_P2_mean": 93.2,
+    "R0_grades": {
+     "A": 335,
+     "B": 33,
+     "C": 4
+    },
+    "R5_grades": {
+     "A": 311,
+     "B": 51,
+     "D": 2,
+     "C": 8
+    },
+    "R5_minus_R0_mean": -1.2,
+    "R5_vs_R5P2_max_abs_diff": 4.798,
+    "R5_vs_R5P2dispatch_max_abs_diff": 0.0,
+    "R5_P2dispatch_mean": 93.16
+   }
+  }
+ },
+ "pairs": {
+  "PA_s6 - N0_s6": {
+   "B0": 84,
+   "D": 31919,
+   "Cp": 36919,
+   "U": 30440,
+   "worked_hours": 1123.8999999999996,
+   "throughput_spm": 67359,
+   "throughput_before_last_cutoff": 55654,
+   "open_work_spm_at_last_cutoff": -72136,
+   "open_jobs_at_last_cutoff": -605,
+   "jobs_completed": 544,
+   "jobs_completed_before_last_cutoff": 519,
+   "offplan_minus_base_offplan": 30440,
+   "cross_team_relief_spm": -540,
+   "deviations": 0,
+   "displaced_spm": 0,
+   "open_work_reduction_per_offplan_minute": 2.37,
+   "throughput_gain_per_offplan_minute": 2.213
+  },
+  "DV_s6 - N0_s6": {
+   "B0": -2370,
+   "D": 8400,
+   "Cp": -27795,
+   "U": 16035,
+   "worked_hours": -113.39999999999964,
+   "throughput_spm": -11760,
+   "throughput_before_last_cutoff": -14950,
+   "open_work_spm_at_last_cutoff": 6465,
+   "open_jobs_at_last_cutoff": 31,
+   "jobs_completed": -42,
+   "jobs_completed_before_last_cutoff": -38,
+   "offplan_minus_base_offplan": 16035,
+   "cross_team_relief_spm": 6965,
+   "deviations": 326,
+   "displaced_spm": 35635,
+   "open_work_change_per_displaced_minute": 0.181,
+   "cross_team_relief_per_displaced_minute": 0.195,
+   "throughput_change_per_displaced_minute": -0.33
+  },
+  "PA_s7 - N0_s7": {
+   "B0": -4223,
+   "D": 27062,
+   "Cp": 28677,
+   "U": 31296,
+   "worked_hours": 1005.3999999999996,
+   "throughput_spm": 59973,
+   "throughput_before_last_cutoff": 47628,
+   "open_work_spm_at_last_cutoff": -56947,
+   "open_jobs_at_last_cutoff": -464,
+   "jobs_completed": 501,
+   "jobs_completed_before_last_cutoff": 453,
+   "offplan_minus_base_offplan": 31296,
+   "cross_team_relief_spm": 610,
+   "deviations": 0,
+   "displaced_spm": 0,
+   "open_work_reduction_per_offplan_minute": 1.82,
+   "throughput_gain_per_offplan_minute": 1.916
+  },
+  "DV_s7 - N0_s7": {
+   "B0": -1416,
+   "D": 10344,
+   "Cp": -27826,
+   "U": 15181,
+   "worked_hours": -187.39999999999964,
+   "throughput_spm": -12645,
+   "throughput_before_last_cutoff": -15895,
+   "open_work_spm_at_last_cutoff": 7228,
+   "open_jobs_at_last_cutoff": 45,
+   "jobs_completed": -70,
+   "jobs_completed_before_last_cutoff": -71,
+   "offplan_minus_base_offplan": 15181,
+   "cross_team_relief_spm": 7280,
+   "deviations": 325,
+   "displaced_spm": 36445,
+   "open_work_change_per_displaced_minute": 0.198,
+   "cross_team_relief_per_displaced_minute": 0.2,
+   "throughput_change_per_displaced_minute": -0.347
+  }
+ }
+}

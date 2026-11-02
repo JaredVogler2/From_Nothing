@@ -15,6 +15,7 @@
 | [06_VALIDATION_AND_SCALE.md](06_VALIDATION_AND_SCALE.md) | Measured facts, runtimes, test matrix, shadow study, decision rules |
 | [07_INTEGRATION_OPTIONS.md](07_INTEGRATION_OPTIONS.md) | Options A–D, contracts, touchpoints, phases, gates, rollback |
 | [08_FINAL_DECISION_REPORT.md](08_FINAL_DECISION_REPORT.md) | Decision |
+| [09_OFFPLAN_CREDIT.md](09_OFFPLAN_CREDIT.md) | Owner follow-up: what unscheduled work is worth, adherence rebuttal, paired floor scenarios |
 
 ## 2. Reproducible runs
 The scripts are in [evidence/scripts/](evidence/scripts) and run from the app root's virtualenv. Each script writes into `common.SCRATCH`, a constant at the top of `common.py`; edit it for your machine.
@@ -33,6 +34,13 @@ The scripts are in [evidence/scripts/](evidence/scripts) and run from the app ro
 | Counterexamples | `python counterexamples.py` | — | [counterexamples.txt](evidence/outputs/counterexamples.txt) | Exact numbers for CE1–CE13 in `02` |
 | Attribution | `python3 attribution.py` | — | [attribution.txt](evidence/outputs/attribution.txt) | Shapley, sequential and proportional allocations; avoided cost versus shares in `04` |
 | Score scenarios | inline `formula` calls with the demo policy (session record) | 5d1236c | values quoted in `05` §2 | Band thresholds with U = 0: A 85.7%, B 71.4%, C 57.1%, D 42.9% |
+| PC5 | `python plan_classes.py 5 5,8 PC5 --late-share 0.02 --late-max 3` | 44caf00 (engine code identical to 5d1236c) | [PC5.json](evidence/outputs/PC5.json) | 378 first-shift units on the redispatch plan, all FLOAT; neutral seed plan 336 FLOAT and 11 AT_RISK. Due ±1 day changes no class. 28 units common to both plans, 27 agree. Classes 0.47 s + 0.07 s. |
+| PC50 | `python plan_classes.py 50 10,30 PC50` (default fleet) | 44caf00 | [PC50.json](evidence/outputs/PC50.json), [PC50.log](evidence/outputs/PC50.log) | 3,189 (redispatch) and 2,615 (seed) first-shift units, all FLOAT. About 10 s per publication: **T11 passes**. 29 common units, all agree. Peak 3.6 GB for the whole run. |
+| OV5 | `python offplan_value.py 5 5,8 OV5 --sample 60 --late-share 0.02 --late-max 3 --procs 1` | 44caf00 | [OV5.json](evidence/outputs/OV5.json) | Pull-ahead value: 1 of 60 sampled ready jobs nonzero ($159,809; $850 per spm). On-time value of 60 planned first-shift units: all $0. |
+| OR50 | `python offplan_replay.py runtime/sim/fleet.db OR50.json` (read-only replay of the 50-aircraft, 14-day run `SIM9427255df24c45204d12`, 2026-10-31, default fleet) | — | [OR50.json](evidence/outputs/OR50.json) | Current *H* < 1 on exactly the 249 team-shifts with off-plan work. Penalty mean 0.84, max 3.75 points. Classifier P1 calls 38% of pull-ahead substitutive; P2 calls 5%. Swap knock-on cost 4.8% of displaced effort. |
+| OS | `python offplan_scenarios.py OS.json` | — | [OS.json](evidence/outputs/OS.json) | Worked scenarios and incentive checks for rules R0, R1, R3 and R5 (`09` §2.2, §5) |
+| SH10 | `python shadow_sim.py 10 5,10 5 SH10 --late-share 0.02 --late-max 3`, then `python shadow_analyze.py SH10` and `python shadow_offplan_classes.py SH10` | 44caf00 | [SH10.analysis.json](evidence/outputs/SH10.analysis.json), [SH10.offplan_classes.json](evidence/outputs/SH10.offplan_classes.json), [SH10.log](evidence/outputs/SH10.log). The per-unit class file (2.9 MB) and the 170 MB simulation database are not committed; the commands regenerate them. | 15 publications: no CRITICAL unit; AT_RISK 7–25%. **T8 fails**: AT_RISK misses move delivery by −166 / +132 min with / without, CI [−1,112, +287]. **T9**: Spearman 0.9997. Stability 89.7%. |
+| PAIRED | `python offplan_paired.py 10 5,10 12 NAME --deviation D --pull-ahead P --seed S --late-share 0.02 --late-max 3` for N0 (0, 0), PA (0, 1) and DV (1, 0), seeds 20261026 (s6) and 20261027 (s7); then `python offplan_paired_analyze.py PAIRED N0_s6 PA_s6 DV_s6 N0_s7 PA_s7 DV_s7` | 44caf00 | [PAIRED.json](evidence/outputs/PAIRED.json), [PAIRED.log](evidence/outputs/PAIRED.log) | Pull-ahead: +1.92 to +2.21 minutes of output per off-plan minute, +501 to +544 jobs. Swaps: −0.33 to −0.35 minutes of output and 0.20 minutes of other teams' work blocked per displaced minute. R0 ranks the pull-ahead floor below the no-extra-work floor; R5 ranks them by production. |
 
 ## 3. Repository sources cited (path:line at 5d1236c)
 - **Engine:**

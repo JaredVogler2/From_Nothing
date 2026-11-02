@@ -14,6 +14,16 @@ Modeled money is the airline-revenue proxy: a planning assumption, never a contr
 
 ## A. Executive decision
 
+**Update after the measurements (2026-11-02, `06` §2.6–§2.7, §6.1).** The pre-registered tests were run:
+- **T11 cost passes:** about 10 s per publication at 50 aircraft.
+- **T5 stability:** stable, but every first-shift unit was FLOAT at 5 and 50 aircraft.
+- **T8 fails:** in a 15-shift shadow simulation no task was ever CRITICAL, and missed AT_RISK work did not move delivery measurably (95% CI −1,112 to +287 minutes).
+- **T9:** a class-weighted grade agreed with effort attainment almost perfectly (Spearman 0.9997).
+
+Under the decision rule set in advance, **the recommendation falls back to (1): effort attainment only (status quo).** No classifier should be built on this evidence. Classes stay a hypothesis, to be re-tested (T8) on real executed plans (OD-15). The original reasoning below is kept as written; the bullets marked *Updated* supersede it.
+
+The separate owner question on unscheduled work is answered in `09`: fix how the effort score treats off-plan work. It applies under either choice.
+
 **Should task importance be scheduler-derived?**
 - **Yes, as a classification**: CRITICAL, AT_RISK, FLOAT or UNKNOWN, with a reason.
 - It should be computed from the **published** FORECAST plan's schedule graph, as resource-aware float to delivery. It should not come from the dispatch key.
@@ -37,13 +47,14 @@ Modeled money is the airline-revenue proxy: a planning assumption, never a contr
 - Impact is reported **beside** them, as a class plus a **critical coverage** count (critical units done ÷ critical units scheduled, minus relieved).
 
 **Recommendation.**
-- Choice **(4)**: separate effort and impact metrics, implemented as frozen priority classes plus critical coverage beside the unchanged effort grade. Start in shadow mode in the synthetic simulation and promote only through the gates in `06` §6.
-- Fallback: **(1)**, effort only, the status quo, if the classes prove unstable or uninformative.
+- *Original:* choice **(4)**: separate effort and impact metrics, implemented as frozen priority classes plus critical coverage beside the unchanged effort grade. Start in shadow mode in the synthetic simulation and promote only through the gates in `06` §6.
+- *Original fallback:* **(1)**, effort only, the status quo, if the classes prove unstable or uninformative.
+- *Updated:* **(1) is now the recommendation**, because T8 failed (`06` §6.1). Pair it with the off-plan fix in `09`. Choice (4) is deferred until real data can pass T8.
 - Option (3), unified impact points, is rejected.
 
 **Confidence.**
 - **High** that additive impact earning is wrong for FOCUS.
-- **Moderate** that classes add value.
+- *Updated:* **Low** that classes add value. On the synthetic fleet they carried no measurable delivery signal (T8).
 - **Low** on real-world magnitudes. All evidence is synthetic, with scaled-down teams and a light parts scenario for the counterfactual comparisons.
 
 **Biggest unknowns.**
@@ -108,9 +119,9 @@ Measured columns are EXPERIMENT (two samples: R_H5 / H5). The rest is judgment.
 | # | Failure mode | Consequence | Mitigation | Residual risk | Evidence |
 |---|---|---|---|---|---|
 | 1 | The proxy misses capacity-driven criticality | Critical work labeled FLOAT; coverage misses it | Include person, position and QA sequence edges; asynchronous *d1* checks on scarce-resource units | Moderate | EXPERIMENT (QA unit $0 by proxy, +$421k exact) |
-| 2 | Threshold cliffs, classes flipping between publications | Confusion, distrust | Show cost-float minutes; hysteresis; T5 stability gate | Low–moderate | THEORETICAL; T5 to measure |
-| 3 | Near-term emptiness (no critical units today) | Coverage "n/a" most shifts; little value | AT_RISK horizon *K*; fall back to A if T8 fails | Unknown on real data | EXPERIMENT (synthetic: 378/378 $0) |
-| 4 | Coverage redundant with attainment | Complexity without information | Gate: correlation < 0.9 | Unknown | NOT_MEASURED |
+| 2 | Threshold cliffs, classes flipping between publications | Confusion, distrust | Show cost-float minutes; hysteresis; T5 stability gate | Low–moderate | EXPERIMENT: 89.7% unchanged between publications; AT_RISK least stable (36% became FLOAT) |
+| 3 | Near-term emptiness (no critical units today) | Coverage "n/a" most shifts; little value | AT_RISK horizon *K*; fall back to A if T8 fails | **Realized on synthetic data**; unknown on real data | EXPERIMENT (378/378 $0; no CRITICAL in 15 publications; T8 failed) |
+| 4 | Coverage redundant with attainment | Complexity without information | Gate: correlation < 0.9 | Low as redundancy (0.28), but coverage was undefined for 38% of team-shifts | EXPERIMENT (SH10) |
 | 5 | Small denominators | Volatile, misleading percentages | Counts, not percentages; "n/a" | Low | THEORETICAL |
 | 6 | Leadership merges the two numbers into one weighted grade | Re-creates F (endogenous) | Governance rule: coverage never enters the grade; publish the definitions | Moderate | Literature (metric fixation, Kerr; Holmström–Milgrom) |
 | 7 | Model error (rates, durations) mislabels criticality | Teams protect the wrong work | Reasons and aircraft state shown; the ranking stays the scheduler's | Moderate | Measured proxy fidelity 0.71–0.83 |
@@ -119,7 +130,7 @@ Measured columns are EXPERIMENT (two samples: R_H5 / H5). The rest is judgment.
 | 10 | EXECUTABLE versus FORECAST placement mismatch | Units valued in a different placement | Classify phases from the forecast graph, map by phase id, label the plan valued | Moderate | EXPERIMENT (63–77% overlap) |
 | 11 | Own-defect rework flagged critical | Coverage credit for fixing self-made defects | Defect-origin view (`Job.defect_origin_team`); quality metrics separate | Moderate | VERIFIED field; THEORETICAL incentive |
 | 12 | Coverage misused for team comparison | Teams with no critical work look "n/a"; unfair rankings | Diagnostic only; never ranked | Moderate | `05` §7 |
-| 13 | Cost at 50 aircraft unmeasured | Could delay the pipeline | Asynchronous step, `allow_failure`, ≤ 60 s budget (T11) | Unknown until measured | NOT_MEASURED |
+| 13 | Cost at 50 aircraft | Could delay the pipeline | Asynchronous step, `allow_failure`, ≤ 60 s budget (T11) | Low for first-shift units (about 10 s); a 24-hour window needs its own budget | EXPERIMENT (PC50, SH10) |
 | 14 | Mistaking classes for causal credit | "Critical coverage saved $X" claims | Never attach modeled $ to team results; ledger D only for management, labeled modeled | Low with governance | THEORETICAL |
 
 **The prompt's fallacies, checked:**
@@ -137,7 +148,7 @@ Measured columns are EXPERIMENT (two samples: R_H5 / H5). The rest is judgment.
 | Inadequate feeds | OD-12 and OD-15 |
 | Expensive, unstable counterfactuals | About 70 h per shift; 3.3% anomalies |
 | Heuristic bias | *d1* is a greedy decode, not an optimum |
-| Unsupported fairness claims | Synthetic only; T9 designed, not run |
+| Unsupported fairness claims | Synthetic only. T9 ran: no bias, but no information either (Spearman 0.9997) |
 
 **Would a simple priority band plus standard attainment beat a dynamic point ledger?** Yes. That is what G is. The ledger (F, D) fails on additivity, controllability and incentives before any practical cost is counted.
 
@@ -148,11 +159,16 @@ Measured columns are EXPERIMENT (two samples: R_H5 / H5). The rest is judgment.
   - the fidelity comparison on two samples;
   - joint sets;
   - runtimes at 5, 10 and 20 aircraft.
-- **Planned, not performed:**
-  - T1–T11 at 50 aircraft: perturbation stability (T5), the shadow simulation (T8), fairness (T9) and cost (T11).
+- **Performed since (EXPERIMENT, `06` §2.5–§2.7, §4.1):**
+  - T11 cost: about 10 s per publication at 50 aircraft. **Pass.**
+  - T5 stability: stable but empty; every first-shift unit FLOAT at 5 and 50 aircraft.
+  - T8 shadow study: 10 aircraft, 15 shifts. No CRITICAL unit; AT_RISK misses moved nothing measurable. **Fail.**
+  - T9 fairness: no bias, no information.
+- **Still not performed:**
+  - T2, T3 and T7; T1 at a second scale and more seeds; T5 duration and attendance perturbations; T8 at 50 aircraft over 14 days.
   - Real-data validation needs weeks of executed plans with verified events, claims, decisions and outcomes. None exist.
 - **What would overturn the choice:**
-  - **T8 fails** (CRITICAL slips do not move delivery more than FLOAT slips) or **T5 fails** (classes unstable): drop classes and keep A.
+  - **T8 fails** (CRITICAL slips do not move delivery more than FLOAT slips) or **T5 fails** (classes unstable): drop classes and keep A. *T8 failed on synthetic data; this condition is now met.*
   - **Coverage correlates > 0.9 with attainment**: drop coverage; keep classes for display only, which is choice (2).
   - **Proxy fidelity < 0.6 at 50 aircraft**: classes are noise; keep A.
   - Nothing measured here supports additive impact earning. Reconsidering (3) would need additivity to hold in T4, which contradicts the measured results and the theory.
@@ -174,9 +190,9 @@ Measured columns are EXPERIMENT (two samples: R_H5 / H5). The rest is judgment.
 
 ## H. Explicit choice
 
-1. **(4) Separate effort and impact metrics.** Effort stays the earned currency and the grade. Frozen priority classes plus critical coverage are shown beside it, shadow first. *Recommended.*
-2. **(2) Scheduler-derived priority only.** Classes on the Team Lead view, without coverage. This is what (4) reduces to if coverage proves redundant.
-3. **(1) Effort only (status quo).** The credible fallback if the class gates fail.
+1. **(1) Effort only (status quo), with the off-plan fix of `09`.** *Recommended (updated): T8 failed, so the pre-registered fallback applies.*
+2. **(4) Separate effort and impact metrics.** Effort stays the earned currency and the grade; frozen priority classes plus critical coverage beside it. *Deferred* until real executed plans can pass T8.
+3. **(2) Scheduler-derived priority only.** Classes on the Team Lead view, without coverage. Also deferred, for the same reason.
 4. **(5)** No superior alternative was found. The management delay-cost ledger (D) is a companion to (4), not a replacement.
 5. **(3) Unified impact points for priority and performance.** **Rejected**: non-additive, endogenous, procrastination incentive, near-term emptiness, uninterpretable at fleet scale.
 
@@ -187,6 +203,11 @@ Measured columns are EXPERIMENT (two samples: R_H5 / H5). The rest is judgment.
 3. **What coverage is for:** diagnostic only, or also team comparison and gamification. The evidence advises against comparison.
 4. **Economics visibility:** whether to build the management delay-cost ledger, who sees modeled dollars, and whether a **carrying cost per aircraft-day** (a finance figure) should enter the money objective. Today an early aircraft carries $0 until its due date is crossed.
 5. **The demonstration grade** (OD-16): whether the 30% adherence term stays. With no off-plan work it lowers the attainment needed for a B to 71.4%. This affects any grade, independent of task valuation.
+6. **Unscheduled work** (`09` §8):
+   - the exchange rate *w* between scheduled and additive unscheduled minutes (demo 0.70; 0.80 suggested);
+   - whether approved additions are obligations or pre-classified extra output;
+   - "plan change" relief for frozen work the latest plan moved out;
+   - re-derived bands.
 
 ## J. Source and evidence index
 
@@ -194,4 +215,7 @@ See [EVIDENCE_INDEX.md](EVIDENCE_INDEX.md) for the reproducible runs, repository
 
 ---
 
-**Decision gate.** This report does not authorize implementation. The next step needs explicit approval: Phase 1 of `07` §6 (shadow classifier in the synthetic simulation), or the fallback (no change).
+**Decision gate.** This report does not authorize implementation.
+- *Updated:* the evidence-backed next step is the fallback, with no classifier.
+- Separately, the off-plan scoring changes in `09` §8 need the owner's decisions and explicit approval.
+- Phase 1 of `07` §6 should wait for real executed-plan data (OD-15).

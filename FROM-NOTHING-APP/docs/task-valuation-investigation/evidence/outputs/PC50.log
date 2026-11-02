@@ -1,0 +1,91 @@
+rev 44caf008fefa85f140fefd7a5a7a3d4f513f654b start 13:19:24
+fixture n=50 team_size=(10, 30): 5.0s scale=0.4231 mech/shift=674 qa=22 late_parts={'undated': 0, 'history': 21942, '1-3 days': 16302, '4-7 days': 5832, '8-14 days': 1167}
+admitted 298009 jobs, 445688 phases, 1258325 edges in 101.6s; rss peak 3122 MB
+{
+ "n": 50,
+ "team_size": [
+  10,
+  30
+ ],
+ "fleet": {},
+ "K": 9,
+ "phases": 445688,
+ "jobs": 298009,
+ "redispatch_accepted": true,
+ "known_economics": 50,
+ "plans": {
+  "redispatch": {
+   "units": 3189,
+   "graph_build_s": 9.48,
+   "probe_all_units_s": 0.59,
+   "probe_per_unit_ms": 0.18,
+   "classes": {
+    "base": {
+     "FLOAT": 3189
+    },
+    "due_minus_1d": {
+     "FLOAT": 3189
+    },
+    "due_plus_1d": {
+     "FLOAT": 3189
+    }
+   },
+   "changed_vs_base": {
+    "due_minus_1d": 0,
+    "due_plus_1d": 0
+   },
+   "changed_share": {
+    "due_minus_1d": 0.0,
+    "due_plus_1d": 0.0
+   },
+   "aircraft_state": {
+    "late": 50
+   },
+   "controllable_usd": 138192875.0
+  },
+  "seed": {
+   "units": 2615,
+   "graph_build_s": 7.46,
+   "probe_all_units_s": 2.92,
+   "probe_per_unit_ms": 1.12,
+   "classes": {
+    "base": {
+     "FLOAT": 2615
+    },
+    "due_minus_1d": {
+     "FLOAT": 2615
+    },
+    "due_plus_1d": {
+     "FLOAT": 2615
+    }
+   },
+   "changed_vs_base": {
+    "due_minus_1d": 0,
+    "due_plus_1d": 0
+   },
+   "changed_share": {
+    "due_minus_1d": 0.0,
+    "due_plus_1d": 0.0
+   },
+   "aircraft_state": {
+    "late": 50
+   },
+   "controllable_usd": 176744524.30555558
+  }
+ },
+ "seed_vs_redispatch": {
+  "common_units": 29,
+  "agree": 29,
+  "agree_share": 1.0,
+  "transitions_seed_to_redispatch": {
+   "FLOAT->FLOAT": 29
+  }
+ },
+ "timings": {
+  "build_admit_s": 107.0,
+  "ctx_s": 12.8,
+  "plan_s": 147.3
+ },
+ "peak_rss_mb": 3611
+}
+exit=0 end 13:24:22

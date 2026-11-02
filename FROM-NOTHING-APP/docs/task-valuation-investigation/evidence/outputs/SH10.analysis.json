@@ -1,0 +1,173 @@
+{
+ "shifts_classified": 15,
+ "classify_seconds_per_shift": [
+  25.77,
+  81.19,
+  162.26,
+  124.91,
+  112.74,
+  87.3,
+  87.86,
+  48.69,
+  76.03,
+  83.8,
+  87.91,
+  78.98,
+  29.83,
+  92.56,
+  110.71
+ ],
+ "class_counts_per_shift": [
+  {
+   "FLOAT": 1732,
+   "AT_RISK": 134
+  },
+  {
+   "FLOAT": 1511,
+   "AT_RISK": 253
+  },
+  {
+   "FLOAT": 1258,
+   "AT_RISK": 420
+  },
+  {
+   "FLOAT": 1293,
+   "AT_RISK": 299
+  },
+  {
+   "FLOAT": 1305,
+   "AT_RISK": 276
+  },
+  {
+   "FLOAT": 1329,
+   "AT_RISK": 267
+  },
+  {
+   "FLOAT": 1242,
+   "AT_RISK": 259
+  },
+  {
+   "FLOAT": 1218,
+   "AT_RISK": 220
+  },
+  {
+   "FLOAT": 1185,
+   "AT_RISK": 276
+  },
+  {
+   "FLOAT": 1238,
+   "AT_RISK": 185
+  },
+  {
+   "FLOAT": 1192,
+   "AT_RISK": 245
+  },
+  {
+   "FLOAT": 1160,
+   "AT_RISK": 275
+  },
+  {
+   "FLOAT": 1207,
+   "AT_RISK": 224
+  },
+  {
+   "FLOAT": 1160,
+   "AT_RISK": 292
+  },
+  {
+   "FLOAT": 1070,
+   "AT_RISK": 343
+  }
+ ],
+ "goal_effort_by_class": {
+  "FLOAT": 0.649,
+  "AT_RISK": 0.1024,
+  "UNMAPPED": 0.2486
+ },
+ "t8_aircraft_shifts": 140,
+ "t8_crit": {
+  "n_with": 0,
+  "n_without": 140,
+  "mean_dC_with_min": null,
+  "mean_dC_without_min": 101.89285714285714,
+  "diff_ci95_min": null
+ },
+ "t8_atrisk": {
+  "n_with": 14,
+  "n_without": 126,
+  "mean_dC_with_min": -166.07142857142858,
+  "mean_dC_without_min": 131.66666666666666,
+  "diff_ci95_min": [
+   -1111.8849206349207,
+   286.8333333333333
+  ]
+ },
+ "t8_float": {
+  "n_with": 64,
+  "n_without": 76,
+  "mean_dC_with_min": -61.953125,
+  "mean_dC_without_min": 239.8684210526316,
+  "diff_ci95_min": [
+   -904.4939350328948,
+   202.68739720394697
+  ]
+ },
+ "t8_ols_minutes_per_missed_hour": {
+  "intercept": {
+   "coef": 61.33,
+   "ci95": [
+    -205.37,
+    347.05
+   ]
+  },
+  "critical": {
+   "coef": -0.0,
+   "ci95": [
+    -0.0,
+    0.0
+   ]
+  },
+  "at_risk": {
+   "coef": -33.28,
+   "ci95": [
+    -136.26,
+    110.84
+   ]
+  },
+  "float": {
+   "coef": 21.52,
+   "ci95": [
+    -69.57,
+    66.78
+   ]
+  },
+  "unknown_or_unmapped": {
+   "coef": 1.11,
+   "ci95": [
+    -68.26,
+    27.29
+   ]
+  }
+ },
+ "t9": {
+  "team_shifts": 465,
+  "spearman_A_vs_weighted": 0.9996929110552023,
+  "share_with_abs_diff_gt_0_05": 0.0043,
+  "corr_priority_share_vs_weighted_minus_A": -0.09592552576497825,
+  "team_shifts_with_priority_units": 288,
+  "team_shifts_coverage_na": 177,
+  "corr_coverage_vs_attainment": 0.2801786069411992,
+  "priority_share_mean": 0.10324902421845183,
+  "priority_share_max": 0.8476190476190476
+ },
+ "stability_consecutive": {
+  "pairs": 13442,
+  "same_share": 0.8965,
+  "transitions": {
+   "FLOAT->FLOAT": 10438,
+   "AT_RISK->AT_RISK": 1613,
+   "AT_RISK->FLOAT": 899,
+   "FLOAT->AT_RISK": 492
+  }
+ }
+}

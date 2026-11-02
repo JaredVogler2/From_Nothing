@@ -1,0 +1,598 @@
+{
+ "db": "/home/user/From_Nothing/FROM-NOTHING-APP/runtime/sim/fleet.db",
+ "team_shifts": 1302,
+ "u_mismatch_team_shifts": 0,
+ "volume_spm": {
+  "B": 6567400,
+  "D": 6289230,
+  "Cp": 6238725,
+  "outside_goals": 7070,
+  "pull_ahead": 20810,
+  "deviation": 1425
+ },
+ "offplan_share_of_output": 0.00468,
+ "team_shifts_with_offplan": {
+  "pull_ahead": 169,
+  "deviation": 23,
+  "outside_goals": 90
+ },
+ "team_shifts_with_any_offplan": 249,
+ "replanned_missed_spm": 765,
+ "replanned_team_shifts": 7,
+ "replay_vs_stored_max_abs_diff": 0.05,
+ "rules": {
+  "R0_current": {
+   "mean": 99.3,
+   "grades": {
+    "A": 1302
+   },
+   "grade_changed_vs_current": 0,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 98.37,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 97.31,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 97.76,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.56,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R1_offplan_ignored": {
+   "mean": 99.46,
+   "grades": {
+    "A": 1302
+   },
+   "grade_changed_vs_current": 0,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.36,
+     "mean_minus_current": 1.0,
+     "min_minus_current": 0.34,
+     "max_minus_current": 2.56
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 98.21,
+     "mean_minus_current": 0.9,
+     "min_minus_current": 0.29,
+     "max_minus_current": 2.4
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 98.48,
+     "mean_minus_current": 0.72,
+     "min_minus_current": 0.08,
+     "max_minus_current": 3.75
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.56,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R2_attainment_only": {
+   "mean": 99.23,
+   "grades": {
+    "A": 1297,
+    "B": 5
+   },
+   "grade_changed_vs_current": 5,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.09,
+     "mean_minus_current": 0.73,
+     "min_minus_current": -1.68,
+     "max_minus_current": 2.56
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 97.44,
+     "mean_minus_current": 0.13,
+     "min_minus_current": -2.35,
+     "max_minus_current": 1.55
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 97.83,
+     "mean_minus_current": 0.07,
+     "min_minus_current": -2.95,
+     "max_minus_current": 3.75
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.37,
+     "mean_minus_current": -0.19,
+     "min_minus_current": -3.45,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R3_flat_0.25": {
+   "mean": 99.5,
+   "grades": {
+    "A": 1302
+   },
+   "grade_changed_vs_current": 0,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.59,
+     "mean_minus_current": 1.23,
+     "min_minus_current": 0.34,
+     "max_minus_current": 3.88
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 98.74,
+     "mean_minus_current": 1.43,
+     "min_minus_current": 0.46,
+     "max_minus_current": 3.88
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 98.72,
+     "mean_minus_current": 0.96,
+     "min_minus_current": 0.1,
+     "max_minus_current": 3.75
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.56,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R3_flat_0.5": {
+   "mean": 99.53,
+   "grades": {
+    "A": 1302
+   },
+   "grade_changed_vs_current": 0,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.74,
+     "mean_minus_current": 1.37,
+     "min_minus_current": 0.34,
+     "max_minus_current": 4.57
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 99.05,
+     "mean_minus_current": 1.74,
+     "min_minus_current": 0.63,
+     "max_minus_current": 4.37
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 98.9,
+     "mean_minus_current": 1.14,
+     "min_minus_current": 0.1,
+     "max_minus_current": 4.57
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.56,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R3_flat_0.75": {
+   "mean": 99.55,
+   "grades": {
+    "A": 1302
+   },
+   "grade_changed_vs_current": 0,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.82,
+     "mean_minus_current": 1.46,
+     "min_minus_current": 0.34,
+     "max_minus_current": 5.8
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 99.22,
+     "mean_minus_current": 1.91,
+     "min_minus_current": 0.8,
+     "max_minus_current": 4.37
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 99.03,
+     "mean_minus_current": 1.28,
+     "min_minus_current": 0.1,
+     "max_minus_current": 5.8
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.56,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R3_flat_1.0": {
+   "mean": 99.56,
+   "grades": {
+    "A": 1302
+   },
+   "grade_changed_vs_current": 0,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.88,
+     "mean_minus_current": 1.51,
+     "min_minus_current": 0.34,
+     "max_minus_current": 7.03
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 99.38,
+     "mean_minus_current": 2.07,
+     "min_minus_current": 0.97,
+     "max_minus_current": 4.37
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 99.16,
+     "mean_minus_current": 1.4,
+     "min_minus_current": 0.1,
+     "max_minus_current": 7.03
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.56,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R4_cond_add1_sub0": {
+   "mean": 99.55,
+   "grades": {
+    "A": 1302
+   },
+   "grade_changed_vs_current": 0,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.88,
+     "mean_minus_current": 1.51,
+     "min_minus_current": 0.34,
+     "max_minus_current": 7.03
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 98.78,
+     "mean_minus_current": 1.47,
+     "min_minus_current": 0.29,
+     "max_minus_current": 4.37
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 99.15,
+     "mean_minus_current": 1.39,
+     "min_minus_current": 0.1,
+     "max_minus_current": 7.03
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.56,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R4_cond_add0.8_sub0": {
+   "mean": 99.55,
+   "grades": {
+    "A": 1302
+   },
+   "grade_changed_vs_current": 0,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.84,
+     "mean_minus_current": 1.48,
+     "min_minus_current": 0.34,
+     "max_minus_current": 6.54
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 98.78,
+     "mean_minus_current": 1.47,
+     "min_minus_current": 0.29,
+     "max_minus_current": 4.37
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 99.13,
+     "mean_minus_current": 1.38,
+     "min_minus_current": 0.1,
+     "max_minus_current": 6.54
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.56,
+     "mean_minus_current": 0.0,
+     "min_minus_current": 0.0,
+     "max_minus_current": 0.0
+    }
+   }
+  },
+  "R5_w0.7": {
+   "mean": 99.31,
+   "grades": {
+    "A": 1297,
+    "B": 5
+   },
+   "grade_changed_vs_current": 5,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.58,
+     "mean_minus_current": 1.22,
+     "min_minus_current": -0.25,
+     "max_minus_current": 3.53
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 97.9,
+     "mean_minus_current": 0.59,
+     "min_minus_current": -2.35,
+     "max_minus_current": 3.53
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 98.06,
+     "mean_minus_current": 0.3,
+     "min_minus_current": -2.92,
+     "max_minus_current": 3.75
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.39,
+     "mean_minus_current": -0.17,
+     "min_minus_current": -3.45,
+     "max_minus_current": 5.33
+    }
+   }
+  },
+  "R5_w0.8": {
+   "mean": 99.32,
+   "grades": {
+    "A": 1297,
+    "B": 5
+   },
+   "grade_changed_vs_current": 5,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.65,
+     "mean_minus_current": 1.29,
+     "min_minus_current": -0.05,
+     "max_minus_current": 3.81
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 97.97,
+     "mean_minus_current": 0.66,
+     "min_minus_current": -2.35,
+     "max_minus_current": 3.81
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 98.09,
+     "mean_minus_current": 0.33,
+     "min_minus_current": -2.92,
+     "max_minus_current": 3.75
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.39,
+     "mean_minus_current": -0.17,
+     "min_minus_current": -3.45,
+     "max_minus_current": 5.33
+    }
+   }
+  },
+  "R5_w0.9": {
+   "mean": 99.32,
+   "grades": {
+    "A": 1297,
+    "B": 5
+   },
+   "grade_changed_vs_current": 5,
+   "by_kind": {
+    "pull_ahead": {
+     "team_shifts": 169,
+     "mean": 99.72,
+     "mean_minus_current": 1.35,
+     "min_minus_current": 0.15,
+     "max_minus_current": 4.09
+    },
+    "deviation": {
+     "team_shifts": 23,
+     "mean": 98.03,
+     "mean_minus_current": 0.72,
+     "min_minus_current": -2.35,
+     "max_minus_current": 4.09
+    },
+    "outside_goals": {
+     "team_shifts": 90,
+     "mean": 98.12,
+     "mean_minus_current": 0.36,
+     "min_minus_current": -2.92,
+     "max_minus_current": 3.75
+    },
+    "none": {
+     "team_shifts": 1053,
+     "mean": 99.39,
+     "mean_minus_current": -0.17,
+     "min_minus_current": -3.45,
+     "max_minus_current": 5.33
+    }
+   }
+  }
+ },
+ "rank_R0_vs_R5_team_shifts": 0.8221,
+ "teams_whole_run": {
+  "teams": 31,
+  "rank_R0_vs_R5": 0.8234,
+  "R0": {
+   "QA": 99.79,
+   "T01": 99.41,
+   "T02": 99.31,
+   "T03": 99.29,
+   "T04": 99.45,
+   "T05": 99.5,
+   "T06": 99.05,
+   "T07": 99.44,
+   "T08": 99.39,
+   "T09": 99.43,
+   "T10": 99.12,
+   "T11": 99.18,
+   "T12": 99.24,
+   "T13": 99.51,
+   "T14": 99.56,
+   "T15": 98.98,
+   "T16": 99.29,
+   "T17": 99.39,
+   "T18": 99.09,
+   "T19": 99.14,
+   "T20": 99.13,
+   "T21": 99.45,
+   "T22": 99.1,
+   "T23": 99.45,
+   "T24": 99.26,
+   "T25": 99.13,
+   "T26": 99.34,
+   "T27": 99.15,
+   "T28": 99.11,
+   "T29": 99.5,
+   "T30": 99.21
+  },
+  "R5_w0.7": {
+   "QA": 99.83,
+   "T01": 99.6,
+   "T02": 99.57,
+   "T03": 99.49,
+   "T04": 99.55,
+   "T05": 99.52,
+   "T06": 99.45,
+   "T07": 99.48,
+   "T08": 99.67,
+   "T09": 99.7,
+   "T10": 99.23,
+   "T11": 99.09,
+   "T12": 99.31,
+   "T13": 99.8,
+   "T14": 99.87,
+   "T15": 99.21,
+   "T16": 99.34,
+   "T17": 99.57,
+   "T18": 99.26,
+   "T19": 99.29,
+   "T20": 99.44,
+   "T21": 99.58,
+   "T22": 99.22,
+   "T23": 99.79,
+   "T24": 99.33,
+   "T25": 98.98,
+   "T26": 99.56,
+   "T27": 99.56,
+   "T28": 99.18,
+   "T29": 99.71,
+   "T30": 99.2
+  }
+ },
+ "current_adherence": {
+  "team_shifts": 1302,
+  "equal_to_1": 1053,
+  "below_1": 249,
+  "min": 0.875
+ },
+ "current_penalty_points_for_offplan": {
+  "team_shifts": 249,
+  "mean": 0.836,
+  "median": 0.722,
+  "max": 3.75
+ },
+ "pull_ahead_only_team_shifts": {
+  "n": 160,
+  "points_lost_mean": 0.973,
+  "grade_drops": 0
+ },
+ "classifiers_spm": {
+  "P1_no_unexcused_shortfall": {
+   "additive->additive": 12900,
+   "additive->substitutive": 7910,
+   "substitutive->substitutive": 1425
+  },
+  "P2_no_unexplained_dispatched_miss": {
+   "additive->additive": 19690,
+   "additive->substitutive": 1120,
+   "substitutive->substitutive": 1425
+  }
+ },
+ "p1_false_substitutive_shortfall_causes_spm": {
+  "predecessor": 4840,
+  "rework": 1095,
+  "deviation": 540,
+  "overrun": 100
+ },
+ "substitution": {
+  "deviations": 69,
+  "displaced_planned_spm": 4455,
+  "offplan_done_instead_spm": 1425,
+  "collateral_claims_spm": {
+   "SAME_TEAM_PREDECESSOR:PROPOSED:same_team": 55,
+   "CROSS_TEAM_PREDECESSOR:APPROVED:other_team": 160
+  },
+  "collateral_units": {
+   "SAME_TEAM_PREDECESSOR:PROPOSED:same_team": 2,
+   "CROSS_TEAM_PREDECESSOR:APPROVED:other_team": 4
+  },
+  "collateral_spm_per_displaced_spm": 0.0483
+ },
+ "pull_ahead_team_idle_hours_after": {
+  "n": 169,
+  "mean": 50.06,
+  "median": 49.03
+ }
+}

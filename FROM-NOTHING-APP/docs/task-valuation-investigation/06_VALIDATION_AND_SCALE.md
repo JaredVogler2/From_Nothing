@@ -30,6 +30,9 @@ Fleet: `FleetSpec` with team sizes scaled down. Plans: seed + cost-of-delay redi
 | B10 (earlier) | `study.py 10 5,10 B10 --d1 60 --joint 11 --exec ...` (flags reconstructed from metadata) | 10 aircraft: 59,397 jobs, 89,193 phases | 60 first-shift units sampled. |
 | INV20 (earlier) and **R_INV20** (re-run) | `inversions.py 20 8,16 R_INV20` | 20 aircraft: 118,021 jobs, 178,568 phases | 93 team-shifts, 3,532 units. **R_INV20 reproduced INV20 exactly** (every figure identical). |
 | Fidelity | `fidelity.py out/R_H5.json` and `out/H5.json` | — | Spearman, top-decile overlap and zero/nonzero agreement per signal |
+| **PC5** | `plan_classes.py 5 5,8 PC5 --late-share 0.02 --late-max 3` (44caf00) | 5 aircraft | G classes of every first-shift unit on two valid plans (economic redispatch and neutral seed), under due −1 day, base and +1 day |
+| **PC50** | `plan_classes.py 50 10,30 PC50` (44caf00; default fleet: team sizes 10–30, default late parts) | 50 aircraft: 298,009 jobs, 445,688 phases, 1,258,325 edges | Same, at full scale: **T11 cost** and **T5 stability** |
+| **SH10** | `shadow_sim.py 10 5,10 5 SH10 --late-share 0.02 --late-max 3` + `shadow_analyze.py SH10` (44caf00) | 10 aircraft, 15 shifts of the production simulation | **T8** (do classes predict delivery movement?) and **T9** (fairness of importance-weighted earning). Results in §2.7. |
 
 ## 2. Results
 
@@ -100,10 +103,65 @@ R_INV20 = INV20; EXECUTABLE plan, the cutoff day's 3 shifts.
 |---|---|---|---|
 | C `cost_of_delay`, all phases | 0.13–0.20 s | 0.27 s | NOT_MEASURED (seconds expected; the computation is linear) |
 | B2 / (b), all phases | 0.10–0.16 s | 0.24 s | NOT_MEASURED |
-| (c) graph build + all units | 1.06 s + 0.65 s | 1.7 s + 0.04 s | NOT_MEASURED (about 5–15 s estimated, linear in edges; to measure) |
+| (c) graph build + all units | 1.06 s + 0.65 s | 1.7 s + 0.04 s | **9.5 s + 0.6 s** for 3,189 first-shift units, redispatch plan (PC50); 7.5 s + 2.9 s for 2,615 units, seed plan |
+| G classes (two probes per unit) | 0.47 s + 0.07 s for 378 units (PC5) | 26–162 s per publication (median 87 s) for 1,413–1,866 units in a 24-hour window with the three-day probe (SH10). The machine was shared with other runs for most of SH10: forecast planning for the same shifts varied 82–215 s. The first publication took 26 s. | **about 10 s per publication** for first-shift units (PC50): **T11 passes** the ≤ 60 s budget |
 | D1 per decode | 2.5–2.7 s | 5.8 s | about 85 s (repository) |
 | D1 for one shift's obligation | 378 units: about 8 min on 2 processes | — | about 3,000 units × 85 s ≈ **70 h on one process** (extrapolated) |
-| Peak memory | 0.6–0.7 GB | 1.0 GB | 5.9–7.5 GB for any full-context method (repository) |
+| Peak memory | 0.6–0.7 GB | 1.0–1.2 GB | 3.6 GB for the whole PC50 run, scheduling included (the class pass adds the schedule graph only); 5.9–7.5 GB for a full pipeline (repository) |
+
+### 2.6 Class stability and emptiness (T5)
+
+| Run | Plan | First-shift units | CRITICAL | AT_RISK | FLOAT | Changed by due −1 / +1 day |
+|---|---|---|---|---|---|---|
+| PC5 (5 aircraft, light parts) | redispatch | 378 | 0 | 0 | 378 | 0 / 0 |
+| PC5 | neutral seed | 347 | 0 | 11 | 336 | 0 / 0 |
+| PC50 (50 aircraft, default fleet) | redispatch | 3,189 | 0 | 0 | 3,189 | 0 / 0 |
+| PC50 | neutral seed | 2,615 | 0 | 0 | 2,615 | 0 / 0 |
+
+- **Due-date perturbation.** Moving every due date by ±1 day changed no class, but only because almost every unit sits far from the threshold. Rates (±25%) cannot change a class: only zero versus nonzero cost matters.
+- **Plan variation.** The two valid plans of the same snapshot share only **28 of about 350** first-shift units at 5 aircraft and **29 of about 2,600–3,200** at 50. The common units' classes agree (27/28 and 29/29). Which work is in today's shift is itself highly plan-dependent, while the class of a given unit is stable.
+- **Emptiness.** With the default synthetic fleet at 50 aircraft, **every first-shift unit is FLOAT**, although all 50 aircraft are projected late. Their critical chains run through future part arrivals, not today's work. A near-term priority class would carry no signal on this fleet.
+- **T5 verdict:** stable but uninformative on these synthetic fleets. Duration and attendance perturbations were not run, because they need re-planning with perturbed inputs; they remain NOT_MEASURED.
+
+### 2.7 Shadow study: do classes predict delivery movement (T8), and is weighted earning fair (T9)?
+
+**Run.** SH10: the production simulation at 10 aircraft for 15 shifts (5 days). Three changes from the 14-day protocol of §5: 10 aircraft instead of 50, 15 shifts instead of 42, and a light parts mix (2% late, 1–3 days). Every FORECAST publication's phases starting within 24 hours of the shift start were classified (model G, three-day probe) into a side file. Plans and goals were untouched: classification ran after each plan was made, in the same process. The floor worked the EXECUTABLE plan as always.
+
+| Measure | Result |
+|---|---|
+| Units classified per publication | 1,413–1,866 |
+| CRITICAL | **0 in all 15 publications** |
+| AT_RISK | 7–25% of units per publication |
+| Goal effort by class | FLOAT 64.9%, AT_RISK 10.2%, outside the 24-hour forecast window 24.9% |
+| Team-shifts / attainment | 465 team-shifts; mean attainment 98.2%; 445 missed units (52,020 spm) against 7,665 earned (842,550 spm) |
+| Class stability, consecutive publications | 89.7% of 13,442 phase pairs unchanged. AT_RISK is the unstable class: 899 of 2,512 AT_RISK became FLOAT next time |
+
+**T8.** For each aircraft and pair of consecutive publications: the change in projected completion against the missed effort of that shift, by class (140 aircraft-shift pairs).
+
+| Missed in the shift | Aircraft-shifts with / without | Mean completion change with / without (min) | Difference, 95% bootstrap CI (min) |
+|---|---|---|---|
+| CRITICAL | 0 / 140 | — | not testable |
+| AT_RISK | 14 / 126 | −166 / +132 | [−1,112, +287] |
+| FLOAT | 64 / 76 | −62 / +240 | [−904, +203] |
+
+- OLS, minutes of completion change per missed hour: AT_RISK −33 [−136, +111]; FLOAT +22 [−70, +67]. Neither is distinguishable from zero.
+- Forecast completions moved by days between publications for reasons unrelated to the floor's misses. For example, aircraft 1208 went from 8.6 days late to 2.0, and 1205 from on time to 3.7 days late. That replanning noise swamps any per-shift signal from missed work.
+- **T8 verdict: FAIL** on this synthetic fleet, under the reject rule "no difference". CRITICAL never occurred, and AT_RISK misses did not move delivery measurably. The test's power was low (14 aircraft-shifts with AT_RISK misses).
+
+**T9.** Weighted attainment (CRITICAL ×3, AT_RISK ×2, others ×1) against effort attainment over 465 team-shifts:
+- Spearman 0.9997. Only 0.43% of team-shifts differ by more than 0.05.
+- Correlation of a team's priority share with (weighted − effort attainment): −0.10, so no assignment bias appears. But the weighting carries almost no information, because priority work is rare and misses are rare.
+- Critical coverage is defined for only 288 of 465 team-shifts; for 177 there is no priority unit. Where defined, its correlation with attainment is 0.28: not redundant, but mostly undefined.
+- **T9 verdict:** no measurable unfairness, and no measurable added information.
+
+**Off-plan work by class** (used in `09` §4.3), effort shares:
+
+| | FLOAT | AT_RISK | Outside window |
+|---|---|---|---|
+| Goal units | 64.9% | 10.2% | 24.9% |
+| Pull-ahead | 57.9% | 19.1% | 23.0% |
+| Deviation (swapped in) | 26.8% | 26.8% | 46.3% |
+| Dispatched, not frozen | 28.6% | 0% | 71.4% |
 
 ## 3. Scale strategy, challenged
 
@@ -116,7 +174,7 @@ R_INV20 = INV20; EXECUTABLE plan, the cutoff day's 3 shifts.
 | Pooled solve concurrency | Run *d1* in parallel processes | Linear speed-up at best, and memory per process is 5.9–7.5 GB at 50 aircraft. Not a path to per-shift coverage. |
 | Shadow prices (Lagrangian) | Price crew-time slots | NOT_IMPLEMENTED: high engineering cost; the lexicographic levels and caps make the relaxation non-convex. Not recommended now. |
 
-## 4. Test matrix (proposed; nothing here has been implemented as tests)
+## 4. Test matrix (measurement protocols, not product tests; status per row in §4.1)
 
 | # | Scenario | Methods | Measures | Accept | Reject |
 |---|---|---|---|---|---|
@@ -131,6 +189,22 @@ R_INV20 = INV20; EXECUTABLE plan, the cutoff day's 3 shifts.
 | T9 | Fairness | G versus F | Attainment gap between high and low critical-share teams with identical execution | G: 0 by design; F gap reported | — |
 | T10 | Invariants | all | Plan bytes, goals, validator outcome with and without valuation | Byte-identical plan and goals; zero violations | Any change to the plan or goals |
 | T11 | Cost | (c) at 50 aircraft | Wall time, memory, after publication | ≤ 60 s and ≤ 2 GB extra, asynchronous, never delaying `sign_accept` | Over budget, or on the publication critical path |
+
+### 4.1 Status per test (2026-11-02)
+
+| # | Status | Evidence |
+|---|---|---|
+| T1 | **PARTIAL.** (c) passes on the one informative sample: Spearman 0.71 / 0.83 and zero/nonzero 0.89 / 0.91 on R_H5 / H5. The ≥ 3 seeds and 2 scales were not met: at 10 aircraft every sampled unit was $0 (B10) | §2.1, §2.3 |
+| T2 | NOT_MEASURED: counterfactual samples used the light parts mix. PC50 used the default mix, but for classes only | — |
+| T3 | NOT_MEASURED. One QA-capacity miss observed anecdotally (§3, row 1) | §3 |
+| T4 | **MEASURED: non-additive.** Double-claim ratio 0.14–6.2 over 24 sets. Displayed totals must be joint | §2.2 |
+| T5 | **PARTIAL: stable but uninformative.** Due ±1 day changed 0 classes; common units of two plans agree 27/28 and 29/29; consecutive publications 89.7% unchanged. All first-shift units FLOAT at 5 and 50 aircraft. Durations, attendance and rates not run | §2.6, §2.7 |
+| T6 | **PASS by construction:** unknown economics or completion give UNKNOWN (`classes_core.klass`), never FLOAT or $0. EXECUTABLE plans were 5/5, 9/10 and 20/20 unknown | §2.3, §2.4 |
+| T7 | NOT_MEASURED: needs an F implementation, which is not recommended | — |
+| T8 | **FAIL** (synthetic): no CRITICAL unit in 15 publications; AT_RISK misses do not move delivery measurably | §2.7 |
+| T9 | **MEASURED:** no bias (−0.10), no information (Spearman 0.9997); coverage undefined for 38% of team-shifts | §2.7 |
+| T10 | **By construction only:** the shadow hook classifies after the plan is made and never writes to it. Not checked byte for byte | §2.7 |
+| T11 | **PASS** for first-shift units at 50 aircraft (about 10 s, PC50). The 24-hour window at 10 aircraft took 26–162 s on a shared machine, so a wider window needs its own budget | §2.5 |
 
 ## 5. Minimum viable shadow-mode study
 
@@ -154,3 +228,13 @@ R_INV20 = INV20; EXECUTABLE plan, the cutoff day's 3 shifts.
   - repeated variants bound the anomalies (range reported).
 - **Reject any impact-weighted earned currency (F, D)** unless T4 shows additivity (it did not) **and** T9 shows no assignment bias (it cannot, by construction).
 - **Fall back to A only** (effort attainment, status quo) if T8 fails or T5 fails: the classes would then be noise, and A is honest.
+
+### 6.1 The rules applied to the measurements (2026-11-02)
+
+- **Adopt G's classes in shadow:** not met. T1–T3 are not shown at 50 aircraft. T11 passes, and T5 is stable but empty.
+- **Promote coverage:** not met. T8 shows no CRITICAL-versus-FLOAT difference; there were no CRITICAL units at all. Coverage is not redundant (0.28), but undefined for 38% of team-shifts.
+- **Promote *d1* analytics:** not met. About 70 hours per shift at 50 aircraft.
+- **Reject impact-weighted earned currency (F, D):** stands. T4 shows non-additivity; T9 shows weighting adds nothing measurable.
+- **Fall back to A only:** **triggered by T8.** On the synthetic evidence the pre-registered decision is the status quo: effort attainment, with no classes and no coverage.
+- **What could reopen it:** the synthetic fleet's near-term work has days of float, so classes are empty here by construction. A re-run of T8 on real executed plans (OD-15) is the only test that could reverse this. Until then, building the classifier is not justified by evidence.
+

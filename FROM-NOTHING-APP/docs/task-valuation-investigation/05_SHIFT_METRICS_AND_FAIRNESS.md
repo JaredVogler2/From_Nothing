@@ -41,6 +41,41 @@ All components are verified in `performance/score.py:95-150`:
 
 **Recommendation.** Never show the grade without *A*, *H*, E/B and Cp in counts and minutes. Those are already on the Shift Performance and Performance Over Time views. Treat the 0.3·*H* term as an open policy question (OD-16), not a fact.
 
+## 2a. The owner's proposal, worked: one scheduler-derived priority score as the grade
+
+**Proposal (owner, 2026-11-02).** The scheduler determines a global priority score for every task, and the same score grades shifts, teams, superintendents and the business unit. Example: 20,000 points are scheduled across 300 tasks; the team completes 400 tasks worth only 16,000 points, so performance is 80%, not up to par.
+
+**What the existing score already does with this example.** Computed with `formula`, demo policy. Count the 300 scheduled tasks in standard minutes (20,000):
+
+| Case | Attainment *A* | Adherence *H* | Demo score |
+|---|---|---|---|
+| Scheduled work done: 16,000 of 20,000; the extra 100+ tasks are 3,000 off-plan minutes | 0.800 | 0.842 | 81.3 (B) |
+| The same with no off-plan work | 0.800 | 1.000 | 86.0 (B) |
+
+The proposal's 80% already exists as effort attainment. The unscheduled tasks earn nothing and lower *H*. The adherence quirk in §2 lifts both cases to a B.
+
+**What weighting adds.** It tells *which* 16,000 were done. Take an illustrative mix of the 20,000 scheduled minutes: 2,000 CRITICAL (×3), 4,000 AT_RISK (×2) and 14,000 FLOAT (×1):
+
+| The same 16,000 minutes done | Weighted attainment |
+|---|---|
+| All critical skipped, all at-risk done | 0.714 |
+| All critical, half of at-risk | 0.786 |
+| All critical and at-risk | 0.857 |
+
+Unweighted attainment is 0.800 in every row. Weighting moves the grade ±7–9 points around effort attainment, depending on whether the important work got done.
+
+**Assessment.**
+- **The intent is right.** Reward doing what the plan needed, not volume, and make "50 easy jobs instead of the 10 that matter" visible.
+- **The mechanism is the problem**, as shown in `03`, `04` and §1:
+  - the scheduler's priority is a sort key, not a value (rank agreement 0.47–0.58);
+  - impact values are non-additive (2.2–6.2× over-claims), and near-term work is almost all FLOAT on the synthetic fleets (`06` §2.6), so any weights would be arbitrary multipliers on effort;
+  - the grade would partly measure the assignment (`04` F2: a 69% gap for identical execution);
+  - re-valued points reward stalling.
+- **The same signal, without those failure modes.** Effort attainment (the 80%) plus a critical-coverage count ("did 0 of 6 critical tasks") reports exactly the "busy but not on the right things" case. It needs no invented exchange rate between a critical minute and a slack minute.
+- **The weighted number as an option.** If leadership still wants it, show it as a secondary diagnostic beside attainment, never as the grade.
+- **Measured disagreement.** In the shadow simulation (`06` §2.7) the weighted number agreed with attainment almost perfectly: Spearman 0.9997 over 465 team-shifts, and only 0.43% differed by more than 0.05. No task was ever CRITICAL. On this fleet the weighted grade adds nothing.
+- **Unscheduled work.** For what unscheduled work should be worth, see `09`.
+
 ## 3. Adversarial cases
 
 | # | Case | Effort attainment (A, existing) | Importance-weighted earning (F) | G: classes + coverage | Verdict |
