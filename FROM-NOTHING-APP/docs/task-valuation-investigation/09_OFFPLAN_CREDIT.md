@@ -223,6 +223,14 @@ Two production-feasible rules, tested against the simulation's ground truth on t
 3. **Rework risk.** Earned-schedule practice keeps out-of-sequence work out of schedule adherence and treats it as a rework warning: Lipke's P-factor counts as on-schedule only the earned value that conforms to the baseline (see Sources). In practice, measure the rework rate of off-plan work against planned work. If it is higher, lower w for additive work by that difference.
 4. **Off-plan volume is a planning signal.** Teams pulling work ahead means the plan under-loaded them; in the simulation, pull-ahead teams still had about 50 idle hours after pulling (§2.1). Penalizing off-plan work teaches teams to hide it. Report it to planners instead.
 
+**Owner clarification (2026-11-02):** "Adherence should be counted if the same job is worked as what's in the plan. We do not need to judge against when it was started and/or completed vs plan."
+- **Adherence therefore means job identity: the planned jobs done**, net of excused ones. That is R5's plan-attainment term *H′* = Cp/D. The on-time and in-sequence option in rebuttal 1 is dropped.
+- **What FOCUS already does.** It matches by job, not by clock time within a shift. A planned unit earns when its verified completion falls anywhere in its shift window, in the authorized overtime window after it, or earlier in an already-frozen goal of the same production day (`lifecycle.py:652-663`; policy `observations.planned_credit_window` = `SHIFT_WALL_PLUS_AUTHORIZED_OT`; `goals.obligation_days` = 1). Actual start and finish times are never compared with the planned ones.
+- **What it does not do yet:**
+  - Today's *H* = Cp/(Cp+U) measures the share of output that was planned, so it moves with off-plan work, not with "did the team work the planned jobs".
+  - **A planned job finished in a later shift than planned** counts as missed in its planned shift (unless excused), and as off-plan (`LATE_FOR_GOAL`, `lifecycle.py:796-818`) in the shift that finished it. Under the owner's rule, it should count as planned work where it is finished. The planned shift still shows it as not done that shift: shift scores close at the end of the overtime window and are not revised later.
+- **Kept separately:** the out-of-sequence charge (O, 10% of the affected effort for a discretionary start before a predecessor is verified complete). It judges order against other jobs, not times against the plan.
+
 **Where counting off-plan work in adherence would be right:** only if FOCUS could not detect substitution at all. Then the *H* penalty is a crude insurance against swaps, and it is the insurance that today also taxes helpful work. R5 provides the insurance through w instead.
 
 ## 8. Recommendation and owner decisions
@@ -238,6 +246,8 @@ Two production-feasible rules, tested against the simulation's ground truth on t
 4. Plan attainment is unaffected by off-plan work.
 
 **Owner decisions:**
+- **Decided (2026-11-02): adherence = the planned jobs worked, with no timing test** (§7, owner clarification).
+- **Proposed with it:** a planned job finished in a later shift counts as planned work in the shift that finishes it, not as off-plan.
 - **w, the exchange rate.** The demo 0.70 gives a scheduled premium of 1.43×. Value alone suggests no premium (w = 1); detecting substitution is the main protection. Start at 0.80, which means a scheduled 5-hour task earns 1.25× an additive unscheduled one in the grade. Move toward 0.90 once the production classifier's miss rate is measured and low. *This is a recommendation, not a fact.*
 - **Bands** for a score without free adherence points.
 - **Grade cap.** Extra output shows in the output index and points, not above 100.
