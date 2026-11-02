@@ -20,7 +20,7 @@
    A premium for scheduled work is an **incentive device**: it keeps teams on the plan and makes an undetected swap unprofitable. It is not a measured difference in value, and it should be set knowing that.
 4. **The system already has the right lever.** The goal-amendment command accepts any open, ready task the team owns (`performance/amendments.py:57-126`). The work must either be assigned in that shift by the current accepted plan, or fit in qualified spare capacity after planned duties. An approved task counts 1:1 as scheduled work. The exchange-rate question only arises for work done **without** an approved addition.
 5. **Recommendation (for evaluation; nothing implemented):**
-   - **Work the latest accepted plan dispatched** but the frozen goal did not include is planned work. Add it automatically. Relieve frozen work that the plan itself moved out of the shift (§3).
+   - **Each shift is measured against the plan published for it** (owner direction, §7). Goals of record then freeze per shift instead of per day, so work the latest plan dispatched is planned work, and work it moved out is not a miss.
    - **Additive off-plan work** (no ready planned work left undone) counts 1:1 in an *output* measure. It also counts toward the grade through an output-attainment term, and never toward plan adherence.
    - **Substitutive off-plan work** earns nothing. The displaced planned unit is missed: one penalty, not two.
    - **Grade = 100 × (w × output attainment + (1 − w) × plan attainment).** The exchange rate *is* w. With the demo split (w = 0.70), a scheduled 5-hour task earns 14.3 grade points on a 35-hour plan, and an additive unscheduled one earns 10.0, up to the plan size. At the suggested w = 0.80 it earns 11.4 (§8). Points and the output index count both 1:1.
@@ -84,7 +84,7 @@ Readings:
 
 | Kind | What happened | Identifiable in production? | Simulation ground truth | Recommended treatment |
 |---|---|---|---|---|
-| **Dispatched, not frozen** | The latest accepted plan assigned it in this shift; the day's frozen goal did not include it | **Exactly.** The plan of record names it. `assess_addition` already accepts it with basis `ASSIGNED_IN_ACCEPTED_PLAN` (`amendments.py:102-105`) | `outside_goals` (`execute.py:572-580`) | Planned work: add it automatically, credit 1:1, never U. Relieve the frozen units the same plan moved out (cause "plan change") |
+| **Dispatched, not frozen** | The latest accepted plan assigned it in this shift; the day's frozen goal did not include it | **Exactly.** The plan of record names it. `assess_addition` already accepts it with basis `ASSIGNED_IN_ACCEPTED_PLAN` (`amendments.py:102-105`) | `outside_goals` (`execute.py:572-580`) | Planned work: add it automatically, credit 1:1, never U. Relieve the frozen units the same plan moved out (cause "plan change"). *Superseded by the owner's per-shift plan of record (§7): it is then simply in the shift's goal.* |
 | **Additive** | Done in idle time, or in time freed by blocked planned work; no ready planned unit left undone | **By evidence** (§6), or ex ante by an approved addition with basis `QUALIFIED_POOL_HEADROOM` (`amendments.py:106-126`: headroom after planned duties) | `pull_ahead` (`execute.py:437-452`) | 1:1 output credit; in the grade at weight w through output attainment; not in plan adherence |
 | **Substitutive** | Done instead of a ready, dispatched planned unit | By evidence (§6): an unexplained miss of a ready, dispatched unit in the same shift | `deviation` (`execute.py:403-407`) | No credit. The displaced unit is a miss, charged once |
 
@@ -231,6 +231,18 @@ Two production-feasible rules, tested against the simulation's ground truth on t
   - **A planned job finished in a later shift than planned** counts as missed in its planned shift (unless excused), and as off-plan (`LATE_FOR_GOAL`, `lifecycle.py:796-818`) in the shift that finished it. Under the owner's rule, it should count as planned work where it is finished. The planned shift still shows it as not done that shift: shift scores close at the end of the overtime window and are not revised later.
 - **Kept separately:** the out-of-sequence charge (O, 10% of the affected effort for a discretionary start before a predecessor is verified complete). It judges order against other jobs, not times against the plan.
 
+**Owner direction (2026-11-02):** "A planned job in shift 1 which isn't done in shift 1 is not adhered to. At the end of shift 1, a new scheduler runs to set shift 2 plan. That job should appear or may not appear in shift 2 plan due to constraints."
+- **Each shift is measured against the plan published for it.** That plan comes from the run at the end of the previous shift (the D-22 shift cycle).
+- **Today goals freeze per production day, not per shift.** The first accepted EXECUTABLE plan covering a day freezes every team-shift goal of that day (`lifecycle.py:166-185`; `goals.obligation_days` = 1, `serializer.py:72-76`). Later plans that day are stored only as proposals (`later_goal_ids`). The floor works the latest plan, but shifts 2 and 3 are scored against the morning plan. The simulation mirrors this (`execute.py:5-12`, `freeze_day`).
+- **To follow the owner's model, goals of record must freeze per shift:** from the last accepted EXECUTABLE plan whose cutoff precedes that shift's start. If that run fails, fall back to the latest accepted plan covering the shift.
+- **Consequences under per-shift freezing:**
+  - A job missed in shift 1 is not adhered to in shift 1, unless excused.
+  - If the new run places it in shift 2 and it is done there, it is adhered to in shift 2. If the new run leaves it out and the team does it anyway, it is off-plan in shift 2: output credit, not adherence.
+  - Work the new run moves out of shift 2 is simply not in shift 2's goal. The "plan change" relief of §8 is no longer needed.
+  - Work the new run moves in is in shift 2's goal, so the automatic-addition workaround of §3 and §8 is no longer needed either.
+  - A job pulled into shift 1 from a later shift's plan is off-plan output in shift 1. It is no longer an early completion credited to the later shift.
+- **Size on the 50-aircraft simulation.** The day-level freeze is what produced 7,070 spm of plan-following work counted as off-plan (90 team-shifts) and 765 spm of unexcused misses for work the plan itself moved (7 team-shifts) (§2.1). It also credited 46 of the 69 swaps as early completions of later shifts (§4.4).
+
 **Where counting off-plan work in adherence would be right:** only if FOCUS could not detect substitution at all. Then the *H* penalty is a crude insurance against swaps, and it is the insurance that today also taxes helpful work. R5 provides the insurance through w instead.
 
 ## 8. Recommendation and owner decisions
@@ -247,12 +259,12 @@ Two production-feasible rules, tested against the simulation's ground truth on t
 
 **Owner decisions:**
 - **Decided (2026-11-02): adherence = the planned jobs worked, with no timing test** (§7, owner clarification).
-- **Proposed with it:** a planned job finished in a later shift counts as planned work in the shift that finishes it, not as off-plan.
+- **Decided (2026-11-02): each shift is measured against the plan published for it.** A job not done in its shift is not adhered to there. Whether it counts in the next shift depends on whether the next run plans it. Implementing this means freezing goals of record per shift instead of per day (§7, owner direction). That replaces R5 item 1 and the "plan change" relief.
 - **w, the exchange rate.** The demo 0.70 gives a scheduled premium of 1.43×. Value alone suggests no premium (w = 1); detecting substitution is the main protection. Start at 0.80, which means a scheduled 5-hour task earns 1.25× an additive unscheduled one in the grade. Move toward 0.90 once the production classifier's miss rate is measured and low. *This is a recommendation, not a fact.*
 - **Bands** for a score without free adherence points.
 - **Grade cap.** Extra output shows in the output index and points, not above 100.
 - **Approved additions:** obligation or pre-classified additive output.
-- **"Plan change" relief** for frozen work the latest plan moved out.
+- **Approval to implement** the per-shift freeze, R5 and the simulation changes that measure them. Nothing has been implemented.
 
 **Not recommended:**
 - flat credit without classification: an equal swap is free at δ = 1;
