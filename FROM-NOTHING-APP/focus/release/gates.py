@@ -30,7 +30,7 @@ class Gate:
 
 GATES: tuple[Gate, ...] = (
     Gate("LG-01", BLOCKING, "SQL schema",
-         "FOCUS_FN migrations 001-009 are not installed on any SQL Server.",
+         "FOCUS_FN migrations 001-010 are not installed on any SQL Server.",
          "A live host starts with REPOSITORY_UNAVAILABLE: /health/live is 200, /health/ready is 503, nothing is stored and "
          "pipeline steps stop with typed unavailability.",
          "A DBA with DDL rights re-runs queries/discovery/fn_collisions.sql, then applies the reviewed bundle with "
@@ -44,7 +44,7 @@ GATES: tuple[Gate, ...] = (
     Gate("LG-03", BLOCKING, "Roles and grants",
          "sql/grants/focus_fn_roles.sql is generated and linted but not applied, and no login is mapped to a role.",
          "No live process holds its role's permissions; the separation of duties exists only as a reviewed script.",
-         "A DBA applies the grants after 001-009 and maps one login per process (web, source, stager, signer, evaluator).",
+         "A DBA applies the grants after 001-010 and maps one login per process (web, source, stager, signer, evaluator).",
          "docs/execution/INSTALL_AND_PIPELINE.md"),
     Gate("LG-04", BLOCKING, "Signing key custody",
          "No production signing key or FOCUS_SIGN_KEY_REF exists; only the fixture TEST key is present.",

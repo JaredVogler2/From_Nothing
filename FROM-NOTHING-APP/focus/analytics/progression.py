@@ -202,9 +202,13 @@ def project(services: Any, *, as_of: datetime, view: Any = None) -> ProjectionRe
 
     as_of = aware_utc(as_of, "as_of")
     view = view or ObservationView.build(services, as_of)
+    from ..performance import history
+
     evaluations = current_goal_evaluations(services, view, as_of)
     wanted, skipped = entitlements(services, view, evaluations)
     repos = services.repositories
+    # goals whose per-job evidence is gone (past the detail period, D-25): hold what they earned, never reverse it
+    held = {g for g, e in evaluations.items() if e.status in SCORED and not repos.exists(history.EVIDENCE, e.evidence_hash)}
     result = ProjectionResult(skipped=list(skipped))
     with repos.store.lock(f"recognition-{services.settings.scope_key}"):
         chains = _chains(services)
@@ -225,7 +229,7 @@ def project(services: Any, *, as_of: datetime, view: Any = None) -> ProjectionRe
             ev = _event(services, ent, revision, ent.value, ent.event_type, supersedes, as_of, ent.evidence)
             repos.put_record(RECOGNITION, "RecognitionEvent", ev.id, ev, created_at=as_of)
             result.appended.append(ev)
-        evaluated_goals = {g for g, e in evaluations.items() if e.status in SCORED}
+        evaluated_goals = {g for g, e in evaluations.items() if e.status in SCORED} - held
         for key, chain in sorted(chains.items()):
             last = chain[-1]
             if key in wanted_keys or last.event_type == "correction_applied" or last.event_type == "badge_earned":
@@ -240,7 +244,7 @@ def project(services: Any, *, as_of: datetime, view: Any = None) -> ProjectionRe
                          ((current.id,) if current else ()) + (f"REVERSES:{last.id}",))
             repos.put_record(RECOGNITION, "RecognitionEvent", fix.id, fix, created_at=as_of)
             result.corrections.append(fix)
-        result.badges = _badges(services, view, evaluations, wanted, as_of)
+        result.badges = _badges(services, view, evaluations, wanted, as_of, held)
     return result
 
 
@@ -322,7 +326,8 @@ def _reconcile_badges(services: Any, desired: list[DesiredBadge], evaluable_goal
     return out
 
 
-def _badges(services: Any, view: Any, evaluations: dict[str, Evaluation], wanted: list[Entitlement], as_of: datetime) -> list[BadgeAward]:
+def _badges(services: Any, view: Any, evaluations: dict[str, Evaluation], wanted: list[Entitlement], as_of: datetime,
+            held: frozenset[str] | set[str] = frozenset()) -> list[BadgeAward]:
     policy = services.policy
     desired: list[DesiredBadge] = []
     by_goal: dict[str, list[Entitlement]] = defaultdict(list)
@@ -350,7 +355,7 @@ def _badges(services: Any, view: Any, evaluations: dict[str, Evaluation], wanted
     desired += _steady_shift(services, view, evaluations)
     champions, closed = _monthly_champion(services, view, evaluations, as_of)
     desired += champions
-    evaluable = {g for g, e in evaluations.items() if e.status in SCORED}
+    evaluable = {g for g, e in evaluations.items() if e.status in SCORED} - set(held)      # evidence gone: hold, never revoke
     return _reconcile_badges(services, desired, evaluable, closed, as_of)
 
 

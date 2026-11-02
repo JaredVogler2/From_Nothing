@@ -30,6 +30,16 @@ SITE, PROGRAM, MODEL, CUSTOMER = "DEMO", "787", "9", "DEMO"
 CUTOFF_UTC = datetime(2026, 10, 26, 10, 0, tzinfo=UTC)
 PREVIOUS_CUTOFF_UTC = datetime(2026, 10, 25, 22, 0, tzinfo=UTC)
 LOAD_TS = "2026-10-25T17:30:00.000"          # local; before the previous cutoff
+DEMO_SUPERINTENDENTS = {"PROD-A": "DEMO-SUPT-PROD", "PROD-B": "DEMO-SUPT-PROD", "QA": "DEMO-SUPT-QA"}
+
+
+def superintendent_of(team: str, teams: list[str], prefix: str, per: int = 5) -> str:
+    """The invented org chart of the synthetic fixtures: QA has its own superintendent; production teams report in groups of
+    ``per`` in team order."""
+    if team == "QA":
+        return f"{prefix}-QA"
+    production = sorted(t for t in teams if t != "QA")
+    return f"{prefix}-{production.index(team) // per + 1:02d}"
 CAL_FROM, CAL_TO = date(2026, 10, 24), date(2026, 11, 15)
 NAMESPACE = uuid.UUID("5c9a7a7e-2b1e-4d6c-9a40-26101027f0c5")
 
@@ -338,7 +348,7 @@ def build_manufacturing_demo(scenario: str = "manufacturing_demo") -> dict[str, 
             row.update(HOLDING_VARIANTS.get((p.native, code), {}))
             ds["mechanic_certs"].append(row)
         ds["person_team_map"].append({
-            "BEMS_ID": p.native, "ROLE": p.role, "TEAM": p.team, "IN_SCOPE": True, "BASIS": "ASSIGNED",
+            "BEMS_ID": p.native, "ROLE": p.role, "TEAM": p.team, "SUPERINTENDENT": DEMO_SUPERINTENDENTS[p.team], "IN_SCOPE": True, "BASIS": "ASSIGNED",
             "EFFECTIVE_FROM": "2026-01-01T00:00:00", "EFFECTIVE_TO": None, "RUN_ID": "FIXTURE-ASSIGN-01",
             "EVIDENCE_COUNT": 0, "LOOKBACK_DAYS": 30, "LOAD_TIMESTAMP": LOAD_TS,
         })
@@ -896,7 +906,9 @@ def build_scale_fixture(n_aircraft: int, scenario: str | None = None, seed: int 
         for code in p.certs:
             ds["mechanic_certs"].append({"BEMS_ID": p.native, "CERT_CODE": code, "STATUS": "ACTIVE", "LAST_CERT_DATE": "2026/01/01",
                                          "CERT_EXP_DATE": "2027/12/31", "SNAPSHOT_TS": "2026-10-25T05:00:00"})
-        ds["person_team_map"].append({"BEMS_ID": p.native, "ROLE": p.role, "TEAM": p.team, "IN_SCOPE": True, "BASIS": "ASSIGNED",
+        ds["person_team_map"].append({"BEMS_ID": p.native, "ROLE": p.role, "TEAM": p.team,
+                                      "SUPERINTENDENT": superintendent_of(p.team, list(SCALE_TEAM_CERT) + ["QA"], "SCALE-SUPT", per=2),
+                                      "IN_SCOPE": True, "BASIS": "ASSIGNED",
                                       "EFFECTIVE_FROM": "2026-01-01T00:00:00", "EFFECTIVE_TO": None, "RUN_ID": "FIXTURE-ASSIGN-01",
                                       "EVIDENCE_COUNT": 0, "LOOKBACK_DAYS": 30, "LOAD_TIMESTAMP": LOAD_TS})
         ds["shift_roster"].append({"PERSON_KEY": p.native, "TEAM": p.team, "ROLE": p.role, "SITE": SITE, "SHIFT_NUMBER": p.shift,

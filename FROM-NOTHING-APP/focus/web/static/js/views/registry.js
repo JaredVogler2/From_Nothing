@@ -5,7 +5,7 @@ import { h, mount, stateCard } from "../core.js";
 const VIEW_IDS = [
   "team-lead", "management", "mechanic", "ie", "staffing", "supply", "scenario", "performance", "project",
   "budget", "gantt", "development", "commitments", "economics", "shiftbook", "myday", "capacity",
-  "quality", "twin", "arena", "turnover", "history",
+  "quality", "twin", "arena", "turnover", "history", "rollups",
 ];
 
 const renderers = {};

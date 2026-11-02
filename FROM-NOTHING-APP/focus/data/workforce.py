@@ -43,6 +43,8 @@ class WorkforceBuild:
     team_of_person: dict[str, str] = field(default_factory=dict)
     gaps: list[tuple[str, str, str, str]] = field(default_factory=list)   # (code, scope, detail, effect)
     conflicts: dict[str, list[str]] = field(default_factory=dict)
+    # in-scope assignments with the superintendent each names: (person, team, superintendent, start, end) for ``data.org``
+    org_rows: list[tuple[str, str, str, datetime | None, datetime | None]] = field(default_factory=list)
 
 
 def activation_cap(n: int, numerator: int = 85, denominator: int = 100) -> int:
@@ -190,6 +192,7 @@ def build_workforce(*, datasets: Mapping[str, tuple[Mapping[str, Any], ...]], mo
         spec = (start_dt, end_dt, str(r.get("TEAM") or ""), str(r.get("ROLE") or ""))
         if spec not in assignments[str(r["BEMS_ID"])]:
             assignments[str(r["BEMS_ID"])].append(spec)
+        out.org_rows.append((str(r["BEMS_ID"]), spec[2], str(r.get("SUPERINTENDENT") or ""), start_dt, end_dt))
     for native, specs in assignments.items():
         for i in range(len(specs)):
             for j in range(i + 1, len(specs)):

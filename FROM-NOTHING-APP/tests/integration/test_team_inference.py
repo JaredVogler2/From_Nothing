@@ -83,7 +83,7 @@ def test_a09_assignment_moves_team_at_exact_instant_and_inference_is_nominal(ser
             rows = [r for r in d[name]["rows"] if r[key] != "DEMO-B1-01"]
             d[name]["rows"] = rows
         base_assign = {"ROLE": "MECH", "IN_SCOPE": True, "BASIS": "ASSIGNED", "RUN_ID": "T", "EVIDENCE_COUNT": 0, "LOOKBACK_DAYS": 30,
-                       "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000", "BEMS_ID": "DEMO-B1-01"}
+                       "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000", "BEMS_ID": "DEMO-B1-01", "SUPERINTENDENT": "DEMO-SUPT-PROD"}
         d["person_team_map"]["rows"] += [
             dict(base_assign, TEAM="PROD-B", EFFECTIVE_FROM="2026-01-01T00:00:00", EFFECTIVE_TO="2026-10-28T00:00:00"),
             dict(base_assign, TEAM="PROD-A", EFFECTIVE_FROM="2026-10-28T00:00:00", EFFECTIVE_TO=None),
@@ -199,7 +199,7 @@ def _move_b101(effective_from_local: str):
         d["person_team_map"]["rows"] = [r for r in d["person_team_map"]["rows"] if r["BEMS_ID"] != "DEMO-B1-01"]
         d["shift_roster"]["rows"] = [r for r in d["shift_roster"]["rows"] if r["PERSON_KEY"] != "DEMO-B1-01"]
         base = {"ROLE": "MECH", "IN_SCOPE": True, "BASIS": "ASSIGNED", "RUN_ID": "T", "EVIDENCE_COUNT": 0, "LOOKBACK_DAYS": 30,
-                "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000", "BEMS_ID": "DEMO-B1-01"}
+                "LOAD_TIMESTAMP": "2026-10-25T17:30:00.000", "BEMS_ID": "DEMO-B1-01", "SUPERINTENDENT": "DEMO-SUPT-PROD"}
         d["person_team_map"]["rows"] += [dict(base, TEAM="PROD-B", EFFECTIVE_FROM="2026-01-01T00:00:00", EFFECTIVE_TO=effective_from_local),
                                          dict(base, TEAM="PROD-A", EFFECTIVE_FROM=effective_from_local, EFFECTIVE_TO=None)]
         roster = {"PERSON_KEY": "DEMO-B1-01", "ROLE": "MECH", "SITE": "DEMO", "SHIFT_NUMBER": 1, "BASIS": "SCHEDULED_ROSTER", "EVIDENCE_REF": "T"}

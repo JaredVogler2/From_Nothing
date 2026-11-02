@@ -175,6 +175,9 @@ Five things the synthetic run cannot show, each to measure on a real extract:
      | Admitted snapshot | 1.7 GB | forever (history, D-21) |
      | Accepted plan payloads, both purposes | 1.1 GB | forever (history, D-21) |
      | Candidates, both purposes | 0.47 GB | until `retain-history` archives the unreferenced ones (moved, not deleted) |
+     | Per-job evaluation evidence | about 58 KB per team-shift revision (about 1.8 MB for 31 teams) | 90 days, then deleted once the job record exists (D-25, `performance-details`) |
+     | Light performance rows | about 200 bytes per team-shift (about 6 KB) | forever (about 7 MB a year) |
+     | Job records | about 107 jobs of about 50 bytes per team-shift (about 0.17 MB) | forever (under 0.2 GB a year) |
 
      Display retention runs before each pipeline's acquisition, so the display parts peak at two packages, about 12 GB.
      The snapshots and payloads are the history D-21 keeps forever: about 2.8 GB a shift, or about 3 TB a year at three

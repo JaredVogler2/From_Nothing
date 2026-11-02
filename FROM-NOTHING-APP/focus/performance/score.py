@@ -218,13 +218,32 @@ def evaluate_shift(services: Any, team: str, shift_id: str, *, as_of: datetime |
         draft = build_evaluation(scope=scope, kind="GOAL", label=f"{team} {shift_id}", goal_ids=(digest_id("GOAL", "NO-PLAN", team, shift_id),),
                                  cutoff=as_of, policy=policy, parts=parts, extra_reasons=score_policy_errors(policy), evidence_hash=evidence.id)
         draft = replace(draft, reasons=draft.reasons + ("NO_OBLIGATION_PLAN: no accepted executable plan covers this shift day",))
-        return history.append(services, draft, evidence)[0] if persist else draft
+        if not persist:
+            return draft
+        from .lifecycle import shift_window
+
+        window = shift_window(policy, shift_id)
+        offplan = EvaluationEvidence(evidence.id, (), tuple(view.offplan_for(team, shift_id)), (), (), {}, (), None)
+        return _with_row(services, history.append(services, draft, evidence)[0], team, shift_id, window.start, window.end, offplan, view)
     evidence, parts, errors = evidence_for(view, record)
     draft = build_evaluation(scope=scope, kind="GOAL", label=f"{team} {shift_id}", goal_ids=(record.goal_id,), cutoff=as_of, policy=policy,
                              parts=parts, extra_reasons=errors, evidence_hash=evidence.id)
     if parts.get("notes"):
         draft = replace(draft, reasons=draft.reasons + tuple(parts["notes"]))
-    return history.append(services, draft, evidence)[0] if persist else draft
+    if not persist:
+        return draft
+    return _with_row(services, history.append(services, draft, evidence)[0], team, shift_id, record.window.start, record.window.end,
+                     evidence, view)
+
+
+def _with_row(services: Any, evaluation: Evaluation, team: str, shift_id: str, start: datetime, end: datetime, evidence: EvaluationEvidence,
+              view: Any) -> Evaluation:
+    """The team-shift's light performance row and its compact per-job outcomes follow its current evaluation (``rollup``)."""
+    from .rollup import record, record_jobs
+
+    row = record(services, evaluation, team=team, shift_id=shift_id, window_start=start, window_end=end)
+    record_jobs(services, evaluation, evidence, view, team=team, shift_id=shift_id, superintendent=row["superintendent"])
+    return evaluation
 
 
 def evaluate_all(services: Any, *, as_of: datetime, view: Any = None) -> list[Evaluation]:

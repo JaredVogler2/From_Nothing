@@ -101,6 +101,8 @@ def read_paths(world) -> dict[str, str]:  # type: ignore[no-untyped-def]
         "get_quality": "/api/v1/quality",
         "get_performance": f"/api/v1/performance?shift_id={OBSERVATION_SHIFT}",
         "get_performance_history": "/api/v1/performance/history",
+        "get_performance_rollup": "/api/v1/performance/rollup?level=team&node=PROD-A&period=week&by=day",
+        "get_performance_jobs": "/api/v1/performance/jobs?level=team&node=PROD-A&period=week&group=job_aircraft",
         "get_recognition": "/api/v1/recognition",
         "get_progression": "/api/v1/progression",
         "list_disruption_claims": "/api/v1/disruption-claims",

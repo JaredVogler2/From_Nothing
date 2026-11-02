@@ -66,13 +66,14 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | Capabilities | executable |
 | If missing or empty | Gap `ASSIGNMENT_FEED_EMPTY` (`BLOCKS_EXECUTABLE`): no pool has executable members on any day, and inference stays nominal. Dataset status gap `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`; live mode also raises `OD-10`. An unparseable `EFFECTIVE_FROM` or `EFFECTIVE_TO`, or a naive value with no time zone policy, rejects the run (`SOURCE_VALUE_INVALID` with `BAD_SOURCE_DATETIME` or `SOURCE_TIMEZONE_POLICY_MISSING`). |
 | Time and cutoff | `EFFECTIVE_FROM` (inclusive) and `EFFECTIVE_TO` (exclusive) are local wall times, converted to UTC with this dataset's time zone policy (fixture receipt or `FOCUS_SOURCE_TIMEZONE_MAP_JSON`); an explicit offset is honored. `LOAD_TIMESTAMP` is the freshness clock (limit 36 h). No cutoff column: rows that become effective later apply to later shifts. |
-| Read by | `focus/data/workforce.py` (`build_workforce`); `focus/data/freshness.py` (`LOAD_TIMESTAMP`). |
+| Read by | `focus/data/workforce.py` (`build_workforce`); `focus/data/org.py` (the org chart behind performance rollups, D-25); `focus/data/freshness.py` (`LOAD_TIMESTAMP`). |
 
 | Column | Type | Meaning | How FOCUS uses it |
 | --- | --- | --- | --- |
 | `BEMS_ID` | varchar(10), not null | Native person key (the badge/BEMS ID). | Adds the person to the person list, even when `IN_SCOPE` is false, and keys the assignment. |
 | `ROLE` | varchar(10), not null | Role held under the assignment (fixture: `MECH`, `QA`). | Part of the assignment's identity: overlapping in-scope rows with a different role raise `ASSIGNMENT_CONFLICT`. It does not set crew roles. |
 | `TEAM` | varchar(40), nullable | Team the person is assigned to (fixture: `PROD-A`). | Must equal the roster team at every rostered shift start where the assignment is active, or `ROSTER_ASSIGNMENT_MISMATCH`. Also the effective team at the cutoff on the person's inference record. |
+| `SUPERINTENDENT` | varchar(50), nullable | Superintendent named on the assignment (owner, November 2, 2026: teams report to superintendents, superintendents to the business unit). | Builds the org chart admitted with each source run (`focus/data/org.py`): a team reports to the superintendent most of its in-scope members name at the shift start, and the team-shift's performance rolls up under that superintendent for good (D-25). A split team is flagged `MIXED_SUPERINTENDENT`; a team whose members name none rolls up under `UNASSIGNED` (`NO_SUPERINTENDENT`). The planner does not read it. |
 | `IN_SCOPE` | bit, not null | In-scope flag of the assignment row. | Rows with a false value are skipped as assignments. |
 | `BASIS` | varchar(30), not null | Meaning not established in code or docs (fixture: `ASSIGNED`). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `EFFECTIVE_FROM` | datetime2(0), not null | Instant the assignment starts, inclusive, in source local time. | Decides membership at each shift start instant and the effective team at the cutoff; also used in the overlap checks. |

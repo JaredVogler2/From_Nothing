@@ -46,6 +46,7 @@ Each envelope's source, plan, purpose, policy, evaluation and as-of bindings are
 | — | Arena & Recognition (`arena`) | `GET /arena` | — | Standings from stored evaluations pooled exactly, XP, badges and recent recognition with lineage. |
 | — | Turnover (`turnover`) | `GET /turnover` | — | Open frozen units (from evaluation evidence), unreviewed claims, open holds, the next shift's actions with blocked reasons, and carry-in. |
 | — | History (`history`) | `GET /history` | — | Accepted plans with head versions, evaluation revisions, corrections and delivery changes. |
+| — | Performance Over Time (`rollups`) | `GET /performance/rollup`, `GET /performance/jobs` | — | The canonical score of a team, a superintendent or the business unit over a shift, day, week, rolling 30 days, month, quarter, year or custom dates: the official result (unknown while any team-shift is unscored) beside a labeled partial, the components, how the teams compare (on target, lowest, highest, range), the children and a breakdown. Below it, the jobs behind the score by shop order id across aircraft, worst first (D-25). |
 | — | Digital Twin (`twin`) | `GET /twin` | — | Observed, planned, forecast and unknown layers keyed by source, plans, policy and evaluation revision. Totals by team, shift and line, inventory per layer, unknown jobs, evaluations and attendance, and the reconciliation checks. Drill down by team, date, shift and line. |
 
 ## Verification
