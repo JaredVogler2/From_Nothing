@@ -28,6 +28,10 @@ ap.add_argument("--pull-ahead", type=float, required=True)
 ap.add_argument("--seed", type=int, default=20261026)
 ap.add_argument("--late-share", type=float, default=None)
 ap.add_argument("--late-max", type=int, default=None)
+ap.add_argument("--lead", type=int, default=15, help="minutes before the shift end that the next plan's data is cut (D-26)")
+ap.add_argument("--swap-pick", default="first", choices=("first", "largest"))
+ap.add_argument("--horizon", type=int, default=600, help="minutes past the shift end a team looks for work to pull or swap in")
+ap.add_argument("--late-plans", type=float, default=0.0, help="share of shifts 2-3 whose plan is accepted after the shift starts")
 args = ap.parse_args()
 lo, hi = (int(x) for x in args.team_size.split(","))
 fleet = {"n_aircraft": args.n, "team_size": (lo, hi)}
@@ -35,15 +39,18 @@ if args.late_share is not None:
     fleet["late_part_share"] = args.late_share
 if args.late_max is not None:
     fleet["late_delays"] = ((1.0, 1, args.late_max),)
-spec = R.SimSpec(fleet=FleetSpec(**fleet), floor=FloorSpec(deviation=args.deviation, pull_ahead=args.pull_ahead),
-                 days=(args.shifts + 2) // 3, shifts=args.shifts, purposes=("EXECUTABLE",), max_moves=0, max_repairs=0, seed=args.seed)
+spec = R.SimSpec(fleet=FleetSpec(**fleet), floor=FloorSpec(deviation=args.deviation, pull_ahead=args.pull_ahead, swap_pick=args.swap_pick,
+                                                                   pull_horizon_minutes=args.horizon),
+                 days=(args.shifts + 2) // 3, shifts=args.shifts, purposes=("EXECUTABLE",), max_moves=0, max_repairs=0, seed=args.seed, cutoff_lead_minutes=args.lead,
+                 late_plan_share=args.late_plans)
 db_path = SCRATCH / "out" / f"{args.out}.db"
 if db_path.exists():
     db_path.unlink()
 t = time.time()
 res = R.run(spec, db_path, log=lambda m: print(m, flush=True))
 summary = {"out": args.out, "n": args.n, "team_size": [lo, hi], "shifts": args.shifts, "deviation": args.deviation, "pull_ahead": args.pull_ahead,
-           "seed": args.seed, "fleet": {k: str(v) for k, v in fleet.items()}, "seconds": round(time.time() - t, 1), "peak_rss_mb": round(rss_mb()),
+           "seed": args.seed, "lead": args.lead, "swap_pick": args.swap_pick, "horizon": args.horizon,
+           "late_plans": args.late_plans, "fleet": {k: str(v) for k, v in fleet.items()}, "seconds": round(time.time() - t, 1), "peak_rss_mb": round(rss_mb()),
            "per_shift": res["shifts"]}
 (SCRATCH / "out" / f"{args.out}.summary.json").write_text(json.dumps(summary, default=str))
 print(json.dumps({k: summary[k] for k in ("out", "seconds", "peak_rss_mb")}))

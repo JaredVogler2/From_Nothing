@@ -1,0 +1,25 @@
+rev b871dd6 start 17:32:33
+B50 start 17:37:00
+C_PL_s6 exit=0 17:43:18
+C_PH_s6 exit=0 17:43:22
+C_N0_s6 exit=0 17:43:35
+C_PF_s6 exit=0 17:53:44
+C_SE_s6 exit=0 17:54:13
+C_SC_s6 exit=0 17:54:17
+C_SF_s6 exit=0 18:03:35
+C_DF_s6 exit=0 18:03:54
+C_DL_s6 exit=0 18:03:57
+C_N0_s7 exit=0 18:13:19
+C_PH_s7 exit=0 18:13:50
+C_PL_s7 exit=0 18:13:52
+C_PF_s7 exit=0 18:23:24
+C_SC_s7 exit=0 18:23:48
+C_SE_s7 exit=0 18:23:55
+B50_DF_s6 exit=0 18:26:00
+C_SF_s7 exit=0 18:33:01
+C_DF_s7 exit=0 18:33:28
+C_DL_s7 exit=0 18:33:33
+matrix done 18:33:33
+DL rerun start 18:33:49
+C_DL_s6 exit=0 18:43:39
+all calib done 18:43:39

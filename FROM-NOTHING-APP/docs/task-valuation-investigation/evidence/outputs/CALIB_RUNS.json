@@ -1,0 +1,4824 @@
+{
+"C_DF_s6": {
+"out": "C_DF_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.05,
+"pull_ahead": 0.35,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 579.4,
+"peak_rss_mb": 1743,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 655,
+"slipped": 42
+},
+"jobs_completed": 664,
+"load_s": 15.0,
+"plan_s": 29.1,
+"validate_s": 4.0,
+"write_s": 0.9,
+"plan_executable_s": 29.1,
+"execute_s": 0.2,
+"rss_mb": 1037,
+"rss_after_mb": 972
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9404,
+"executed": {
+"completed": 616,
+"slipped": 10
+},
+"jobs_completed": 633,
+"load_s": 14.3,
+"plan_s": 31.1,
+"validate_s": 4.6,
+"write_s": 1.1,
+"plan_executable_s": 31.1,
+"execute_s": 0.7,
+"rss_mb": 1682,
+"rss_after_mb": 1334
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9045,
+"executed": {
+"completed": 475,
+"slipped": 19
+},
+"jobs_completed": 490,
+"load_s": 14.1,
+"plan_s": 29.9,
+"validate_s": 4.5,
+"write_s": 1.2,
+"plan_executable_s": 29.9,
+"execute_s": 0.8,
+"rss_mb": 1694,
+"rss_after_mb": 1262
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8829,
+"executed": {
+"completed": 552,
+"slipped": 9
+},
+"jobs_completed": 566,
+"load_s": 13.7,
+"plan_s": 31.0,
+"validate_s": 4.8,
+"write_s": 1.2,
+"plan_executable_s": 31.0,
+"execute_s": 0.8,
+"rss_mb": 1700,
+"rss_after_mb": 1438
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8529,
+"executed": {
+"completed": 547,
+"slipped": 20
+},
+"jobs_completed": 567,
+"load_s": 14.3,
+"plan_s": 29.5,
+"validate_s": 3.9,
+"write_s": 2.0,
+"plan_executable_s": 29.5,
+"execute_s": 0.7,
+"rss_mb": 1712,
+"rss_after_mb": 1432
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8192,
+"executed": {
+"completed": 437,
+"slipped": 2
+},
+"jobs_completed": 456,
+"load_s": 13.7,
+"plan_s": 28.1,
+"validate_s": 3.4,
+"write_s": 1.0,
+"plan_executable_s": 28.1,
+"execute_s": 0.7,
+"rss_mb": 1712,
+"rss_after_mb": 1455
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8034,
+"executed": {
+"completed": 515,
+"slipped": 30
+},
+"jobs_completed": 529,
+"load_s": 14.3,
+"plan_s": 29.0,
+"validate_s": 3.3,
+"write_s": 1.0,
+"plan_executable_s": 29.0,
+"execute_s": 0.8,
+"rss_mb": 1718,
+"rss_after_mb": 1462
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7732,
+"executed": {
+"completed": 483,
+"slipped": 30
+},
+"jobs_completed": 500,
+"load_s": 14.5,
+"plan_s": 30.2,
+"validate_s": 4.1,
+"write_s": 1.1,
+"plan_executable_s": 30.2,
+"execute_s": 0.8,
+"rss_mb": 1732,
+"rss_after_mb": 1474
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7477,
+"executed": {
+"completed": 392,
+"slipped": 14
+},
+"jobs_completed": 408,
+"load_s": 14.9,
+"plan_s": 31.1,
+"validate_s": 3.9,
+"write_s": 1.1,
+"plan_executable_s": 31.1,
+"execute_s": 0.7,
+"rss_mb": 1732,
+"rss_after_mb": 1477
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8042,
+"executed": {
+"completed": 481,
+"slipped": 8
+},
+"jobs_completed": 493,
+"load_s": 15.6,
+"plan_s": 31.8,
+"validate_s": 3.7,
+"write_s": 1.0,
+"plan_executable_s": 31.8,
+"execute_s": 0.9,
+"rss_mb": 1732,
+"rss_after_mb": 1489
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7771,
+"executed": {
+"completed": 485,
+"slipped": 5
+},
+"jobs_completed": 497,
+"load_s": 16.0,
+"plan_s": 31.7,
+"validate_s": 3.8,
+"write_s": 1.1,
+"plan_executable_s": 31.7,
+"execute_s": 1.0,
+"rss_mb": 1738,
+"rss_after_mb": 1491
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7532,
+"executed": {
+"completed": 410,
+"slipped": 6
+},
+"jobs_completed": 424,
+"load_s": 14.8,
+"plan_s": 24.9,
+"validate_s": 3.9,
+"write_s": 2.3,
+"plan_executable_s": 24.9,
+"execute_s": 0.9,
+"rss_mb": 1743,
+"rss_after_mb": 1472
+}
+]
+},
+"C_DF_s7": {
+"out": "C_DF_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.05,
+"pull_ahead": 0.35,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 578.7,
+"peak_rss_mb": 1746,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 687,
+"slipped": 14
+},
+"jobs_completed": 698,
+"load_s": 13.9,
+"plan_s": 29.7,
+"validate_s": 4.5,
+"write_s": 1.0,
+"plan_executable_s": 29.7,
+"execute_s": 0.4,
+"rss_mb": 1036,
+"rss_after_mb": 991
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9388,
+"executed": {
+"completed": 606,
+"slipped": 3
+},
+"jobs_completed": 615,
+"load_s": 13.9,
+"plan_s": 29.5,
+"validate_s": 4.5,
+"write_s": 1.1,
+"plan_executable_s": 29.5,
+"execute_s": 0.7,
+"rss_mb": 1685,
+"rss_after_mb": 1383
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9061,
+"executed": {
+"completed": 457,
+"slipped": 12
+},
+"jobs_completed": 481,
+"load_s": 14.1,
+"plan_s": 30.3,
+"validate_s": 4.7,
+"write_s": 1.2,
+"plan_executable_s": 30.3,
+"execute_s": 0.8,
+"rss_mb": 1697,
+"rss_after_mb": 1295
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8845,
+"executed": {
+"completed": 556,
+"slipped": 16
+},
+"jobs_completed": 578,
+"load_s": 13.5,
+"plan_s": 28.7,
+"validate_s": 4.3,
+"write_s": 1.1,
+"plan_executable_s": 28.7,
+"execute_s": 0.9,
+"rss_mb": 1697,
+"rss_after_mb": 1510
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8548,
+"executed": {
+"completed": 537,
+"slipped": 15
+},
+"jobs_completed": 558,
+"load_s": 14.2,
+"plan_s": 28.1,
+"validate_s": 3.8,
+"write_s": 2.1,
+"plan_executable_s": 28.1,
+"execute_s": 0.7,
+"rss_mb": 1706,
+"rss_after_mb": 1487
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8235,
+"executed": {
+"completed": 426,
+"slipped": 16
+},
+"jobs_completed": 441,
+"load_s": 13.6,
+"plan_s": 28.9,
+"validate_s": 3.7,
+"write_s": 1.0,
+"plan_executable_s": 28.9,
+"execute_s": 0.9,
+"rss_mb": 1706,
+"rss_after_mb": 1519
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8186,
+"executed": {
+"completed": 543,
+"slipped": 17
+},
+"jobs_completed": 558,
+"load_s": 14.3,
+"plan_s": 29.9,
+"validate_s": 3.7,
+"write_s": 1.2,
+"plan_executable_s": 29.9,
+"execute_s": 0.9,
+"rss_mb": 1719,
+"rss_after_mb": 1526
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7893,
+"executed": {
+"completed": 517,
+"slipped": 24
+},
+"jobs_completed": 525,
+"load_s": 15.1,
+"plan_s": 30.1,
+"validate_s": 3.5,
+"write_s": 1.1,
+"plan_executable_s": 30.1,
+"execute_s": 0.9,
+"rss_mb": 1722,
+"rss_after_mb": 1531
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7635,
+"executed": {
+"completed": 383,
+"slipped": 11
+},
+"jobs_completed": 390,
+"load_s": 14.6,
+"plan_s": 29.3,
+"validate_s": 3.3,
+"write_s": 1.1,
+"plan_executable_s": 29.3,
+"execute_s": 0.8,
+"rss_mb": 1727,
+"rss_after_mb": 1533
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 7756,
+"executed": {
+"completed": 487,
+"slipped": 3
+},
+"jobs_completed": 502,
+"load_s": 14.6,
+"plan_s": 31.8,
+"validate_s": 4.1,
+"write_s": 1.2,
+"plan_executable_s": 31.8,
+"execute_s": 1.0,
+"rss_mb": 1732,
+"rss_after_mb": 1539
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7388,
+"executed": {
+"completed": 489,
+"slipped": 14
+},
+"jobs_completed": 499,
+"load_s": 16.2,
+"plan_s": 31.5,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 31.5,
+"execute_s": 1.0,
+"rss_mb": 1746,
+"rss_after_mb": 1541
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7125,
+"executed": {
+"completed": 392,
+"slipped": 10
+},
+"jobs_completed": 412,
+"load_s": 16.4,
+"plan_s": 29.5,
+"validate_s": 3.4,
+"write_s": 1.0,
+"plan_executable_s": 29.5,
+"execute_s": 0.8,
+"rss_mb": 1746,
+"rss_after_mb": 1541
+}
+]
+},
+"C_DL_s6": {
+"out": "C_DL_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.05,
+"pull_ahead": 0.35,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.3,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 587.5,
+"peak_rss_mb": 1735,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 655,
+"slipped": 42
+},
+"jobs_completed": 664,
+"load_s": 15.3,
+"plan_s": 31.5,
+"validate_s": 4.8,
+"write_s": 1.2,
+"plan_executable_s": 31.5,
+"execute_s": 0.3,
+"rss_mb": 1037,
+"rss_after_mb": 973
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9404,
+"executed": {
+"completed": 616,
+"slipped": 10
+},
+"jobs_completed": 633,
+"load_s": 14.0,
+"plan_s": 30.5,
+"validate_s": 4.9,
+"write_s": 1.2,
+"plan_executable_s": 30.5,
+"execute_s": 0.7,
+"rss_mb": 1682,
+"rss_after_mb": 1378
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9045,
+"executed": {
+"completed": 475,
+"slipped": 19
+},
+"jobs_completed": 490,
+"load_s": 13.5,
+"plan_s": 30.9,
+"validate_s": 5.0,
+"write_s": 1.0,
+"plan_executable_s": 30.9,
+"execute_s": 0.7,
+"rss_mb": 1696,
+"rss_after_mb": 1328
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8829,
+"executed": {
+"completed": 552,
+"slipped": 9
+},
+"jobs_completed": 566,
+"load_s": 14.4,
+"plan_s": 30.8,
+"validate_s": 4.1,
+"write_s": 1.0,
+"plan_executable_s": 30.8,
+"execute_s": 1.8,
+"rss_mb": 1699,
+"rss_after_mb": 1510
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8529,
+"executed": {
+"completed": 547,
+"slipped": 20
+},
+"jobs_completed": 567,
+"load_s": 15.1,
+"plan_s": 32.6,
+"validate_s": 4.0,
+"write_s": 1.2,
+"plan_executable_s": 32.6,
+"execute_s": 1.8,
+"rss_mb": 1706,
+"rss_after_mb": 1500
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8192,
+"executed": {
+"completed": 437,
+"slipped": 2
+},
+"jobs_completed": 456,
+"load_s": 14.6,
+"plan_s": 32.7,
+"validate_s": 3.8,
+"write_s": 1.0,
+"plan_executable_s": 32.7,
+"execute_s": 0.7,
+"rss_mb": 1706,
+"rss_after_mb": 1520
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8034,
+"executed": {
+"completed": 515,
+"slipped": 30
+},
+"jobs_completed": 529,
+"load_s": 14.7,
+"plan_s": 29.6,
+"validate_s": 3.8,
+"write_s": 1.1,
+"plan_executable_s": 29.6,
+"execute_s": 0.9,
+"rss_mb": 1710,
+"rss_after_mb": 1526
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7732,
+"executed": {
+"completed": 483,
+"slipped": 30
+},
+"jobs_completed": 500,
+"load_s": 14.7,
+"plan_s": 29.6,
+"validate_s": 3.4,
+"write_s": 1.0,
+"plan_executable_s": 29.6,
+"execute_s": 0.7,
+"rss_mb": 1716,
+"rss_after_mb": 1530
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7477,
+"executed": {
+"completed": 392,
+"slipped": 14
+},
+"jobs_completed": 408,
+"load_s": 14.8,
+"plan_s": 29.3,
+"validate_s": 3.3,
+"write_s": 1.0,
+"plan_executable_s": 29.3,
+"execute_s": 0.8,
+"rss_mb": 1727,
+"rss_after_mb": 1532
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8042,
+"executed": {
+"completed": 481,
+"slipped": 8
+},
+"jobs_completed": 493,
+"load_s": 14.3,
+"plan_s": 30.1,
+"validate_s": 3.3,
+"write_s": 1.0,
+"plan_executable_s": 30.1,
+"execute_s": 0.9,
+"rss_mb": 1732,
+"rss_after_mb": 1541
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7771,
+"executed": {
+"completed": 485,
+"slipped": 5
+},
+"jobs_completed": 497,
+"load_s": 15.0,
+"plan_s": 30.5,
+"validate_s": 3.9,
+"write_s": 1.1,
+"plan_executable_s": 30.5,
+"execute_s": 0.9,
+"rss_mb": 1735,
+"rss_after_mb": 1545
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7532,
+"executed": {
+"completed": 410,
+"slipped": 6
+},
+"jobs_completed": 424,
+"load_s": 15.3,
+"plan_s": 26.2,
+"validate_s": 5.0,
+"write_s": 1.1,
+"plan_executable_s": 26.2,
+"execute_s": 0.9,
+"rss_mb": 1735,
+"rss_after_mb": 1524
+}
+]
+},
+"C_DL_s7": {
+"out": "C_DL_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.05,
+"pull_ahead": 0.35,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.3,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 576.5,
+"peak_rss_mb": 1740,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 687,
+"slipped": 14
+},
+"jobs_completed": 698,
+"load_s": 14.5,
+"plan_s": 29.4,
+"validate_s": 4.3,
+"write_s": 1.0,
+"plan_executable_s": 29.4,
+"execute_s": 0.2,
+"rss_mb": 1036,
+"rss_after_mb": 985
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9388,
+"executed": {
+"completed": 606,
+"slipped": 3
+},
+"jobs_completed": 615,
+"load_s": 14.1,
+"plan_s": 28.7,
+"validate_s": 4.3,
+"write_s": 1.0,
+"plan_executable_s": 28.7,
+"execute_s": 0.6,
+"rss_mb": 1685,
+"rss_after_mb": 1325
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9061,
+"executed": {
+"completed": 457,
+"slipped": 12
+},
+"jobs_completed": 481,
+"load_s": 14.7,
+"plan_s": 30.2,
+"validate_s": 4.5,
+"write_s": 1.1,
+"plan_executable_s": 30.2,
+"execute_s": 0.7,
+"rss_mb": 1696,
+"rss_after_mb": 1272
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8845,
+"executed": {
+"completed": 556,
+"slipped": 16
+},
+"jobs_completed": 578,
+"load_s": 13.8,
+"plan_s": 29.8,
+"validate_s": 4.7,
+"write_s": 1.0,
+"plan_executable_s": 29.8,
+"execute_s": 0.7,
+"rss_mb": 1698,
+"rss_after_mb": 1491
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8548,
+"executed": {
+"completed": 537,
+"slipped": 15
+},
+"jobs_completed": 558,
+"load_s": 13.6,
+"plan_s": 28.0,
+"validate_s": 3.4,
+"write_s": 1.0,
+"plan_executable_s": 28.0,
+"execute_s": 0.7,
+"rss_mb": 1709,
+"rss_after_mb": 1464
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8235,
+"executed": {
+"completed": 426,
+"slipped": 16
+},
+"jobs_completed": 441,
+"load_s": 13.9,
+"plan_s": 28.3,
+"validate_s": 3.1,
+"write_s": 1.0,
+"plan_executable_s": 28.3,
+"execute_s": 0.7,
+"rss_mb": 1709,
+"rss_after_mb": 1520
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8186,
+"executed": {
+"completed": 543,
+"slipped": 17
+},
+"jobs_completed": 558,
+"load_s": 14.5,
+"plan_s": 29.8,
+"validate_s": 3.6,
+"write_s": 1.1,
+"plan_executable_s": 29.8,
+"execute_s": 0.9,
+"rss_mb": 1719,
+"rss_after_mb": 1525
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7893,
+"executed": {
+"completed": 517,
+"slipped": 24
+},
+"jobs_completed": 525,
+"load_s": 14.9,
+"plan_s": 30.5,
+"validate_s": 3.7,
+"write_s": 1.0,
+"plan_executable_s": 30.5,
+"execute_s": 0.8,
+"rss_mb": 1719,
+"rss_after_mb": 1532
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7635,
+"executed": {
+"completed": 383,
+"slipped": 11
+},
+"jobs_completed": 390,
+"load_s": 14.8,
+"plan_s": 29.1,
+"validate_s": 3.7,
+"write_s": 1.0,
+"plan_executable_s": 29.1,
+"execute_s": 0.7,
+"rss_mb": 1719,
+"rss_after_mb": 1534
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 7756,
+"executed": {
+"completed": 487,
+"slipped": 3
+},
+"jobs_completed": 502,
+"load_s": 15.3,
+"plan_s": 30.3,
+"validate_s": 3.5,
+"write_s": 1.1,
+"plan_executable_s": 30.3,
+"execute_s": 0.9,
+"rss_mb": 1723,
+"rss_after_mb": 1540
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7388,
+"executed": {
+"completed": 489,
+"slipped": 14
+},
+"jobs_completed": 499,
+"load_s": 17.1,
+"plan_s": 31.2,
+"validate_s": 3.8,
+"write_s": 1.0,
+"plan_executable_s": 31.2,
+"execute_s": 0.9,
+"rss_mb": 1740,
+"rss_after_mb": 1543
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7125,
+"executed": {
+"completed": 392,
+"slipped": 10
+},
+"jobs_completed": 412,
+"load_s": 16.2,
+"plan_s": 29.5,
+"validate_s": 3.4,
+"write_s": 1.0,
+"plan_executable_s": 29.5,
+"execute_s": 0.9,
+"rss_mb": 1740,
+"rss_after_mb": 1542
+}
+]
+},
+"C_N0_s6": {
+"out": "C_N0_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.0,
+"pull_ahead": 0.0,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 653.9,
+"peak_rss_mb": 1738,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 661,
+"slipped": 36
+},
+"jobs_completed": 656,
+"load_s": 21.0,
+"plan_s": 34.0,
+"validate_s": 4.6,
+"write_s": 0.9,
+"plan_executable_s": 34.0,
+"execute_s": 0.2,
+"rss_mb": 1043,
+"rss_after_mb": 969
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9443,
+"executed": {
+"completed": 620,
+"slipped": 9
+},
+"jobs_completed": 611,
+"load_s": 17.9,
+"plan_s": 33.4,
+"validate_s": 5.9,
+"write_s": 1.3,
+"plan_executable_s": 33.4,
+"execute_s": 0.8,
+"rss_mb": 1683,
+"rss_after_mb": 1321
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9111,
+"executed": {
+"completed": 486,
+"slipped": 20
+},
+"jobs_completed": 480,
+"load_s": 15.8,
+"plan_s": 35.2,
+"validate_s": 5.2,
+"write_s": 1.1,
+"plan_executable_s": 35.2,
+"execute_s": 0.7,
+"rss_mb": 1698,
+"rss_after_mb": 1255
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8918,
+"executed": {
+"completed": 566,
+"slipped": 3
+},
+"jobs_completed": 561,
+"load_s": 15.6,
+"plan_s": 35.9,
+"validate_s": 5.2,
+"write_s": 1.2,
+"plan_executable_s": 35.9,
+"execute_s": 0.7,
+"rss_mb": 1699,
+"rss_after_mb": 1431
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8613,
+"executed": {
+"completed": 563,
+"slipped": 18
+},
+"jobs_completed": 558,
+"load_s": 16.4,
+"plan_s": 33.9,
+"validate_s": 5.3,
+"write_s": 1.2,
+"plan_executable_s": 33.9,
+"execute_s": 0.8,
+"rss_mb": 1708,
+"rss_after_mb": 1444
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8327,
+"executed": {
+"completed": 447,
+"slipped": 1
+},
+"jobs_completed": 445,
+"load_s": 18.2,
+"plan_s": 34.8,
+"validate_s": 4.1,
+"write_s": 2.2,
+"plan_executable_s": 34.8,
+"execute_s": 0.8,
+"rss_mb": 1709,
+"rss_after_mb": 1461
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8207,
+"executed": {
+"completed": 534,
+"slipped": 25
+},
+"jobs_completed": 530,
+"load_s": 15.0,
+"plan_s": 31.6,
+"validate_s": 4.0,
+"write_s": 1.1,
+"plan_executable_s": 31.6,
+"execute_s": 0.9,
+"rss_mb": 1712,
+"rss_after_mb": 1465
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7963,
+"executed": {
+"completed": 500,
+"slipped": 29
+},
+"jobs_completed": 493,
+"load_s": 17.6,
+"plan_s": 35.4,
+"validate_s": 4.4,
+"write_s": 1.3,
+"plan_executable_s": 35.4,
+"execute_s": 0.9,
+"rss_mb": 1720,
+"rss_after_mb": 1477
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7719,
+"executed": {
+"completed": 410,
+"slipped": 12
+},
+"jobs_completed": 404,
+"load_s": 15.7,
+"plan_s": 34.0,
+"validate_s": 4.0,
+"write_s": 1.4,
+"plan_executable_s": 34.0,
+"execute_s": 0.8,
+"rss_mb": 1730,
+"rss_after_mb": 1482
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8288,
+"executed": {
+"completed": 472,
+"slipped": 2
+},
+"jobs_completed": 469,
+"load_s": 16.1,
+"plan_s": 32.6,
+"validate_s": 4.1,
+"write_s": 1.3,
+"plan_executable_s": 32.6,
+"execute_s": 1.3,
+"rss_mb": 1734,
+"rss_after_mb": 1491
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7909,
+"executed": {
+"completed": 503,
+"slipped": 7
+},
+"jobs_completed": 494,
+"load_s": 16.4,
+"plan_s": 33.3,
+"validate_s": 3.9,
+"write_s": 1.4,
+"plan_executable_s": 33.3,
+"execute_s": 1.0,
+"rss_mb": 1737,
+"rss_after_mb": 1495
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7687,
+"executed": {
+"completed": 420,
+"slipped": 3
+},
+"jobs_completed": 409,
+"load_s": 15.8,
+"plan_s": 28.4,
+"validate_s": 5.4,
+"write_s": 1.2,
+"plan_executable_s": 28.4,
+"execute_s": 1.1,
+"rss_mb": 1738,
+"rss_after_mb": 1476
+}
+]
+},
+"C_N0_s7": {
+"out": "C_N0_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.0,
+"pull_ahead": 0.0,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 581.9,
+"peak_rss_mb": 1728,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 688,
+"slipped": 13
+},
+"jobs_completed": 677,
+"load_s": 14.4,
+"plan_s": 31.6,
+"validate_s": 4.2,
+"write_s": 1.0,
+"plan_executable_s": 31.6,
+"execute_s": 0.2,
+"rss_mb": 1037,
+"rss_after_mb": 986
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9363,
+"executed": {
+"completed": 617,
+"slipped": 4
+},
+"jobs_completed": 613,
+"load_s": 14.9,
+"plan_s": 30.1,
+"validate_s": 4.8,
+"write_s": 1.2,
+"plan_executable_s": 30.1,
+"execute_s": 0.7,
+"rss_mb": 1685,
+"rss_after_mb": 1322
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9038,
+"executed": {
+"completed": 461,
+"slipped": 7
+},
+"jobs_completed": 459,
+"load_s": 15.4,
+"plan_s": 31.0,
+"validate_s": 3.9,
+"write_s": 2.3,
+"plan_executable_s": 31.0,
+"execute_s": 0.7,
+"rss_mb": 1712,
+"rss_after_mb": 1322
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8845,
+"executed": {
+"completed": 567,
+"slipped": 13
+},
+"jobs_completed": 558,
+"load_s": 14.1,
+"plan_s": 30.5,
+"validate_s": 4.9,
+"write_s": 1.2,
+"plan_executable_s": 30.5,
+"execute_s": 0.8,
+"rss_mb": 1712,
+"rss_after_mb": 1423
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8547,
+"executed": {
+"completed": 551,
+"slipped": 14
+},
+"jobs_completed": 547,
+"load_s": 14.6,
+"plan_s": 29.8,
+"validate_s": 4.6,
+"write_s": 1.2,
+"plan_executable_s": 29.8,
+"execute_s": 0.8,
+"rss_mb": 1712,
+"rss_after_mb": 1433
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8223,
+"executed": {
+"completed": 447,
+"slipped": 15
+},
+"jobs_completed": 445,
+"load_s": 14.4,
+"plan_s": 28.9,
+"validate_s": 3.9,
+"write_s": 1.3,
+"plan_executable_s": 28.9,
+"execute_s": 0.8,
+"rss_mb": 1712,
+"rss_after_mb": 1454
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8169,
+"executed": {
+"completed": 563,
+"slipped": 13
+},
+"jobs_completed": 558,
+"load_s": 14.2,
+"plan_s": 29.8,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 29.8,
+"execute_s": 1.0,
+"rss_mb": 1723,
+"rss_after_mb": 1466
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7896,
+"executed": {
+"completed": 529,
+"slipped": 21
+},
+"jobs_completed": 522,
+"load_s": 14.8,
+"plan_s": 30.4,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 30.4,
+"execute_s": 0.9,
+"rss_mb": 1727,
+"rss_after_mb": 1522
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7648,
+"executed": {
+"completed": 387,
+"slipped": 17
+},
+"jobs_completed": 383,
+"load_s": 16.2,
+"plan_s": 31.5,
+"validate_s": 3.8,
+"write_s": 1.2,
+"plan_executable_s": 31.5,
+"execute_s": 0.9,
+"rss_mb": 1727,
+"rss_after_mb": 1522
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8275,
+"executed": {
+"completed": 499,
+"slipped": 3
+},
+"jobs_completed": 493,
+"load_s": 15.1,
+"plan_s": 25.5,
+"validate_s": 4.8,
+"write_s": 1.3,
+"plan_executable_s": 25.5,
+"execute_s": 0.9,
+"rss_mb": 1728,
+"rss_after_mb": 1501
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 8081,
+"executed": {
+"completed": 513,
+"slipped": 13
+},
+"jobs_completed": 504,
+"load_s": 16.0,
+"plan_s": 26.6,
+"validate_s": 4.9,
+"write_s": 1.1,
+"plan_executable_s": 26.6,
+"execute_s": 1.0,
+"rss_mb": 1728,
+"rss_after_mb": 1503
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7812,
+"executed": {
+"completed": 384,
+"slipped": 9
+},
+"jobs_completed": 379,
+"load_s": 16.3,
+"plan_s": 27.2,
+"validate_s": 5.1,
+"write_s": 1.1,
+"plan_executable_s": 27.2,
+"execute_s": 0.8,
+"rss_mb": 1728,
+"rss_after_mb": 1503
+}
+]
+},
+"C_PF_s6": {
+"out": "C_PF_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.0,
+"pull_ahead": 1.0,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 1440,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 624.4,
+"peak_rss_mb": 1726,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 661,
+"slipped": 36
+},
+"jobs_completed": 711,
+"load_s": 16.1,
+"plan_s": 34.5,
+"validate_s": 4.9,
+"write_s": 1.3,
+"plan_executable_s": 34.5,
+"execute_s": 0.3,
+"rss_mb": 1037,
+"rss_after_mb": 977
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9374,
+"executed": {
+"completed": 589,
+"slipped": 10
+},
+"jobs_completed": 639,
+"load_s": 15.1,
+"plan_s": 36.6,
+"validate_s": 5.6,
+"write_s": 1.3,
+"plan_executable_s": 36.6,
+"execute_s": 0.8,
+"rss_mb": 1682,
+"rss_after_mb": 1308
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 8989,
+"executed": {
+"completed": 449,
+"slipped": 19
+},
+"jobs_completed": 503,
+"load_s": 17.2,
+"plan_s": 34.6,
+"validate_s": 5.5,
+"write_s": 1.2,
+"plan_executable_s": 34.6,
+"execute_s": 1.0,
+"rss_mb": 1691,
+"rss_after_mb": 1271
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8770,
+"executed": {
+"completed": 537,
+"slipped": 6
+},
+"jobs_completed": 593,
+"load_s": 16.2,
+"plan_s": 34.7,
+"validate_s": 5.7,
+"write_s": 1.1,
+"plan_executable_s": 34.7,
+"execute_s": 0.9,
+"rss_mb": 1694,
+"rss_after_mb": 1434
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8426,
+"executed": {
+"completed": 541,
+"slipped": 17
+},
+"jobs_completed": 593,
+"load_s": 16.7,
+"plan_s": 34.6,
+"validate_s": 4.3,
+"write_s": 1.1,
+"plan_executable_s": 34.6,
+"execute_s": 1.0,
+"rss_mb": 1702,
+"rss_after_mb": 1394
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8122,
+"executed": {
+"completed": 426,
+"slipped": 2
+},
+"jobs_completed": 478,
+"load_s": 15.9,
+"plan_s": 34.1,
+"validate_s": 4.3,
+"write_s": 1.2,
+"plan_executable_s": 34.1,
+"execute_s": 0.8,
+"rss_mb": 1703,
+"rss_after_mb": 1461
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 7959,
+"executed": {
+"completed": 511,
+"slipped": 23
+},
+"jobs_completed": 566,
+"load_s": 14.7,
+"plan_s": 33.8,
+"validate_s": 4.6,
+"write_s": 1.2,
+"plan_executable_s": 33.8,
+"execute_s": 0.9,
+"rss_mb": 1710,
+"rss_after_mb": 1475
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7665,
+"executed": {
+"slipped": 30,
+"completed": 475
+},
+"jobs_completed": 527,
+"load_s": 16.3,
+"plan_s": 31.2,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 31.2,
+"execute_s": 0.9,
+"rss_mb": 1722,
+"rss_after_mb": 1480
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7455,
+"executed": {
+"completed": 394,
+"slipped": 12
+},
+"jobs_completed": 439,
+"load_s": 15.8,
+"plan_s": 33.6,
+"validate_s": 4.4,
+"write_s": 1.5,
+"plan_executable_s": 33.6,
+"execute_s": 1.2,
+"rss_mb": 1726,
+"rss_after_mb": 1486
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 7933,
+"executed": {
+"completed": 460,
+"slipped": 2
+},
+"jobs_completed": 509,
+"load_s": 16.2,
+"plan_s": 27.5,
+"validate_s": 5.4,
+"write_s": 1.3,
+"plan_executable_s": 27.5,
+"execute_s": 1.0,
+"rss_mb": 1726,
+"rss_after_mb": 1470
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7660,
+"executed": {
+"completed": 488,
+"slipped": 9
+},
+"jobs_completed": 541,
+"load_s": 15.2,
+"plan_s": 24.6,
+"validate_s": 4.6,
+"write_s": 1.1,
+"plan_executable_s": 24.6,
+"execute_s": 1.0,
+"rss_mb": 1726,
+"rss_after_mb": 1476
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7356,
+"executed": {
+"completed": 387,
+"slipped": 6
+},
+"jobs_completed": 431,
+"load_s": 15.4,
+"plan_s": 24.5,
+"validate_s": 4.8,
+"write_s": 1.1,
+"plan_executable_s": 24.5,
+"execute_s": 1.0,
+"rss_mb": 1726,
+"rss_after_mb": 1477
+}
+]
+},
+"C_PF_s7": {
+"out": "C_PF_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.0,
+"pull_ahead": 1.0,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 1440,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 602.3,
+"peak_rss_mb": 1740,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 688,
+"slipped": 13
+},
+"jobs_completed": 729,
+"load_s": 16.5,
+"plan_s": 32.2,
+"validate_s": 4.3,
+"write_s": 1.2,
+"plan_executable_s": 32.2,
+"execute_s": 0.2,
+"rss_mb": 1036,
+"rss_after_mb": 991
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9337,
+"executed": {
+"completed": 584,
+"slipped": 3
+},
+"jobs_completed": 638,
+"load_s": 15.1,
+"plan_s": 31.1,
+"validate_s": 5.1,
+"write_s": 1.2,
+"plan_executable_s": 31.1,
+"execute_s": 0.8,
+"rss_mb": 1684,
+"rss_after_mb": 1379
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 8960,
+"executed": {
+"completed": 447,
+"slipped": 7
+},
+"jobs_completed": 503,
+"load_s": 16.1,
+"plan_s": 31.2,
+"validate_s": 5.1,
+"write_s": 1.0,
+"plan_executable_s": 31.2,
+"execute_s": 0.8,
+"rss_mb": 1694,
+"rss_after_mb": 1262
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8694,
+"executed": {
+"completed": 543,
+"slipped": 14
+},
+"jobs_completed": 595,
+"load_s": 15.0,
+"plan_s": 30.9,
+"validate_s": 4.9,
+"write_s": 1.1,
+"plan_executable_s": 30.9,
+"execute_s": 0.8,
+"rss_mb": 1694,
+"rss_after_mb": 1438
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8359,
+"executed": {
+"completed": 535,
+"slipped": 9
+},
+"jobs_completed": 587,
+"load_s": 14.6,
+"plan_s": 33.2,
+"validate_s": 5.2,
+"write_s": 1.1,
+"plan_executable_s": 33.2,
+"execute_s": 0.8,
+"rss_mb": 1701,
+"rss_after_mb": 1385
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8085,
+"executed": {
+"completed": 423,
+"slipped": 16
+},
+"jobs_completed": 477,
+"load_s": 14.6,
+"plan_s": 29.4,
+"validate_s": 3.2,
+"write_s": 0.9,
+"plan_executable_s": 29.4,
+"execute_s": 0.7,
+"rss_mb": 1703,
+"rss_after_mb": 1463
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8049,
+"executed": {
+"completed": 516,
+"slipped": 15
+},
+"jobs_completed": 567,
+"load_s": 14.6,
+"plan_s": 29.1,
+"validate_s": 3.4,
+"write_s": 1.0,
+"plan_executable_s": 29.1,
+"execute_s": 0.8,
+"rss_mb": 1712,
+"rss_after_mb": 1472
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7804,
+"executed": {
+"completed": 507,
+"slipped": 22
+},
+"jobs_completed": 558,
+"load_s": 14.3,
+"plan_s": 30.3,
+"validate_s": 4.0,
+"write_s": 1.2,
+"plan_executable_s": 30.3,
+"execute_s": 0.9,
+"rss_mb": 1723,
+"rss_after_mb": 1477
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7496,
+"executed": {
+"completed": 378,
+"slipped": 18
+},
+"jobs_completed": 433,
+"load_s": 14.5,
+"plan_s": 29.8,
+"validate_s": 3.6,
+"write_s": 1.1,
+"plan_executable_s": 29.8,
+"execute_s": 1.0,
+"rss_mb": 1731,
+"rss_after_mb": 1485
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8062,
+"executed": {
+"completed": 487,
+"slipped": 4
+},
+"jobs_completed": 540,
+"load_s": 15.3,
+"plan_s": 32.9,
+"validate_s": 3.9,
+"write_s": 1.1,
+"plan_executable_s": 32.9,
+"execute_s": 1.5,
+"rss_mb": 1731,
+"rss_after_mb": 1490
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7753,
+"executed": {
+"completed": 480,
+"slipped": 10
+},
+"jobs_completed": 534,
+"load_s": 16.8,
+"plan_s": 32.1,
+"validate_s": 4.0,
+"write_s": 1.2,
+"plan_executable_s": 32.1,
+"execute_s": 1.1,
+"rss_mb": 1734,
+"rss_after_mb": 1491
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7455,
+"executed": {
+"completed": 379,
+"slipped": 18
+},
+"jobs_completed": 429,
+"load_s": 15.9,
+"plan_s": 30.3,
+"validate_s": 3.6,
+"write_s": 1.2,
+"plan_executable_s": 30.3,
+"execute_s": 0.9,
+"rss_mb": 1740,
+"rss_after_mb": 1497
+}
+]
+},
+"C_PH_s6": {
+"out": "C_PH_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.0,
+"pull_ahead": 1.0,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 641.8,
+"peak_rss_mb": 1720,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 661,
+"slipped": 36
+},
+"jobs_completed": 711,
+"load_s": 21.1,
+"plan_s": 34.4,
+"validate_s": 4.4,
+"write_s": 1.0,
+"plan_executable_s": 34.4,
+"execute_s": 0.3,
+"rss_mb": 1039,
+"rss_after_mb": 962
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9374,
+"executed": {
+"completed": 589,
+"slipped": 10
+},
+"jobs_completed": 639,
+"load_s": 18.2,
+"plan_s": 33.3,
+"validate_s": 5.5,
+"write_s": 1.5,
+"plan_executable_s": 33.3,
+"execute_s": 0.8,
+"rss_mb": 1682,
+"rss_after_mb": 1288
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 8989,
+"executed": {
+"completed": 449,
+"slipped": 19
+},
+"jobs_completed": 503,
+"load_s": 16.0,
+"plan_s": 33.9,
+"validate_s": 3.7,
+"write_s": 2.1,
+"plan_executable_s": 33.9,
+"execute_s": 0.7,
+"rss_mb": 1691,
+"rss_after_mb": 1263
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8770,
+"executed": {
+"completed": 537,
+"slipped": 6
+},
+"jobs_completed": 593,
+"load_s": 15.6,
+"plan_s": 32.2,
+"validate_s": 3.7,
+"write_s": 1.3,
+"plan_executable_s": 32.2,
+"execute_s": 1.9,
+"rss_mb": 1693,
+"rss_after_mb": 1427
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8426,
+"executed": {
+"completed": 541,
+"slipped": 17
+},
+"jobs_completed": 593,
+"load_s": 16.4,
+"plan_s": 30.9,
+"validate_s": 4.2,
+"write_s": 1.2,
+"plan_executable_s": 30.9,
+"execute_s": 1.0,
+"rss_mb": 1704,
+"rss_after_mb": 1450
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8122,
+"executed": {
+"completed": 426,
+"slipped": 2
+},
+"jobs_completed": 478,
+"load_s": 16.6,
+"plan_s": 34.5,
+"validate_s": 4.0,
+"write_s": 2.3,
+"plan_executable_s": 34.5,
+"execute_s": 1.1,
+"rss_mb": 1704,
+"rss_after_mb": 1460
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 7959,
+"executed": {
+"completed": 511,
+"slipped": 23
+},
+"jobs_completed": 566,
+"load_s": 15.9,
+"plan_s": 33.3,
+"validate_s": 3.9,
+"write_s": 1.1,
+"plan_executable_s": 33.3,
+"execute_s": 0.8,
+"rss_mb": 1708,
+"rss_after_mb": 1472
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7665,
+"executed": {
+"slipped": 30,
+"completed": 475
+},
+"jobs_completed": 527,
+"load_s": 16.2,
+"plan_s": 33.1,
+"validate_s": 4.8,
+"write_s": 1.2,
+"plan_executable_s": 33.1,
+"execute_s": 1.0,
+"rss_mb": 1713,
+"rss_after_mb": 1477
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7455,
+"executed": {
+"completed": 394,
+"slipped": 12
+},
+"jobs_completed": 439,
+"load_s": 16.9,
+"plan_s": 34.5,
+"validate_s": 3.6,
+"write_s": 1.2,
+"plan_executable_s": 34.5,
+"execute_s": 0.9,
+"rss_mb": 1715,
+"rss_after_mb": 1490
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 7933,
+"executed": {
+"completed": 460,
+"slipped": 2
+},
+"jobs_completed": 509,
+"load_s": 16.5,
+"plan_s": 26.6,
+"validate_s": 4.9,
+"write_s": 1.2,
+"plan_executable_s": 26.6,
+"execute_s": 1.0,
+"rss_mb": 1720,
+"rss_after_mb": 1471
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7660,
+"executed": {
+"completed": 488,
+"slipped": 9
+},
+"jobs_completed": 541,
+"load_s": 17.7,
+"plan_s": 27.9,
+"validate_s": 5.0,
+"write_s": 1.5,
+"plan_executable_s": 27.9,
+"execute_s": 1.1,
+"rss_mb": 1720,
+"rss_after_mb": 1477
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7356,
+"executed": {
+"completed": 387,
+"slipped": 6
+},
+"jobs_completed": 431,
+"load_s": 17.3,
+"plan_s": 28.5,
+"validate_s": 5.4,
+"write_s": 1.5,
+"plan_executable_s": 28.5,
+"execute_s": 0.9,
+"rss_mb": 1720,
+"rss_after_mb": 1477
+}
+]
+},
+"C_PH_s7": {
+"out": "C_PH_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.0,
+"pull_ahead": 1.0,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 590.5,
+"peak_rss_mb": 1740,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 688,
+"slipped": 13
+},
+"jobs_completed": 729,
+"load_s": 16.0,
+"plan_s": 29.1,
+"validate_s": 4.5,
+"write_s": 0.9,
+"plan_executable_s": 29.1,
+"execute_s": 0.2,
+"rss_mb": 1037,
+"rss_after_mb": 988
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9337,
+"executed": {
+"completed": 584,
+"slipped": 3
+},
+"jobs_completed": 638,
+"load_s": 14.1,
+"plan_s": 30.5,
+"validate_s": 4.7,
+"write_s": 1.3,
+"plan_executable_s": 30.5,
+"execute_s": 0.8,
+"rss_mb": 1684,
+"rss_after_mb": 1320
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 8960,
+"executed": {
+"completed": 447,
+"slipped": 7
+},
+"jobs_completed": 503,
+"load_s": 15.3,
+"plan_s": 30.5,
+"validate_s": 4.7,
+"write_s": 0.9,
+"plan_executable_s": 30.5,
+"execute_s": 0.7,
+"rss_mb": 1694,
+"rss_after_mb": 1254
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8694,
+"executed": {
+"completed": 543,
+"slipped": 14
+},
+"jobs_completed": 595,
+"load_s": 14.5,
+"plan_s": 29.9,
+"validate_s": 3.6,
+"write_s": 2.0,
+"plan_executable_s": 29.9,
+"execute_s": 0.8,
+"rss_mb": 1694,
+"rss_after_mb": 1444
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8359,
+"executed": {
+"completed": 535,
+"slipped": 9
+},
+"jobs_completed": 587,
+"load_s": 13.8,
+"plan_s": 29.1,
+"validate_s": 3.6,
+"write_s": 1.0,
+"plan_executable_s": 29.1,
+"execute_s": 0.8,
+"rss_mb": 1700,
+"rss_after_mb": 1391
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8085,
+"executed": {
+"completed": 423,
+"slipped": 16
+},
+"jobs_completed": 477,
+"load_s": 14.3,
+"plan_s": 29.0,
+"validate_s": 3.5,
+"write_s": 2.2,
+"plan_executable_s": 29.0,
+"execute_s": 0.8,
+"rss_mb": 1703,
+"rss_after_mb": 1456
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8049,
+"executed": {
+"completed": 516,
+"slipped": 15
+},
+"jobs_completed": 567,
+"load_s": 14.6,
+"plan_s": 30.1,
+"validate_s": 3.6,
+"write_s": 1.2,
+"plan_executable_s": 30.1,
+"execute_s": 1.0,
+"rss_mb": 1708,
+"rss_after_mb": 1466
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7804,
+"executed": {
+"completed": 507,
+"slipped": 22
+},
+"jobs_completed": 558,
+"load_s": 15.0,
+"plan_s": 29.7,
+"validate_s": 3.9,
+"write_s": 1.1,
+"plan_executable_s": 29.7,
+"execute_s": 0.9,
+"rss_mb": 1708,
+"rss_after_mb": 1529
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7496,
+"executed": {
+"completed": 378,
+"slipped": 18
+},
+"jobs_completed": 433,
+"load_s": 16.1,
+"plan_s": 30.0,
+"validate_s": 3.4,
+"write_s": 0.9,
+"plan_executable_s": 30.0,
+"execute_s": 0.8,
+"rss_mb": 1717,
+"rss_after_mb": 1527
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8062,
+"executed": {
+"completed": 487,
+"slipped": 4
+},
+"jobs_completed": 540,
+"load_s": 14.8,
+"plan_s": 30.3,
+"validate_s": 3.4,
+"write_s": 1.1,
+"plan_executable_s": 30.3,
+"execute_s": 1.0,
+"rss_mb": 1736,
+"rss_after_mb": 1532
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7753,
+"executed": {
+"completed": 480,
+"slipped": 10
+},
+"jobs_completed": 534,
+"load_s": 15.2,
+"plan_s": 31.1,
+"validate_s": 3.7,
+"write_s": 1.0,
+"plan_executable_s": 31.1,
+"execute_s": 1.1,
+"rss_mb": 1736,
+"rss_after_mb": 1532
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7455,
+"executed": {
+"completed": 379,
+"slipped": 18
+},
+"jobs_completed": 429,
+"load_s": 16.3,
+"plan_s": 33.3,
+"validate_s": 4.5,
+"write_s": 1.0,
+"plan_executable_s": 33.3,
+"execute_s": 0.8,
+"rss_mb": 1740,
+"rss_after_mb": 1533
+}
+]
+},
+"C_PL_s6": {
+"out": "C_PL_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.0,
+"pull_ahead": 0.35,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 637.5,
+"peak_rss_mb": 1736,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 661,
+"slipped": 36
+},
+"jobs_completed": 665,
+"load_s": 20.6,
+"plan_s": 34.1,
+"validate_s": 4.8,
+"write_s": 0.9,
+"plan_executable_s": 34.1,
+"execute_s": 0.2,
+"rss_mb": 1036,
+"rss_after_mb": 933
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9436,
+"executed": {
+"completed": 616,
+"slipped": 7
+},
+"jobs_completed": 633,
+"load_s": 17.4,
+"plan_s": 32.7,
+"validate_s": 5.6,
+"write_s": 1.4,
+"plan_executable_s": 32.7,
+"execute_s": 0.8,
+"rss_mb": 1683,
+"rss_after_mb": 1304
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9076,
+"executed": {
+"completed": 467,
+"slipped": 22
+},
+"jobs_completed": 485,
+"load_s": 16.3,
+"plan_s": 33.6,
+"validate_s": 4.9,
+"write_s": 1.2,
+"plan_executable_s": 33.6,
+"execute_s": 0.7,
+"rss_mb": 1694,
+"rss_after_mb": 1247
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8814,
+"executed": {
+"completed": 560,
+"slipped": 3
+},
+"jobs_completed": 573,
+"load_s": 15.4,
+"plan_s": 33.3,
+"validate_s": 4.2,
+"write_s": 2.5,
+"plan_executable_s": 33.3,
+"execute_s": 0.9,
+"rss_mb": 1696,
+"rss_after_mb": 1436
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8509,
+"executed": {
+"completed": 560,
+"slipped": 19
+},
+"jobs_completed": 580,
+"load_s": 15.8,
+"plan_s": 31.5,
+"validate_s": 4.6,
+"write_s": 1.3,
+"plan_executable_s": 31.5,
+"execute_s": 0.7,
+"rss_mb": 1707,
+"rss_after_mb": 1449
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8216,
+"executed": {
+"completed": 437
+},
+"jobs_completed": 453,
+"load_s": 16.6,
+"plan_s": 34.1,
+"validate_s": 4.2,
+"write_s": 1.3,
+"plan_executable_s": 34.1,
+"execute_s": 0.7,
+"rss_mb": 1708,
+"rss_after_mb": 1464
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8202,
+"executed": {
+"completed": 523,
+"slipped": 27
+},
+"jobs_completed": 534,
+"load_s": 15.3,
+"plan_s": 32.2,
+"validate_s": 3.8,
+"write_s": 2.2,
+"plan_executable_s": 32.2,
+"execute_s": 0.8,
+"rss_mb": 1708,
+"rss_after_mb": 1475
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7941,
+"executed": {
+"completed": 494,
+"slipped": 29
+},
+"jobs_completed": 507,
+"load_s": 15.9,
+"plan_s": 33.4,
+"validate_s": 4.2,
+"write_s": 1.3,
+"plan_executable_s": 33.4,
+"execute_s": 1.0,
+"rss_mb": 1726,
+"rss_after_mb": 1487
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7720,
+"executed": {
+"completed": 403,
+"slipped": 12
+},
+"jobs_completed": 413,
+"load_s": 17.0,
+"plan_s": 34.3,
+"validate_s": 4.1,
+"write_s": 1.2,
+"plan_executable_s": 34.3,
+"execute_s": 1.0,
+"rss_mb": 1727,
+"rss_after_mb": 1507
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8001,
+"executed": {
+"completed": 458,
+"slipped": 4
+},
+"jobs_completed": 478,
+"load_s": 15.7,
+"plan_s": 31.0,
+"validate_s": 3.8,
+"write_s": 1.1,
+"plan_executable_s": 31.0,
+"execute_s": 1.1,
+"rss_mb": 1736,
+"rss_after_mb": 1511
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7769,
+"executed": {
+"completed": 491,
+"slipped": 4
+},
+"jobs_completed": 505,
+"load_s": 16.9,
+"plan_s": 29.0,
+"validate_s": 5.4,
+"write_s": 1.2,
+"plan_executable_s": 29.0,
+"execute_s": 1.1,
+"rss_mb": 1736,
+"rss_after_mb": 1488
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7503,
+"executed": {
+"completed": 415
+},
+"jobs_completed": 427,
+"load_s": 16.3,
+"plan_s": 28.3,
+"validate_s": 4.9,
+"write_s": 1.0,
+"plan_executable_s": 28.3,
+"execute_s": 0.9,
+"rss_mb": 1736,
+"rss_after_mb": 1493
+}
+]
+},
+"C_PL_s7": {
+"out": "C_PL_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.0,
+"pull_ahead": 0.35,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 596.1,
+"peak_rss_mb": 1741,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"completed": 688,
+"slipped": 13
+},
+"jobs_completed": 699,
+"load_s": 15.8,
+"plan_s": 29.4,
+"validate_s": 4.4,
+"write_s": 1.0,
+"plan_executable_s": 29.4,
+"execute_s": 0.2,
+"rss_mb": 1037,
+"rss_after_mb": 989
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9331,
+"executed": {
+"completed": 599,
+"slipped": 6
+},
+"jobs_completed": 609,
+"load_s": 14.4,
+"plan_s": 31.2,
+"validate_s": 5.0,
+"write_s": 1.2,
+"plan_executable_s": 31.2,
+"execute_s": 0.7,
+"rss_mb": 1684,
+"rss_after_mb": 1326
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 8978,
+"executed": {
+"completed": 461,
+"slipped": 8
+},
+"jobs_completed": 485,
+"load_s": 15.4,
+"plan_s": 31.3,
+"validate_s": 4.8,
+"write_s": 1.2,
+"plan_executable_s": 31.3,
+"execute_s": 0.6,
+"rss_mb": 1694,
+"rss_after_mb": 1257
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8770,
+"executed": {
+"completed": 548,
+"slipped": 15
+},
+"jobs_completed": 560,
+"load_s": 14.4,
+"plan_s": 31.0,
+"validate_s": 4.8,
+"write_s": 1.2,
+"plan_executable_s": 31.0,
+"execute_s": 0.8,
+"rss_mb": 1694,
+"rss_after_mb": 1420
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8489,
+"executed": {
+"completed": 552,
+"slipped": 10
+},
+"jobs_completed": 566,
+"load_s": 14.2,
+"plan_s": 29.0,
+"validate_s": 3.4,
+"write_s": 2.0,
+"plan_executable_s": 29.0,
+"execute_s": 0.7,
+"rss_mb": 1711,
+"rss_after_mb": 1437
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8230,
+"executed": {
+"completed": 432,
+"slipped": 14
+},
+"jobs_completed": 448,
+"load_s": 14.2,
+"plan_s": 28.8,
+"validate_s": 3.4,
+"write_s": 1.3,
+"plan_executable_s": 28.8,
+"execute_s": 0.8,
+"rss_mb": 1711,
+"rss_after_mb": 1473
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8057,
+"executed": {
+"completed": 547,
+"slipped": 14
+},
+"jobs_completed": 556,
+"load_s": 14.8,
+"plan_s": 30.4,
+"validate_s": 3.5,
+"write_s": 1.0,
+"plan_executable_s": 30.4,
+"execute_s": 0.9,
+"rss_mb": 1714,
+"rss_after_mb": 1477
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7799,
+"executed": {
+"completed": 513,
+"slipped": 21
+},
+"jobs_completed": 529,
+"load_s": 15.4,
+"plan_s": 31.2,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 31.2,
+"execute_s": 1.2,
+"rss_mb": 1731,
+"rss_after_mb": 1531
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7545,
+"executed": {
+"completed": 374,
+"slipped": 15
+},
+"jobs_completed": 384,
+"load_s": 15.8,
+"plan_s": 29.9,
+"validate_s": 3.5,
+"write_s": 1.0,
+"plan_executable_s": 29.9,
+"execute_s": 1.0,
+"rss_mb": 1731,
+"rss_after_mb": 1531
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8155,
+"executed": {
+"completed": 521,
+"slipped": 3
+},
+"jobs_completed": 536,
+"load_s": 15.0,
+"plan_s": 30.0,
+"validate_s": 3.4,
+"write_s": 1.2,
+"plan_executable_s": 30.0,
+"execute_s": 1.1,
+"rss_mb": 1731,
+"rss_after_mb": 1535
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7832,
+"executed": {
+"completed": 512,
+"slipped": 9
+},
+"jobs_completed": 525,
+"load_s": 15.8,
+"plan_s": 30.9,
+"validate_s": 3.5,
+"write_s": 1.2,
+"plan_executable_s": 30.9,
+"execute_s": 0.9,
+"rss_mb": 1735,
+"rss_after_mb": 1536
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7529,
+"executed": {
+"completed": 396,
+"slipped": 15
+},
+"jobs_completed": 418,
+"load_s": 16.5,
+"plan_s": 33.0,
+"validate_s": 4.0,
+"write_s": 1.1,
+"plan_executable_s": 33.0,
+"execute_s": 1.0,
+"rss_mb": 1741,
+"rss_after_mb": 1540
+}
+]
+},
+"C_SC_s6": {
+"out": "C_SC_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.5,
+"pull_ahead": 0.0,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "largest",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 640.6,
+"peak_rss_mb": 1752,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"slipped": 62,
+"completed": 635
+},
+"jobs_completed": 648,
+"load_s": 17.1,
+"plan_s": 32.3,
+"validate_s": 4.4,
+"write_s": 1.2,
+"plan_executable_s": 32.3,
+"execute_s": 0.2,
+"rss_mb": 1055,
+"rss_after_mb": 977
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9453,
+"executed": {
+"completed": 589,
+"slipped": 31
+},
+"jobs_completed": 602,
+"load_s": 18.2,
+"plan_s": 37.2,
+"validate_s": 5.0,
+"write_s": 1.2,
+"plan_executable_s": 37.2,
+"execute_s": 0.8,
+"rss_mb": 1688,
+"rss_after_mb": 1369
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9013,
+"executed": {
+"completed": 481,
+"slipped": 34
+},
+"jobs_completed": 486,
+"load_s": 15.5,
+"plan_s": 34.0,
+"validate_s": 4.7,
+"write_s": 2.3,
+"plan_executable_s": 34.0,
+"execute_s": 1.0,
+"rss_mb": 1696,
+"rss_after_mb": 1269
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8789,
+"executed": {
+"slipped": 16,
+"completed": 558
+},
+"jobs_completed": 566,
+"load_s": 16.3,
+"plan_s": 34.3,
+"validate_s": 5.7,
+"write_s": 1.2,
+"plan_executable_s": 34.3,
+"execute_s": 1.0,
+"rss_mb": 1697,
+"rss_after_mb": 1447
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8475,
+"executed": {
+"completed": 540,
+"slipped": 36
+},
+"jobs_completed": 551,
+"load_s": 17.0,
+"plan_s": 32.9,
+"validate_s": 3.9,
+"write_s": 2.4,
+"plan_executable_s": 32.9,
+"execute_s": 0.9,
+"rss_mb": 1708,
+"rss_after_mb": 1398
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8194,
+"executed": {
+"completed": 437,
+"slipped": 14
+},
+"jobs_completed": 448,
+"load_s": 16.6,
+"plan_s": 30.8,
+"validate_s": 3.7,
+"write_s": 1.0,
+"plan_executable_s": 30.8,
+"execute_s": 0.8,
+"rss_mb": 1708,
+"rss_after_mb": 1463
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8152,
+"executed": {
+"completed": 516,
+"slipped": 42
+},
+"jobs_completed": 532,
+"load_s": 16.1,
+"plan_s": 33.3,
+"validate_s": 4.6,
+"write_s": 1.3,
+"plan_executable_s": 33.3,
+"execute_s": 0.8,
+"rss_mb": 1712,
+"rss_after_mb": 1473
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7917,
+"executed": {
+"slipped": 52,
+"completed": 475
+},
+"jobs_completed": 487,
+"load_s": 14.6,
+"plan_s": 32.1,
+"validate_s": 4.3,
+"write_s": 1.2,
+"plan_executable_s": 32.1,
+"execute_s": 0.8,
+"rss_mb": 1716,
+"rss_after_mb": 1479
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7734,
+"executed": {
+"slipped": 32,
+"completed": 397
+},
+"jobs_completed": 411,
+"load_s": 16.4,
+"plan_s": 34.1,
+"validate_s": 3.8,
+"write_s": 1.2,
+"plan_executable_s": 34.1,
+"execute_s": 0.9,
+"rss_mb": 1720,
+"rss_after_mb": 1484
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8359,
+"executed": {
+"completed": 476,
+"slipped": 18
+},
+"jobs_completed": 485,
+"load_s": 15.3,
+"plan_s": 32.9,
+"validate_s": 3.8,
+"write_s": 1.1,
+"plan_executable_s": 32.9,
+"execute_s": 1.0,
+"rss_mb": 1726,
+"rss_after_mb": 1492
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 8097,
+"executed": {
+"slipped": 19,
+"completed": 492
+},
+"jobs_completed": 500,
+"load_s": 14.9,
+"plan_s": 31.0,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 31.0,
+"execute_s": 0.9,
+"rss_mb": 1736,
+"rss_after_mb": 1493
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7874,
+"executed": {
+"slipped": 14,
+"completed": 404
+},
+"jobs_completed": 405,
+"load_s": 15.0,
+"plan_s": 33.0,
+"validate_s": 3.8,
+"write_s": 1.3,
+"plan_executable_s": 33.0,
+"execute_s": 0.9,
+"rss_mb": 1752,
+"rss_after_mb": 1500
+}
+]
+},
+"C_SC_s7": {
+"out": "C_SC_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.5,
+"pull_ahead": 0.0,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "largest",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 594.4,
+"peak_rss_mb": 1749,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"slipped": 26,
+"completed": 675
+},
+"jobs_completed": 675,
+"load_s": 15.9,
+"plan_s": 31.3,
+"validate_s": 4.4,
+"write_s": 0.9,
+"plan_executable_s": 31.3,
+"execute_s": 0.3,
+"rss_mb": 1036,
+"rss_after_mb": 990
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9397,
+"executed": {
+"completed": 608,
+"slipped": 18
+},
+"jobs_completed": 618,
+"load_s": 15.1,
+"plan_s": 32.5,
+"validate_s": 5.3,
+"write_s": 1.2,
+"plan_executable_s": 32.5,
+"execute_s": 0.8,
+"rss_mb": 1684,
+"rss_after_mb": 1331
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9052,
+"executed": {
+"completed": 447,
+"slipped": 26
+},
+"jobs_completed": 458,
+"load_s": 15.9,
+"plan_s": 31.7,
+"validate_s": 4.9,
+"write_s": 1.1,
+"plan_executable_s": 31.7,
+"execute_s": 0.7,
+"rss_mb": 1695,
+"rss_after_mb": 1262
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8857,
+"executed": {
+"completed": 550,
+"slipped": 29
+},
+"jobs_completed": 558,
+"load_s": 14.9,
+"plan_s": 31.6,
+"validate_s": 5.3,
+"write_s": 1.1,
+"plan_executable_s": 31.6,
+"execute_s": 0.8,
+"rss_mb": 1703,
+"rss_after_mb": 1446
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8561,
+"executed": {
+"completed": 542,
+"slipped": 27
+},
+"jobs_completed": 553,
+"load_s": 14.6,
+"plan_s": 30.8,
+"validate_s": 3.8,
+"write_s": 2.1,
+"plan_executable_s": 30.8,
+"execute_s": 0.9,
+"rss_mb": 1704,
+"rss_after_mb": 1405
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8293,
+"executed": {
+"completed": 440,
+"slipped": 36
+},
+"jobs_completed": 454,
+"load_s": 13.9,
+"plan_s": 29.1,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 29.1,
+"execute_s": 0.8,
+"rss_mb": 1712,
+"rss_after_mb": 1479
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8208,
+"executed": {
+"slipped": 31,
+"completed": 536
+},
+"jobs_completed": 544,
+"load_s": 14.3,
+"plan_s": 29.7,
+"validate_s": 3.8,
+"write_s": 1.3,
+"plan_executable_s": 29.7,
+"execute_s": 0.9,
+"rss_mb": 1715,
+"rss_after_mb": 1483
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7937,
+"executed": {
+"completed": 516,
+"slipped": 42
+},
+"jobs_completed": 530,
+"load_s": 15.2,
+"plan_s": 29.6,
+"validate_s": 3.6,
+"write_s": 1.1,
+"plan_executable_s": 29.6,
+"execute_s": 0.8,
+"rss_mb": 1723,
+"rss_after_mb": 1488
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7697,
+"executed": {
+"slipped": 21,
+"completed": 400
+},
+"jobs_completed": 407,
+"load_s": 15.7,
+"plan_s": 31.4,
+"validate_s": 3.9,
+"write_s": 1.2,
+"plan_executable_s": 31.4,
+"execute_s": 0.9,
+"rss_mb": 1749,
+"rss_after_mb": 1531
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8108,
+"executed": {
+"slipped": 14,
+"completed": 494
+},
+"jobs_completed": 499,
+"load_s": 16.9,
+"plan_s": 27.3,
+"validate_s": 4.8,
+"write_s": 1.2,
+"plan_executable_s": 27.3,
+"execute_s": 1.0,
+"rss_mb": 1749,
+"rss_after_mb": 1508
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7884,
+"executed": {
+"slipped": 24,
+"completed": 488
+},
+"jobs_completed": 499,
+"load_s": 16.2,
+"plan_s": 32.3,
+"validate_s": 3.6,
+"write_s": 1.3,
+"plan_executable_s": 32.3,
+"execute_s": 1.0,
+"rss_mb": 1749,
+"rss_after_mb": 1533
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7674,
+"executed": {
+"slipped": 28,
+"completed": 388
+},
+"jobs_completed": 395,
+"load_s": 15.1,
+"plan_s": 25.4,
+"validate_s": 4.7,
+"write_s": 1.0,
+"plan_executable_s": 25.4,
+"execute_s": 0.9,
+"rss_mb": 1749,
+"rss_after_mb": 1507
+}
+]
+},
+"C_SE_s6": {
+"out": "C_SE_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.5,
+"pull_ahead": 0.0,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 648.8,
+"peak_rss_mb": 1746,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"slipped": 62,
+"completed": 635
+},
+"jobs_completed": 648,
+"load_s": 16.7,
+"plan_s": 32.4,
+"validate_s": 4.4,
+"write_s": 1.2,
+"plan_executable_s": 32.4,
+"execute_s": 0.2,
+"rss_mb": 1037,
+"rss_after_mb": 976
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9452,
+"executed": {
+"completed": 590,
+"slipped": 31
+},
+"jobs_completed": 603,
+"load_s": 17.4,
+"plan_s": 38.5,
+"validate_s": 6.6,
+"write_s": 1.3,
+"plan_executable_s": 38.5,
+"execute_s": 0.8,
+"rss_mb": 1684,
+"rss_after_mb": 1350
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9130,
+"executed": {
+"completed": 474,
+"slipped": 30
+},
+"jobs_completed": 478,
+"load_s": 15.9,
+"plan_s": 34.8,
+"validate_s": 4.4,
+"write_s": 2.6,
+"plan_executable_s": 34.8,
+"execute_s": 1.0,
+"rss_mb": 1696,
+"rss_after_mb": 1302
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8892,
+"executed": {
+"slipped": 14,
+"completed": 556
+},
+"jobs_completed": 564,
+"load_s": 15.8,
+"plan_s": 34.6,
+"validate_s": 5.1,
+"write_s": 1.1,
+"plan_executable_s": 34.6,
+"execute_s": 0.8,
+"rss_mb": 1698,
+"rss_after_mb": 1454
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8587,
+"executed": {
+"completed": 545,
+"slipped": 35
+},
+"jobs_completed": 556,
+"load_s": 18.8,
+"plan_s": 33.4,
+"validate_s": 3.8,
+"write_s": 2.4,
+"plan_executable_s": 33.4,
+"execute_s": 0.9,
+"rss_mb": 1709,
+"rss_after_mb": 1423
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8285,
+"executed": {
+"completed": 431,
+"slipped": 14
+},
+"jobs_completed": 442,
+"load_s": 16.3,
+"plan_s": 32.1,
+"validate_s": 3.8,
+"write_s": 1.0,
+"plan_executable_s": 32.1,
+"execute_s": 0.7,
+"rss_mb": 1709,
+"rss_after_mb": 1467
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8147,
+"executed": {
+"completed": 516,
+"slipped": 46
+},
+"jobs_completed": 530,
+"load_s": 15.3,
+"plan_s": 32.7,
+"validate_s": 4.0,
+"write_s": 1.1,
+"plan_executable_s": 32.7,
+"execute_s": 0.9,
+"rss_mb": 1723,
+"rss_after_mb": 1476
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7887,
+"executed": {
+"slipped": 49,
+"completed": 473
+},
+"jobs_completed": 484,
+"load_s": 16.6,
+"plan_s": 32.7,
+"validate_s": 4.2,
+"write_s": 1.2,
+"plan_executable_s": 32.7,
+"execute_s": 0.9,
+"rss_mb": 1725,
+"rss_after_mb": 1486
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7704,
+"executed": {
+"completed": 383,
+"slipped": 32
+},
+"jobs_completed": 397,
+"load_s": 16.3,
+"plan_s": 35.5,
+"validate_s": 3.9,
+"write_s": 1.3,
+"plan_executable_s": 35.5,
+"execute_s": 1.0,
+"rss_mb": 1725,
+"rss_after_mb": 1492
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8009,
+"executed": {
+"completed": 455,
+"slipped": 21
+},
+"jobs_completed": 464,
+"load_s": 15.9,
+"plan_s": 33.2,
+"validate_s": 4.2,
+"write_s": 1.1,
+"plan_executable_s": 33.2,
+"execute_s": 1.0,
+"rss_mb": 1739,
+"rss_after_mb": 1499
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7845,
+"executed": {
+"completed": 498,
+"slipped": 18
+},
+"jobs_completed": 504,
+"load_s": 14.7,
+"plan_s": 30.7,
+"validate_s": 3.8,
+"write_s": 1.1,
+"plan_executable_s": 30.7,
+"execute_s": 0.9,
+"rss_mb": 1739,
+"rss_after_mb": 1505
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7482,
+"executed": {
+"slipped": 17,
+"completed": 393
+},
+"jobs_completed": 394,
+"load_s": 15.3,
+"plan_s": 32.8,
+"validate_s": 4.4,
+"write_s": 1.1,
+"plan_executable_s": 32.8,
+"execute_s": 0.8,
+"rss_mb": 1746,
+"rss_after_mb": 1513
+}
+]
+},
+"C_SE_s7": {
+"out": "C_SE_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.5,
+"pull_ahead": 0.0,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 603.0,
+"peak_rss_mb": 1740,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"slipped": 26,
+"completed": 675
+},
+"jobs_completed": 675,
+"load_s": 16.0,
+"plan_s": 31.5,
+"validate_s": 4.7,
+"write_s": 1.0,
+"plan_executable_s": 31.5,
+"execute_s": 0.2,
+"rss_mb": 1036,
+"rss_after_mb": 986
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9391,
+"executed": {
+"completed": 596,
+"slipped": 18
+},
+"jobs_completed": 607,
+"load_s": 15.1,
+"plan_s": 31.7,
+"validate_s": 5.1,
+"write_s": 1.1,
+"plan_executable_s": 31.7,
+"execute_s": 0.8,
+"rss_mb": 1684,
+"rss_after_mb": 1319
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9038,
+"executed": {
+"completed": 456,
+"slipped": 22
+},
+"jobs_completed": 466,
+"load_s": 15.1,
+"plan_s": 30.4,
+"validate_s": 4.6,
+"write_s": 1.1,
+"plan_executable_s": 30.4,
+"execute_s": 0.6,
+"rss_mb": 1694,
+"rss_after_mb": 1250
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8846,
+"executed": {
+"completed": 555,
+"slipped": 30
+},
+"jobs_completed": 563,
+"load_s": 14.9,
+"plan_s": 30.9,
+"validate_s": 5.0,
+"write_s": 1.2,
+"plan_executable_s": 30.9,
+"execute_s": 1.0,
+"rss_mb": 1698,
+"rss_after_mb": 1422
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8599,
+"executed": {
+"completed": 531,
+"slipped": 28
+},
+"jobs_completed": 543,
+"load_s": 15.3,
+"plan_s": 30.4,
+"validate_s": 3.6,
+"write_s": 2.2,
+"plan_executable_s": 30.4,
+"execute_s": 0.9,
+"rss_mb": 1700,
+"rss_after_mb": 1406
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8291,
+"executed": {
+"completed": 426,
+"slipped": 34
+},
+"jobs_completed": 441,
+"load_s": 14.7,
+"plan_s": 29.9,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 29.9,
+"execute_s": 0.8,
+"rss_mb": 1702,
+"rss_after_mb": 1451
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8124,
+"executed": {
+"slipped": 28,
+"completed": 541
+},
+"jobs_completed": 546,
+"load_s": 14.9,
+"plan_s": 28.9,
+"validate_s": 3.7,
+"write_s": 1.2,
+"plan_executable_s": 28.9,
+"execute_s": 0.9,
+"rss_mb": 1709,
+"rss_after_mb": 1474
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7883,
+"executed": {
+"completed": 506,
+"slipped": 41
+},
+"jobs_completed": 517,
+"load_s": 15.0,
+"plan_s": 29.0,
+"validate_s": 3.5,
+"write_s": 1.2,
+"plan_executable_s": 29.0,
+"execute_s": 0.9,
+"rss_mb": 1723,
+"rss_after_mb": 1482
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7638,
+"executed": {
+"slipped": 26,
+"completed": 378
+},
+"jobs_completed": 386,
+"load_s": 15.2,
+"plan_s": 31.7,
+"validate_s": 3.7,
+"write_s": 1.3,
+"plan_executable_s": 31.7,
+"execute_s": 1.0,
+"rss_mb": 1730,
+"rss_after_mb": 1507
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 7860,
+"executed": {
+"slipped": 15,
+"completed": 493
+},
+"jobs_completed": 500,
+"load_s": 16.7,
+"plan_s": 32.5,
+"validate_s": 3.7,
+"write_s": 1.3,
+"plan_executable_s": 32.5,
+"execute_s": 1.2,
+"rss_mb": 1737,
+"rss_after_mb": 1528
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7650,
+"executed": {
+"completed": 497,
+"slipped": 24
+},
+"jobs_completed": 506,
+"load_s": 16.5,
+"plan_s": 31.4,
+"validate_s": 3.7,
+"write_s": 1.0,
+"plan_executable_s": 31.4,
+"execute_s": 0.9,
+"rss_mb": 1740,
+"rss_after_mb": 1515
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7432,
+"executed": {
+"completed": 379,
+"slipped": 31
+},
+"jobs_completed": 387,
+"load_s": 15.7,
+"plan_s": 30.2,
+"validate_s": 3.6,
+"write_s": 1.2,
+"plan_executable_s": 30.2,
+"execute_s": 0.9,
+"rss_mb": 1740,
+"rss_after_mb": 1517
+}
+]
+},
+"C_SF_s6": {
+"out": "C_SF_s6",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.5,
+"pull_ahead": 0.0,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "largest",
+"horizon": 1440,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 589.0,
+"peak_rss_mb": 1739,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"slipped": 62,
+"completed": 635
+},
+"jobs_completed": 648,
+"load_s": 16.4,
+"plan_s": 29.9,
+"validate_s": 4.3,
+"write_s": 1.1,
+"plan_executable_s": 29.9,
+"execute_s": 0.2,
+"rss_mb": 1036,
+"rss_after_mb": 969
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9454,
+"executed": {
+"completed": 597,
+"slipped": 33
+},
+"jobs_completed": 611,
+"load_s": 14.8,
+"plan_s": 29.5,
+"validate_s": 4.6,
+"write_s": 1.1,
+"plan_executable_s": 29.5,
+"execute_s": 0.7,
+"rss_mb": 1684,
+"rss_after_mb": 1353
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9090,
+"executed": {
+"completed": 472,
+"slipped": 35
+},
+"jobs_completed": 479,
+"load_s": 15.3,
+"plan_s": 30.1,
+"validate_s": 5.1,
+"write_s": 1.2,
+"plan_executable_s": 30.1,
+"execute_s": 0.7,
+"rss_mb": 1696,
+"rss_after_mb": 1279
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8888,
+"executed": {
+"slipped": 16,
+"completed": 564
+},
+"jobs_completed": 571,
+"load_s": 15.2,
+"plan_s": 29.5,
+"validate_s": 4.6,
+"write_s": 1.2,
+"plan_executable_s": 29.5,
+"execute_s": 0.9,
+"rss_mb": 1697,
+"rss_after_mb": 1463
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8542,
+"executed": {
+"slipped": 33,
+"completed": 546
+},
+"jobs_completed": 559,
+"load_s": 14.5,
+"plan_s": 31.2,
+"validate_s": 3.9,
+"write_s": 2.1,
+"plan_executable_s": 31.2,
+"execute_s": 0.9,
+"rss_mb": 1709,
+"rss_after_mb": 1470
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8250,
+"executed": {
+"completed": 445,
+"slipped": 15
+},
+"jobs_completed": 456,
+"load_s": 14.2,
+"plan_s": 28.1,
+"validate_s": 3.5,
+"write_s": 1.1,
+"plan_executable_s": 28.1,
+"execute_s": 0.8,
+"rss_mb": 1709,
+"rss_after_mb": 1479
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8261,
+"executed": {
+"completed": 516,
+"slipped": 44
+},
+"jobs_completed": 530,
+"load_s": 13.6,
+"plan_s": 29.2,
+"validate_s": 3.4,
+"write_s": 1.0,
+"plan_executable_s": 29.2,
+"execute_s": 0.8,
+"rss_mb": 1714,
+"rss_after_mb": 1494
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 8007,
+"executed": {
+"slipped": 47,
+"completed": 471
+},
+"jobs_completed": 484,
+"load_s": 14.9,
+"plan_s": 29.1,
+"validate_s": 3.5,
+"write_s": 1.1,
+"plan_executable_s": 29.1,
+"execute_s": 1.0,
+"rss_mb": 1722,
+"rss_after_mb": 1497
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7796,
+"executed": {
+"slipped": 31,
+"completed": 398
+},
+"jobs_completed": 412,
+"load_s": 14.8,
+"plan_s": 31.2,
+"validate_s": 4.0,
+"write_s": 1.1,
+"plan_executable_s": 31.2,
+"execute_s": 0.8,
+"rss_mb": 1738,
+"rss_after_mb": 1500
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 7972,
+"executed": {
+"slipped": 17,
+"completed": 480
+},
+"jobs_completed": 491,
+"load_s": 15.8,
+"plan_s": 31.6,
+"validate_s": 3.7,
+"write_s": 1.1,
+"plan_executable_s": 31.6,
+"execute_s": 1.1,
+"rss_mb": 1738,
+"rss_after_mb": 1512
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 7681,
+"executed": {
+"slipped": 18,
+"completed": 497
+},
+"jobs_completed": 504,
+"load_s": 15.3,
+"plan_s": 31.4,
+"validate_s": 3.8,
+"write_s": 1.2,
+"plan_executable_s": 31.4,
+"execute_s": 1.1,
+"rss_mb": 1739,
+"rss_after_mb": 1514
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7388,
+"executed": {
+"slipped": 15,
+"completed": 403
+},
+"jobs_completed": 403,
+"load_s": 15.9,
+"plan_s": 30.3,
+"validate_s": 3.5,
+"write_s": 1.0,
+"plan_executable_s": 30.3,
+"execute_s": 0.8,
+"rss_mb": 1739,
+"rss_after_mb": 1517
+}
+]
+},
+"C_SF_s7": {
+"out": "C_SF_s7",
+"n": 10,
+"team_size": [
+5,
+10
+],
+"shifts": 12,
+"deviation": 0.5,
+"pull_ahead": 0.0,
+"seed": 20261027,
+"lead": 20,
+"swap_pick": "largest",
+"horizon": 1440,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "10",
+"team_size": "(5, 10)",
+"late_part_share": "0.02",
+"late_delays": "((1.0, 1, 3),)"
+},
+"seconds": 576.0,
+"peak_rss_mb": 1740,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 9749,
+"executed": {
+"slipped": 26,
+"completed": 675
+},
+"jobs_completed": 675,
+"load_s": 15.1,
+"plan_s": 28.4,
+"validate_s": 4.3,
+"write_s": 1.2,
+"plan_executable_s": 28.4,
+"execute_s": 0.3,
+"rss_mb": 1037,
+"rss_after_mb": 985
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 9394,
+"executed": {
+"slipped": 18,
+"completed": 608
+},
+"jobs_completed": 618,
+"load_s": 14.2,
+"plan_s": 30.4,
+"validate_s": 4.8,
+"write_s": 1.0,
+"plan_executable_s": 30.4,
+"execute_s": 0.7,
+"rss_mb": 1684,
+"rss_after_mb": 1326
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 9000,
+"executed": {
+"completed": 459,
+"slipped": 25
+},
+"jobs_completed": 469,
+"load_s": 14.7,
+"plan_s": 30.1,
+"validate_s": 5.4,
+"write_s": 1.2,
+"plan_executable_s": 30.1,
+"execute_s": 0.8,
+"rss_mb": 1695,
+"rss_after_mb": 1246
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 8791,
+"executed": {
+"completed": 552,
+"slipped": 28
+},
+"jobs_completed": 561,
+"load_s": 13.6,
+"plan_s": 29.6,
+"validate_s": 4.3,
+"write_s": 1.1,
+"plan_executable_s": 29.6,
+"execute_s": 0.7,
+"rss_mb": 1696,
+"rss_after_mb": 1497
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 8515,
+"executed": {
+"completed": 542,
+"slipped": 28
+},
+"jobs_completed": 553,
+"load_s": 13.6,
+"plan_s": 29.2,
+"validate_s": 3.3,
+"write_s": 1.0,
+"plan_executable_s": 29.2,
+"execute_s": 0.7,
+"rss_mb": 1704,
+"rss_after_mb": 1441
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 8194,
+"executed": {
+"completed": 429,
+"slipped": 35
+},
+"jobs_completed": 444,
+"load_s": 13.4,
+"plan_s": 28.3,
+"validate_s": 3.4,
+"write_s": 1.2,
+"plan_executable_s": 28.3,
+"execute_s": 0.7,
+"rss_mb": 1709,
+"rss_after_mb": 1520
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 8160,
+"executed": {
+"slipped": 26,
+"completed": 547
+},
+"jobs_completed": 549,
+"load_s": 14.6,
+"plan_s": 29.2,
+"validate_s": 3.6,
+"write_s": 1.0,
+"plan_executable_s": 29.2,
+"execute_s": 0.9,
+"rss_mb": 1719,
+"rss_after_mb": 1528
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 7911,
+"executed": {
+"completed": 527,
+"slipped": 36
+},
+"jobs_completed": 535,
+"load_s": 14.7,
+"plan_s": 30.3,
+"validate_s": 3.7,
+"write_s": 1.0,
+"plan_executable_s": 30.3,
+"execute_s": 0.8,
+"rss_mb": 1726,
+"rss_after_mb": 1531
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 7631,
+"executed": {
+"slipped": 30,
+"completed": 393
+},
+"jobs_completed": 400,
+"load_s": 15.1,
+"plan_s": 29.4,
+"validate_s": 3.4,
+"write_s": 1.1,
+"plan_executable_s": 29.4,
+"execute_s": 0.8,
+"rss_mb": 1729,
+"rss_after_mb": 1534
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 8248,
+"executed": {
+"slipped": 15,
+"completed": 504
+},
+"jobs_completed": 512,
+"load_s": 14.3,
+"plan_s": 30.1,
+"validate_s": 3.3,
+"write_s": 1.1,
+"plan_executable_s": 30.1,
+"execute_s": 1.1,
+"rss_mb": 1737,
+"rss_after_mb": 1541
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 8061,
+"executed": {
+"completed": 507,
+"slipped": 25
+},
+"jobs_completed": 519,
+"load_s": 15.7,
+"plan_s": 32.9,
+"validate_s": 3.8,
+"write_s": 1.3,
+"plan_executable_s": 32.9,
+"execute_s": 1.0,
+"rss_mb": 1740,
+"rss_after_mb": 1547
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 7747,
+"executed": {
+"slipped": 30,
+"completed": 391
+},
+"jobs_completed": 399,
+"load_s": 16.1,
+"plan_s": 27.1,
+"validate_s": 4.8,
+"write_s": 1.1,
+"plan_executable_s": 27.1,
+"execute_s": 0.9,
+"rss_mb": 1740,
+"rss_after_mb": 1525
+}
+]
+},
+"B50_DF_s6": {
+"out": "B50_DF_s6",
+"n": 50,
+"team_size": [
+10,
+30
+],
+"shifts": 12,
+"deviation": 0.05,
+"pull_ahead": 0.35,
+"seed": 20261026,
+"lead": 20,
+"swap_pick": "first",
+"horizon": 600,
+"late_plans": 0.0,
+"fleet": {
+"n_aircraft": "50",
+"team_size": "(10, 30)"
+},
+"seconds": 2937.5,
+"peak_rss_mb": 6583,
+"per_shift": [
+{
+"shift": 0,
+"id": "DEMO:2026-10-26:S1",
+"valid": true,
+"assignments": 38626,
+"executed": {
+"completed": 3001,
+"slipped": 147
+},
+"jobs_completed": 3008,
+"load_s": 90.4,
+"plan_s": 191.6,
+"validate_s": 22.7,
+"write_s": 5.7,
+"plan_executable_s": 191.6,
+"execute_s": 1.7,
+"rss_mb": 3984,
+"rss_after_mb": 3718
+},
+{
+"shift": 1,
+"id": "DEMO:2026-10-26:S2",
+"valid": true,
+"assignments": 37082,
+"executed": {
+"completed": 3063,
+"slipped": 74
+},
+"jobs_completed": 3057,
+"load_s": 82.3,
+"plan_s": 178.1,
+"validate_s": 22.7,
+"write_s": 7.4,
+"plan_executable_s": 178.1,
+"execute_s": 4.7,
+"rss_mb": 6527,
+"rss_after_mb": 5011
+},
+{
+"shift": 2,
+"id": "DEMO:2026-10-26:S3",
+"valid": true,
+"assignments": 35356,
+"executed": {
+"completed": 2336,
+"slipped": 76
+},
+"jobs_completed": 2336,
+"load_s": 77.8,
+"plan_s": 170.3,
+"validate_s": 24.0,
+"write_s": 6.5,
+"plan_executable_s": 170.3,
+"execute_s": 4.4,
+"rss_mb": 6552,
+"rss_after_mb": 4805
+},
+{
+"shift": 3,
+"id": "DEMO:2026-10-27:S1",
+"valid": true,
+"assignments": 34377,
+"executed": {
+"completed": 2863,
+"slipped": 28
+},
+"jobs_completed": 2863,
+"load_s": 74.2,
+"plan_s": 149.4,
+"validate_s": 22.8,
+"write_s": 5.5,
+"plan_executable_s": 149.4,
+"execute_s": 4.1,
+"rss_mb": 6556,
+"rss_after_mb": 5554
+},
+{
+"shift": 4,
+"id": "DEMO:2026-10-27:S2",
+"valid": true,
+"assignments": 32954,
+"executed": {
+"completed": 2830,
+"slipped": 48
+},
+"jobs_completed": 2840,
+"load_s": 69.8,
+"plan_s": 149.3,
+"validate_s": 21.6,
+"write_s": 5.6,
+"plan_executable_s": 149.3,
+"execute_s": 4.0,
+"rss_mb": 6572,
+"rss_after_mb": 5423
+},
+{
+"shift": 5,
+"id": "DEMO:2026-10-27:S3",
+"valid": true,
+"assignments": 31486,
+"executed": {
+"completed": 2141,
+"slipped": 38
+},
+"jobs_completed": 2107,
+"load_s": 69.3,
+"plan_s": 159.3,
+"validate_s": 24.1,
+"write_s": 5.8,
+"plan_executable_s": 159.3,
+"execute_s": 3.9,
+"rss_mb": 6572,
+"rss_after_mb": 5822
+},
+{
+"shift": 6,
+"id": "DEMO:2026-10-28:S1",
+"valid": true,
+"assignments": 31301,
+"executed": {
+"completed": 2611,
+"slipped": 87
+},
+"jobs_completed": 2586,
+"load_s": 72.2,
+"plan_s": 152.5,
+"validate_s": 18.5,
+"write_s": 5.4,
+"plan_executable_s": 152.5,
+"execute_s": 4.1,
+"rss_mb": 6572,
+"rss_after_mb": 5827
+},
+{
+"shift": 7,
+"id": "DEMO:2026-10-28:S2",
+"valid": true,
+"assignments": 30116,
+"executed": {
+"completed": 2533,
+"slipped": 105
+},
+"jobs_completed": 2506,
+"load_s": 68.8,
+"plan_s": 152.2,
+"validate_s": 23.9,
+"write_s": 5.9,
+"plan_executable_s": 152.2,
+"execute_s": 4.4,
+"rss_mb": 6582,
+"rss_after_mb": 5859
+},
+{
+"shift": 8,
+"id": "DEMO:2026-10-28:S3",
+"valid": true,
+"assignments": 28865,
+"executed": {
+"completed": 2038,
+"slipped": 58
+},
+"jobs_completed": 2007,
+"load_s": 73.3,
+"plan_s": 158.5,
+"validate_s": 24.0,
+"write_s": 6.1,
+"plan_executable_s": 158.5,
+"execute_s": 4.1,
+"rss_mb": 6583,
+"rss_after_mb": 5856
+},
+{
+"shift": 9,
+"id": "DEMO:2026-10-29:S1",
+"valid": true,
+"assignments": 28996,
+"executed": {
+"completed": 2431,
+"slipped": 51
+},
+"jobs_completed": 2419,
+"load_s": 74.9,
+"plan_s": 122.5,
+"validate_s": 18.3,
+"write_s": 5.9,
+"plan_executable_s": 122.5,
+"execute_s": 5.4,
+"rss_mb": 6583,
+"rss_after_mb": 5778
+},
+{
+"shift": 10,
+"id": "DEMO:2026-10-29:S2",
+"valid": true,
+"assignments": 27954,
+"executed": {
+"completed": 2693,
+"slipped": 32
+},
+"jobs_completed": 2683,
+"load_s": 71.0,
+"plan_s": 123.8,
+"validate_s": 19.3,
+"write_s": 6.0,
+"plan_executable_s": 123.8,
+"execute_s": 4.6,
+"rss_mb": 6583,
+"rss_after_mb": 5777
+},
+{
+"shift": 11,
+"id": "DEMO:2026-10-29:S3",
+"valid": true,
+"assignments": 26657,
+"executed": {
+"completed": 1974,
+"slipped": 44
+},
+"jobs_completed": 1949,
+"load_s": 74.1,
+"plan_s": 118.0,
+"validate_s": 17.3,
+"write_s": 6.0,
+"plan_executable_s": 118.0,
+"execute_s": 4.4,
+"rss_mb": 6583,
+"rss_after_mb": 5776
+}
+]
+}
+}

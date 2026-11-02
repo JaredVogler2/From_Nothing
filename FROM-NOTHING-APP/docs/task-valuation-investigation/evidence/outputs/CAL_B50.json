@@ -1,0 +1,347 @@
+{
+ "runs": {
+  "B50_DF_s6": {
+   "behavior": "DF",
+   "seed": "s6",
+   "prod": {
+    "throughput": 1885400,
+    "jobs": 30361,
+    "open_work_last": 10616754,
+    "cross_team_relief": 2020,
+    "worked_h": 31788.73,
+    "offplan_by_kind": {
+     "deviation": 1275,
+     "pull_ahead": 14195
+    },
+    "swaps": 21,
+    "done_before_units": [
+     117,
+     7610
+    ],
+    "late_plans": 0,
+    "replanned_missed": 0,
+    "stored_score_mean": 99.55618279569893,
+    "completions_in_last_lead_minutes": {
+     "lead": 20,
+     "late": 1208,
+     "all": 30514,
+     "share": 0.0396
+    }
+   },
+   "scores": {
+    "team_shifts": 372,
+    "R0_mean": 99.55523752119659,
+    "R0_pooled": 99.54823531970317,
+    "R5_0.5_0.0_mean": 99.74721590228401,
+    "R5_0.5_0.0_pooled": 99.85267103730148,
+    "R5_0.5_0.05_mean": 99.75027911922201,
+    "R5_0.5_0.05_pooled": 99.85267103730148,
+    "R5_0.5_0.15_mean": 99.75640555309803,
+    "R5_0.5_0.15_pooled": 99.85267103730148,
+    "R5_0.5_0.3_mean": 99.76546285408499,
+    "R5_0.5_0.3_pooled": 99.85267103730148,
+    "R5_0.6_0.0_mean": 99.75040942782043,
+    "R5_0.6_0.0_pooled": 99.8818115650303,
+    "R5_0.6_0.05_mean": 99.75408528814603,
+    "R5_0.6_0.05_pooled": 99.8818115650303,
+    "R5_0.6_0.15_mean": 99.76143700879724,
+    "R5_0.6_0.15_pooled": 99.8818115650303,
+    "R5_0.6_0.3_mean": 99.77230576998159,
+    "R5_0.6_0.3_pooled": 99.8818115650303,
+    "R5_0.7_0.0_mean": 99.75360295335683,
+    "R5_0.7_0.0_pooled": 99.91095209275913,
+    "R5_0.7_0.05_mean": 99.75789145707004,
+    "R5_0.7_0.05_pooled": 99.91095209275913,
+    "R5_0.7_0.15_mean": 99.76646846449646,
+    "R5_0.7_0.15_pooled": 99.91095209275913,
+    "R5_0.7_0.3_mean": 99.7791486858782,
+    "R5_0.7_0.3_pooled": 99.91095209275913,
+    "R5_0.8_0.0_mean": 99.75679647889325,
+    "R5_0.8_0.0_pooled": 99.94009262048796,
+    "R5_0.8_0.05_mean": 99.76169762599406,
+    "R5_0.8_0.05_pooled": 99.94009262048796,
+    "R5_0.8_0.15_mean": 99.77149992019568,
+    "R5_0.8_0.15_pooled": 99.94009262048796,
+    "R5_0.8_0.3_mean": 99.78599160177481,
+    "R5_0.8_0.3_pooled": 99.94009262048796,
+    "R5_0.9_0.0_mean": 99.75999000442967,
+    "R5_0.9_0.0_pooled": 99.96923314821677,
+    "R5_0.9_0.05_mean": 99.76550379491808,
+    "R5_0.9_0.05_pooled": 99.96923314821677,
+    "R5_0.9_0.15_mean": 99.77653137589489,
+    "R5_0.9_0.15_pooled": 99.96923314821677,
+    "R5_0.9_0.3_mean": 99.79283451767141,
+    "R5_0.9_0.3_pooled": 99.96923314821677,
+    "R5_1.0_0.0_mean": 99.76318352996607,
+    "R5_1.0_0.0_pooled": 99.9983736759456,
+    "R5_1.0_0.05_mean": 99.76930996384209,
+    "R5_1.0_0.05_pooled": 99.9983736759456,
+    "R5_1.0_0.15_mean": 99.78156283159412,
+    "R5_1.0_0.15_pooled": 99.9983736759456,
+    "R5_1.0_0.3_mean": 99.79967743356802,
+    "R5_1.0_0.3_pooled": 99.9983736759456,
+    "output_index_pooled": 1.0040951372910774,
+    "shortfall_pooled": 0.0029140527728824805
+   },
+   "summary": {
+    "deviation": 0.05,
+    "pull_ahead": 0.35,
+    "swap_pick": "first",
+    "horizon": 600,
+    "late_plans": 0.0,
+    "lead": 20,
+    "seconds": 2937.5
+   }
+  }
+ },
+ "deltas": [],
+ "alignment": {},
+ "swap_proof_w": {},
+ "swap_score_change": {},
+ "swap_gain_per_team_shift": {
+  "w0.5_q0.0": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.265,
+   "max_gain": -0.771
+  },
+  "w0.5_q0.05": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.211,
+   "max_gain": -0.751
+  },
+  "w0.5_q0.15": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.102,
+   "max_gain": -0.713
+  },
+  "w0.5_q0.3": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -0.942,
+   "max_gain": -0.559
+  },
+  "w0.6_q0.0": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.265,
+   "max_gain": -0.771
+  },
+  "w0.6_q0.05": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.2,
+   "max_gain": -0.748
+  },
+  "w0.6_q0.15": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.07,
+   "max_gain": -0.685
+  },
+  "w0.6_q0.3": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -0.877,
+   "max_gain": -0.468
+  },
+  "w0.7_q0.0": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.265,
+   "max_gain": -0.771
+  },
+  "w0.7_q0.05": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.189,
+   "max_gain": -0.744
+  },
+  "w0.7_q0.15": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.037,
+   "max_gain": -0.655
+  },
+  "w0.7_q0.3": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -0.812,
+   "max_gain": -0.376
+  },
+  "w0.8_q0.0": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.265,
+   "max_gain": -0.771
+  },
+  "w0.8_q0.05": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.178,
+   "max_gain": -0.74
+  },
+  "w0.8_q0.15": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.004,
+   "max_gain": -0.624
+  },
+  "w0.8_q0.3": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -0.748,
+   "max_gain": -0.263
+  },
+  "w0.9_q0.0": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.265,
+   "max_gain": -0.771
+  },
+  "w0.9_q0.05": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.167,
+   "max_gain": -0.736
+  },
+  "w0.9_q0.15": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -0.972,
+   "max_gain": -0.594
+  },
+  "w0.9_q0.3": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -0.683,
+   "max_gain": -0.131
+  },
+  "w1.0_q0.0": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.265,
+   "max_gain": -0.771
+  },
+  "w1.0_q0.05": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -1.156,
+   "max_gain": -0.732
+  },
+  "w1.0_q0.15": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -0.939,
+   "max_gain": -0.559
+  },
+  "w1.0_q0.3": {
+   "swap_team_shifts": 21,
+   "share_that_pays": 0.0,
+   "mean_gain": -0.618,
+   "max_gain": 0.0
+  }
+ },
+ "bands": {
+  "well_run_R5_0.7_percentiles": {
+   "1": 96.54,
+   "5": 98.33,
+   "10": 99.1,
+   "25": 100.0,
+   "50": 100.0
+  },
+  "well_run_R5_0.7_grades": {
+   "demo 90/80/70/60": {
+    "A": 372
+   },
+   "strict 95/90/85/80": {
+    "B": 1,
+    "A": 371
+   },
+   "today's effective 85.7/71.4/57.1/42.9": {
+    "A": 372
+   },
+   "wide 92/85/75/65": {
+    "A": 372
+   }
+  },
+  "well_run_R5_0.8_percentiles": {
+   "1": 96.54,
+   "5": 98.33,
+   "10": 99.1,
+   "25": 100.0,
+   "50": 100.0
+  },
+  "well_run_R5_0.8_grades": {
+   "demo 90/80/70/60": {
+    "A": 372
+   },
+   "strict 95/90/85/80": {
+    "B": 1,
+    "A": 371
+   },
+   "today's effective 85.7/71.4/57.1/42.9": {
+    "A": 372
+   },
+   "wide 92/85/75/65": {
+    "A": 372
+   }
+  },
+  "well_run_R5_0.9_percentiles": {
+   "1": 96.54,
+   "5": 98.33,
+   "10": 99.1,
+   "25": 100.0,
+   "50": 100.0
+  },
+  "well_run_R5_0.9_grades": {
+   "demo 90/80/70/60": {
+    "A": 372
+   },
+   "strict 95/90/85/80": {
+    "B": 1,
+    "A": 371
+   },
+   "today's effective 85.7/71.4/57.1/42.9": {
+    "A": 372
+   },
+   "wide 92/85/75/65": {
+    "A": 372
+   }
+  },
+  "well_run_shortfall_percentiles": {
+   "50": 0.0,
+   "75": 0.0,
+   "90": 0.0101,
+   "95": 0.018,
+   "99": 0.0378
+  },
+  "grade_flip_rate_consecutive_shifts_R5_0.8": {
+   "demo 90/80/70/60": 0.0,
+   "strict 95/90/85/80": 0.0059,
+   "today's effective 85.7/71.4/57.1/42.9": 0.0,
+   "wide 92/85/75/65": 0.0
+  },
+  "well_run_daily_pooled_R5_0.8": {
+   "n": 124,
+   "percentiles": {
+    "1": 98.82,
+    "5": 99.16,
+    "10": 99.46,
+    "25": 99.9,
+    "50": 100.0
+   }
+  },
+  "shortfall_to_score": "without off-plan work R5 = 100 x (1 - unexcused shortfall) - OOS charge, for any w"
+ },
+ "fairness": {
+  "B50_DF_s6": {
+   "corr_load_vs_grade_gain": 0.06531032503759435,
+   "corr_load_vs_output_index": -0.015205578346958057,
+   "mean_load": 0.597,
+   "grade_gain_mean": 0.026
+  }
+ }
+}
