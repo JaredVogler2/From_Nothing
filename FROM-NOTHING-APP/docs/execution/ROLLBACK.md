@@ -12,9 +12,12 @@ Every rollback preserves:
 - delivery commitment state;
 - evaluations, recognition and badges.
 
-Nothing in this application deletes that history, and retention only archives unreferenced fixture candidates
-(`retain-history`). The one thing deleted is display parts nothing reads any more (`display-retention`, D-24), a cache
-rebuilt from the kept records with `python -m focus.cli display` and checked against its kept manifest.
+Nothing in this application deletes that history, and `retain-history` only archives unreferenced fixture candidates.
+Two commands delete records: `display-retention` (D-24) deletes display parts nothing reads any more, a cache rebuilt
+from the kept records with `python -m focus.cli display` and checked against its kept manifest; `performance-details`
+(D-25) deletes the per-job evidence behind scores older than the owner's 90 days, once each team-shift's job record
+carries its score. Live, the installed retention procedures also purge the inference and duration evidence of runs
+that no head or stage references.
 
 ## 1. Application rollback (code)
 
@@ -55,6 +58,8 @@ Reconcile through durable receipts, never by file presence:
 - `publish` reconciles the stage, the readback, the signature and the acceptance receipt. It returns `RECOVERED` or
   `ALREADY_ACCEPTED` when the acceptance was durable. Otherwise it re-stages the identical bytes and accepts once.
 - A signature alone is never success: the previous head stays until the atomic acceptance (A51).
+- Live, the signer step runs the full `publish` (stage, readback and readback validation before acceptance), which
+  the drafted grants reserve to the stager; this must be resolved with the live adapter (`INSTALL_AND_PIPELINE.md` §2).
 - Delivery commitments are fed once per accepted run. A takeover after acceptance adds no duplicate change (A50).
 
 ## 4. Source acquisition

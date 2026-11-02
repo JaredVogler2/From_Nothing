@@ -37,20 +37,22 @@ python3.12 -m venv .venv
 
 ## 2. Database (LG-01, LG-03; DBA with DDL rights)
 
-1. Re-run `queries/discovery/fn_collisions.sql` against the target. The manual's 2026-10-27 observation of no
-   `FOCUS_FN_%` objects is not proof for today.
+1. Re-run `queries/discovery/fn_collisions.sql` against the target (tables only; step 4 checks views, procedures,
+   triggers and constraint names). The manual's 2026-10-27 observation of no `FOCUS_FN_%` objects is not proof for
+   today.
 2. `python -m focus.cli migrate --emit-dir install-bundle`, then review `install-bundle/MANIFEST.json` and record its
    `manifest_sha256`.
 3. `python -m focus.cli preflight --role installer --probe-sql` in the installer's session.
 4. `python -m focus.cli migrate --dry-run --catalog live`: expect only `PENDING` steps, with no `COLLISION`,
    `CHECKSUM_MISMATCH` or `DRIFT`.
 5. `python -m focus.cli migrate --apply --catalog live --installer "<subject>" --confirm-manifest "<manifest_sha256>"`.
-6. Apply `sql/grants/focus_fn_roles.sql`, then map one login per process: web, source, stager, signer, evaluator,
-   observation producer and retention.
+6. Apply `sql/grants/focus_fn_roles.sql`, then map one login per process: web, source, app pipeline, stager, signer,
+   evaluator, observation producer and retention. Resolve the open grant items first (`INSTALL_AND_PIPELINE.md` §2).
 
 ## 3. Live repository adapter (LG-02; engineering)
 
-- Implement the repository protocol over the FOCUS_FN tables in `focus/data/sql_store.py`.
+- Implement the repository protocol over the FOCUS_FN tables in `focus/data/sql_store.py`, after a migration adds
+  the collections that have no table yet (`SQL_SCHEMA_LEDGER.md`, runtime collections and known schema issues).
 - Run the repository fault-injection suites against an installed non-production database.
 - Until then a live host stays `REPOSITORY_UNAVAILABLE` by design.
 

@@ -20,6 +20,10 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 - **No cap today.** `economics.cap_policy` = `EXPLICIT_ONLY`, and no table supplies an explicit cap, so no penalty is capped. A non-zero `CapFraction` on the scenario is only reported as `CAP_FIELD_NOT_APPLIED`.
 - **No double charging.** The accounted floor is a lower bound on the modeled penalty: penalty = max(modeled penalty, floor). The booked amount is never added on top.
 - **Capture.** Each table is read by its reference SQL query. A failed capture (for example `SCHEMA_DRIFT`) adds the readiness gap `DATASET_FAILED`. Zero rows from a live query add `DATASET_EMPTY_UNCERTIFIED`, because a live capture cannot certify an empty table. A readiness gap is a data finding recorded on the snapshot and shown to users. Both gaps carry the effect label `BLOCKS_EXECUTABLE`, but the plan validator does not act on them (for executable plans it checks only `SOURCE_STALE`, `SOURCE_CLOCK_UNKNOWN` and `CAPTURE_SKEW`). The run continues, and each aircraft carries the reason codes listed below. A database error on the query (for example a missing object or denied access) is a failed capture too: `DATASET_FAILED`, and the run continues.
+- **Live gaps and codes.** In live mode the snapshot also carries the open-decision gap `OD-12` (terms, caps and
+  checkpoints). Per-aircraft reasons include `ECONOMICS_MISSING`, `UNSUPPORTED_TERM`, `TERM_OR_DUE_UNKNOWN`,
+  `UNSUPPORTED_CURVE`, `DUE_POLICY_UNSUPPORTED:<basis>` and, when required jobs are unreleased in the plan,
+  `COMPLETION_UNKNOWN`.
 - **Freshness.** None of the tables has a source clock (`LOAD_TIMESTAMP`, `SNAPSHOT_TS` or `LOAD_TS`) or a cutoff column, and none is listed in `admission.max_source_age_hours`. So no `SOURCE_STALE` check applies; only the run-wide `CAPTURE_SKEW` check does.
 - **Who reads the result.** Only `focus/economics/repository.py` reads the raw rows, at admission. The engine reads the per-aircraft result (`AircraftEconomics` on the snapshot) through `focus/economics/registry.py`. Users without an economics grant (`manager` or `scenario_planner`) see costs withheld as `ECONOMICS_RESTRICTED`, never as zero.
 
@@ -292,4 +296,4 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
 - The floor is a lower bound, never an addition. While the modeled penalty is under the floor, one more day late adds nothing, so the aircraft gets no cost-of-delay weight.
 - Checkpoints apply only through the one sale basis that names the chosen term (see `econ_original_sale_basis`).
 - The table has no currency column. FOCUS treats `CumulativeAccounted` as being in the term's currency.
-- The planner does not filter out checkpoints recorded after the cutoff. Leave them out of the source if they should not count yet.
+- Checkpoints created after the cutoff (`CreatedAtUtc`) are skipped, so a run never counts liability booked after it.

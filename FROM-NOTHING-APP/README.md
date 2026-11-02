@@ -100,7 +100,7 @@ python -m focus.cli review --verify 1
 
 ## Transfer into an approved company environment (no live data shared)
 
-**Work-agent handoff:** [Workplace Porting Guide](docs/integration/WORKPLACE_PORTING_GUIDE.md) · [Source/Table/Query Crosswalk](docs/integration/SOURCE_REPLACEMENT_CROSSWALK.md) · [Rich MAX Scheduling Constraints](docs/integration/SCHEDULING_CONSTRAINTS.md).
+**Work-agent handoff:** [Handoff: official sources, SQL Server staging and GitLab](docs/integration/HANDOFF.md) · [Workplace Porting Guide](docs/integration/WORKPLACE_PORTING_GUIDE.md) · [Source/Table/Query Crosswalk](docs/integration/SOURCE_REPLACEMENT_CROSSWALK.md) · [Rich MAX Scheduling Constraints](docs/integration/SCHEDULING_CONSTRAINTS.md).
 
 Generate an exact **reference-only** machine manifest for the internal agent:
 

@@ -38,9 +38,10 @@ credentials.
 - Fixture mode without a configured key uses a public TEST key (`fixture-test-key-v1`).
   Receipts are labelled `fixture_readback`. A TEST key, or any key other than the configured
   one, is refused (`TEST_KEY_NOT_LIVE`, `UNAUTHORIZED_SIGNER`).
-- Live publication stays `UNAVAILABLE` until the proposed `FOCUS_FN` stage, readback and
-  acceptance objects (`sql/migrations/007_publication.sql`) are installed by an authorized
-  migration (P23). No live signature, acceptance or head move happens before that.
+- Live publication stays `UNAVAILABLE` until migrations 001-010 are installed by an authorized
+  installer (the publication tables come from 001; the stage, readback and accept procedures and
+  `CurrentPlan` from 007) and the live adapter exists. No live signature, acceptance or head move
+  happens before that.
 
 ## Explanation providers (P21)
 
@@ -184,8 +185,9 @@ How the app behaves under Tanzu:
   their own user-provided services. Each process then holds only its own role's credentials
   (`docs/execution/INSTALL_AND_PIPELINE.md`).
 - Run `python -m focus.cli preflight --role web` (or `worker`, `signer`) before a process serves or works.
-- The filesystem is ephemeral. Live mode persists everything in SQL Server
-  (`FOCUS_FN_*`). Fixture mode on Tanzu is for demos only.
+- The filesystem is ephemeral. Live mode is meant to persist in SQL Server (`FOCUS_FN_*`); until the
+  live adapter and the tables still missing (`SQL_SCHEMA_LEDGER.md`, runtime collections) exist,
+  `SqlStore` refuses every write. Fixture mode on Tanzu is for demos only.
 
 ## API and MCP in hosted environments
 

@@ -51,7 +51,7 @@ into exactly one disposition, and the run is rejected if the counts do not add u
 | `PARENT_SOI` | varchar(30), nullable | SOI of this job's parent job on the same line. | Builds the parent chain up to the root: a part shortage on a job gates that job and every ancestor, and rework roots are checked against the chain (`REWORK_LINK_CONFLICT`, `REWORK_CYCLE`). A parent not found on the line ends the chain. |
 | `SUPERINTENDENT` | varchar(50), nullable | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `FIRST_AVAILABLE` | datetime2(0), nullable | The earliest time the job may start, in local time. | Converted to UTC and rounded up to the minute; no work on the job may start before it (validator code `BEFORE_JOB_EARLIEST`). |
-| `ACT_START` | datetime2(0), nullable | When work on the job actually started, in local time. | Kept as actual history and shown in job detail; it dates the `SEQUENCE_VIOLATION` diagnostic for a job in work. An `IN WORK` job without it is listed in the admission notes. |
+| `ACT_START` | datetime2(0), nullable | When work on the job actually started, in local time. | Kept as actual history and shown in job detail; it dates the `SEQUENCE_VIOLATION` diagnostic for a job in work, next to the INFO diagnostics `IN_PROGRESS_CONTINUATION_HOLD` (remaining work waits for an incomplete hard predecessor) and `IN_PROGRESS_CLOSURE_HOLD` (closure waits for an FF/SF predecessor). An `IN WORK` job without it is listed in the admission notes. |
 | `ACT_COMP` | datetime2(0), nullable | When the job was actually completed, in local time. | For a COMPLETE anchor, successors and their lags are measured from the earlier of this time and the cutoff; with no value the cutoff is used. Shown in job detail. |
 | `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Row clock for freshness: the newest value must be within 36 h of the cutoff, or executable plans fail validation (`SOURCE_STALE`; unreadable values give `SOURCE_CLOCK_UNKNOWN`). |
 | `PLANNING_SYSTEM_NAME` | varchar(50), nullable | Meaning not established in code or docs (the synthetic fixture uses `DEMO-PS`). | Copied onto the job record in the snapshot; nothing in the planner reads it today. |
@@ -151,7 +151,8 @@ validator checks every hard one (check V2).
 - Hard `CONCURRENT` and `NON-CONCURRENT` edges use policy modes (`REQUIRED_OVERLAP`, `NO_OVERLAP`). Their live meaning
   is open decision OD-07, so in live mode both jobs of such an edge are quarantined
   (`CONCURRENCY_SEMANTICS_UNRESOLVED`). A cycle of hard edges quarantines every job in it (`CYCLE`); no edge is deleted.
-- An empty result is not rejected and does not stop executable plans. Check the row count of every capture.
+- An empty result without a certified-empty receipt (every empty live read today) rejects the run
+  (`MANDATORY_DATASET_EMPTY`). Check the row count of every capture.
 - Freshness is measured from the newest `LOAD_TIMESTAMP`, because the live reader adds no `loaded_at` receipt. Refresh
   it within the 36 h limit (a fixture default) even when the template has not changed, or executable plans fail
   (`SOURCE_STALE`).
@@ -190,8 +191,8 @@ line, and the child's status. FOCUS uses it to make the root job wait for the re
 - If the root is already COMPLETE while the child is open, FOCUS raises `ROOT_CLOSURE_REOPENED` and makes the root's hard
   successors wait for the child.
 - Each open child adds its own edge, so two children of one root both gate it.
-- An empty result is not rejected. Check the row count, because with no rows only `rework_classification` can link
-  rework to its root.
+- An empty result without a certified-empty receipt (every empty live read today) rejects the run
+  (`MANDATORY_DATASET_EMPTY`). With a certified-empty receipt, only `rework_classification` can link rework to its root.
 
 ## `rework_classification`
 
@@ -205,7 +206,7 @@ waits for the rework. The defect-origin team is kept apart from the team that do
 | Grain and key | One row per rework child per line; keyed by `LINE_NUMBER` + `CHILD_SOI` in code. A repeated pair silently replaces the earlier row. |
 | Required | No. |
 | Capabilities | forecast, executable |
-| If missing or empty | Open jobs flagged `IS_REWORK` in the master list are blocked (`REWORK_CLASS_UNKNOWN`). Rework links still come from `neo_graph_rework`. In live mode the snapshot also lists `DATASET_NOT_PROBED`. |
+| If missing or empty | Open jobs flagged `IS_REWORK` in the master list are blocked (`REWORK_CLASS_UNKNOWN`). Rework links still come from `neo_graph_rework`. In live mode the snapshot also lists `DATASET_NOT_PROBED` and the open-decision gap `OD-08`. |
 | Time and cutoff | No clock column and no cutoff column; not checked for freshness. |
 | Read by | `focus/data/snapshot_builder.py`, `focus/data/scope.py`, `focus/data/graph.py`; then `focus/data/durations.py` (class) and `focus/performance/lifecycle.py` with `focus/performance/disruption.py` (defect origin). |
 
@@ -256,7 +257,7 @@ job needs a row, including rework and in-progress jobs, because crew demand alwa
 | `PRIMARY_MECHANIC_DURATION` | int, nullable | Minutes for the primary role. The docs list it among the role and effort fields but do not define it further. | Compared between repeated rows and kept on the job; nothing else reads it. |
 | `ASSIST_COUNT` | int, nullable | Number of mechanics in the assist role. | Compared between repeated rows and kept on the job; never used as crew demand. |
 | `ASSIST_LABOR_MINUTES` | int, nullable | Labor minutes of the assist role. The docs do not define it further. | Compared between repeated rows and kept on the job; nothing else reads it. |
-| `TOTAL_LABOR_MINUTES` | int, nullable | Total labor of the job in person-minutes. | Used as standard effort only if policy `duration.standard_effort_basis` is `TOTAL_LABOR_MINUTES` (today it is `ELAPSED_TIMES_CREW`). Compared between repeated rows; shown as flow labor minutes in the Schedule Budget view. |
+| `TOTAL_LABOR_MINUTES` | int, nullable | Total labor of the job in person-minutes. | Used as standard effort only if policy `duration.standard_effort_basis` is `TOTAL_LABOR_MINUTES` (today it is `ELAPSED_TIMES_CREW`); with that basis a null or 0 value blocks the job (`STANDARD_EFFORT_UNAVAILABLE`). Compared between repeated rows; shown as flow labor minutes in the Schedule Budget view. |
 | `DURATION_SOURCE` | varchar(30), nullable | Meaning not established in code or docs (the fixture uses `FIXTURE_STANDARD` and `REWORK_STATISTIC`). | Compared between repeated rows and kept on the job; no rule reads it. |
 | `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Row clock for freshness (36 h limit). Among identical repeats the latest is kept, and it is part of the duration estimate's source hash. |
 
@@ -300,8 +301,8 @@ tell FOCUS which in-process (IP) QA hold points the job has already passed.
 | `EVIDENCE_REF` | text | Reference to the source record (the fixture uses `FIXTURE-PROGRESS-ROOT4`). | Fetched and kept with the source run; nothing in the planner reads it today. |
 
 **Rules and pitfalls.**
-- Send a row for every `IN WORK` job, rework included. An in-work NC/PU/CI job without a row is planned from its full
-  rework statistic, as if it had not started.
+- Send a row for every `IN WORK` job, rework included. An in-work job without a row, NC/PU/CI rework included, is
+  blocked (`REMAINING_UNKNOWN`); it is never planned again at full length.
 - Send rows only for `IN WORK` jobs. A row for a job in any other status does not change its duration, but the
   validator then expects the remaining minutes and fails every plan on that snapshot (V1 `PARENT_NOT_CONSERVED`).
 - Both minute columns are required on every row. A null value rejects the run (`SOURCE_VALUE_INVALID`).

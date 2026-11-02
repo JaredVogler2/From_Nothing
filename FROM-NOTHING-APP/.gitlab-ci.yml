@@ -1,13 +1,20 @@
 # FOCUS pipeline (S17 MIGRATIONS/CI, P23). DRAFT: reviewable, never pushed to a GitLab remote or activated by this build.
 #
-# Order:
+# Order (one pipeline before every shift, three a day; D-26):
 #   verify
-#   -> display retention: delete display parts nothing reads any more, before the new package is built (retention role)
+#   -> retention (retention role): display parts nothing reads any more, before the new package is built (D-24), and
+#      per-job score evidence past the owner's 90 days (D-25)
+#   -> stage the official sources into SQL Server, then check the staged schema (staging role, then source role;
+#      docs/integration/HANDOFF.md section 4); this runs while the verify jobs run
 #   -> acquire/admit (source role)
 #   -> schedule/validate on the same snapshot (app role)
 #   -> unsigned stage and readback (stager role, protected)
 #   -> sign and accept, head last (signer role, protected, manual)
+#   -> forecast: schedule/validate, stage/readback, sign (app, stager and signer roles), after the executable plan
 #   -> observe and evaluate against the frozen goals (evaluator role)
+#
+# A second schedule per shift runs only the evaluator, just after the shift's authorized overtime window closes
+# (FOCUS_PIPELINE_PART=evaluate): stage the observation feeds, then score every shift whose credit window has closed.
 #
 # How the order is enforced:
 #   * Each job runs ONE role of `python -m focus.cli pipeline` with that role's own protected credentials.
@@ -38,7 +45,7 @@ variables:
   FOCUS_SCOPE_KEY: "DEMO-787"
   PIPELINE_KEY: "ci-$CI_PIPELINE_ID"
 
-stages: [verify, retain, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
+stages: [verify, retain, stage_sql, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
 
 # ---------------------------------------------------------------------- verify (fixture only, no secrets)
 
@@ -98,7 +105,7 @@ fixture_pipeline_rehearsal:
 
 .live:
   rules:
-    - if: $FOCUS_MODE == "live" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
   resource_group: focus-$FOCUS_SCOPE_KEY
   variables:
     FOCUS_MODE: live
@@ -117,7 +124,7 @@ display_retention:
   stage: retain
   needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel]
   allow_failure: true
-  environment: { name: focus-retention }            # retention credentials only: deletes display parts and nothing else
+  environment: { name: focus-retention }            # retention role (FOCUS_FN_Retention); no live SQL delete path exists yet (INSTALL section 7)
   script:
     - mkdir -p ci-receipts && python -m focus.cli display-retention --apply > ci-receipts/display-retention.json
 
@@ -128,14 +135,39 @@ detail_retention:
   stage: retain
   needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel]
   allow_failure: true
-  environment: { name: focus-retention }            # retention credentials only: deletes old per-job evidence and nothing else
+  environment: { name: focus-retention }            # retention role (FOCUS_FN_Retention); no live SQL delete path exists yet (INSTALL section 7)
   script:
     - mkdir -p ci-receipts && python -m focus.cli performance-details --keep-days 90 --apply > ci-receipts/performance-details.json
+
+# Staging: the official sources (Teradata and the other systems of record) are loaded into the SQL Server tables the
+# FOCUS reference queries read (queries/source_inputs/*.sql, the S04 contract), plus the observation landing tables
+# (migration 008). The loader is company code: its mapping, source queries and credentials never enter this repository.
+# FOCUS_STAGE_COMMAND names it; its contract (arguments, atomic publication, row clocks, receipt) is HANDOFF.md section 4.
+stage_sources:
+  extends: .live
+  stage: stage_sql
+  needs: [import_and_lint]                          # runs while the other verify jobs run; touches only the staging tables
+  environment: { name: focus-staging }              # read-only source credentials, write access to the staging tables only
+  timeout: 10m
+  script:
+    - mkdir -p ci-receipts
+    - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage.json; exit 3; }'
+    - $FOCUS_STAGE_COMMAND --part all --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage.json
+
+# The staged tables must match the S04 contract column for column before FOCUS reads them (read-only).
+verify_staged_sources:
+  extends: .live
+  stage: stage_sql
+  needs: [stage_sources]
+  environment: { name: focus-source }               # source-worker SQL credentials only (read)
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli source-discover --read-only --mode live > ci-receipts/source-discover.json
+    - python -c "import json, sys; r = json.load(open('ci-receipts/source-discover.json')); sys.exit(0 if r.get('status') == 'ok' and not r.get('drift') else 1)"
 
 acquire_admit:
   extends: .live
   stage: source
-  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel, display_retention]   # every verification first (P23)
+  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel, display_retention, verify_staged_sources]   # every verification first (P23)
   environment: { name: focus-source }               # source-worker SQL credentials only
   script:
     - mkdir -p ci-receipts && python -m focus.cli preflight --role worker --probe-sql > ci-receipts/preflight-source.json
@@ -214,3 +246,38 @@ observe_evaluate:
   environment: { name: focus-evaluator }
   script:
     - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role evaluator > ci-receipts/evaluator.json
+
+# ---------------------------------------------------------------------- evaluator-only run after each shift's overtime
+
+# The run before a shift starts while the previous shift is still working, so that shift is scored by a later run. A
+# schedule just after each shift's authorized overtime window closes (FOCUS_PIPELINE_PART=evaluate) scores it promptly.
+.evaluate_only:
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  resource_group: focus-$FOCUS_SCOPE_KEY
+  variables:
+    FOCUS_MODE: live
+    FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [ci-receipts/]
+
+stage_observations:
+  extends: .evaluate_only
+  stage: stage_sql
+  needs: []
+  environment: { name: focus-staging }
+  timeout: 10m
+  script:
+    - mkdir -p ci-receipts
+    - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage-observations.json; exit 3; }'
+    - $FOCUS_STAGE_COMMAND --part observations --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage-observations.json
+
+evaluate_closed_shifts:
+  extends: .evaluate_only
+  stage: observe
+  needs: [stage_observations]
+  environment: { name: focus-evaluator }
+  script:
+    - mkdir -p ci-receipts && python tools/evaluate_closed_shifts.py > ci-receipts/evaluate-closed-shifts.json

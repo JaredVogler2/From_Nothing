@@ -202,7 +202,7 @@ Defined once in `focus/release/gates.py`, listed in every verdict, and mapped to
 
 | Gate | Area | Missing | Effect today |
 | --- | --- | --- | --- |
-| LG-01 | SQL schema | FOCUS_FN migrations 001-009 not installed | Live hosts start `REPOSITORY_UNAVAILABLE`; `/health/ready` is 503; nothing is stored |
+| LG-01 | SQL schema | FOCUS_FN migrations 001-010 not installed | Live hosts start `REPOSITORY_UNAVAILABLE`; `/health/ready` is 503; nothing is stored |
 | LG-02 | Live repository adapter | The protocol mapping onto the FOCUS_FN tables is not built | Live storage stays unavailable even with the schema installed |
 | LG-03 | Roles and grants | The generated grants are not applied; no logins are mapped | No live process holds its role's permissions |
 | LG-04 | Signing key custody | No production key or `FOCUS_SIGN_KEY_REF` | Live publish refuses: no executable acceptance or dispatch |
