@@ -130,7 +130,7 @@ def test_twin_cells_are_keyed_by_the_canonical_revision_and_layers_never_mix(obs
         assert (k["source_run_id"], k["plan_id"], k["forecast_plan_id"], k["policy_id"]) == \
             (rev["source_run_id"], rev["plan_id"], rev["forecast_plan_id"], rev["policy_id"])
         shift_id = f"DEMO:{k['shift_start_date']}:S{k['shift_number']}"
-        goal_id = reg.goal_id_for(k["team"], shift_id) if k["shift_start_date"] in {str(x) for x in reg.day_plan} else None
+        goal_id = reg.goal_id_for(k["team"], shift_id) if k["shift_start_date"] in {str(x) for x in reg.day_plans} else None
         stored = None if goal_id is None else history.current(services, scope, history.series_for_goal(services, goal_id))
         assert k["evaluation_id"] == (None if stored is None else stored.id), k
         assert k["evaluation_revision"] == (None if stored is None else stored.revision)

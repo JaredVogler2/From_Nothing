@@ -58,9 +58,9 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
 5. **Validate.** The independent validator checks each candidate from the snapshot, with every check required. Only a
    valid plan becomes the next incumbent. The floor works only a valid EXECUTABLE plan; when it is invalid, the floor
    gets no dispatch that shift.
-6. **Freeze the day's goals.** The first valid EXECUTABLE plan of a production day freezes that day's team-shift goals,
-   as `GoalRegistry` does in production. Later plans of the day are proposals: the floor works the latest one, while
-   the goals stay frozen.
+6. **Freeze the shift's goals.** Each shift is scored against the plan published for it, as `GoalRegistry` does in
+   production (D-26). The scheduler runs before every shift; its valid EXECUTABLE plan freezes that shift's team-shift
+   goals. If a shift's plan is invalid, the day's last valid plan stands in for it.
 7. **Publish.** Both plans' assignments, duties, aircraft completions, costs and exceptions are written to tables, with
    every commitment's defense outcome.
 8. **Execute.** A seeded shop-floor model works the EXECUTABLE assignments that start in the shift (see below). The
@@ -148,10 +148,10 @@ same function production uses (S14):
 - **Additions.** At the start of each shift the team's lead adds the rework found after the goals froze that the accepted
   plan assigns in the shift (basis `ASSIGNED_IN_ACCEPTED_PLAN`). The original units are never changed.
 - **Relief.** E is the effort of missed units relieved by approved claims, and D = B − E.
-- **Earned.** Cp is the planned or added effort finished, once. A frozen unit finished in an earlier shift of the day is
-  credited to its own goal.
-- **Offplan.** U is finished work that is no unit of the goal: pulled ahead, a deviation, or work a later plan dispatched
-  outside the day's goals.
+- **Earned.** Cp is the planned or added effort finished, once, in its own shift. Nothing is credited early: work an
+  earlier plan had put in a later shift counts as offplan output in the shift that did it. A unit already finished
+  before its shift started (only when an earlier plan stands in) is `DONE_BEFORE_SHIFT`: out of D with the relief.
+- **Offplan.** U is finished work that is no unit of this shift's goal: pulled ahead, or a deviation.
 - **Formula.** attainment A = min(1, Cp/D); adherence H = Cp/(Cp + U), so offplan work is discounted; score =
   100 × (0.70 A + 0.30 H) − 100 × O/D, where O is the once-only out-of-sequence charge. Grades are A 90+, B 80+, C 70+,
   D 60+ and F below.
@@ -199,7 +199,7 @@ The dashboard compares:
 | Method | `sim_shift`, `method_stage`, `method_move`, `method_check`, `method_violation`, `method_commitment` | Stage timings and notes, accepted moves, validator check counts and violations, the first 500 violations of each plan (check, code, entity, detail), each incumbent commitment's defense outcome (with the code of each UNSAFE one), stop reason, decision digest, each step's wall time and peak memory. |
 | Results | `plan_assignment`, `plan_duty`, `plan_aircraft`, `plan_exception` | Both purposes' published plans. |
 | Outcomes | `exec_assignment`, `exec_event`, `exec_offplan`, `exec_oos` | The floor's outcome for each dispatched assignment with its cause, source events, offplan work with its kind, and out-of-sequence starts with their evidence. |
-| Performance | `perf_goal_day`, `perf_unit`, `perf_unlock`, `perf_amendment`, `perf_claim`, `perf_team_shift` | Each day's frozen goals, every goal unit (frozen or added) with its status, cause and claim and whether its role needs a certificate group at most two of the frozen membership hold (`scarce`), the other jobs each earned unit's completion released as their last prerequisite (`perf_unlock`), the emergency additions, the claims with their decisions and reasons, and each team-shift's B0, additions, B, E, Cp, U, attainment, adherence, score and grade, scored by `status_and_score` with its parts kept: base before the out-of-sequence charge, the charge O, the clamped final, the policy id and hash, and why a goal is NEUTRAL (NO_PLAN or ALL_EXCUSED). Runs made before this change lack those last columns; the dashboard shows them as —. |
+| Performance | `perf_goal_day`, `perf_unit`, `perf_unlock`, `perf_amendment`, `perf_claim`, `perf_team_shift` | Each shift's frozen goals with the simulation shift whose plan froze them, every goal unit (frozen or added) with its status, cause and claim and whether its role needs a certificate group at most two of the frozen membership hold (`scarce`), the other jobs each earned unit's completion released as their last prerequisite (`perf_unlock`), the emergency additions, the claims with their decisions and reasons, and each team-shift's B0, additions, B, E, Cp, U, attainment, adherence, score and grade, scored by `status_and_score` with its parts kept: base before the out-of-sequence charge, the charge O, the clamped final, the policy id and hash, and why a goal is NEUTRAL (NO_PLAN or ALL_EXCUSED). Runs made before this change lack those last columns; the dashboard shows them as —. |
 
 ## Dashboard and API
 

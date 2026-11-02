@@ -649,7 +649,7 @@ def shiftbook(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
             evaluation = None if e is None else summary(e)
     reasons = list(canon.reasons)
     if goal is not None and goal["plan_id"] != canon.plan_id("EXECUTABLE"):
-        reasons.append(reason("GOAL_FROM_EARLIER_PLAN", "The goal of record was frozen by the day's first accepted plan; the current plan's goals are proposals."))
+        reasons.append(reason("GOAL_FROM_EARLIER_PLAN", "The goal of record is the plan accepted before this shift started; plans accepted since are proposals for it."))
     data = {"team": team, "date": day, "shift": shift, "shift_id": shift_id, "assignments": rows, "goal": goal, "evaluation": evaluation,
             "crew_count": len({c["person_id"] for r in rows for c in r["crew"] if c["person_id"]})}
     status = canon.base_status() if rows else "empty"
@@ -1001,6 +1001,7 @@ def _evidence_counts(proof: Any) -> dict[str, Any] | None:
     return {"units": len(proof.unit_facts), "earned": sum(1 for f in proof.unit_facts if f.status == "EARNED"),
             "missed": sum(1 for f in proof.unit_facts if f.status == "MISSED"), "unknown": sum(1 for f in proof.unit_facts if f.status == "UNKNOWN"),
             "pending": sum(1 for f in proof.unit_facts if f.status == "PENDING"), "relieved": sum(1 for f in proof.unit_facts if f.relief),
+            "done_before_shift": sum(1 for f in proof.unit_facts if f.status == "DONE_BEFORE_SHIFT"),
             "offplan": len(proof.offplan), "oos_charged": sum(1 for o in proof.oos if o.charged), "coverage": list(proof.coverage),
             "observation_run_id": proof.observation_run_id}
 

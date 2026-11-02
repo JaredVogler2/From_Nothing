@@ -50,8 +50,9 @@ attendance. A conditional ETA is never physical receipt.
 - **D-14 Hosting (user directive).** Posit Connect first, then VMware Tanzu. The WSGI entrypoint is `app:app`. URLs are prefix-safe (`request.script_root` plus a `<meta name="focus-base">` read by the JS). Identity providers: `fixture` (demo login, visibly labeled), `posit_connect` (trusted `RStudio-Connect-Credentials` header) and `trusted_header` (Tanzu SSO / oauth2-proxy header named by `FOCUS_TRUSTED_USER_HEADER`). Grants are always server-owned (`FOCUS_GRANTS_JSON`). Tanzu `$PORT` and `VCAP_SERVICES` are read only by `focus/config.py`.
 - **D-16 Performance semantics (P17/P18).** Recorded in `PERFORMANCE_POLICY.md`:
   - B0 comes from the first accepted executable plan of each obligation day; later replans only propose.
+    *Superseded by D-26:* each shift is scored against the plan accepted before it starts.
   - A completion credits its goal inside the shift window, then the authorized OT window, then early; otherwise it is
-    offplan U where it happened.
+    offplan U where it happened. *Superseded by D-26:* never early.
   - Bands apply to the displayed one-decimal score, rounded once after every sum.
   - Planned OOS work keeps its frozen XP: the OOS charge lives once, in O ("no second charge in bonus/XP").
   - Offplan output never earns XP.
@@ -220,6 +221,41 @@ attendance. A conditional ETA is never physical receipt.
     `--apply`, deletes. CI runs `detail_retention` with retention credentials, `allow_failure`.
   - **Live.** Migration 010 is the proposed storage (`FOCUS_FN_TeamShiftPerformance`, `FOCUS_FN_JobOutcome`,
     `FOCUS_FN_JobName`). It is a draft and has not been executed.
+- **D-26 Each shift is scored against its own plan (owner direction, November 2, 2026).**
+  - **The cycle.** The scheduler runs before every shift, three times a day, as a global optimization through
+    delivery. Each run accounts for the previous shift's completions, what it did not complete, and new constraints
+    such as rework and late parts, and sets the next shift's plan. Shift 1's performance compares shift 1's plan with
+    what was verified complete by the end of shift 1 and its authorized overtime.
+  - **Goals of record per shift** (`performance.lifecycle.GoalRegistry`). A team-shift's goal of record is the last
+    accepted EXECUTABLE plan covering the shift's day that was accepted at or before the shift starts. When none was
+    accepted before the start, the first accepted plan covering the day stands in. Plans accepted later are
+    proposals for that shift. Until this decision, the first accepted plan of a production day froze all three of the
+    day's shifts, so shifts 2 and 3 were scored against the morning plan while the floor worked the newer one.
+  - **Adherence is job identity, not timing.** A planned job not done in its shift is not adhered to there. If the next
+    run plans it again and the next shift does it, it counts in that shift. If the next run leaves it out and a team
+    does it anyway, it is offplan work. Start and finish times are never compared with the plan.
+  - **No early credit.** A completion before a goal's window earns nothing early. Each shift's plan is made after the
+    earlier shifts' work, so work done ahead of a later shift's plan is offplan output in the shift that did it.
+  - **Done before the shift.** The next plan is made while the previous shift is still finishing (cutoff lead and
+    overtime). A unit whose work was verified complete before its shift started is `DONE_BEFORE_SHIFT`. It stays in
+    B0, is taken out of D with the relief, is listed as excused with that cause in the job record, and is never earned
+    twice.
+  - **Amendments** are accepted once the shift has started, when its goal of record is fixed (`SHIFT_NOT_STARTED`
+    before that).
+  - **Run time.** Each shift's plan must be accepted before the shift starts, which is why the cycle's run time is
+    critical (D-22). The GitLab draft's signing step is a manual operator promotion. A plan promoted after its shift
+    starts is a proposal for that shift, and the previous plan stays its goal of record.
+  - **Simulation.** `focus.sim` freezes each shift's goals from that shift's valid plan. The day's last valid plan
+    stands in when a shift's own plan is invalid.
+  - **Measured** (10 aircraft, 12 shifts, the same floor behavior and seed, so the work done is identical; evidence
+    `PERSHIFT.json` in `docs/task-valuation-investigation/evidence/outputs/`):
+    - **No pull-ahead.** Plan-following work counted as offplan fell from 2,335 standard minutes to 0. Units missed
+      because a predecessor was unfinished fell from 16,800 to 635 minutes, since each plan now accounts for the
+      previous shift. The mean team-shift score rose from 98.6 to 99.8.
+    - **Heavy pull-ahead.** All pulled-ahead work is now offplan (80,302 minutes against 27,850), because none of it is
+      credited early to a later shift any more. Today's adherence term penalizes it more (mean 96.3 against 97.9),
+      so the offplan credit rule in `docs/task-valuation-investigation/09_OFFPLAN_CREDIT.md` matters more under
+      per-shift goals.
 
 ## Semantic gaps (live), each a precise readiness effect
 

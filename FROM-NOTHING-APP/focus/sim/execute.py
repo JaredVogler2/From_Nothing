@@ -2,12 +2,13 @@
 
 Synthetic outcomes, repeatable from the seed.
 
-**Goals of record.** As in ``performance.lifecycle.GoalRegistry``, the first accepted (valid) EXECUTABLE plan covering a
-production day freezes that day's team-shift goals. Its units are the assignments starting in each shift window, each
-worth the phase's standard person minutes at freezing. Later plans the same day are proposals: the floor works the
-latest one, but the goals stay frozen.
-- A frozen unit finished earlier in the day is credited to its own goal (early completion).
-- Work that is no frozen unit of the day is offplan output.
+**Goals of record, one plan per shift (D-26).** As in ``performance.lifecycle.GoalRegistry``, each shift is scored
+against the plan published for it: the scheduler runs before every shift, and a valid EXECUTABLE plan freezes the goals
+of its own shift. Its units are the assignments starting in the shift window, each worth the phase's standard person
+minutes at freezing. When a shift's plan is invalid, the last valid plan of the day stands in for it.
+- Work that is no frozen unit of this shift is offplan output, including work an earlier plan had put in a later shift.
+- A frozen unit already finished before its shift started (possible only when an earlier plan stands in) is
+  ``DONE_BEFORE_SHIFT``: out of D with the relief, never earned twice.
 - Completion is tracked per job, kind and frozen ordinal: once progress is written back, a job's remaining phases
   restart their ordinals.
 
@@ -139,7 +140,8 @@ class GoalUnit:
 
 @dataclass
 class DayGoals:
-    """One production day's goals of record and its progress so far (frozen keys are (job, kind, frozen ordinal))."""
+    """The goals in force for the rest of a production day, frozen by the latest valid plan, and the progress since
+    (frozen keys are (job, kind, frozen ordinal))."""
     day: date
     plan_id: str
     units: dict[tuple[str, int], list[GoalUnit]]
@@ -148,6 +150,7 @@ class DayGoals:
     done: dict[tuple[str, str, int], int] = field(default_factory=dict)        # frozen key -> completion minute
     progress: dict[tuple[str, str], int] = field(default_factory=dict)         # (job, kind) -> phases finished since freezing
     unlocked: dict[tuple[str, str, int], tuple[str, ...]] = field(default_factory=dict)  # frozen key -> jobs its completion released
+    shift_no: int = -1                                                         # the simulation shift whose plan froze them
 
 
 def scarce_role(ctx: Any, phase: Any, members: tuple[str, ...], start: int, end: int, held: dict[tuple, int]) -> bool:
@@ -169,8 +172,9 @@ def frozen_members(ctx: Any, team: str, shift: Any) -> tuple[str, ...]:
     return tuple(sorted(ctx.pool_members(pool.id))) if pool is not None else ()
 
 
-def freeze_day(plan: Any, ctx: Any, day: date, windows: Mapping[int, tuple[int, int]]) -> DayGoals:
-    """The day's goals of record from an accepted plan: its assignments in each remaining shift window of the day."""
+def freeze_day(plan: Any, ctx: Any, day: date, windows: Mapping[int, tuple[int, int]], shift_no: int = -1) -> DayGoals:
+    """Goals from an accepted plan: its assignments in each remaining shift window of the day. The first window's are the
+    shift's goals of record; the later ones stand in only if those shifts' own plans are invalid (D-26)."""
     units: dict[tuple[str, int], list[GoalUnit]] = defaultdict(list)
     members: dict[tuple[str, int], tuple[str, ...]] = {}
     held: dict[tuple, int] = {}
@@ -189,7 +193,7 @@ def freeze_day(plan: Any, ctx: Any, day: date, windows: Mapping[int, tuple[int, 
         units[(team, number)].append(GoalUnit(a.id, a.phase, a.job, phase.kind.value, phase.key.ordinal, a.line, team,
                                               phase.standard_person_minutes, start, tuple(c.person for c in a.crew), number,
                                               scarce=scarce_role(ctx, phase, members[(team, number)], w0, w1, held)))
-    goals = DayGoals(day, plan.id, dict(units), frozenset(ctx.jobs))
+    goals = DayGoals(day, plan.id, dict(units), frozenset(ctx.jobs), shift_no=shift_no)
     goals.keys = {(u.job, u.kind, u.ordinal) for us in goals.units.values() for u in us}
     return goals
 
@@ -568,7 +572,8 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
     # ---- each team's goal of record: excusal claims, reviewed decisions and the canonical score
     excusable = set(policy.seq("disruption.nominally_excusable"))
     rate = Fraction(policy.str("score.oos_rate"))
-    frozen = goals.keys if goals is not None else set()
+    frozen = ({(u.job, u.kind, u.ordinal) for (_, n), us in goals.units.items() if n == shift.number for u in us}
+              if goals is not None else set())                       # this shift's goals: a later shift's work is offplan now
     output: dict[str, list[tuple[str, int]]] = defaultdict(list)     # team -> offplan output (phase, effort) this shift
     for p in sorted(done_phase):
         node = phases.get(p)
@@ -645,6 +650,9 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         facts: dict[tuple[str, str, int], tuple[str, str | None, str | None, str | None, str | None]] = {}
         unexplained: list[tuple[str, str, int]] = []
         for key, u in by_key.items():
+            if u.origin != "AMENDMENT" and goals is not None and goals.done.get(key, s0) < s0:
+                facts[key] = ("DONE_BEFORE_SHIFT", None, None, None, None)     # finished before the shift: out of D with the relief
+                continue
             if (u.phase in done_phase) if u.origin == "AMENDMENT" else (goals is not None and key in goals.done):
                 facts[key] = ("EARNED", None, None, None, None)
                 unlock_rows.extend((shift_no, team, u.assignment_id, u.phase, u.line, job) for job in (goals.unlocked.get(key, ()) if goals else ()))
@@ -719,7 +727,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         B0 = sum(u.effort for u in mine if u.origin == "ORIGINAL")
         additions = sum(u.effort for u in mine if u.origin == "AMENDMENT")
         Cp = sum(u.effort for k, u in by_key.items() if facts[k][0] == "EARNED")
-        E = sum(by_key[k].effort for k in relieved)
+        E = sum(by_key[k].effort for k in relieved) + sum(by_key[k].effort for k, f in facts.items() if f[0] == "DONE_BEFORE_SHIFT")
         U = sum(e for _, e in output.get(team, ()))
         oos_effort = sum(by_key[k].effort for k in charged)
         parts = {"B0": Fraction(B0), "B": Fraction(B0 + additions), "E": Fraction(E), "Cp": Fraction(Cp), "U": Fraction(U), "O": rate * oos_effort,

@@ -75,7 +75,7 @@ appears at the next full solve. The drift check below measures the gap every day
 The performance side is unchanged:
 
 - frozen goals, the canonical score and excusals are computed the same way;
-- each production day's goals are still frozen from its first accepted executable plan;
+- each shift's goals are frozen from the plan accepted before it starts (D-26);
 - plan repair changes only how the next plan is made.
 
 ## When each mode runs

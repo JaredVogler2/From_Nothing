@@ -23,7 +23,7 @@ class UnitFact:
     team: str
     effort: int                         # frozen standard person minutes
     origin: str                         # ORIGINAL (B0) | AMENDMENT (approved feasible emergency addition)
-    status: str                         # EARNED | MISSED | UNKNOWN | PENDING
+    status: str                         # EARNED | MISSED | DONE_BEFORE_SHIFT | UNKNOWN | PENDING
     completed_at: datetime | None
     credit_event: str | None
     relief: bool                        # approved relief applies (MISSED units only, never earned ones)

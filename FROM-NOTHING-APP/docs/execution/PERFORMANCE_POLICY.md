@@ -28,11 +28,15 @@ how supplementary recognition is projected from it. The rules are implemented in
 
 ## Goals of record
 
-- For each obligation day, the first accepted EXECUTABLE plan (verified end to end, in acceptance
-  order) freezes B0 for every team-shift of that day. A team-shift with no frozen units has B0 = 0.
-- Later replans' goals for the same team-shift are proposals. Their new work counts only through
-  an approved, feasible `GoalAmendment`, which gives B = B0 + additions; original unit ids are
-  retained.
+- Each shift is scored against the plan published for it (D-26, owner direction, November 2, 2026). The
+  scheduler runs before every shift. A team-shift's goal of record is the last accepted EXECUTABLE plan
+  (verified end to end) covering the shift's day that was accepted at or before the shift starts. When none
+  was, the first accepted plan covering the day stands in. A team-shift with no frozen units has B0 = 0.
+- The other accepted plans' goals for the same team-shift are proposals. Their new work counts only through
+  an approved, feasible `GoalAmendment`, accepted once the shift has started, which gives B = B0 + additions;
+  original unit ids are retained.
+- A unit whose work was verified complete before its shift started (the previous shift finished it after the
+  plan was made) is `DONE_BEFORE_SHIFT`: it stays in B0, leaves D with the relief, and is never earned twice.
 
 ## Lifecycle and credit
 

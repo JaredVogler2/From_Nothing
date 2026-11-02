@@ -135,7 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--shift", required=True, help="shift id, e.g. DEMO:2026-10-26:S1")
     p.add_argument("--policy", required=True)
     p.add_argument("--team", default=None)
-    p.add_argument("--plan", default=None, help="optional: assert the obligation plan of record for the shift day")
+    p.add_argument("--plan", default=None, help="optional: assert the plan of record for the shift")
     p.add_argument("--as-of", default=None, help="RFC3339 as-known instant (default: the runtime clock)")
 
     p = sub.add_parser("scenario", help="isolated what-if scenario")

@@ -206,8 +206,8 @@ Measured columns are EXPERIMENT (two samples: R_H5 / H5). The rest is judgment.
 6. **Unscheduled work** (`09` §8):
    - the exchange rate *w* between scheduled and additive unscheduled minutes (demo 0.70; 0.80 suggested);
    - whether approved additions are obligations or pre-classified extra output;
-   - "plan change" relief for frozen work the latest plan moved out;
    - re-derived bands.
+   - *Decided and implemented:* each shift is scored against the plan accepted before it starts (D-26). That removes the need for "plan change" relief.
 
 ## J. Source and evidence index
 

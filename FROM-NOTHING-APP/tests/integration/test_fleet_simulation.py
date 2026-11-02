@@ -278,9 +278,15 @@ def test_only_verified_excusable_causes_relieve_a_team(sims, app_root) -> None:
         person, day, number = evidence.split(":")[1:4]
         assert _all(first, f"SELECT COUNT(*) FROM src_attendance_shift WHERE BEMS_ID = '{person}' AND PRODUCTION_DAY = '{day}' "
                            f"AND SHIFT_NUMBER = {number[1:]} AND SOURCE = 'SIM_LATE_CALLOFF'")[0][0] >= 1
-    # no unit is earned twice: within a production day each phase is EARNED in one shift's goal at most
-    assert not _all(first, "SELECT u.phase FROM perf_unit u JOIN sim_shift s ON s.shift_no = u.shift_no WHERE u.status = 'EARNED' "
-                           "GROUP BY s.production_day, u.phase HAVING COUNT(DISTINCT u.shift_no) > 1")
+    # no unit is earned twice: each shift's goal is frozen from its own plan (D-26), so an earned original unit is an
+    # assignment of that shift's plan that the floor completed in that shift (finished work is written back, and phase
+    # ordinals restart, so the next shift's plan never holds it again)
+    assert not _all(first, "SELECT u.shift_no, u.assignment_id FROM perf_unit u WHERE u.status = 'EARNED' AND u.origin = 'ORIGINAL' "
+                           "AND NOT EXISTS (SELECT 1 FROM exec_assignment a WHERE a.shift_no = u.shift_no AND a.assignment_id = u.assignment_id "
+                           "AND a.outcome = 'completed')")
+    # and every frozen goal is the shift's own plan: a valid plan freezes the goals of the shift it was made for
+    assert not _all(first, "SELECT g.frozen_shift_no, s.shift_no FROM perf_goal_day g JOIN sim_shift s ON s.production_day = g.production_day "
+                           "AND s.shift_number = g.shift_number WHERE s.valid = 1 AND g.frozen_shift_no != s.shift_no")
 
 
 def test_recognition_is_the_frozen_value_of_earned_goal_units(sims, app_root) -> None:

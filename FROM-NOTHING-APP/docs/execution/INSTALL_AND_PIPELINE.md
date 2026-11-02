@@ -180,6 +180,14 @@ compact job record (D-25). That is what the period rollups and the job patterns 
 (`GET /api/v1/performance/rollup` and `/performance/jobs`), so no further pipeline step is needed. A store from before
 D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator role).
 
+- **One pipeline before every shift (D-26).** The scheduler runs three times a day, before each shift. Each shift is
+  scored against the executable plan accepted before it starts, so `sign_accept` must finish before the shift begins.
+  In the GitLab draft that step is a manual operator promotion. A plan promoted after its shift starts is only a
+  proposal for that shift: the previous plan stays its goal of record, and the late plan becomes the next shift's.
+  `observe_evaluate` scores a shift once its overtime window has closed. The run before shift 2 starts while shift 1
+  is still finishing, so shift 1's final score comes from the next run, or from an evaluator-only run scheduled right
+  after shift 1's overtime window.
+
 - **Executable first.** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only the executable plan, the one
   crews are dispatched on. `forecast` needs the accepted executable plan, so each role's first run stops before the
   forecast and the shift's dispatch never waits for it. The forecast (delivery dates, days late and penalties for every

@@ -215,6 +215,6 @@ def test_registries_match(world) -> None:
     root, services = world
     canons(services)
     old, new = R.registry(services), S.registry(services)
-    for field in ("day_plan", "plan_snapshot", "records", "goals", "unit_start", "unit_end", "unit_crew", "plan_knowledge", "committed_units",
+    for field in ("day_plans", "plan_snapshot", "records", "goals", "unit_start", "unit_end", "unit_crew", "plan_knowledge", "committed_units",
                   "rejected"):
         assert getattr(old, field) == getattr(new, field), field

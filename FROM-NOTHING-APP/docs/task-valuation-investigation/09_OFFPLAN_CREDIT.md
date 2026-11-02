@@ -234,7 +234,11 @@ Two production-feasible rules, tested against the simulation's ground truth on t
 **Owner direction (2026-11-02):** "A planned job in shift 1 which isn't done in shift 1 is not adhered to. At the end of shift 1, a new scheduler runs to set shift 2 plan. That job should appear or may not appear in shift 2 plan due to constraints."
 - **Each shift is measured against the plan published for it.** That plan comes from the run at the end of the previous shift (the D-22 shift cycle).
 - **Today goals freeze per production day, not per shift.** The first accepted EXECUTABLE plan covering a day freezes every team-shift goal of that day (`lifecycle.py:166-185`; `goals.obligation_days` = 1, `serializer.py:72-76`). Later plans that day are stored only as proposals (`later_goal_ids`). The floor works the latest plan, but shifts 2 and 3 are scored against the morning plan. The simulation mirrors this (`execute.py:5-12`, `freeze_day`).
-- **To follow the owner's model, goals of record must freeze per shift:** from the last accepted EXECUTABLE plan whose cutoff precedes that shift's start. If that run fails, fall back to the latest accepted plan covering the shift.
+- **To follow the owner's model, goals of record must freeze per shift:** from the last accepted EXECUTABLE plan accepted at or before that shift's start. If that run fails, fall back to the latest accepted plan covering the shift. **Implemented as D-26** (`docs/execution/DECISIONS.md`) in `GoalRegistry`, the score, amendments, the twin, rollups and the simulation, with tests.
+- **Measured after implementation** (`PERSHIFT.json`; same floor behavior and seed, identical work):
+  - With no pull-ahead, offplan U fell from 2,335 to 0 standard minutes and predecessor-blocked misses from 16,800 to 635.
+  - With heavy pull-ahead, all pulled-ahead work is offplan (80,302 minutes, against 27,850 when later shifts' frozen units took early credit). Today's *H* penalty grows accordingly (mean 96.3 against 97.9), and R5 scores the same floor 99.9.
+  - **Per-shift goals make the off-plan rule (§8) more important, not less.**
 - **Consequences under per-shift freezing:**
   - A job missed in shift 1 is not adhered to in shift 1, unless excused.
   - If the new run places it in shift 2 and it is done there, it is adhered to in shift 2. If the new run leaves it out and the team does it anyway, it is off-plan in shift 2: output credit, not adherence.
@@ -264,7 +268,7 @@ Two production-feasible rules, tested against the simulation's ground truth on t
 - **Bands** for a score without free adherence points.
 - **Grade cap.** Extra output shows in the output index and points, not above 100.
 - **Approved additions:** obligation or pre-classified additive output.
-- **Approval to implement** the per-shift freeze, R5 and the simulation changes that measure them. Nothing has been implemented.
+- **Approval to implement R5** (the off-plan credit rule). The per-shift goals of record were implemented on the owner's direction (D-26); R5 has not been.
 
 **Not recommended:**
 - flat credit without classification: an equal swap is free at δ = 1;

@@ -196,3 +196,16 @@ def test_a61_unit_values_use_the_frozen_context(policy) -> None:
     frozen = gate_context(policy, gate, gate + timedelta(days=5), 100, basis="ACTUAL_CS_GATE")
     assert unit_values(frozen, 50, policy) == (10, 10 * Fraction(35, 100))
     assert unit_values(gate_context(policy, None, gate, 100), 50, policy) == (10, 0)           # unavailable gate: base only
+
+
+def test_done_before_shift_is_out_of_d_and_never_earned(policy) -> None:
+    """D-26: a unit the previous shift finished after this shift's plan was made stays in B0, leaves D with the relief."""
+    rows = facts(200, 100, 0)
+    rows[-5:] = [unit(90 + i, 10, "DONE_BEFORE_SHIFT") for i in range(5)]                   # 50 of the 100 missed minutes were done before
+    parts = components(rows, [], [], policy)
+    assert (parts["B0"], parts["E"], parts["Cp"]) == (200, 50, 100)
+    status, result, reasons = status_and_score(parts, policy, [])
+    assert not reasons and result["D"] == 150 and result["attainment"] == Fraction(100, 150)
+    done = components([unit(i, 10, "DONE_BEFORE_SHIFT") for i in range(3)], [], [], policy)
+    status, _, why = status_and_score(done, policy, [])
+    assert status is EvaluationStatus.NEUTRAL and why[0].startswith("ALL_EXCUSED")         # nothing was left to do: no score

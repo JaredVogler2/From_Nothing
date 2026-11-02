@@ -113,7 +113,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
     rework_minutes = sorted({int(r["ELAPSED_MINUTES"]) for r in state.all("duration_episodes")})
     rework_rate = spec.fleet.rework_total / (5 * spec.fleet.stay_days * 3)
     incumbent = None
-    day_goals: DayGoals | None = None                            # goals of record: frozen by the day's first accepted plan
+    day_goals: DayGoals | None = None                            # goals in force: each shift's own valid plan freezes them (D-26)
     summary: list[dict[str, Any]] = []
     for k in range(min(spec.days * 3, spec.shifts or spec.days * 3)):
         day = first_day + timedelta(days=k // 3)
@@ -178,11 +178,14 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         floor_plan = dispatch if dispatch.run.validation.valid else replace(dispatch, plan=replace(dispatch.plan, assignments=()))
         if day_goals is not None and day_goals.day != day:
             day_goals = None
-        if day_goals is None and dispatch.run.validation.valid:
+        if dispatch.run.validation.valid:
+            # each shift is scored against the plan published for it (D-26): a valid plan freezes this shift's goals; its
+            # later windows stand in for the day's next shifts only if their own plans are invalid
             windows = {n: (w.start, w.end) for n in range(number, 4) for w in [build_shift(day, n, shift_policy, settings.site)]}
-            day_goals = freeze_day(dispatch.plan, dispatch.context, day, windows)
-            db.insert("perf_goal_day", [(k, day.isoformat(), dispatch.plan.id, team, n, len(us), sum(u.effort for u in us))
-                                        for (team, n), us in sorted(day_goals.units.items())])
+            day_goals = freeze_day(dispatch.plan, dispatch.context, day, windows, shift_no=k)
+        if day_goals is not None:
+            db.insert("perf_goal_day", [(day_goals.shift_no, day.isoformat(), day_goals.plan_id, team, n, len(us), sum(u.effort for u in us))
+                                        for (team, n), us in sorted(day_goals.units.items()) if n == number])
         outcome = execute_shift(state, floor_plan, shift, shift_no=k, week=week, rng=rng, spec=spec.floor, rework_rate=rework_rate,
                                 rework_minutes=rework_minutes, cert_of_team=cert_of_team, tz=tz, policy=services.policy, goals=day_goals)
         timings["execute_s"] = time.time() - t
