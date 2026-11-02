@@ -16,7 +16,7 @@
 #   * `resource_group` serializes pipelines per scope, so two pipelines never race one scope's heads.
 #   * Artifacts carry receipts only: no secrets and no source rows.
 #   * Live jobs share state through the installed FOCUS_FN pipeline tables (migration 002). Until an authorized installer
-#     applies 001-009 (docs/execution/INSTALL_AND_PIPELINE.md), they stop with typed UNAVAILABLE results.
+#     applies 001-010 (docs/execution/INSTALL_AND_PIPELINE.md), they stop with typed UNAVAILABLE results.
 #   * The fixture rehearsal of the whole order runs inside the verify stage, without SQL or GitLab services.
 
 workflow:
@@ -88,6 +88,7 @@ fixture_pipeline_rehearsal:
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role all --budget-seconds 10 --max-moves 10 > ci-receipts/fixture-pipeline.json
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --status > ci-receipts/fixture-pipeline-status.json
     - python -m focus.cli display-retention --apply > ci-receipts/fixture-display-retention.json
+    - python -m focus.cli performance-details --apply > ci-receipts/fixture-performance-details.json
   artifacts:
     when: always
     expire_in: 30 days
@@ -119,6 +120,17 @@ display_retention:
   environment: { name: focus-retention }            # retention credentials only: deletes display parts and nothing else
   script:
     - mkdir -p ci-receipts && python -m focus.cli display-retention --apply > ci-receipts/display-retention.json
+
+# Per-job score evidence older than the owner's 90 days goes (D-25); every score, its six components and the light
+# per-team-shift rows the period rollups read stay. Housekeeping too: it never holds back the shift's plan.
+detail_retention:
+  extends: .live
+  stage: retain
+  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel]
+  allow_failure: true
+  environment: { name: focus-retention }            # retention credentials only: deletes old per-job evidence and nothing else
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli performance-details --keep-days 90 --apply > ci-receipts/performance-details.json
 
 acquire_admit:
   extends: .live

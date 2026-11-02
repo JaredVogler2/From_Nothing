@@ -315,6 +315,103 @@ def get_performance_history(ctx: RequestContext, args: dict[str, Any]) -> ApiRes
     return _read(lambda services: S.performance_history(services, ctx, team=args.get("team")))
 
 
+ROLLUP_LEVEL = {"type": "string", "enum": ["team", "superintendent", "business_unit"],
+                "description": "team, superintendent or business_unit (default business_unit)."}
+ROLLUP_NODE = {"type": "string", "pattern": r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$",
+               "description": "The team or superintendent id (the business unit is the scope)."}
+ROLLUP_PERIOD = {"type": "string", "enum": ["shift", "day", "week", "rolling30", "month", "quarter", "year", "custom"],
+                 "description": "The period around date (default day); custom uses from and to."}
+ROLLUP_BY = {"type": "string", "enum": ["none", "shift", "day", "week", "month", "quarter"], "description": "Breakdown within the period."}
+DAY_FROM = {"type": "string", "format": "date", "description": "First production day of a custom period, YYYY-MM-DD."}
+DAY_TO = {"type": "string", "format": "date", "description": "Last production day of a custom period, YYYY-MM-DD."}
+TARGET = {"type": "number", "minimum": 0, "maximum": 100, "description": "Score a team counts as on target at (default 80)."}
+
+
+@REGISTRY.operation(
+    "get_performance_rollup", "GET", "/api/v1/performance/rollup",
+    summary="Canonical performance of a team, a superintendent or the business unit over any period",
+    description="Sums the six canonical components (B0/B/E/Cp/U/O) of every team-shift of the group in the period, then applies the one "
+                "formula: a shift, day, ISO week, rolling 30 days, month, quarter, year or custom dates. The official score is unknown while "
+                "any team-shift has no score; a labeled partial score covers the scored ones. Superintendents come from the org chart as of "
+                "each shift. A superintendent or the business unit also shows each team's score, how many are on target, the lowest and "
+                "highest, and a breakdown by period. Every team of the group must be in your scope.",
+    grants=PERFORMANCE_READERS, read_only=True,
+    query=_query(level=ROLLUP_LEVEL, node=ROLLUP_NODE, period=ROLLUP_PERIOD, date=DAY, shift=SHIFT_NUMBER, by=ROLLUP_BY, target=TARGET,
+                 **{"from": DAY_FROM, "to": DAY_TO}),
+    tags=("performance",),
+)
+def get_performance_rollup(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from decimal import Decimal, InvalidOperation
+
+    from ..performance.rollup import BREAKDOWNS, DEFAULT_TARGET, LEVELS, PERIODS
+
+    level, period, by = args.get("level", "business_unit"), args.get("period", "day"), args.get("by", "none")
+    for name, value, allowed in (("level", level, LEVELS), ("period", period, PERIODS), ("by", by, BREAKDOWNS)):
+        if value not in allowed:
+            raise ApiError(400, "INVALID_PARAMETER", f"{name} must be one of {', '.join(allowed)}")
+    node = args.get("node")
+    if level == "team" and node is not None:
+        S.require_team(ctx, node)                                              # scope before fetch
+    elif level == "team" and not ctx.scope.all_teams and len(ctx.scope.teams) == 1:
+        node = next(iter(ctx.scope.teams))
+    try:
+        target = Decimal(str(args["target"])) if "target" in args else DEFAULT_TARGET
+        shift = int(args["shift"]) if "shift" in args else None
+    except (InvalidOperation, ValueError):
+        raise ApiError(400, "INVALID_PARAMETER", "target must be a number and shift 1, 2 or 3") from None
+    if not (0 <= target <= 100) or (shift is not None and shift not in (1, 2, 3)):
+        raise ApiError(400, "INVALID_PARAMETER", "target must be 0 to 100 and shift 1, 2 or 3")
+    day, start, end = S.parse_day(args.get("date")), S.parse_day(args.get("from")), S.parse_day(args.get("to"))
+    return _read(lambda services: S.performance_rollup(services, ctx, level=level, node=node, period=period, day=day, start=start, end=end,
+                                                       shift=shift, by=by, target=target))
+
+
+JOB_GROUP = {"type": "string", "enum": ["job", "job_aircraft"],
+             "description": "job: one row per shop order id across aircraft (default); job_aircraft: one row per job per aircraft."}
+JOB_OUTCOME = {"type": "string", "enum": ["all", "done", "missed", "excused", "open", "unplanned", "out_of_sequence", "no_plan"],
+               "description": "Only jobs with this outcome (default all)."}
+JOB_LIMIT = {"type": "integer", "minimum": 1, "maximum": 500, "description": "Rows (default 50, max 500), worst first."}
+
+
+@REGISTRY.operation(
+    "get_performance_jobs", "GET", "/api/v1/performance/jobs",
+    summary="The jobs behind a team's, a superintendent's or the business unit's score, and their patterns across aircraft",
+    description="For any group and period (as /performance/rollup): every planned job by shop order id with how often, on how many "
+                "aircraft and for how many minutes it was done as planned, missed, excused (with the claim causes), still open or done out "
+                "of sequence, and every unplanned job done instead (it earns nothing and lowers adherence). Answers 'adherence was 60%: "
+                "which jobs were done as planned and which were not' (level=team, period=shift, group=job_aircraft) and 'which jobs miss "
+                "aircraft after aircraft'. Every team of the group must be in your scope.",
+    grants=PERFORMANCE_READERS, read_only=True,
+    query=_query(level=ROLLUP_LEVEL, node=ROLLUP_NODE, period=ROLLUP_PERIOD, date=DAY, shift=SHIFT_NUMBER, group=JOB_GROUP, outcome=JOB_OUTCOME,
+                 limit=JOB_LIMIT, **{"from": DAY_FROM, "to": DAY_TO}),
+    tags=("performance",),
+)
+def get_performance_jobs(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
+    from ..performance.rollup import GROUPINGS, LEVELS, OUTCOMES, PERIODS
+
+    level, period = args.get("level", "business_unit"), args.get("period", "day")
+    group, outcome = args.get("group", "job"), args.get("outcome", "all")
+    for name, value, allowed in (("level", level, LEVELS), ("period", period, PERIODS), ("group", group, GROUPINGS),
+                                 ("outcome", outcome, ("all",) + OUTCOMES)):
+        if value not in allowed:
+            raise ApiError(400, "INVALID_PARAMETER", f"{name} must be one of {', '.join(allowed)}")
+    node = args.get("node")
+    if level == "team" and node is not None:
+        S.require_team(ctx, node)                                              # scope before fetch
+    elif level == "team" and not ctx.scope.all_teams and len(ctx.scope.teams) == 1:
+        node = next(iter(ctx.scope.teams))
+    try:
+        shift = int(args["shift"]) if "shift" in args else None
+        limit = int(args.get("limit", 50))
+    except ValueError:
+        raise ApiError(400, "INVALID_PARAMETER", "shift must be 1, 2 or 3 and limit a number") from None
+    if (shift is not None and shift not in (1, 2, 3)) or not (1 <= limit <= 500):
+        raise ApiError(400, "INVALID_PARAMETER", "shift must be 1, 2 or 3 and limit 1 to 500")
+    day, start, end = S.parse_day(args.get("date")), S.parse_day(args.get("from")), S.parse_day(args.get("to"))
+    return _read(lambda services: S.performance_jobs(services, ctx, level=level, node=node, period=period, day=day, start=start, end=end,
+                                                     shift=shift, group=group, outcome=outcome, limit=limit))
+
+
 @REGISTRY.operation(
     "get_recognition", "GET", "/api/v1/recognition",
     summary="Recognition events with frozen value, gate context and earning lineage",

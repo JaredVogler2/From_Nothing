@@ -58,6 +58,7 @@ class SnapshotBuild:
     snapshot: PlanningSnapshot
     statistics: list[DurationStatistics]
     notes: list[str] = field(default_factory=list)
+    org_chart: Any = None                      # data.org.OrgChart: each team's superintendent over time (stored beside the snapshot)
 
 
 def _zone(tzp: TimezonePolicy, dataset: str) -> ZoneInfo | None:
@@ -290,4 +291,6 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
         incumbent_id=incumbent_id,
         hash="",
     )
-    return SnapshotBuild(seal_snapshot(snapshot), stats, notes)
+    from .org import build_org_chart
+
+    return SnapshotBuild(seal_snapshot(snapshot), stats, notes, build_org_chart(wf.org_rows, source_run_id=run_id, scope=scope_key))

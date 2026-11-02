@@ -68,6 +68,7 @@ P23 consolidated these into the versioned set:
 | `007_publication.sql` | Publication |
 | `008_lifecycle.sql` | Lifecycle |
 | `009_evaluation.sql` | Evaluation |
+| `010_performance_rollup.sql` | Light per-team-shift performance rows and the compact job record (D-25) |
 
 - Every version has a generated rollback in `sql/migrations/rollback/`.
 - Roles and grants are in `sql/grants/focus_fn_roles.sql`.
@@ -91,6 +92,7 @@ The statements of 003-009 are unchanged from the reviewed drafts below.
 | `queries/actuals/*.sql` | P17 | Read-only feed readers (lifecycle events, actual intervals, defect evidence, amendments, claims, decisions, producer receipts) with the exact `FEEDS` projections and one as-of parameter |
 | `sql/migrations/008_lifecycle.sql` | P17 | Producer landing tables and receipts; FOCUS_FN_Event clock checks; typed append-only ActualInterval, DefectEvidence, GoalAmendment, DisruptionClaim (cause/status checks, notes rule), SequenceViolation, ObservationRun/FeedReceipt/Quarantine, IEReview; ExcusalDecision track/exception columns; immutability triggers; RecordAmendment (zero-minute goal row for B0 = 0) |
 | `sql/migrations/009_evaluation.sql` | P18 | Evaluation series columns and null-score checks; EvaluationEvidence; EvaluationHead (optimistic version); RecognitionEvent and BadgeAward chains (dedupe, positive values except corrections); immutability triggers; AppendEvaluation (applock, unchanged evidence is a no-op); CurrentEvaluation and TeamXp views |
+| `sql/migrations/010_performance_rollup.sql` | D-25 | TeamShiftPerformance (one row per scope, team and shift: exact components payload, display decimals, superintendent fixed at first write, current evaluation; day and superintendent indexes); JobOutcome (append-only, keyed by evaluation and sequence: shop order id or job key, aircraft, phase, minutes, outcome check including `no_plan`, out of sequence, causes, origin; day and shop-order indexes); JobName (one description per shop order id). Nothing computes a score in SQL |
 
 All of them are consolidated into the versioned migration set (P23). Installing them requires an authorized
 installer session (`migrate --apply --catalog live --installer ... --confirm-manifest ...`). None was executed against

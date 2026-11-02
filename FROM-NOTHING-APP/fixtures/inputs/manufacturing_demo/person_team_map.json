@@ -3,6 +3,7 @@
   "BEMS_ID",
   "ROLE",
   "TEAM",
+  "SUPERINTENDENT",
   "IN_SCOPE",
   "BASIS",
   "EFFECTIVE_FROM",
@@ -33,6 +34,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -46,6 +48,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -59,6 +62,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -72,6 +76,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -85,6 +90,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -98,6 +104,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -111,6 +118,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -124,6 +132,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -137,6 +146,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -150,6 +160,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -163,6 +174,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -176,6 +188,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -189,6 +202,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -202,6 +216,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -215,6 +230,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -228,6 +244,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -241,6 +258,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -254,6 +272,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -267,6 +286,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -280,6 +300,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-A"
   },
   {
@@ -293,6 +314,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -306,6 +328,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -319,6 +342,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -332,6 +356,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -345,6 +370,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -358,6 +384,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -371,6 +398,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -384,6 +412,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -397,6 +426,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -410,6 +440,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -423,6 +454,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -436,6 +468,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "MECH",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-PROD",
    "TEAM": "PROD-B"
   },
   {
@@ -449,6 +482,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -462,6 +496,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -475,6 +510,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -488,6 +524,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -501,6 +538,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -514,6 +552,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -527,6 +566,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -540,6 +580,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -553,6 +594,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   },
   {
@@ -566,6 +608,7 @@
    "LOOKBACK_DAYS": 30,
    "ROLE": "QA",
    "RUN_ID": "FIXTURE-ASSIGN-01",
+   "SUPERINTENDENT": "DEMO-SUPT-QA",
    "TEAM": "QA"
   }
  ],

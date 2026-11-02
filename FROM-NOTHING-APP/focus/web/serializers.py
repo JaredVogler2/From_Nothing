@@ -1077,6 +1077,10 @@ def performance(services: Any, ctx: RequestContext, *, shift_id: str | None, tea
             pooled = summary(agg) | {"members": sorted(m.id for m in members), "persisted": False}
             reasons.append(reason("AGGREGATE_NOT_STORED", "The pooled view sums the persisted member revisions exactly with the canonical formula; "
                                   "no stored aggregate matches this member set."))
+    expired = sum(1 for _, e, proof in found if e is not None and proof is None)
+    if expired:
+        reasons.append(reason("DETAILS_EXPIRED", f"The per-job details of {expired} evaluated goal(s) are past the retention period; their "
+                              "scores and components are kept."))
     if not records:
         reasons.append(reason("NO_GOALS_IN_SCOPE", "No frozen goal of record in your scope for this selection."))
     elif not members:
@@ -1104,6 +1108,94 @@ def performance_history(services: Any, ctx: RequestContext, *, team: str | None)
                            "revisions": [summary(e) for e in revs]})
     return Projection("ready" if series else "empty", {"series": series, "note": "revisions append; a correction never rewrites an earlier revision"},
                       [] if series else [reason("NO_HISTORY", "No evaluation history in your scope.")])
+
+
+def performance_rollup(services: Any, ctx: RequestContext, *, level: str, node: str | None, period: str, day: date | None,
+                       start: date | None, end: date | None, shift: int | None, by: str, target: Any) -> Projection:
+    """A team's, a superintendent's or the business unit's canonical performance over any period (``performance.rollup``).
+
+    The caller's team scope bounds it: a team outside it is refused before any read, and a superintendent or the business
+    unit only when every team in it over the period is within it."""
+    from zoneinfo import ZoneInfo
+
+    from ..performance import rollup as R
+
+    if not services.repositories.available:
+        return Projection("blocked", None, [reason("REPOSITORY_UNAVAILABLE", "No repository is configured.")])
+    anchor = day or R.latest_day(services) or services.clock.now().astimezone(ZoneInfo(services.policy.str("shift.timezone"))).date()
+    try:
+        first, last = R.period_range(period, anchor, start, end)
+        rows = R.rows_between(services, first, last)
+        number = None
+        if period == "shift":
+            number = shift if shift is not None else max((r["shift_number"] for r in rows), default=1)
+        choices = R.choices_of(services, [r for r in rows if number is None or r["shift_number"] == number], ctx.scope.allows_team)
+        if node is None and level in ("team", "superintendent"):                 # the first group the caller may open
+            options = choices["teams" if level == "team" else "superintendents"]
+            node = options[0] if options else None
+        if node is None and level != "business_unit":
+            return Projection("empty", {"level": level, "node": None, "choices": choices, "team_shifts": 0, "unscored": 0, "official": None,
+                                        "partial": None, "children": [], "series": [], "spread": None, "attribution_notes": [], "teams": [],
+                                        "by": by, "period": {"start": first.isoformat(), "end": last.isoformat(), "shift_number": number,
+                                                             "kind": period, "anchor": anchor.isoformat()}},
+                              [reason("NO_EVALUATED_SHIFTS", f"No {level} in your scope has an evaluated team-shift in this period.")])
+        data = R.rollup(services, level=level, node=node, start=first, end=last, shift_number=number, by=by, target=target,
+                        allowed=ctx.scope.allows_team, all_rows=rows)
+    except R.RollupError as exc:
+        if exc.code == "OUT_OF_SCOPE":
+            raise ApiError(403, "OUT_OF_SCOPE", exc.message) from None
+        raise ApiError(400, exc.code, exc.message) from None
+    data["period"] = {**data["period"], "kind": period, "anchor": anchor.isoformat()}
+    reasons: list[dict[str, Any]] = []
+    if not data["team_shifts"]:
+        reasons.append(reason("NO_EVALUATED_SHIFTS", "No team-shift of this group has been evaluated in this period.",
+                              "Pick another period, or evaluate closed shifts (python -m focus.cli evaluate)."))
+    if data["unscored"]:
+        reasons.append(reason("SHIFTS_NOT_SCORED", f"{data['unscored']} of {data['team_shifts']} team-shifts have no score yet, so the official "
+                              "score is unknown; the partial score covers the scored ones and is not official."))
+    for note in data["attribution_notes"]:
+        reasons.append(reason("ORG_CHART_NOTE", f"{note['team']}: {note['note']}", "Fix the superintendent in FOCUS_PERSON_TEAM_MAP."))
+    status = "ready" if data["team_shifts"] else "empty"
+    return Projection(status, {**data, "note": "sums the six canonical components of every team-shift before the one formula; teams count in "
+                                               "proportion to their planned work"}, reasons)
+
+
+def performance_jobs(services: Any, ctx: RequestContext, *, level: str, node: str | None, period: str, day: date | None, start: date | None,
+                     end: date | None, shift: int | None, group: str, outcome: str, limit: int) -> Projection:
+    """The jobs behind a group's score over a period, by shop order id across aircraft (``performance.rollup.job_patterns``)."""
+    from zoneinfo import ZoneInfo
+
+    from ..performance import rollup as R
+
+    if not services.repositories.available:
+        return Projection("blocked", None, [reason("REPOSITORY_UNAVAILABLE", "No repository is configured.")])
+    anchor = day or R.latest_day(services) or services.clock.now().astimezone(ZoneInfo(services.policy.str("shift.timezone"))).date()
+    try:
+        first, last = R.period_range(period, anchor, start, end)
+        records, names = R.job_records_between(services, first, last)
+        number = None
+        if period == "shift":
+            number = shift if shift is not None else max((r["shift_number"] for r in records), default=1)
+        in_shift = [r for r in records if number is None or r["shift_number"] == number]
+        choices = R.choices_of(services, in_shift, ctx.scope.allows_team)
+        if node is None and level in ("team", "superintendent"):
+            options = choices["teams" if level == "team" else "superintendents"]
+            node = options[0] if options else None
+        if node is None and level != "business_unit":
+            return Projection("empty", {"level": level, "node": None, "choices": choices, "jobs": [], "team_shifts": 0},
+                              [reason("NO_JOB_RECORDS", f"No {level} in your scope has a job record in this period.")])
+        data = R.job_patterns(services, level=level, node=node, start=first, end=last, shift_number=number, group=group, outcome=outcome,
+                              limit=limit, allowed=ctx.scope.allows_team, records_names=(records, names))
+    except R.RollupError as exc:
+        if exc.code == "OUT_OF_SCOPE":
+            raise ApiError(403, "OUT_OF_SCOPE", exc.message) from None
+        raise ApiError(400, exc.code, exc.message) from None
+    data["period"] = {**data["period"], "kind": period, "anchor": anchor.isoformat()}
+    reasons = [] if data["team_shifts"] else [reason("NO_JOB_RECORDS", "No team-shift of this group has a job record in this period.")]
+    return Projection("ready" if data["team_shifts"] else "empty",
+                      {**data, "note": "planned jobs are done, missed, excused (with claim causes), open or done out of sequence; unplanned "
+                                       "jobs earn nothing and lower adherence; no_plan is work on a team-shift no plan covered, which "
+                                       "its neutral score leaves out; sorted by missed, unplanned and out-of-sequence minutes"}, reasons)
 
 
 def recognition(services: Any, ctx: RequestContext, *, team: str | None) -> Projection:

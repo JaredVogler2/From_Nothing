@@ -136,7 +136,7 @@ are preserved in every case.
 
 | Gate | Action | Owner |
 | --- | --- | --- |
-| LG-01 | Collision probe, then confirmed installer session for 001-009 | DBA |
+| LG-01 | Collision probe, then confirmed installer session for 001-010 | DBA |
 | LG-02 | Live repository adapter over the FOCUS_FN tables, verified on non-production | Engineering |
 | LG-03 | Apply grants and map one login per process | DBA |
 | LG-04 | Provision the signing key in the signer environment only | Security owner |

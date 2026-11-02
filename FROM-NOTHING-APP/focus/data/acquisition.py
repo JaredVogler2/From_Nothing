@@ -228,6 +228,7 @@ def acquire(services: Any, reader: Any, *, cutoff: datetime, idempotency_key: st
         snapshot = build.snapshot
         repos.put_record(MANIFESTS, "SourceManifest", run.id, manifest, source_run_id=run.id, policy_hash=policy.hash)
         repos.put_record(SNAPSHOTS, "PlanningSnapshot", snapshot.id, snapshot, source_run_id=run.id, policy_hash=policy.hash)
+        _put_org_chart(repos, build.org_chart, run.id, snapshot.created_at, policy.hash)
         _remember(repos, snapshot)
         for stat in build.statistics:
             repos.put_record("statistics", "DurationStatistics", stat.id, stat, source_run_id=run.id, policy_hash=policy.hash)
@@ -246,6 +247,14 @@ def write_snapshot_display(repos: Any, snapshot: PlanningSnapshot) -> Any:
     from ..display.store import write_snapshot_display as write
 
     return write(repos, snapshot)
+
+
+def _put_org_chart(repos: Any, chart: Any, run_id: str, created_at: datetime, policy_hash: str) -> None:
+    """The run's org chart (``data.org``): each team's superintendent over time, written once beside the snapshot."""
+    from .org import ORG_CHARTS
+
+    if chart is not None and repos.get_raw(ORG_CHARTS, run_id) is None:
+        repos.put_record(ORG_CHARTS, "OrgChart", run_id, chart, source_run_id=run_id, policy_hash=policy_hash, created_at=created_at)
 
 
 def _ensure_display(repos: Any, run: SourceRunRecord) -> None:
@@ -430,6 +439,7 @@ def snapshot_for_run(services: Any, run_id: str, policy: Any = None, *, store: b
         return snap
     if repos.get_raw(SNAPSHOTS, snap.id) is None:
         repos.put_record(SNAPSHOTS, "PlanningSnapshot", snap.id, snap, source_run_id=run.id, policy_hash=policy.hash)
+    _put_org_chart(repos, build.org_chart, run.id, snap.created_at, policy.hash)
     for stat in build.statistics:
         if repos.get_raw("statistics", stat.id) is None:
             repos.put_record("statistics", "DurationStatistics", stat.id, stat, source_run_id=run.id, policy_hash=policy.hash)

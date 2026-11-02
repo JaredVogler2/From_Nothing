@@ -180,7 +180,9 @@ def build_production_fixture(n_aircraft: int, *, baseline: int = 4500, rework_to
         for code in p_.certs:
             ds["mechanic_certs"].append({"BEMS_ID": p_.native, "CERT_CODE": code, "STATUS": "ACTIVE", "LAST_CERT_DATE": "2026/01/01",
                                          "CERT_EXP_DATE": "2027/12/31", "SNAPSHOT_TS": "2026-10-25T05:00:00"})
-        ds["person_team_map"].append({"BEMS_ID": p_.native, "ROLE": p_.role, "TEAM": p_.team, "IN_SCOPE": True, "BASIS": "ASSIGNED",
+        ds["person_team_map"].append({"BEMS_ID": p_.native, "ROLE": p_.role, "TEAM": p_.team,
+                                      "SUPERINTENDENT": fb.superintendent_of(p_.team, team_names + ["QA"], "PROD-SUPT"),
+                                      "IN_SCOPE": True, "BASIS": "ASSIGNED",
                                       "EFFECTIVE_FROM": "2026-01-01T00:00:00", "EFFECTIVE_TO": None, "RUN_ID": "FIXTURE-ASSIGN-01",
                                       "EVIDENCE_COUNT": 0, "LOOKBACK_DAYS": 30, "LOAD_TIMESTAMP": fb.LOAD_TS})
         ds["shift_roster"].append({"PERSON_KEY": p_.native, "TEAM": p_.team, "ROLE": p_.role, "SITE": fb.SITE, "SHIFT_NUMBER": p_.shift,

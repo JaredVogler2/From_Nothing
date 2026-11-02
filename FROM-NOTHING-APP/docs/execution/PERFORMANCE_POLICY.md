@@ -124,6 +124,11 @@ else F) apply to that displayed value.
   (`score.policy_approval_ref`) for OFFICIAL. Personal grades are disabled.
 - **History.** Evaluations append revisions only when evidence changes, and every surface reads
   the persisted revision. Aggregates pool exact components before division.
+- **Any group over any period (D-25).** A team, a superintendent (as of each shift, from the org chart) or the business unit, over any
+  period, sums the light rows' components and applies the formula once (`focus.performance.rollup`), which equals the pooled
+  evaluation of the same members. The official result is unknown while any member is unscored; a labeled partial covers the scored
+  ones. Each score's jobs are kept for good in a compact record that adds up to it (planned minutes to B, done to Cp, excused to E,
+  unplanned to U); the per-unit evidence goes after 90 days (`focus.performance.details`).
 
 ## Recognition and progression
 

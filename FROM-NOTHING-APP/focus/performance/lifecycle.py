@@ -455,6 +455,8 @@ class GraphView:
     job_ids: frozenset[str]
     rework_origin: dict[str, tuple[str, str]]          # rework child job -> (explicit defect-origin team, class)
     rework_jobs: frozenset[str]                        # every linked rework child (origin known or not)
+    # job id -> (shop order id shared across aircraft, aircraft line, description), for the per-job outcome record
+    job_names: dict[str, tuple[str, int, str]] = field(default_factory=dict)
 
     @classmethod
     def of(cls, snapshot: PlanningSnapshot) -> "GraphView":
@@ -465,7 +467,8 @@ class GraphView:
         origin = {r.child_job: (r.defect_origin_team, r.rework_class or "") for r in snapshot.rework_links
                   if r.status == "LINKED" and r.defect_origin_team}
         return cls(snapshot.id, snapshot.cutoff, {p.key.id: p for p in snapshot.phases}, dict(hard_in), {r.id: r for r in snapshot.releases},
-                   frozenset(j.id for j in snapshot.jobs), origin, frozenset(r.child_job for r in snapshot.rework_links if r.status == "LINKED"))
+                   frozenset(j.id for j in snapshot.jobs), origin, frozenset(r.child_job for r in snapshot.rework_links if r.status == "LINKED"),
+                   {j.id: (j.key.native_id, j.key.line, j.description or "") for j in snapshot.jobs})
 
     def team(self, phase: str) -> str | None:
         p = self.phases.get(phase)

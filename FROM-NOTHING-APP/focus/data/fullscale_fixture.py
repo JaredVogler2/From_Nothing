@@ -305,7 +305,9 @@ def build_fullscale_fixture(spec: FleetSpec = FleetSpec()) -> dict:
         for c in p_.certs:
             ds["mechanic_certs"].append({"BEMS_ID": p_.native, "CERT_CODE": c, "STATUS": "ACTIVE", "LAST_CERT_DATE": "2026/01/01",
                                          "CERT_EXP_DATE": "2027/12/31", "SNAPSHOT_TS": "2026-10-25T05:00:00"})
-        ds["person_team_map"].append({"BEMS_ID": p_.native, "ROLE": p_.role, "TEAM": p_.team, "IN_SCOPE": True, "BASIS": "ASSIGNED",
+        ds["person_team_map"].append({"BEMS_ID": p_.native, "ROLE": p_.role, "TEAM": p_.team,
+                                      "SUPERINTENDENT": fb.superintendent_of(p_.team, team_names + ["QA"], "SUPT"),
+                                      "IN_SCOPE": True, "BASIS": "ASSIGNED",
                                       "EFFECTIVE_FROM": "2026-01-01T00:00:00", "EFFECTIVE_TO": None, "RUN_ID": "SYNTH-ASSIGN-01",
                                       "EVIDENCE_COUNT": 0, "LOOKBACK_DAYS": 30, "LOAD_TIMESTAMP": fb.LOAD_TS})
         ds["shift_roster"].append({"PERSON_KEY": p_.native, "TEAM": p_.team, "ROLE": p_.role, "SITE": fb.SITE, "SHIFT_NUMBER": p_.shift,

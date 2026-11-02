@@ -7,8 +7,9 @@
 * versioned heads updated with compare-and-set (always written last);
 * idempotency index (kind, key) -> record id;
 * scoped locks;
-* deletion of derived records only (``DERIVED_COLLECTIONS``: display parts, which are rebuilt from kept records, D-24).
-  Every other collection is history, and the store refuses to delete from it.
+* deletion from two collections only: display parts (``DERIVED_COLLECTIONS``, rebuilt from kept records, D-24) and
+  per-job score evidence past the owner's period (``RETAINED_DETAIL_COLLECTIONS``, D-25). Every other collection is
+  history, and the store refuses to delete from it.
 
 ``FixtureStore`` persists under ``fixtures/runtime/<scenario>`` and survives
 independent CLI processes and server restarts. Every write is atomic (temp file,
@@ -37,6 +38,10 @@ _SAFE_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 # The only collections a record may ever be deleted from (D-24): display parts are a cache, each rebuilt byte for byte from
 # records kept forever and checked against its kept manifest. Everything else is history and is never deleted (D-21).
 DERIVED_COLLECTIONS = frozenset({"display_parts"})
+# Per-job evidence behind each team-shift score, kept for the owner's period (D-25). The evaluation and its six components
+# stay forever; only the drill-down detail goes (``performance.details``).
+RETAINED_DETAIL_COLLECTIONS = frozenset({"evaluation_evidence"})
+DELETABLE_COLLECTIONS = DERIVED_COLLECTIONS | RETAINED_DETAIL_COLLECTIONS
 
 
 class StoreError(RuntimeError):
@@ -236,10 +241,11 @@ class FixtureStore:
         return sorted(ids)
 
     def delete_immutable(self, collection: str, record_id: str) -> int | None:
-        """Delete one derived record; returns the bytes freed, or None when it was not stored. History is refused."""
+        """Delete one record of a deletable collection; returns the bytes freed, or None when it was not stored. History is
+        refused."""
         _check_collection(collection)
-        if collection not in DERIVED_COLLECTIONS:
-            raise StoreError("NOT_DELETABLE", f"{collection} holds history; only {sorted(DERIVED_COLLECTIONS)} may be deleted")
+        if collection not in DELETABLE_COLLECTIONS:
+            raise StoreError("NOT_DELETABLE", f"{collection} holds history; only {sorted(DELETABLE_COLLECTIONS)} may be deleted")
         target = self._dir("objects", collection) / f"{_file_token(record_id)}.json"
         self._fault(f"before_delete:{collection}")
         try:

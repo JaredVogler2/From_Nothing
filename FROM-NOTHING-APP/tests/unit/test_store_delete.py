@@ -14,7 +14,9 @@ import pytest
 from focus.clock import FIXTURE_CUTOFF
 from focus.codec import seal
 from focus.data.store import (
+    DELETABLE_COLLECTIONS,
     DERIVED_COLLECTIONS,
+    RETAINED_DETAIL_COLLECTIONS,
     FixtureStore,
     LockTimeout,
     StoreError,
@@ -29,8 +31,10 @@ def envelope(record_id: str) -> bytes:
 
 def test_only_derived_records_can_be_deleted(tmp_path) -> None:
     store = FixtureStore(tmp_path)
-    assert DERIVED_COLLECTIONS == frozenset({"display_parts"})
-    for collection in ("snapshots", "published_plans", "display_manifests", "display_receipts", "candidate_digests", "frozen_goals"):
+    assert DERIVED_COLLECTIONS == frozenset({"display_parts"}) and RETAINED_DETAIL_COLLECTIONS == frozenset({"evaluation_evidence"})
+    assert DELETABLE_COLLECTIONS == DERIVED_COLLECTIONS | RETAINED_DETAIL_COLLECTIONS
+    for collection in ("snapshots", "published_plans", "display_manifests", "display_receipts", "candidate_digests", "frozen_goals",
+                       "evaluations", "team_shift_performance", "org_charts", "recognition_events"):
         store.put_immutable(collection, "R1", envelope("R1"))
         with pytest.raises(StoreError) as refused:
             store.delete_immutable(collection, "R1")

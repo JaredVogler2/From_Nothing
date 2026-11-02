@@ -93,7 +93,7 @@ uses the same protocol but has never connected to a server.
 
 ## 2. Roles and grants (DBA)
 
-Apply `sql/grants/focus_fn_roles.sql` after 001-009, then add members:
+Apply `sql/grants/focus_fn_roles.sql` after 001-010, then add members:
 
 | Database role | Login (one per process) | Permissions |
 | --- | --- | --- |
@@ -136,7 +136,7 @@ Run this before serving. Exit 1 lists the failing checks:
 
 No secret value is printed. The other roles use `--role worker` and `--role signer`.
 
-Until 001-009 are installed **and** the live repository adapter exists, a live host starts with typed
+Until 001-010 are installed **and** the live repository adapter exists, a live host starts with typed
 `REPOSITORY_UNAVAILABLE` states: `/health/live` is 200 and `/health/ready` is 503 with reasons. It never crashes or
 pretends.
 
@@ -160,6 +160,7 @@ pretends.
 
 ```bash
 python -m focus.cli display-retention --apply                      # retention role: display parts nothing reads (D-24)
+python -m focus.cli performance-details --keep-days 90 --apply     # retention role: per-job evidence past 90 days (D-25)
 python -m focus.cli pipeline --key 2026-10-26 --role source      # --planning auto|full|repair (default: policy)
 python -m focus.cli pipeline --key 2026-10-26 --role app        # the executable plan
 python -m focus.cli pipeline --key 2026-10-26 --role stager
@@ -173,6 +174,11 @@ python -m focus.cli pipeline --key 2026-10-26 --status
 
 Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept`, then
 `forecast -> forecast_stage_readback -> forecast_sign_accept`, and `observe_evaluate` after `sign_accept`.
+
+Every evaluation revision that `observe_evaluate` writes also writes its team-shift's light performance row and its
+compact job record (D-25). That is what the period rollups and the job patterns read
+(`GET /api/v1/performance/rollup` and `/performance/jobs`), so no further pipeline step is needed. A store from before
+D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator role).
 
 - **Executable first.** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only the executable plan, the one
   crews are dispatched on. `forecast` needs the accepted executable plan, so each role's first run stops before the
@@ -245,6 +251,8 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   `when: manual` and holds the only signing reference.
 - **Display retention** (`display_retention`) runs before acquisition with retention credentials only. It is
   `allow_failure`, so it never holds back the shift's plan. The fixture rehearsal runs it too.
+- **Detail retention** (`detail_retention`) deletes per-job evaluation evidence past the owner's 90 days, with
+  retention credentials only. It is `allow_failure` too, and the fixture rehearsal runs it.
 - **The scheduling job** (`schedule_validate`) does the heavy work: it associates jobs with people and start times.
   - Tag it to a runner with at least 4 vCPU and 16 GB. At 50 aircraft, loading the snapshot and running a full
     forecast solve peaked at 7.5 GB (`PRODUCTION_SCALE.md`). The stager and signer jobs load the snapshot too and fit
@@ -279,6 +287,7 @@ heads only forward.
 | Economic and commitment churn; check coverage | candidate receipts (`baseline_comparison`, `check_counts`) and validation receipts |
 | Source and plan heads; readback and signature failures | `stage_readback` and `sign_accept` step errors, acceptance receipts |
 | Evaluations pending correction | evaluation revisions and `/api/v1/performance` |
+| A team's, a superintendent's or the business unit's performance over any period, and the jobs behind it | `/api/v1/performance/rollup` and `/api/v1/performance/jobs` (Performance Over Time) |
 
 ## 7. Retention
 
@@ -291,8 +300,9 @@ python -m focus.cli retain-history --keep-days <N> [--legal-hold holds.json] [--
 There is no default period: the operator supplies it.
 
 - **Preserved:** accepted plans with their stages, payloads, receipts and goals; every candidate and validation they
-  or a pipeline step name; source runs and evidence; observations, evaluations, recognition, lifecycle and commitment
-  history; legal holds.
+  or a pipeline step name; source runs and evidence; observations, evaluations with their light performance rows and
+  job records, recognition, lifecycle and commitment history; legal holds. (The per-job evidence behind each
+  evaluation goes after the owner's 90 days: see Per-job details below.)
 - **Archived** (`--apply`, fixture only): only superseded, unreferenced candidates, their receipts and old scenario
   artifacts. They move to `<runtime>/archive/<receipt>/` with a SHA-256 receipt and can be restored byte for byte.
 - **Live:** the installed retention procedures, run by the retention role with the operator's period.
@@ -304,7 +314,8 @@ python -m focus.cli display-retention [--grace-minutes 60] [--apply]
 ```
 
 Display parts are a cache rebuilt from the kept snapshot or accepted payload, and checked against the kept (for plans,
-signed) manifest. This is the one command that deletes records, and the store refuses it outside `display_parts`.
+signed) manifest. It is one of the two commands that delete records (with `performance-details`, below), and the store
+refuses it outside `display_parts`.
 
 - **Kept whole:** the current packages; any package that can still become current (an unpromoted run, an acceptance
   whose head has not moved, a plan that can still be accepted); and every package of a head that moved less than the
@@ -321,3 +332,36 @@ a view means a current part is gone for another reason; `python -m focus.cli dis
 **Live:** this needs the pending live adapter to implement the store's `exists`, `stored_ids` and `delete_immutable` for
 `display_parts`, with the delete granted to the retention role only. Until then the command reports
 `REPOSITORY_UNAVAILABLE`, like every live store operation.
+
+### Per-job details (D-25)
+
+```bash
+python -m focus.cli performance-details [--keep-days 90] [--apply]
+python -m focus.cli performance-ledger                              # rebuild the light rows and job records
+```
+
+Each team-shift keeps its score forever: the evaluation with its six components, its light row and its compact job
+record (each job's shop order id, aircraft, phase, minutes and outcome, about 50 bytes a job). The bulky per-unit
+evidence behind the score (`evaluation_evidence`, about 58 KB per team-shift at 50 aircraft) is kept for the owner's
+period of 90 days, then deleted.
+
+- **Deleted:** the evidence of every revision of a team-shift whose production day is more than `--keep-days` (at
+  least 7) before today, site time, and only once its job record carries the current evaluation.
+- **Kept:** every evaluation, its row and its job record; the small member lists of pooled evaluations; the evidence
+  of a team-shift with no job record yet. The report counts those (`kept_without_job_record`), and the watermark stops
+  before their day, so a later run deletes them once `performance-ledger` has written the record.
+- **Readers hold.** Recognition and badges keep what they awarded, and the shift performance view says
+  `DETAILS_EXPIRED` instead of guessing.
+
+Without `--apply` it only reports. With it, it deletes, moves a watermark past every finished day (so each day is read
+once) and writes a receipt (`detail_retention_runs`). The store allows the deletion for this collection only
+(`RETAINED_DETAIL_COLLECTIONS`).
+
+`performance-ledger` writes every current evaluation into its row and job record and leaves finished ones alone. It
+reads the claims as of each evaluation's own cutoff, names a job once the current snapshot knows it, and cannot rebuild
+a job record whose evidence is already gone (it says how many). A row written anew takes the superintendent from the
+org chart as of the shift start.
+
+**Live:** the light rows and job records are the proposed tables of migration 010 (`FOCUS_FN_TeamShiftPerformance`,
+`FOCUS_FN_JobOutcome`, `FOCUS_FN_JobName`), and the deletion needs the pending live adapter, run by the retention role.
+Until then both commands report `REPOSITORY_UNAVAILABLE`, like every live store operation.

@@ -27,6 +27,8 @@ SUPPLEMENTARY: tuple[dict[str, str], ...] = (
     {"id": "arena", "title": "Arena & Recognition", "group": "Supplementary", "icon": "AR", "summary": "Frozen-value XP, badges and earning lineage."},
     {"id": "turnover", "title": "Turnover", "group": "Supplementary", "icon": "TO", "summary": "Shift handoff: holds, carry-in and open actions."},
     {"id": "history", "title": "History", "group": "Supplementary", "icon": "HS", "summary": "Accepted plans, evaluations and corrections over time."},
+    {"id": "rollups", "title": "Performance Over Time", "group": "Supplementary", "icon": "PT",
+     "summary": "Team, superintendent and business-unit scores over any period, and how the teams compare."},
 )
 
 MOBILE_TABS = ("team-lead", "myday", "management", "performance")

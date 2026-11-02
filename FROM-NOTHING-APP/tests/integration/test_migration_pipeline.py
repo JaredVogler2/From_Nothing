@@ -42,7 +42,7 @@ def _copy_migrations(app_root: Path, tmp_path: Path) -> Path:
 
 def test_shipped_migrations_are_versioned_lint_clean_and_generated_files_fresh(app_root) -> None:
     shipped = _shipped(app_root)
-    assert [m.version for m in shipped] == list(range(1, 10))
+    assert [m.version for m in shipped] == list(range(1, 11))
     assert all(m.rollback_path is not None for m in shipped)
     assert M.all_findings(shipped, app_root) == []                                   # forward, rollback, grants, freshness
     assert (app_root / "sql" / "grants" / "focus_fn_roles.sql").read_text(encoding="utf-8") == M.grants_script()
@@ -58,14 +58,14 @@ def test_a71_dry_run_apply_and_replay_are_idempotent(tmp_path, app_root) -> None
     catalog = M.FixtureCatalog(tmp_path / "catalog.json")
     assert {s.state for s in M.plan(shipped, catalog.state())} == {"PENDING"}
     first = M.apply_pending(shipped, catalog, installer="dba-test", at=AT)
-    assert first["status"] == "ok" and [a["version"] for a in first["applied"]] == list(range(1, 10))
+    assert first["status"] == "ok" and [a["version"] for a in first["applied"]] == list(range(1, 11))
     state = catalog.state()
     assert {v: r["sha256"] for v, r in state.ledger.items()} == {m.version: m.sha256 for m in shipped}
     assert all(k in state.objects for m in shipped for k in m.object_keys)            # every declared object verified
     again = M.apply_pending(shipped, catalog, installer="dba-test", at=AT)
     assert again["status"] == "ok" and again["applied"] == [] and {s["state"] for s in again["steps"]} == {"APPLIED"}
     attempts = json.loads((tmp_path / "catalog.json").read_text())["attempts"]
-    assert [a["outcome"] for a in attempts] == ["APPLIED"] * 9                         # a replay applies nothing twice
+    assert [a["outcome"] for a in attempts] == ["APPLIED"] * 10                        # a replay applies nothing twice
 
 
 def test_a71_checksum_mismatch_blocks_every_later_version(tmp_path, app_root) -> None:
@@ -74,16 +74,16 @@ def test_a71_checksum_mismatch_blocks_every_later_version(tmp_path, app_root) ->
     assert M.apply_pending(M.discover(root), catalog, installer="dba-test", at=AT)["status"] == "ok"
     tampered = root / "005_duration_statistics.sql"
     tampered.write_text(tampered.read_text(encoding="utf-8") + "\n-- edited after install\n", encoding="utf-8")
-    extra = root / "010_extra.sql"
+    extra = root / "011_extra.sql"
     extra.write_text("CREATE TABLE WEB_APP.FOCUS_FN_Extra(ExtraId bigint NOT NULL PRIMARY KEY, CreatedAtUtc datetime2(6) NOT NULL);\n", encoding="utf-8")
     migrations = M.discover(root)
-    (root / "rollback" / "010_extra.sql").write_text(M.rollback_script(migrations[-1]), encoding="utf-8")
+    (root / "rollback" / "011_extra.sql").write_text(M.rollback_script(migrations[-1]), encoding="utf-8")
     migrations = M.discover(root)
     states = {s.version: s.state for s in M.plan(migrations, catalog.state())}
-    assert states[5] == "CHECKSUM_MISMATCH" and states[10] == "BLOCKED" and states[4] == "APPLIED"
+    assert states[5] == "CHECKSUM_MISMATCH" and states[11] == "BLOCKED" and states[4] == "APPLIED"
     refused = M.apply_pending(migrations, catalog, installer="dba-test", at=AT)
     assert refused["status"] == "refused" and refused["reason"] == "PLAN_BLOCKED"
-    assert 10 not in catalog.state().ledger
+    assert 11 not in catalog.state().ledger
 
 
 def test_a71_unrecorded_object_is_a_collision(tmp_path, app_root) -> None:
@@ -110,23 +110,23 @@ def test_failure_mid_version_records_nothing_and_resumes_forward(tmp_path, app_r
     attempts = json.loads(path.read_text())["attempts"]
     assert attempts[-1]["version"] == 3 and attempts[-1]["outcome"] == "FAILED"       # the attempt receipt is durable
     resumed = M.apply_pending(shipped, M.FixtureCatalog(path), installer="dba-test", at=AT)
-    assert resumed["status"] == "ok" and [a["version"] for a in resumed["applied"]] == list(range(3, 10))
+    assert resumed["status"] == "ok" and [a["version"] for a in resumed["applied"]] == list(range(3, 11))
 
 
 def test_rollback_only_the_latest_version_and_only_without_data(tmp_path, app_root) -> None:
     shipped = _shipped(app_root)
     catalog = M.FixtureCatalog(tmp_path / "catalog.json")
     M.apply_pending(shipped, catalog, installer="dba-test", at=AT)
-    assert M.rollback_latest(shipped, catalog, 8, installer="dba-test", at=AT)["reason"] == "NOT_LATEST"
-    catalog.set_rows("WEB_APP.FOCUS_FN_BadgeAward", 3)
-    refused = M.rollback_latest(shipped, catalog, 9, installer="dba-test", at=AT)
-    assert refused["reason"] == "ROLLBACK_REFUSED_DATA" and 9 in catalog.state().ledger
-    catalog.set_rows("WEB_APP.FOCUS_FN_BadgeAward", 0)
-    done = M.rollback_latest(shipped, catalog, 9, installer="dba-test", at=AT)
-    assert done["status"] == "ok" and sorted(catalog.state().ledger) == list(range(1, 9))
-    assert not any(k in catalog.state().objects for k in shipped[8].object_keys)
-    assert M.apply_pending(shipped, catalog, installer="dba-test", at=AT)["applied"] == [{"version": 9, "name": "evaluation",
-                                                                                          "sha256": shipped[8].sha256}]
+    assert M.rollback_latest(shipped, catalog, 9, installer="dba-test", at=AT)["reason"] == "NOT_LATEST"
+    catalog.set_rows("WEB_APP.FOCUS_FN_TeamShiftPerformance", 3)
+    refused = M.rollback_latest(shipped, catalog, 10, installer="dba-test", at=AT)
+    assert refused["reason"] == "ROLLBACK_REFUSED_DATA" and 10 in catalog.state().ledger
+    catalog.set_rows("WEB_APP.FOCUS_FN_TeamShiftPerformance", 0)
+    done = M.rollback_latest(shipped, catalog, 10, installer="dba-test", at=AT)
+    assert done["status"] == "ok" and sorted(catalog.state().ledger) == list(range(1, 10))
+    assert not any(k in catalog.state().objects for k in shipped[9].object_keys)
+    assert M.apply_pending(shipped, catalog, installer="dba-test", at=AT)["applied"] == [{"version": 10, "name": "performance_rollup",
+                                                                                          "sha256": shipped[9].sha256}]
 
 
 def test_lint_rejects_destructive_misnamed_or_unbound_sql(tmp_path) -> None:
@@ -199,9 +199,9 @@ def test_cli_bundle_and_live_install_needs_a_confirmed_installer(services_factor
     args = Namespace(dry_run=True, apply=False, rollback=None, catalog=str(tmp_path / "c.json"), installer=None, emit_dir=str(tmp_path / "bundle"),
                      write_generated=False, confirm_manifest=None)
     result = M.cli_migrate(services, args)
-    assert result["status"] == "ok" and len(result["migrations"]) == 9 and len(result["manifest_sha256"]) == 64
+    assert result["status"] == "ok" and len(result["migrations"]) == 10 and len(result["manifest_sha256"]) == 64
     manifest = json.loads((tmp_path / "bundle" / "MANIFEST.json").read_text())
-    assert [m["version"] for m in manifest["migrations"]] == list(range(1, 10)) and manifest["grants"]["file"] == "focus_fn_roles.sql"
+    assert [m["version"] for m in manifest["migrations"]] == list(range(1, 11)) and manifest["grants"]["file"] == "focus_fn_roles.sql"
     assert all((tmp_path / "bundle" / "rollback" / m["rollback"]).exists() for m in manifest["migrations"])
     live = services_factory(mode="live", identity_provider="trusted_header", trusted_user_header="X-Forwarded-User")
     dry = M.cli_migrate(live, Namespace(**{**vars(args), "catalog": "live", "emit_dir": None}))
@@ -243,7 +243,7 @@ def test_live_host_with_sql_credentials_starts_with_typed_unavailability(app_roo
     settings = Settings.from_env(_live_env(app_root, FOCUS_SESSION_SECRET="x" * 48, FOCUS_SQL_USER="reader", FOCUS_SQL_PASSWORD="p"),
                                  app_root=app_root)
     store = default_store(settings)
-    assert isinstance(store, SqlStore) and not store.available() and "migrations 001-009" in store.reason
+    assert isinstance(store, SqlStore) and not store.available() and "migrations 001-010" in store.reason
     client = create_app(settings=settings).test_client()
     assert client.get("/health/live").status_code == 200
     ready = client.get("/health/ready")
@@ -544,5 +544,9 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     stages = text.split("stages: [")[1].split("]")[0].split(", ")
     assert stages.index("verify") < stages.index("retain") < stages.index("source")
     assert "display-retention --apply" in jobs["fixture_pipeline_rehearsal"]
+    # D-25: per-job score evidence past the owner's 90 days goes in the same retain stage, also never holding the plan back
+    details = jobs["detail_retention"]
+    assert "performance-details --keep-days 90 --apply" in details and "allow_failure: true" in details and "focus-retention" in details
+    assert "performance-details --apply" in jobs["fixture_pipeline_rehearsal"]
     assert "image: python:3.12-slim" in jobs["default"]
     assert "--role all" in jobs["fixture_pipeline_rehearsal"] and "FOCUS_SIGN_KEY_REF" not in jobs["stage_readback"]

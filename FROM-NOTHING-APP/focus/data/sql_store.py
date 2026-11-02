@@ -1,6 +1,6 @@
 """Live repository store over SQL Server (S06, P23): honest unavailability until the FOCUS_FN schema is installed.
 
-The live write path stores the S06 records in the proposed ``WEB_APP.FOCUS_FN_*`` tables (migrations 001-009). This
+The live write path stores the S06 records in the proposed ``WEB_APP.FOCUS_FN_*`` tables (migrations 001-010). This
 build installed none of them, and the per-collection mapping of the repository protocol onto those tables is the
 pending live adapter (STATUS gaps).
 
@@ -16,7 +16,7 @@ from typing import Any
 
 from .store import UnavailableStore
 
-REASON = ("Live FOCUS_FN storage is not available: migrations 001-009 must be applied by an authorized installer "
+REASON = ("Live FOCUS_FN storage is not available: migrations 001-010 must be applied by an authorized installer "
           "(python -m focus.cli migrate --emit-dir, then the confirmed installer session in docs/execution/INSTALL_AND_PIPELINE.md), "
           "and the live repository adapter over those tables is pending. Nothing is stored until both exist.")
 

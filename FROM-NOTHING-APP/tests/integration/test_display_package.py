@@ -143,6 +143,8 @@ def test_every_read_endpoint_answers_without_loading_a_snapshot_or_an_artifact(w
         "get_commitments": "/api/v1/commitments", "get_economics": "/api/v1/economics", "get_shortages": "/api/v1/shortages",
         "get_quality": "/api/v1/quality", "get_performance": f"/api/v1/performance?shift_id={OBSERVATION_SHIFT}",
         "get_performance_history": "/api/v1/performance/history", "get_recognition": "/api/v1/recognition",
+        "get_performance_rollup": "/api/v1/performance/rollup?period=week&by=day",
+        "get_performance_jobs": "/api/v1/performance/jobs?period=week",
         "get_progression": "/api/v1/progression", "list_disruption_claims": "/api/v1/disruption-claims", "list_ie_reviews": "/api/v1/ie-reviews",
         "get_team_lead": "/api/v1/team-lead?team=PROD-A", "get_standards": "/api/v1/standards", "get_budget": "/api/v1/budget",
         "get_gantt": "/api/v1/gantt?team=PROD-A", "get_development": "/api/v1/development", "get_arena": "/api/v1/arena",

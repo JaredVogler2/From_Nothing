@@ -145,12 +145,13 @@ attendance. A conditional ETA is never physical receipt.
     - `publish(until="readback")` splits the stager from the signer, so signing never precedes a clean readback.
     - `demo-run` and the evaluator step share one observe-and-evaluate authority.
   - **Live storage.**
-    - `SqlStore` reports one typed unavailability until 001-009 are installed and the live repository adapter exists.
+    - `SqlStore` reports one typed unavailability until 001-010 are installed and the live repository adapter exists.
       The host starts, and `/health/ready` explains.
     - The preflight's `--probe-sql` reads the ledger read-only.
   - **Retention never deletes.** The operator supplies the period. Accepted history, evidence, references and legal
     holds are always preserved. Fixture archives are SHA-256 receipted and restorable; live retention is the installed
-    procedures only. (Display parts, a cache rebuilt from those kept records, are the one exception: D-24.)
+    procedures only. Two owner-directed exceptions delete records: display parts, a cache rebuilt from those kept records
+    (D-24), and the per-job evidence behind each evaluation after 90 days, once its compact job record exists (D-25).
 - **D-22 Shift cycle speed (owner direction, November 1, 2026).**
   - The pipeline publishes the executable plan first; the forecast follows on the same admitted snapshot, so dispatch
     never waits for it (`INSTALL_AND_PIPELINE.md` section 4).
@@ -183,6 +184,42 @@ attendance. A conditional ETA is never physical receipt.
     holds. It never holds back the shift's plan.
   - **Live** needs the pending live adapter to implement the store's three retention operations for `display_parts`,
     run by the retention role.
+- **D-25 Performance over any period, and the jobs behind each score (owner direction, November 2, 2026).**
+  - **One light row per team-shift** (`team_shift_performance`, `focus.performance.rollup`). Each evaluation revision
+    writes its team-shift's six canonical components, status, evaluation id, policy hash, the team and the
+    superintendent. About 200 bytes; no snapshot, plan or per-unit evidence is needed to read it.
+  - **Superintendent as of the shift.** FOCUS_PERSON_TEAM_MAP's `SUPERINTENDENT` is admitted with each source run as an
+    org chart (`focus.data.org`): each team's members name a superintendent over time, and the team reports to the
+    superintendent most of its members name at the shift start (a split is flagged). The attribution is fixed when the
+    row is first written: a correction changes the numbers, never the superintendent. A team with no superintendent
+    rolls up under `UNASSIGNED`.
+  - **Any group, any period.** A team, a superintendent or the business unit (the scope), over a shift, day, ISO week,
+    rolling 30 days, month, quarter, year or custom dates (at most 400 days). The components of the group's
+    team-shifts are summed and the one formula is applied once, so a team counts in proportion to its planned work.
+    This equals the pooled canonical evaluation of the same members (`score.aggregate`).
+  - **Strict, with a labeled partial.** The official result is unknown while any team-shift in the period has no
+    score. Beside it, a partial score of the scored team-shifts says how many are missing; it is never official.
+  - **Team spread.** For a superintendent or the business unit: each team's own score, how many are at or above the
+    target (80 by default), the lowest, the highest, the range and the grades. The official score weights teams by
+    planned work; the spread shows whether one large team carries the rest.
+  - **The jobs behind each score, kept for good** (`job_outcomes`). Each planned unit records its job's shop order id
+    (shared across aircraft), aircraft, phase, planned minutes and outcome (done, missed, excused with the claim causes,
+    open) and whether it was done out of sequence. Each unplanned completion records the same identity and minutes. A
+    record adds up to its score: planned minutes to B, done to Cp, excused to E, unplanned to U. Work on a team-shift no
+    plan covered is listed as `no_plan`: its neutral score leaves it out of U. This answers which jobs made a score and
+    which jobs miss, or are done out of plan, aircraft after aircraft (`job_patterns`). About 107 jobs per team-shift
+    at 50 aircraft, under 0.2 GB a year.
+  - **Per-job evidence for 90 days.** The bulky evidence behind each score (`evaluation_evidence`, about 58 KB per
+    team-shift) is deleted after the owner's 90 days, and only once the team-shift's job record carries the current
+    evaluation (`focus.performance.details`). The store allows the deletion for this collection only
+    (`RETAINED_DETAIL_COLLECTIONS`). Recognition and badges hold what they awarded, and the views say `DETAILS_EXPIRED`.
+  - **Reads.** `GET /api/v1/performance/rollup` and `/performance/jobs`, also MCP tools for a future assistant. A team
+    is checked against the caller's scope before any read; a superintendent or the business unit opens only when every
+    team in it is in scope.
+  - **Commands.** `performance-ledger` rebuilds rows and job records; `performance-details` reports or, with
+    `--apply`, deletes. CI runs `detail_retention` with retention credentials, `allow_failure`.
+  - **Live.** Migration 010 is the proposed storage (`FOCUS_FN_TeamShiftPerformance`, `FOCUS_FN_JobOutcome`,
+    `FOCUS_FN_JobName`). It is a draft and has not been executed.
 
 ## Semantic gaps (live), each a precise readiness effect
 

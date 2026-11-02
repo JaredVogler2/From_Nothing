@@ -33,6 +33,8 @@ COMMANDS: dict[str, str] = {
     "dispatch-check": "focus.publication.dispatch:cli_dispatch_check",
     "display": "focus.display.store:cli_display",
     "display-retention": "focus.display.retention:cli_display_retention",
+    "performance-ledger": "focus.performance.rollup:cli_performance_ledger",
+    "performance-details": "focus.performance.details:cli_performance_details",
     "collect-observations": "focus.performance.actuals:cli_collect_observations",
     "evaluate": "focus.performance.score:cli_evaluate",
     "scenario": "focus.analytics.scenarios:cli_scenario",
@@ -114,6 +116,14 @@ def build_parser() -> argparse.ArgumentParser:
                                                  "accepted plan's history parts are kept)")
     p.add_argument("--grace-minutes", type=int, default=60,
                    help="keep every package of a head that moved less than this long ago (default 60, at least 1)")
+    p.add_argument("--apply", action="store_true", help="delete; without it the run only reports")
+
+    sub.add_parser("performance-ledger", help="rebuild the light per-team-shift performance rows from the current evaluations "
+                                              "(the evaluator writes them as it goes; this repairs or backfills)")
+
+    p = sub.add_parser("performance-details", help="report (default) or --apply the deletion of per-job score evidence past the "
+                                                   "owner's period (every score, component and light row stays)")
+    p.add_argument("--keep-days", type=int, default=90, help="days of per-job details to keep (default 90, at least 7)")
     p.add_argument("--apply", action="store_true", help="delete; without it the run only reports")
 
     p = sub.add_parser("collect-observations", help="collect lifecycle/actual/claim/decision observations into an evaluation-ready run")

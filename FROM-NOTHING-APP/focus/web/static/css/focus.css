@@ -272,3 +272,7 @@ svg.chart .bar-label { font-size: 10px; fill: #fff; pointer-events: none; }
 .delta-good { color: var(--success); font-weight: 600; }
 .delta-bad { color: var(--error); font-weight: 600; }
 @media (max-width: 860px) { .sim-host .grid-2 { grid-template-columns: minmax(0, 1fr); } }   /* a wide chart scrolls in its box, not the page */
+
+/* Performance Over Time: a score bar beside each breakdown row (decorative; the score is in the next cell) */
+.rollup-track { display: inline-block; width: 6rem; height: 0.6rem; background: var(--border); border-radius: 3px; vertical-align: middle; }
+.rollup-bar { display: block; height: 100%; background: var(--primary); border-radius: 3px; }

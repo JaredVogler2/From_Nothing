@@ -36,7 +36,8 @@ if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
 
 VIEWS = ("team-lead", "management", "mechanic", "ie", "staffing", "supply", "scenario", "performance", "project", "budget", "gantt",
-         "development", "commitments", "economics", "shiftbook", "myday", "capacity", "quality", "arena", "turnover", "history", "twin")
+         "development", "commitments", "economics", "shiftbook", "myday", "capacity", "quality", "arena", "turnover", "history", "twin",
+         "rollups")
 LAYOUTS = ("/dashboard", "/dashboard/classic")
 WIDTHS = (375, 390, 820, 1280)
 SHOT_VIEWS = ("team-lead", "performance", "management", "myday", "gantt", "scenario")      # curated evidence screenshots
