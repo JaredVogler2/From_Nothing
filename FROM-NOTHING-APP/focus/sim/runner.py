@@ -183,7 +183,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
             day_goals = None
         # a plan accepted after its shift started is only a proposal for it: the previous plan stays the goal of record (D-26)
         late_plan = (number > 1 and day_goals is not None and spec.late_plan_share > 0
-                     and random.Random(spec.seed * 31 + k).random() < spec.late_plan_share)
+                     and random.Random(f"{spec.seed}:late-plan:{k}").random() < spec.late_plan_share)
         if late_plan:
             db.insert("exec_event", [(k, "plan_accepted_late", None, None, None, "the previous plan stays this shift's goal of record")])
         if dispatch.run.validation.valid and not late_plan:
