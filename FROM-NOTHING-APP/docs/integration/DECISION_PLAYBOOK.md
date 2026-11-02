@@ -1,0 +1,569 @@
+# Decision playbook for the coding agent
+
+**What this is.** Every decision that is still open for FOCUS, written so an agent with little context can work
+through them one at a time. Each entry gives the context, the options, a recommendation to proceed with, the rule for
+deciding once real data is wired, the files to change, the tests to update and where to record the result.
+
+**The owner's instruction.** Work through each decision. Proceed with the recommendation now where no data is
+needed. Make the data-dependent decisions once real data is wired, using the rules below. The few decisions marked
+**OWNER** need the owner's sign-off even so: prepare the evidence, build the change behind a switch, and ask.
+
+**State on 2026-11-02.**
+
+- FOCUS runs on synthetic fixtures only.
+- No SQL is installed, no pipeline is active, and no company data has been read.
+- Full non-UI test suite: 906 passed, 3 skipped (10.5 minutes).
+
+**Read first, in this order:**
+
+1. `docs/integration/HANDOFF.md`: architecture, staging contract, GitLab, work items.
+2. This playbook.
+3. `docs/execution/DECISIONS.md`, for history; each decision below names the entries it touches.
+
+## 0. Guardrails (apply to every decision)
+
+- **Confidentiality.**
+  - This public repository holds synthetic data only. Real system names, object names, query text, mappings,
+    credentials, data rows, team scores and calibration outputs stay in company storage and the company's internal
+    fork.
+  - Record decisions there. In the public repository, record at most the rule that was applied, never company
+    values.
+- **No unauthorized writes.**
+  - Never install migrations, apply grants, publish plans or enable dispatch without the authorized installer and
+    owner approvals described in `INSTALL_AND_PIPELINE.md`.
+  - Read-only discovery is always allowed.
+- **Never self-approve the OFFICIAL score policy.**
+  - `score.policy_status` stays `DEMONSTRATION` until the owner's approval receipt exists
+    (`score.policy_approval_ref`, OD-16).
+  - Personal grades stay disabled.
+- **Policy changes change the policy hash.**
+  - Every edit to `config/policies/*.json` makes period rollups that span the change UNKNOWN (`MIXED_POLICY`,
+    `focus/performance/rollup.py`).
+  - Batch policy decisions and apply them at a period boundary: Monday 00:00 site time, or a month start.
+  - Note the change in `DECISIONS.md`.
+- **Do not relabel an `open_decision` key to `owner_decision` without the owner.**
+  - That label is the switch that lets an unconfirmed semantic drive live executable plans
+    (`snapshot_builder.py`, `graph.py`).
+  - You may set the value from data and write the evidence in the key's `ref`, then ask the owner to confirm the
+    relabel. Batch these confirmations.
+  - Allowed labels (`focus/policy.py`): `user_requirement`, `manual_specified`, `fixture_default`, `demo_default`,
+    `open_decision`, `owner_decision`.
+- **One canonical formula.** Scores come only from `focus/performance/score.py` (`formula`, `status_and_score`). A
+  scoring change updates in one change:
+  - the code;
+  - the simulation (`focus/sim/execute.py`);
+  - the reference views (`tests/support/reference_views.py`);
+  - the docs (`PERFORMANCE_POLICY.md`, `docs/data/09-observation-feeds.md`);
+  - the tests.
+- **Tests that pin decisions.** Update them in the same change as the decision they pin:
+  - `tests/unit/test_policy_config.py` pins which OD ids are open and that `cs.date_mode` is `open_decision`;
+  - `tests/integration/test_migration_pipeline.py::test_ci_draft_orders_roles_and_protects_signing` pins
+    `when: manual` on both signing jobs, and pins that acquisition needs every verify job;
+  - `tests/unit/test_data_reference_docs.py` pins the dataset columns against `docs/data/`.
+- **Validate before you push.**
+  - Fast checks: `python tools/check_imports.py`, then `python -m focus.cli migrate --dry-run`, then the test files
+    you touched.
+  - Full suite (10.5 minutes): `python -m pytest -q -p no:cacheprovider tests --ignore=tests/ui`.
+  - UI suite: `python -m pytest -q -p no:cacheprovider tests/ui`.
+- **Report honestly.** Never claim an install, a signature, an acceptance, a deploy or a review that did not happen.
+
+## 1. How to work one decision
+
+1. Read the entry. Check its **Prerequisites**; if they are not met, use the **Default now** and move on.
+2. Run the **Measure** commands, in the company environment, against company data.
+3. Apply the **Decision rule**. When the data is ambiguous, take the safer option: the one that withholds work from
+   EXECUTABLE plans or scores UNKNOWN rather than guessing.
+4. Change the listed files, following the guardrails.
+5. Run the listed tests, then the fast checks.
+6. Record the decision. Use the template in §8: a new `D-27`, `D-28`, … entry in `docs/execution/DECISIONS.md`, and
+   for an OD item, an entry in the policy file's `decided_decisions` once the owner confirms.
+7. For **OWNER** items, write the memo (template in §8), build the change behind the named switch with the switch
+   off, and stop there until the owner answers.
+
+**Authority levels used below:**
+
+| Level | Meaning |
+| --- | --- |
+| **ENGINEERING** | Decide and implement now; no company data needed. |
+| **DATA** | Decide from the rule once real data is wired. Until then, use the default. The owner can override. |
+| **OWNER** | Prepare evidence and a recommendation; implement behind a switch; the owner signs. |
+
+## 2. Decisions already made — do not reopen
+
+| Decision | Rule | Where |
+| --- | --- | --- |
+| No AI in the scheduler | The plans come from the deterministic optimizer; explanations are validated text only | `focus/engine/` |
+| Cadence | The scheduler runs before every shift, 3× a day, as a global optimization through delivery; GitLab runs it; Posit Connect only displays | D-22, D-26 |
+| Per-shift goals (D-26) | A shift is scored against the EXECUTABLE plan accepted at or before its start; if none was, the first plan accepted for its day stands in | `lifecycle.GoalRegistry.plan_of_record` |
+| Adherence = same job | Start and finish times are never compared with the plan | D-26 |
+| No early credit | A completion before a goal's shift earns nothing there | `lifecycle.select_goal` |
+| Done before the shift | A unit whose phase was verified complete before its shift started is `DONE_BEFORE_SHIFT` and counts in E | `lifecycle.unit_facts`, `score.components` |
+| Amendments during the shift only | The command and the feed refuse `SHIFT_NOT_STARTED` / `SHIFT_ENDED` | `amendments.py`, `actuals.amendment_from_row` |
+| Late events after the fact | Scores come from timestamped events once overtime closes, and are revised when data arrives late | D-26 |
+| OD-01 crew | `TOTAL_MECHANICS` is the crew needed on the job at once (owner, 2026-10-31) | `duration.total_mechanics_semantics` |
+| OD-06 due date | CS744 planned unload + 2-day grace, as a whole local day (owner, 2026-11-02) | `due.*` |
+| Time | The database holds UTC; the app shows site local time (America/New_York); live `FOCUS_SOURCE_TIMEZONE_MAP_JSON={"*": "UTC"}` | owner, 2026-10-31 |
+| Display retention, per-job details | Display parts deleted when unread (D-24); per-job score evidence kept for 90 days (D-25) | D-24, D-25 |
+| Planning mode | `auto`: full solve before shift 1, repair otherwise; full solve when the incumbent is over 12 h old | `planning.*`, `PLAN_REPAIR.md` |
+| Penalty proxy | Modeled from public airline and pricing data, labeled as a proxy (owner: keep) | A15 |
+| Duration statistic | P75 of verified comparable rework episodes | `duration.default_statistic` (`user_requirement`) |
+
+## 3. At a glance
+
+| Id | Decision | Authority | Default now | Decide when |
+| --- | --- | --- | --- | --- |
+| DEC-01 | Live store adapter and migration 011 | ENGINEERING | build it | now |
+| DEC-02 | Code ids vs `uniqueidentifier` columns | ENGINEERING | deterministic UUID mapping | now |
+| DEC-03 | Signer path vs separation of duties | ENGINEERING | signer only accepts | now |
+| DEC-04 | Where delivery commitments are recorded | ENGINEERING | inside acceptance | now |
+| DEC-05 | Read grants for worker roles | ENGINEERING | least privilege per step | now |
+| DEC-06 | Live observe and evaluate | ENGINEERING | as `evaluate_closed_shifts` | now |
+| DEC-07 | Certified-empty and `loaded_at` for live captures | ENGINEERING | producer receipt table | now |
+| DEC-08 | Staging loader design | ENGINEERING | per `HANDOFF.md` §4 | now |
+| DEC-09 | Order of supplemental producers | ENGINEERING | `work_progress` first | now |
+| DEC-10 | Test suite inside the live window | OWNER | recommend: verified branch only | before go-live |
+| DEC-11 | Signing before each shift | OWNER | recommend: automatic with a kill switch | before go-live |
+| DEC-12 | Cutoff lead and schedule times | DATA | 20 min; crons in `HANDOFF.md` §5.2 | after 1 week of runs |
+| DEC-13 | Freshness limits (load cadences) | DATA | fixture limits 18–240 h | after 2 weeks of loads |
+| OD-02…OD-17 | Data semantics (§5) | DATA, then the owner confirms the relabel | fixture meanings; live withheld | as each source is wired |
+| DEC-20 | Off-plan classifier error rates | DATA | P2 team-shift rule | after 4 weeks of shadow |
+| DEC-21 | Exchange rate w | DATA, then OWNER confirms | 0.8 | after DEC-20 |
+| DEC-22 | Turn on R5 off-plan credit | OWNER | off (R0 stays) | after DEC-21 |
+| DEC-23 | Grade bands | OWNER (with data) | demo 90/80/70/60, DEMONSTRATION | after 4 weeks of shadow |
+| DEC-24 | Late-plan protection | OWNER | evidence-only `PLAN_CHURN` claims | after 1 week of runs |
+| DEC-25 | Overtime credit | OWNER (with data) | today's rule | after 4 weeks of shadow |
+| DEC-26 | Approved additions under R5 | with DEC-22 | obligations | with DEC-22 |
+| DEC-27 | Policy `live_effect` text corrections | ENGINEERING | with the first policy batch | first policy batch |
+| OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
+
+## 4. Engineering decisions (take now, no company data needed)
+
+### DEC-01 Live store adapter and migration 011
+
+- **Authority:** ENGINEERING. The DBA installs.
+- **Why.** In live mode `SqlStore` (`focus/data/sql_store.py`) refuses every write, so nothing persists. Several
+  runtime collections have no FOCUS_FN table at all. `docs/execution/SQL_SCHEMA_LEDGER.md` lists them: candidates,
+  snapshots, org charts, the display package, retention ledgers, attendance and holding evidence, scenarios,
+  explanations and the observation head.
+- **Recommendation.**
+  1. Write `sql/migrations/011_*.sql` with tables for those collections, and fix the known issues in it:
+     - the quarantine key gains the revision;
+     - `ObservationProducerReceipt` allows eight feeds;
+     - a locked `FOCUS_FN_PurgeEvaluationEvidence` sets `focus_retention`;
+     - the `TR_FN_EvaluationEvidence_Immutable` trigger honors that bypass;
+     - the retention role gets SELECT on `JobOutcome`;
+     - display-package tables with a locked purge procedure.
+  2. Implement the repository protocol over the tables in `sql_store.py`, mapping the per-day documents
+     (`team_shift_performance`, `job_outcomes`) to row tables.
+  3. Update `FN_OBJECTS` in `focus/data/sql.py`: remove `Artifact` and `State`, and add the 29 created objects the
+     ledger lists.
+- **Rules.** Migrations are append-only and versioned: never edit 001–010, whose checksums are recorded at install.
+  Regenerate the rollbacks and grants with `python -m focus.cli migrate --write-generated`.
+- **Verify:**
+  - `python -m focus.cli migrate --dry-run`, which runs the lint and freshness checks;
+  - `tests/integration/test_migration_pipeline.py`;
+  - the repository fault-injection suites against a non-production database.
+- **Record:** a D-27 entry, `SQL_SCHEMA_LEDGER.md` (inventory and runtime collections), and `INSTALL_AND_PIPELINE.md`
+  §1 (the version table).
+
+### DEC-02 Code ids versus `uniqueidentifier` columns
+
+- **Authority:** ENGINEERING.
+- **Why.** Code ids are prefixed hex digests (`GOAL…`, `EVL…`), but `GoalId` and `EvaluationId` are
+  `uniqueidentifier` columns (001, 010).
+- **Options:**
+  - (a) store `uuid5(NAMESPACE, code_id)` in the GUID column and add a nullable `CodeId varchar(64)` column in 011;
+  - (b) change the column types in 011.
+- **Recommendation: (a).** It needs no type change on keys with foreign keys, it is deterministic and reversible, and
+  the lint allows nullable added columns. Put the mapping in one function used by every adapter path.
+- **Verify:** a round-trip unit test (code id → GUID → code id via `CodeId`), and that idempotent replays produce the
+  same GUID.
+- **Record:** D-27 (with DEC-01).
+
+### DEC-03 The signer path versus separation of duties
+
+- **Authority:** ENGINEERING. It keeps an existing rule.
+- **Why.** The `sign_accept` step runs the full `publish` (`focus/orchestration.py` → `focus/publication/service.py`).
+  That stages, reads back and records the readback validation before it accepts. The grants reserve those
+  procedures to the stager, and the grant lint enforces "only the stager stages and reads back".
+- **Options:**
+  - (a) give the signer step its own path: re-read the stager's staged bytes, re-validate in memory, sign, then call
+    `AcceptPlan`, with no staging calls;
+  - (b) grant the signer the stager's procedures.
+- **Recommendation: (a).** Option (b) breaks separation of duties.
+- **Verify:**
+  - `tests/integration/test_publication_recovery.py`, especially A50 and A51;
+  - `tests/integration/test_migration_pipeline.py`;
+  - a new test that the signer role never calls stage, read stage or record validation.
+- **Record:** a D-28 entry; `INSTALL_AND_PIPELINE.md` §2 (remove the open item); `ROLLBACK.md`.
+
+### DEC-04 Where delivery commitments are recorded
+
+- **Authority:** ENGINEERING.
+- **Why.** Accepting a FORECAST plan records delivery commitments (`service.py`, `projections.record_accepted`). In
+  SQL that is `RecordDeliveryObservation`, which is granted to the evaluator only. Nothing writes `DeliveryReceipt` or
+  `CommitmentResult`.
+- **Recommendation.** Record the commitment observation inside `AcceptPlan`'s transaction, either by calling it from
+  the procedure or by merging the logic. A recovery after a crash (A50) must leave the commitment state
+  byte-identical, which needs the same transaction. Then define a writer for `DeliveryReceipt` and
+  `CommitmentResult` (the evaluator, from delivery observations), or drop them in 011 if no reader needs them.
+- **Verify:** `tests/integration/test_publication_recovery.py`, and `tests/unit/test_commitments.py`.
+- **Record:** D-28.
+
+### DEC-05 Read grants for the worker roles
+
+- **Authority:** ENGINEERING. The DBA applies the grants.
+- **Why.** Only `FOCUS_FN_AppReader` has any SELECT grant, but every worker reads:
+  - acquisition reads `TeamInference`, `ClockObservation` and `SourceHead`;
+  - the app role reads the snapshot and plans;
+  - the evaluator reads plans and goals.
+- **Recommendation.** Least privilege per step. Add SELECT grants to `ROLE_GRANTS` in `focus/migrations.py` for
+  exactly what each step reads, add an app pipeline role for `focus-app`, then regenerate
+  `sql/grants/focus_fn_roles.sql`.
+- **Verify:** the grant lint (`migrate --dry-run`) and `test_migration_pipeline.py`.
+- **Record:** D-28; `INSTALL_AND_PIPELINE.md` §2.
+
+### DEC-06 Live observe and evaluate
+
+- **Authority:** ENGINEERING.
+- **Why.** In live mode, `step_observe_evaluate` (`focus/orchestration.py`) raises `LIVE_OBSERVATIONS_UNAVAILABLE`, so
+  the in-pipeline evaluation never scores live.
+- **Recommendation.** Make the live branch do what `tools/evaluate_closed_shifts.py` does:
+  `collect_observations(services, as_of=now)` with the live reader, then `score.evaluate_all(services, as_of=now)`.
+  Keep the check that the accepted plan is current.
+- **Verify:** the fixture path stays identical (`tests/integration/test_migration_pipeline.py`), plus a live-mode unit
+  test with a stub reader.
+- **Record:** D-28; `HANDOFF.md` §6.
+
+### DEC-07 Certified-empty and `loaded_at` for live captures
+
+- **Authority:** ENGINEERING.
+- **Why.** `LiveSourceReader` (`focus/data/fixture_reader.py`) marks every zero-row read `EMPTY_UNCERTIFIED`. An empty
+  required dataset therefore rejects the run even when empty is correct, for example no open shortages. It also
+  passes no `loaded_at`, so freshness depends on row clocks.
+- **Recommendation.** Add a producer receipt table (in 011), written by the staging job: dataset, load instant, row
+  count, certified-empty flag and load id. The live reader reads the receipt for each dataset:
+  - a zero-row capture with a certified-empty receipt for the same load becomes `CERTIFIED_EMPTY`;
+  - the receipt's load instant becomes `loaded_at`.
+- **Verify:**
+  - `tests/integration/test_source_run_failures.py` and `tests/integration/test_source_freshness.py`;
+  - new tests for a certified empty capture and a mismatched load id.
+- **Record:** D-28; `docs/data/README.md` (capture statuses and "Known gaps").
+
+### DEC-08 The staging loader design
+
+- **Authority:** ENGINEERING. It is company code in the internal fork.
+- **Default.** Follow `HANDOFF.md` §4 exactly:
+  - the `--part`, `--as-of` and `--receipt` interface;
+  - atomic publication (shadow tables and a swap);
+  - one extraction instant;
+  - row clocks stamped in UTC;
+  - the complete census;
+  - append-only observation history;
+  - delta loads with a nightly full reconciliation.
+- **Measure** (once wired): the duration of each dataset load; the 95th percentile must fit the 2-minute budget.
+- **Decision rule.** If the 95th percentile is over 2 minutes, move the slowest datasets to an earlier preload, at
+  T−40 minutes, for slowly changing tables (`cday_op_plan`, `cs_windows`, `pnet_dag`, `cert_course_map`,
+  `dept_team_skill_ref`), and keep the fast-moving ones at T−20.
+- **Verify:** `verify_staged_sources` passes, and a week of `stage.json` receipts shows complete loads.
+
+### DEC-09 Order of the supplemental producers
+
+- **Authority:** ENGINEERING.
+- **Why.** 14 supplemental datasets report `NOT_PROBED` live, and each one withholds part of the EXECUTABLE plan
+  (`docs/data/`).
+- **Recommendation**, in order:
+  1. `work_progress` (without it every in-work job is blocked);
+  2. `shift_roster`;
+  3. `ot_authorizations`;
+  4. `availability_exceptions`;
+  5. `carry_in`;
+  6. `requirement_census`;
+  7. `holding_events`;
+  8. `rework_classification`;
+  9. `inspection_holds`;
+  10. `part_events`;
+  11. `duration_episodes`;
+  12. `scope_receipt`, `requirement_alternatives` and `people_directory`.
+
+  Each producer needs a landing table (in 011 or later), a query registered in `LIVE_SUPPLEMENTAL_QUERIES`, and the
+  as-of rule for datasets with a cutoff column.
+- **Verify:** `tests/unit/test_live_reader_binding.py` and `tests/unit/test_data_reference_docs.py` (the docs must
+  match), and the readiness gap counts fall as each producer lands.
+
+## 5. Data semantics: the open decisions OD-02 to OD-17
+
+The general rule for every OD:
+
+1. Profile the source with the listed read-only query, inside the company environment.
+2. Write down what the data and the system owner say.
+3. Set the policy value with the evidence in `ref`.
+4. Ask the owner to confirm the relabel from `open_decision` to `owner_decision`.
+5. On confirmation, move the item from `open_decisions` to `decided_decisions` in `config/policies/rebuild-v1.json`
+   (fields: `id`, `topic`, `decision`, `decided_by`, `decided_on`, `policy_key`), update `test_policy_config.py`, and
+   update the dataset pages in `docs/data/`.
+
+Until confirmation, live behavior stays as the "Live effect" says.
+
+| OD | Topic | Live effect until decided | How to decide from data | Recommended answer |
+| --- | --- | --- | --- | --- |
+| OD-02 | Elapsed rework durations | No live P75; rework jobs without remaining work are blocked (`DURATION_UNAVAILABLE`). The P75 comes only from `duration_episodes`. | Build a `duration_episodes` producer from raw clock intervals (`queries/durations/build_observations.sql`, `percentiles.sql`). Check cohort sizes per class, team, model and crew. | P75 of verified comparable episodes (already `user_requirement`); a cohort below the policy's minimum stays unavailable, never defaulted. |
+| OD-03 | QA hold locations and inspector roles | Jobs with in-process inspections are blocked in every plan (`IP_HOLD_UNKNOWN_LOCATION`). | `queries/quality/inspection_profile.sql`; find the QA system's hold points per job. | An `inspection_holds` producer from the QA system; no inference from counts. |
+| OD-04 | Breaks and overtime authority | Live OT = 0. | Find the labor system's OT authorizations per team, shift and day. | An `ot_authorizations` producer; protected windows stay as in `shift.protected_windows`. |
+| OD-05 | CS date basis | **Every live job is kept out of EXECUTABLE plans** (`CS_DATE_SEMANTICS_UNCONFIRMED`). Conflicting loads give `CS_LOAD_CONFLICT`. | `queries/calendars/cs_window_grain.sql` and `calendar_generations.sql`. Are the dates resolved per line, or offsets from a reference? Is there one active load per line? | `cs.date_mode = RESOLVED` if the dates are present and stable per load; otherwise `OFFSET_FROM_REFERENCE` with `cs.offset_day_basis`. **Highest priority: it gates all executable work.** |
+| OD-07 | Concurrent and non-concurrent edges | Both jobs of a hard concurrent or non-concurrent edge are quarantined (`CONCURRENCY_SEMANTICS_UNRESOLVED`). | `queries/graph/template_edge_profile.sql`. For hard pairs, check history: did the actual intervals overlap (concurrent) or never overlap (non-concurrent)? | Confirm the fixture meanings (`REQUIRED_OVERLAP`, `NO_OVERLAP`) if 95% or more of the historical pairs agree; otherwise ask the engineering owner. |
+| OD-08 | Rework class source | Open `IS_REWORK` jobs are blocked (`REWORK_CLASS_UNKNOWN`). | `queries/graph/rework_linkage.sql`; find the NC/PU/CI codes in the quality system. | A `rework_classification` producer from the quality system, with root and defect-origin team. |
+| OD-09 | Affirmative no-certificate census | Jobs without requirement rows stay blocked (`REQUIREMENTS_UNKNOWN`). | `queries/qualifications/requirement_census.sql`. Which system affirms "no certificate needed"? | A `requirement_census` producer; absence is never proof. |
+| OD-10 | Assignment and attendance feeds | No executable crews (both tables were empty on 2026-10-27). | Check that `person_team_map` (with `SUPERINTENDENT`) and `attendance_shift` are populated and current. | Load both from HR and timekeeping, plus `shift_roster`; team inference remains forecast-only. |
+| OD-11 | Travel origin at shift start | Muster at the first assignment, 0 minutes. | Check whether crews actually start at a muster point that costs time. | Keep the fixture rule unless supervisors report material travel at shift start. |
+| OD-12 | Economics terms, caps and checkpoints | Cost UNKNOWN where terms are missing; no default rate. | `queries/economics/effective_terms.sql` and `liability_floor.sql`. | Load approved terms only; leave unknown unknown. The planner still orders work by the other objectives. |
+| OD-13 | Master status meanings | PREVIEW and FORECASTED stay forecast-only; unknown statuses are quarantined. | Count the statuses in the master list, and confirm each meaning with the planning system owner. | Confirm `scope.status_classes`, adding any new status explicitly; unknown is never open. |
+| OD-14 | Purpose behind delivery commitments | FORECAST plans drive commitments (fixture). | Ask the delivery owner which date is promised. | FORECAST, as today. |
+| OD-15 | Live observation producers | Official evaluation stays UNKNOWN. | Find the sources for verified completions, clock intervals, claims, decisions, amendments and defect evidence. | Producers into the migration 008 landing tables, plus attendance and holding evidence tables (DEC-01); `OBSERVED_AT_UTC` is when the producer first knew. |
+| OD-16 | OFFICIAL score policy and personal grades | DEMONSTRATION; personal grades disabled. | n/a | **OWNER only** (§7). |
+| OD-17 | Excusal reviewer identity | No decision is admitted; relief stays 0. | List who reviews excusals today. | Map the reviewers' SSO groups to `excusal_decider` in `FOCUS_GRANTS_JSON` (`docs/execution/DEPLOYMENT.md`). A claimant never decides their own claim. |
+
+**Also correct with the first policy batch (DEC-27).** The policy file's `live_effect` texts for OD-02, OD-03, OD-05
+and OD-08 are out of date. `DECISIONS.md` ("Semantic gaps") gives the correct effects. Fix them together with the
+first owner-confirmed OD, because any edit changes the policy hash.
+
+## 6. Operations decisions
+
+### DEC-10 The test suite inside the live window
+
+- **Authority:** OWNER. It changes decision P23, "every verification first".
+- **Why.** In `.gitlab-ci.yml`, `acquire_admit` needs every verify job, including the full suite. The non-UI suite
+  alone takes 10.5 minutes; with installs, the UI suite and the rehearsal, little of the 15–20 minute window is left.
+- **Options:**
+  - (a) keep the full suite before every live run;
+  - (b) run live schedules only from a protected branch or tag whose merge pipeline passed, and keep only
+    `import_and_lint` (migrations dry-run, preflight) and `native_wheel` in the live path.
+- **Recommendation: (b).**
+- **Build now.** Behind a variable (`FOCUS_LIVE_VERIFY=full|fast`, default `full`), add rules to
+  `unit_and_integration`, `ui` and `fixture_pipeline_rehearsal` that skip them on live schedules when `fast` is set,
+  and make `acquire_admit`'s needs conditional. Update `test_ci_draft_orders_roles_and_protects_signing` to assert
+  both modes.
+- **Measure.** The time from pipeline start to acceptance, per run, over a week.
+- **Ask the owner** with that measurement.
+
+### DEC-11 Signing before each shift
+
+- **Authority:** OWNER. It is a governance decision.
+- **Why.** `sign_accept` is `when: manual`. A plan accepted after its shift starts is only a proposal for that shift,
+  and teams are scored against the stale plan (DEC-24).
+- **Options:**
+  - (a) manual promotion, staffed three times a day, with an alert at T−5 minutes;
+  - (b) automatic promotion in the protected `focus-signer` environment, only when the FINAL and READBACK validations
+    are clean and the pipeline runs from a scheduled, protected ref;
+  - (c) automatic for EXECUTABLE, manual for FORECAST.
+- **Recommendation: (b), or (c) if the owner wants a human on the delivery forecast.** Keep a kill switch
+  (`FOCUS_AUTO_SIGN=false` falls back to manual).
+- **Build now.** Add the rules with the switch off. The test above asserts `when: manual`; extend it to assert the
+  manual fallback.
+- **Measure.** From `tools/calibrate_scores.py store`: `stale_plans.share`, and the minutes from acceptance to shift
+  start (pipeline receipts).
+- **Decision evidence.** If manual signing gives any stale plan in a week of shadow, recommend automatic.
+
+### DEC-12 Cutoff lead and schedule times
+
+- **Authority:** DATA.
+- **Default now.** A 20-minute lead. Plan crons at 05:40, 14:10 and 22:40; score crons at 15:35, 00:05 and 07:05,
+  site time (`HANDOFF.md` §5.2). Set each GitLab schedule's time zone to America/New_York.
+- **Measure**, after one week of runs:
+  - the end-to-end pipeline duration, from data cut to acceptance;
+  - from `calibrate_scores.py store`: `boundary.share_in_last_lead_minutes` and `boundary.share_in_overtime`.
+- **Decision rule.** Lead = 95th-percentile pipeline duration + 5 minutes, rounded up to 5, kept between 15 and 30.
+  If more than 10% of completions land inside the lead, shorten the pipeline (DEC-08, DEC-10) before lengthening the
+  lead.
+- **Implement in:** the GitLab schedule crons. `planning.cutoff_lead_minutes` (60) is a different parameter, the
+  auto-mode look-ahead; leave it unless the lead goes past 45 minutes.
+- **Record:** a D-entry with the measured 95th percentile.
+
+### DEC-13 Freshness limits (live load cadences)
+
+- **Authority:** DATA.
+- **Default now.** `admission.max_source_age_hours` keeps its fixture limits (18–240 h, `fixture_default`), and
+  `admission.max_capture_skew_minutes` stays at 30.
+- **Measure.** The load interval of each dataset over two weeks (`stage.json` receipts).
+- **Decision rule.** Limit = 2 × the 95th-percentile load interval, rounded up to whole hours, and never below 6 h for
+  a dataset loaded before every shift. Keep 30 minutes of capture skew unless acquisition itself takes longer.
+- **Implement in:** `config/policies/rebuild-v1.json`, as one policy batch, with the evidence in `ref`.
+- **Verify:** `tests/integration/test_source_freshness.py`.
+
+## 7. Scoring decisions (after at least 4 weeks of shadow scores)
+
+**Prerequisites:**
+
+- DEC-01, DEC-06 and OD-15 are done, so scores exist live.
+- OD-17 is done, so claims can be decided.
+- At least about 1,000 scored team-shifts.
+
+The tool for all of these is `tools/calibrate_scores.py`, and `docs/task-valuation-investigation/10_CALIBRATION.md`
+§8 is the full procedure. Keep its outputs in company storage only.
+
+```bash
+python tools/calibrate_scores.py store --from <start> --to <end> --out calibration.json --review-sample 60 --review-csv review.csv
+```
+
+### DEC-20 Off-plan classifier error rates
+
+- **Authority:** DATA.
+- **Why.** R5 credits off-plan work only when it was additive. P2 calls a team-shift's off-plan work substitutive when
+  planned work was left undone with no claim on record (`classify` in `tools/calibrate_scores.py`).
+- **Measure.**
+  1. Supervisors label `review.csv` (each row `SWAP` or `EXTRA`).
+  2. Run `python tools/calibrate_scores.py store --from <start> --to <end> --labels review.csv`.
+  3. Read q, the miss rate, and the false-alarm rate. Weight by class share for a site-wide rate.
+- **Decision rule:**
+  - q ≤ 15% and false alarms ≤ 20%: keep P2.
+  - False alarms above 20%: real extra work is losing credit. Require claims for unclaimed misses, or build a
+    task-level match (each off-plan job against the dispatched task it displaced).
+  - q above 30%: do not enable R5 (DEC-22) until the classifier improves.
+- **Record:** a D-entry with q, the false-alarm rate and the sample size (summary only).
+
+### DEC-21 The exchange rate w
+
+- **Authority:** DATA, then OWNER confirms, because it is part of the score policy.
+- **Default:** 0.8.
+- **Measure.** The `swap_gain` section of `calibration.json`, at the measured q.
+- **Decision rule.** Take the largest w in {0.7, 0.8, 0.9} at which `share_that_pays` is 0 at the measured q, or at
+  most 0.1% with `max_gain` at most 0.1 points if the owner accepts that tolerance. With q unknown or above 15%, use
+  0.7. On the synthetic floor, q ≤ 5% allowed 0.9, q ≤ 15% gave 0.8, and zero tolerance gave 0.7.
+- **Implement in:** a new grading policy key (for example `score.offplan_rate`), together with DEC-22.
+
+### DEC-22 Turn on R5 off-plan credit
+
+- **Authority:** OWNER.
+- **Why.** Today's score, R0, taxes every helpful off-plan minute through adherence H. On the synthetic floor it got
+  the direction of the production change wrong in 14 of 16 paired runs.
+- **R5:**
+  - grade = 100 × (w × min(1, (Cp + additive)/D) + (1 − w) × min(1, Cp/D)) − 100 × O/D;
+  - additive minutes come from P2;
+  - substitutive minutes earn nothing;
+  - the output index (Cp + additive)/D is reported but never used to rank teams.
+- **Build now.**
+  - Add a grading key (for example `score.formula = R0 | R5`, default `R0`).
+  - Implement R5 in `score.formula` and `score.components`, using P2 over the evaluation evidence: missed planned
+    units with no submitted claim.
+  - Mirror it in the simulation and the reference views; add tests.
+  - Show R5 as a shadow score beside R0 for at least two weeks.
+- **Ask the owner** with DEC-20, DEC-21 and the R0-versus-R5 grade changes (`grades.R0_to_R5_w0.8_grade_change`).
+- **Record:** a D-entry and `PERFORMANCE_POLICY.md`.
+
+### DEC-23 Grade bands
+
+- **Authority:** OWNER (with data).
+- **Why.** Without off-plan work, R5 = 100 × (1 − unexcused shortfall) − the out-of-sequence charge, so a band is a
+  tolerance on planned work left undone without an excuse. The synthetic floor is too forgiving to set them.
+- **Default:** the demo bands 90/80/70/60 under DEMONSTRATION. Starting proposal: A ≤ 2% undone, B ≤ 5%, C ≤ 10%,
+  D ≤ 20%, which gives bands 98/95/90/80.
+- **Measure:** `shortfall.percentiles`, `grades` (with `--bands 98,95,90,80` and other candidate sets), the flip
+  rates, and `daily_pooled_R5_w0.8`. Exclude stale-plan shifts first (DEC-24).
+- **Decision rule:**
+  - pick the tolerance set whose flip rate between a team's consecutive shifts is at most 5%;
+  - check that a supervisor review of a sample of C, D and F team-shifts finds real problems in most of them;
+  - tie recognition (badges, rankings) to pooled days or weeks, not single shifts.
+- **Implement in:** `score.bands` in `config/policies/grading-demo-v1.json` (one policy batch, at a period
+  boundary).
+
+### DEC-24 Late-plan protection
+
+- **Authority:** OWNER.
+- **Why.** A plan accepted after its shift starts is only a proposal; the shift is scored against the previous plan
+  while crews work the new one. On the synthetic floor this doubled the 95th-percentile shortfall and raised
+  cross-team relief 25–28 times (`10_CALIBRATION.md` §7).
+- **Options:**
+  - (a) status quo;
+  - (b) automatically file `PLAN_CHURN` claims for the frozen units the late plan moved out of the shift. These are
+    evidence on the separate review track (`disruption.separate_review`); they become relief only by reviewed
+    decision;
+  - (c) score stale-plan shifts NEUTRAL;
+  - (d) score against the late plan if it was accepted within N minutes of the start.
+- **Recommendation: prevent first (DEC-11), then (b).** Option (b) changes no score by itself and keeps a human
+  reviewer.
+- **Build (b) now**, behind `FOCUS_AUTO_PLAN_CHURN=false`.
+- **Measure:** `stale_plans.share` and examples.
+- **Decision rule.** If the share is about 0 after DEC-11, (b) is a safety net; if above 1%, ask the owner about (c)
+  or (d).
+
+### DEC-25 Overtime credit
+
+- **Authority:** OWNER (with data).
+- **Why.** `select_goal` (`focus/performance/lifecycle.py`) checks shift windows before overtime windows. A job
+  finished in shift k's authorized overtime, which shift k+1's plan also holds, is credited to shift k+1. Shift k's
+  unit is missed (`COMPLETION_CREDITED_ELSEWHERE_OR_LATE`), though shift k's crew did the work.
+- **Options:**
+  - (a) keep it;
+  - (b) credit the shift whose crew completed it, from the completing person's team-shift on the completion record.
+    The later goal's unit then gets a relief status such as `DONE_IN_PREVIOUS_OVERTIME`, counted in E like
+    `DONE_BEFORE_SHIFT`.
+- **Measure.** How many such units there are and their share of goal minutes. Count EARNED units whose completion
+  falls in the previous shift's overtime window and whose phase was also in the previous goal; extend
+  `calibrate_scores.py` if needed.
+- **Decision rule.** Under 1% of goal minutes: recommend (a) and document. Otherwise recommend (b).
+- **Implement (b) in:** `select_goal` and `unit_facts`, plus the simulation and reference views, with tests mirroring
+  the `DONE_BEFORE_SHIFT` ones.
+
+### DEC-26 Approved additions under R5
+
+- **Authority:** taken with DEC-22.
+- **Why.** Under R5, an approved pull-ahead addition (in B and in Cp) can score below the same work done unapproved
+  and classified additive. Approval must never score worse than not asking (report 09 §8).
+- **Recommendation.** Count approved pull-ahead additions as additive output; keep true emergency additions as
+  obligations. The amendment's reason or basis tells them apart.
+
+### OD-16 The OFFICIAL score policy (last)
+
+- **Authority:** OWNER only. Never self-approve.
+- **When.** After DEC-20 to DEC-25 are settled and at least two weeks of shadow scores look right to supervisors.
+- **What the owner provides.** An approval reference, which goes in `score.policy_approval_ref`, with
+  `score.policy_status = OFFICIAL`. The decision on personal grades is separate and needs its own policy;
+  `score.personal_grades_enabled` stays false until then.
+
+## 8. Templates
+
+**Decision record (append to `docs/execution/DECISIONS.md`):**
+
+```markdown
+- **D-NN <title> (<date>, <authority: engineering | data | owner>).**
+  - **Decision.** <one sentence>.
+  - **Evidence.** <what was measured, when, sample size; company values stay in company storage>.
+  - **Rule applied.** <the playbook rule, DEC-xx>.
+  - **Changes.** <files, policy keys (old -> new), migration version>.
+  - **Tests.** <updated or added tests; suite result>.
+  - **Revisit when.** <condition>.
+```
+
+**Policy decision (an OD item, after the owner confirms), in `config/policies/rebuild-v1.json`:**
+
+```json
+{"id": "OD-05", "topic": "CS offsets, reference anchors and date basis",
+ "decision": "<the confirmed meaning>", "decided_by": "owner", "decided_on": "<YYYY-MM-DD>", "policy_key": "cs.date_mode"}
+```
+
+Set the key's `authority` to `owner_decision` and its `ref` to the evidence. Remove the item from `open_decisions`.
+Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
+
+**Owner memo (for OWNER items; keep it to one page):**
+
+```markdown
+**Decision needed:** <DEC-xx title>
+**Recommendation:** <option>, because <one or two sentences>.
+**Evidence:** <the key numbers, with the period and sample size>.
+**Other options:** <one line each, with their cost>.
+**Built and switched off:** <switch name>; turning it on changes <what>.
+**If no answer by <date>:** <the safe default that stays in place>.
+```
+
+## 9. Suggested order
+
+1. **Now (no data):** DEC-01 to DEC-09; build DEC-10, DEC-11, DEC-22 and DEC-24 behind switches that are off.
+2. **Data wired, read-only:**
+   - staging (DEC-08) and the OD profiling (§5), with OD-05 first, then OD-10, OD-13, OD-03, OD-07, OD-08, OD-09 and
+     OD-04;
+   - a FORECAST plan for the complete scope;
+   - review the readiness gaps with their owners.
+3. **First week of pipeline runs:** DEC-12; the evidence for DEC-10 and DEC-11; DEC-24's measurement.
+4. **Two to four weeks of shadow scores:** DEC-13, DEC-20, DEC-21, DEC-25 and DEC-23; then propose DEC-22 and DEC-26.
+5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-10, DEC-11, DEC-22 to
+   DEC-25 and, last, OD-16.

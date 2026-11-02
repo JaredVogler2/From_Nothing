@@ -9,6 +9,8 @@ behaviour were checked against the code on this date.
 
 **Read with:**
 
+- [DECISION_PLAYBOOK.md](DECISION_PLAYBOOK.md): every open decision, with a recommendation, the rule for deciding
+  once real data is wired, the files and tests to change and where to record it. Work through it after this guide.
 - [WORKPLACE_PORTING_GUIDE.md](WORKPLACE_PORTING_GUIDE.md): confidentiality and the rollout gates A–F.
 - [SOURCE_REPLACEMENT_CROSSWALK.md](SOURCE_REPLACEMENT_CROSSWALK.md): the mapping checklist for each dataset.
 - [`docs/data/`](../data/README.md): every input, column by column, and what FOCUS does when it is missing.
@@ -294,6 +296,9 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
    bands, the classifier's error rates, stale plans).
 
 ## 7. Owner decisions still open
+
+`DECISION_PLAYBOOK.md` gives each of these, and the engineering and data decisions, a recommendation and a decision
+rule.
 
 - **Signing before each shift:** manual promotion or automatic (§5.3).
 - **Verification in the live path:** keep the full suite before every run, or rely on the merge pipeline (§5.3).
