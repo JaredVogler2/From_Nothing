@@ -31,11 +31,13 @@
    0. hard feasibility: independent validation with zero violations;
    1. commitments defended (same slot), then exact incumbent crews;
    2. aircraft with unknown completion;
-   3. deferred phases;
-   4. exact controllable modeled penalty (known and conditional aircraft);
-   5. travel plus wait minutes, then overtime;
-   6. crew-continuity breaks;
+   3. exact controllable modeled penalty (known and conditional aircraft);
+   4. travel plus wait minutes;
+   5. overtime minutes, then crew-continuity breaks;
+   6. deferred phases (a last backlog tie: a job count never outranks money);
    7. deterministic signature.
+
+   The order is the policy's ``objective.order`` (``OBJECTIVE_FIELDS`` below).
 
 Weights never decide acceptance. Every candidate is a full decode through the shared ledger,
 so a move cannot bypass a constraint. The independent validator (P15) re-checks the final
