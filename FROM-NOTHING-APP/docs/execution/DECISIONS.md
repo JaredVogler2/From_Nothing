@@ -150,7 +150,7 @@ attendance. A conditional ETA is never physical receipt.
     - The preflight's `--probe-sql` reads the ledger read-only.
   - **Retention never deletes.** The operator supplies the period. Accepted history, evidence, references and legal
     holds are always preserved. Fixture archives are SHA-256 receipted and restorable; live retention is the installed
-    procedures only.
+    procedures only. (Display parts, a cache rebuilt from those kept records, are the one exception: D-24.)
 - **D-22 Shift cycle speed (owner direction, November 1, 2026).**
   - The pipeline publishes the executable plan first; the forecast follows on the same admitted snapshot, so dispatch
     never waits for it (`INSTALL_AND_PIPELINE.md` section 4).
@@ -168,6 +168,21 @@ attendance. A conditional ETA is never physical receipt.
     summaries.
   - The digital twin stays on the whole-snapshot path behind `FOCUS_TWIN_FULL_LOAD` until its fleet-wide base is
     precomputed.
+- **D-24 Display retention (owner direction, November 2, 2026).** Display parts are deleted once nothing reads them
+  (`DISPLAY_PACKAGE.md`, Retention). Without this, every shift adds up to 5.9 GB of parts at 50 aircraft.
+  - **Why deleting is allowed here.** A display part is a cache. It is rebuilt from records kept forever (the admitted
+    snapshot or the accepted payload) and must hash to its manifest, which for a plan is signed. Manifests, display
+    receipts and candidate digests are never deleted, so every deleted part can be rebuilt and checked against the
+    original. The store refuses deletion from every other collection (`DERIVED_COLLECTIONS`).
+  - **Kept whole:** the current packages; any package that can still become current (an unpromoted run, an acceptance
+    whose head has not moved yet, a plan that can still be accepted); and every package of a head that moved less than
+    the grace period ago (60 minutes by default).
+  - **Kept forever:** each accepted plan's `summary` and `goals:<date>` parts, which the history views and the goals of
+    record read (3.3 MB per shift at 50 aircraft).
+  - **When it runs.** A pipeline job before acquisition, holding the display parts lock that every package writer
+    holds. It never holds back the shift's plan.
+  - **Live** needs the pending live adapter to implement the store's three retention operations for `display_parts`,
+    run by the retention role.
 
 ## Semantic gaps (live), each a precise readiness effect
 

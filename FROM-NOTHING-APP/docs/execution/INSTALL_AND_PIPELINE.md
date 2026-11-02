@@ -159,6 +159,7 @@ pretends.
 ## 4. The pipeline (`focus/orchestration.py`)
 
 ```bash
+python -m focus.cli display-retention --apply                      # retention role: display parts nothing reads (D-24)
 python -m focus.cli pipeline --key 2026-10-26 --role source      # --planning auto|full|repair (default: policy)
 python -m focus.cli pipeline --key 2026-10-26 --role app        # the executable plan
 python -m focus.cli pipeline --key 2026-10-26 --role stager
@@ -223,6 +224,10 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
   A store from before the package is backfilled once with these two commands:
   - `python -m focus.cli display --current-source` (source role);
   - `python -m focus.cli display --current-plans` (signer role, because it signs).
+
+  Before acquisition, `display-retention --apply` deletes the parts nothing reads any more (section 7), so the store
+  holds at most the current package and the one being built. At 50 aircraft it releases a whole generation, 5.9 GB, in
+  6.4 s.
 - **Leases.** The default is 900 s (`--lease-seconds`). A live lease returns `LEASED` to a competitor. An expired lease
   is taken over, and the new owner re-runs the idempotent handler. After three attempts the step is `EXHAUSTED`; start
   a new key.
@@ -238,6 +243,8 @@ Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accep
 - **Live jobs** each run one role in a protected environment, chained with `needs` and serialized per scope with
   `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included. `sign_accept` is
   `when: manual` and holds the only signing reference.
+- **Display retention** (`display_retention`) runs before acquisition with retention credentials only. It is
+  `allow_failure`, so it never holds back the shift's plan. The fixture rehearsal runs it too.
 - **The scheduling job** (`schedule_validate`) does the heavy work: it associates jobs with people and start times.
   - Tag it to a runner with at least 4 vCPU and 16 GB. At 50 aircraft, loading the snapshot and running a full
     forecast solve peaked at 7.5 GB (`PRODUCTION_SCALE.md`). The stager and signer jobs load the snapshot too and fit
@@ -273,7 +280,9 @@ heads only forward.
 | Source and plan heads; readback and signature failures | `stage_readback` and `sign_accept` step errors, acceptance receipts |
 | Evaluations pending correction | evaluation revisions and `/api/v1/performance` |
 
-## 7. Retention (never deletes)
+## 7. Retention
+
+### History (never deletes)
 
 ```bash
 python -m focus.cli retain-history --keep-days <N> [--legal-hold holds.json] [--apply]
@@ -287,3 +296,28 @@ There is no default period: the operator supplies it.
 - **Archived** (`--apply`, fixture only): only superseded, unreferenced candidates, their receipts and old scenario
   artifacts. They move to `<runtime>/archive/<receipt>/` with a SHA-256 receipt and can be restored byte for byte.
 - **Live:** the installed retention procedures, run by the retention role with the operator's period.
+
+### Display parts (D-24)
+
+```bash
+python -m focus.cli display-retention [--grace-minutes 60] [--apply]
+```
+
+Display parts are a cache rebuilt from the kept snapshot or accepted payload, and checked against the kept (for plans,
+signed) manifest. This is the one command that deletes records, and the store refuses it outside `display_parts`.
+
+- **Kept whole:** the current packages; any package that can still become current (an unpromoted run, an acceptance
+  whose head has not moved, a plan that can still be accepted); and every package of a head that moved less than the
+  grace period ago.
+- **Kept forever:** each accepted plan's `summary` and `goals:<date>` parts (3.3 MB per shift at 50 aircraft).
+- **Never deleted:** manifests, display receipts, candidate digests, and everything section 7's history list preserves.
+- **Deleted:** every other part.
+
+Without `--apply` it only reports. With it, it holds the display parts lock that every package writer holds, writes a
+ledger of released packages (so later runs open only new ones) and a receipt, then deletes. `DISPLAY_PARTS_MISSING` in
+a view means a current part is gone for another reason; `python -m focus.cli display --current-source` or
+`--current-plans` rebuilds it. `DISPLAY_PACKAGE.md` has the full rule and the measurements.
+
+**Live:** this needs the pending live adapter to implement the store's `exists`, `stored_ids` and `delete_immutable` for
+`display_parts`, with the delete granted to the retention role only. Until then the command reports
+`REPOSITORY_UNAVAILABLE`, like every live store operation.

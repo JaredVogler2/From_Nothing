@@ -7,7 +7,9 @@
   before the plan head moves (the signer role).
 
 Parts are stored once under the SHA-256 of their canonical JSON. Manifests and receipts are keyed by the snapshot or
-plan id, written once, and a retry must reproduce them exactly.
+plan id, written once, and a retry must reproduce them exactly. A writer holds the display parts lock (``writing``) while
+it writes, so retention (``focus.display.retention``) never deletes a part a writer found stored and is about to name, and
+a writer puts back any part of its manifest that retention removed (the build is deterministic, so it hashes the same).
 
 **Reading** never loads a snapshot or a plan artifact:
 
@@ -25,9 +27,10 @@ from __future__ import annotations
 import os
 import threading
 from collections import OrderedDict
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
 from ..codec import CodecError, canonical_dumps, content_hash, from_jsonable, open_envelope, seal_bytes, sha256_hex
 from ..data.store import ImmutableConflict
@@ -38,6 +41,9 @@ PARTS = "display_parts"
 MANIFESTS = "display_manifests"
 RECEIPTS = "display_receipts"
 DIGESTS = "candidate_digests"
+LOCK = "display-parts"            # held by every package writer and by retention while it decides and deletes
+WRITE_TTL = 7200.0                # a writer holds it for one package (a 50-aircraft snapshot: 162 s)
+WRITE_WAIT = 3600.0
 
 
 class DisplayError(RuntimeError):
@@ -48,6 +54,18 @@ class DisplayError(RuntimeError):
 
 
 # ---------------------------------------------------------------------- writing
+
+@contextmanager
+def writing(repos: Any) -> Iterator[None]:
+    """The display parts lock, held while a package's parts and manifest are written."""
+    with repos.store.lock(LOCK, ttl_seconds=WRITE_TTL, wait_seconds=WRITE_WAIT):
+        yield
+
+
+def missing_parts(repos: Any, manifest: DisplayManifest) -> list[PartRef]:
+    """The parts a manifest names that are not stored (retention removed them, or a write never finished)."""
+    return [ref for ref in manifest.parts if not repos.exists(PARTS, ref.sha256)]
+
 
 def _put_part(repos: Any, sha: str, kind: str, payload: bytes, created_at: datetime) -> int:
     raw = repos.get_raw(PARTS, sha)
@@ -89,27 +107,31 @@ def _put_once(repos: Any, collection: str, record_id: str, type_name: str, cls: 
 
 
 def write_snapshot_display(repos: Any, snapshot: Any) -> DisplayManifest:
-    """Build and store an admitted snapshot's parts and manifest (idempotent)."""
-    raw = repos.get_raw(MANIFESTS, snapshot.id)
-    if raw is not None:
-        existing = from_jsonable(DisplayManifest, open_envelope(raw, "DisplayManifest").payload)
-        if existing.subject == "SNAPSHOT" and existing.snapshot_hash == snapshot.hash and existing.builder == BUILDER:
-            return existing
-    refs = write_parts(repos, snapshot_parts(snapshot), snapshot.created_at)
-    manifest = DisplayManifest(DISPLAY_SCHEMA, "SNAPSHOT", snapshot.id, snapshot.id, snapshot.hash, snapshot.policy_hash, snapshot.source_run_id,
-                               None, None, BUCKETS, BUILDER, refs)
-    _put_once(repos, MANIFESTS, snapshot.id, "DisplayManifest", DisplayManifest, manifest, snapshot.created_at,
-              source_run_id=snapshot.source_run_id, policy_hash=snapshot.policy_hash)
-    return manifest
+    """Build and store an admitted snapshot's parts and manifest (idempotent: a complete package is left as it is, and one
+    whose parts retention removed is rebuilt to the same manifest)."""
+    with writing(repos):
+        raw = repos.get_raw(MANIFESTS, snapshot.id)
+        if raw is not None:
+            existing = from_jsonable(DisplayManifest, open_envelope(raw, "DisplayManifest").payload)
+            if (existing.subject == "SNAPSHOT" and existing.snapshot_hash == snapshot.hash and existing.builder == BUILDER
+                    and not missing_parts(repos, existing)):
+                return existing
+        refs = write_parts(repos, snapshot_parts(snapshot), snapshot.created_at)
+        manifest = DisplayManifest(DISPLAY_SCHEMA, "SNAPSHOT", snapshot.id, snapshot.id, snapshot.hash, snapshot.policy_hash,
+                                   snapshot.source_run_id, None, None, BUCKETS, BUILDER, refs)
+        _put_once(repos, MANIFESTS, snapshot.id, "DisplayManifest", DisplayManifest, manifest, snapshot.created_at,
+                  source_run_id=snapshot.source_run_id, policy_hash=snapshot.policy_hash)
+        return manifest
 
 
 def write_plan_display(repos: Any, snapshot: Any, artifact: Any, plan_id: str, payload_sha256: str, created_at: datetime) -> tuple[DisplayManifest, str]:
     """Build and store an accepted plan's parts and manifest; returns the manifest and the hash the signer signs."""
-    refs = write_parts(repos, plan_parts(snapshot, artifact, plan_id), created_at)
-    manifest = DisplayManifest(DISPLAY_SCHEMA, "PLAN", plan_id, artifact.snapshot_id, artifact.snapshot_hash, artifact.policy_hash,
-                               artifact.source_run_id, artifact.purpose.value, payload_sha256, BUCKETS, BUILDER, refs)
-    _put_once(repos, MANIFESTS, plan_id, "DisplayManifest", DisplayManifest, manifest, created_at, source_run_id=artifact.source_run_id,
-              policy_hash=artifact.policy_hash, purpose=artifact.purpose.value)
+    with writing(repos):
+        refs = write_parts(repos, plan_parts(snapshot, artifact, plan_id), created_at)
+        manifest = DisplayManifest(DISPLAY_SCHEMA, "PLAN", plan_id, artifact.snapshot_id, artifact.snapshot_hash, artifact.policy_hash,
+                                   artifact.source_run_id, artifact.purpose.value, payload_sha256, BUCKETS, BUILDER, refs)
+        _put_once(repos, MANIFESTS, plan_id, "DisplayManifest", DisplayManifest, manifest, created_at, source_run_id=artifact.source_run_id,
+                  policy_hash=artifact.policy_hash, purpose=artifact.purpose.value)
     return manifest, content_hash(manifest)
 
 
@@ -152,7 +174,17 @@ def write_candidate_digest(repos: Any, plan: Any) -> None:
 
 
 def has_plan_display(repos: Any, plan_id: str) -> bool:
-    return repos.get_raw(RECEIPTS, plan_id) is not None and repos.get_raw(MANIFESTS, plan_id) is not None
+    """The plan's display receipt and manifest are stored, and so is every part the manifest names."""
+    if repos.get_raw(RECEIPTS, plan_id) is None:
+        return False
+    manifest = _manifest(repos, plan_id)
+    return manifest is not None and not missing_parts(repos, manifest)
+
+
+def snapshot_display_complete(repos: Any, snapshot_id: str) -> bool:
+    """The snapshot's display manifest is stored, and so is every part it names."""
+    manifest = _manifest(repos, snapshot_id)
+    return manifest is not None and not missing_parts(repos, manifest)
 
 
 # ---------------------------------------------------------------------- reading

@@ -166,6 +166,20 @@ Five things the synthetic run cannot show, each to measure on a real extract:
 
      The web reads only those parts. One process opening every view peaked at 857 MB, where the snapshot alone used to
      take 7.0 GB to load.
+   - **Storage per shift** at 50 aircraft, in the fixture store:
+
+     | Record | Per shift | Kept |
+     | --- | --- | --- |
+     | Display parts | up to 5.9 GB | until superseded; then only 3.3 MB of history parts (D-24, `display-retention`) |
+     | Display manifests | 1.7 MB | forever |
+     | Admitted snapshot | 1.7 GB | forever (history, D-21) |
+     | Accepted plan payloads, both purposes | 1.1 GB | forever (history, D-21) |
+     | Candidates, both purposes | 0.47 GB | until `retain-history` archives the unreferenced ones (moved, not deleted) |
+
+     Display retention runs before each pipeline's acquisition, so the display parts peak at two packages, about 12 GB.
+     The snapshots and payloads are the history D-21 keeps forever: about 2.8 GB a shift, or about 3 TB a year at three
+     shifts a day in this store. How long to keep them is an owner decision, and live they go into SQL tables through
+     the pending live adapter, where their size is not measured yet.
 5. **Headroom.** 9.6 minutes fits the 10-minute target with little margin.
    - The repeatable knobs are fewer search moves (they accepted nothing at this scale) and fewer repair boosts.
    - The bigger lever would be a detailed horizon with a coarser projection beyond it, which changes how completions are

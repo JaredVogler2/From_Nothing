@@ -60,9 +60,9 @@ result and exits non-zero on error:
 
 `demo-bootstrap`, `demo-run`, `source-discover --read-only`, `acquire`,
 `duration-stats`, `schedule`, `validate --all-required`,
-`publish --rehearse-readback`, `dispatch-check`, `collect-observations`,
-`evaluate`, `scenario`, `explain`, `benchmark --complete-scope`, `migrate --dry-run`,
-`preflight`, `pipeline`, `retain-history`, `acceptance`, `review`,
+`publish --rehearse-readback`, `dispatch-check`, `display`, `display-retention`,
+`collect-observations`, `evaluate`, `scenario`, `explain`, `benchmark --complete-scope`,
+`migrate --dry-run`, `preflight`, `pipeline`, `retain-history`, `acceptance`, `review`,
 `worker`, `serve`, `status`, `mcp-catalog`, `mcp-stdio`.
 
 ## Final acceptance and release (P24)

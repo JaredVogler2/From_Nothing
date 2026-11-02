@@ -2,6 +2,7 @@
 #
 # Order:
 #   verify
+#   -> display retention: delete display parts nothing reads any more, before the new package is built (retention role)
 #   -> acquire/admit (source role)
 #   -> schedule/validate on the same snapshot (app role)
 #   -> unsigned stage and readback (stager role, protected)
@@ -37,7 +38,7 @@ variables:
   FOCUS_SCOPE_KEY: "DEMO-787"
   PIPELINE_KEY: "ci-$CI_PIPELINE_ID"
 
-stages: [verify, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
+stages: [verify, retain, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
 
 # ---------------------------------------------------------------------- verify (fixture only, no secrets)
 
@@ -86,6 +87,7 @@ fixture_pipeline_rehearsal:
     - mkdir -p ci-receipts
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role all --budget-seconds 10 --max-moves 10 > ci-receipts/fixture-pipeline.json
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --status > ci-receipts/fixture-pipeline-status.json
+    - python -m focus.cli display-retention --apply > ci-receipts/fixture-display-retention.json
   artifacts:
     when: always
     expire_in: 30 days
@@ -105,10 +107,23 @@ fixture_pipeline_rehearsal:
     expire_in: 90 days
     paths: [ci-receipts/]
 
+# Display parts are a cache rebuilt from kept records (D-24). Retention deletes the ones nothing reads before this pipeline
+# builds the next package, so the store holds at most the current package and the one being built. It keeps the current
+# packages, any package that can still become current and every accepted plan's summary and goals; it never touches
+# manifests, receipts, snapshots, payloads or history. It is housekeeping: a failure never holds back the shift's plan.
+display_retention:
+  extends: .live
+  stage: retain
+  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel]
+  allow_failure: true
+  environment: { name: focus-retention }            # retention credentials only: deletes display parts and nothing else
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli display-retention --apply > ci-receipts/display-retention.json
+
 acquire_admit:
   extends: .live
   stage: source
-  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel]   # every verification first (P23)
+  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel, display_retention]   # every verification first (P23)
   environment: { name: focus-source }               # source-worker SQL credentials only
   script:
     - mkdir -p ci-receipts && python -m focus.cli preflight --role worker --probe-sql > ci-receipts/preflight-source.json
