@@ -1,0 +1,9 @@
+D1 singles {'A': 100000.0, 'B': 100000.0, 'C': 50000.0} sum 250000.0 joint 150000.0
+D1 shapley {'A': 50000.0, 'B': 50000.0, 'C': 50000.0}
+D1 sequential A,B,C {'A': 100000.0, 'B': 0.0, 'C': 50000.0} B,A,C {'B': 100000.0, 'A': 0.0, 'C': 50000.0}
+D1 proportional {'A': 60000.0, 'B': 60000.0, 'C': 30000.0}
+D2 singles {'P': 0.0, 'Q': 0.0} joint 100000.0 shapley {'P': 50000.0, 'Q': 50000.0} proportional {'P': 50000.0, 'Q': 50000.0} sequential P,Q {'P': 0.0, 'Q': 100000.0}
+D1 completing ['A'] avoided 0.0 sum of shares 50000.0
+D1 completing ['B'] avoided 0.0 sum of shares 50000.0
+D1 completing ['A', 'B'] avoided 100000.0 sum of shares 100000.0
+D1 completing ['A', 'C'] avoided 50000.0 sum of shares 100000.0

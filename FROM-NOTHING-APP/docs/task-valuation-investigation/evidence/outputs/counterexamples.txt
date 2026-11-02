@@ -1,0 +1,8 @@
+CE1 {'completion': 32, 'penalty': 25000.0, 'weight': 300000.0, 'mi_A': 100000.0, 'mi_L': 0.0, 'effort_A': 120, 'effort_L': 2400, 'u_A': 300000.0, 'u_L': 233640.3, 'u_L_decay': 0.778801}
+CE2 {'wX': 300000.0, 'wY': 25000.0, 'mi_P': 100000.0, 'mi_M': 0.0, 'u_P': 300000.0, 'u_M': 11809.175, 'u_M_step': 3}
+CE3 {'cpm_float_I1': 2, 'rc_float_I1': 0, 'mi_I1_defer8': 100000.0, 'mi_I2_defer8': 50000.0, 'u_I1': 300000.0, 'u_I1_step': 0}
+CE4 {'start_F': 0, 'start_H': 5, 'mi_H': 100000.0, 'mi_F': 0}
+CE7 {'base': 50000.0, 'mi_A': 100000.0, 'mi_B': 100000.0, 'joint': 100000.0, 'sum_singles': 200000.0}
+CE8 {'mi_A': 100000.0, 'mi_B': 100000.0, 'joint': 100000.0, 'shapley_A': 50000.0, 'shapley_B': 50000.0, 'last_finisher_rule': 'all to whichever finishes last'}
+CE11 {'capped_marginal': 0.0}
+CE13 {'total': 3600000.0, 'unavoidable': 3000000.0, 'controllable': 600000.0, 'marginal_day': 300000.0, 'marginal_day_on_time_aircraft': 300000.0}
