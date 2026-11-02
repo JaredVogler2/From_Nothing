@@ -33,10 +33,11 @@ def test_policy_loads_with_user_constants_and_authorities(policy) -> None:
     assert policy.authority_of("shift.maximum_ot_minutes") == "user_requirement"
     assert policy.authority_of("travel.changed_aircraft_minutes") == "fixture_default"
     assert policy.authority_of("duration.total_mechanics_semantics") == "owner_decision"     # OD-01, decided 2026-10-31
+    assert {policy.authority_of(k) for k in ("due.basis", "due.proxy_station", "due.proxy_date_basis", "due.instant")} == {"owner_decision"}  # OD-06
     assert policy.authority_of("cs.date_mode") == "open_decision"
     assert policy.authority_of("score.attainment_weight") == "demo_default"
-    assert {d["id"] for d in policy.open_decisions} >= {f"OD-{i:02d}" for i in range(2, 13)}
-    assert "OD-01" not in {d["id"] for d in policy.open_decisions}
+    assert {d["id"] for d in policy.open_decisions} >= {f"OD-{i:02d}" for i in range(2, 13)} - {"OD-06"}
+    assert {"OD-01", "OD-06"}.isdisjoint(d["id"] for d in policy.open_decisions)          # decided by the owner
 
 
 def test_policy_values_are_immutable(policy) -> None:

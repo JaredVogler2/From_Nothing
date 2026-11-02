@@ -50,11 +50,11 @@ Every failure leaves the aircraft **UNKNOWN** with its reasons. Unknown is never
 
 ## 3. Due date
 
-`due.basis` = `CS_PLANNING_PROXY` (open_decision OD-06). The fixture uses the same-run CS744
-unload date as an explicit planning proxy (`due.proxy_date_basis` = `BASELINE_PROXY`, which adds
-the S09 grace of `gate.proxy_grace_days` = 2 exactly once). The instant is the end of that local date
-(`due.instant`). A populated field alone is never contractual due. With no proxy fact the
-due date is `DUE_UNKNOWN` and the cost is unknown.
+`due.basis` = `CS_PLANNING_PROXY`, decided by the owner on 2026-11-02 (OD-06): the due date is the
+aircraft's planned unload date at the last control station, CS744, in the same run
+(`due.proxy_date_basis` = `BASELINE_PROXY`, which adds the S09 grace of `gate.proxy_grace_days` = 2
+exactly once). The instant is the end of that local date (`due.instant`). No source carries a
+customer delivery date. With no CS744 date the due date is `DUE_UNKNOWN` and the cost is unknown.
 
 ## 4. Modeled penalty
 
@@ -106,11 +106,13 @@ better under the exact lexicographic key (no monetary tolerance,
 1. commitments defended (same slot), then exact incumbent crews (P14). A candidate may never
    lose or downgrade a commitment the current best keeps;
 2. aircraft with unknown completion (fewer is better);
-3. deferred phases;
-4. exact controllable modeled penalty over known and conditional aircraft;
-5. travel plus wait minutes, then overtime;
-6. crew-continuity breaks;
+3. exact controllable modeled penalty over known and conditional aircraft;
+4. travel plus wait minutes;
+5. overtime minutes, then crew-continuity breaks;
+6. deferred phases (a last backlog tie: a job count never outranks money);
 7. a deterministic signature.
+
+The order is policy `objective.order` (`orchestrator.OBJECTIVE_FIELDS`).
 
 A candidate whose unknown scope is unchanged can improve the known portfolio, but it cannot
 claim complete-fleet optimality. `CostSummary.complete` is false while any aircraft is
@@ -121,5 +123,5 @@ unknown, and the heuristic always reports `global_optimality_proven = false`.
 The fixture terms are labelled ASSUMED. Line 1301 is $100/day and 1302 is $10/day
 (A44 steering). Line 1306 has no term and stays unknown.
 
-Live economics needs the owner's terms, approvals, sale bases and checkpoints (OD-12) and a
-commercial due policy (OD-06). Until then live costs are unknown or assumed, never invented.
+Live economics needs the owner's terms, approvals, sale bases and checkpoints (OD-12). The due
+policy is decided (OD-06). Until then live costs are unknown or assumed, never invented.

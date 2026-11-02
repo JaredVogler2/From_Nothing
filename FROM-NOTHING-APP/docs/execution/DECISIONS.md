@@ -233,7 +233,9 @@ capability until the owner admits the semantic:
 - OD-03 QA hold locations/inspector roles
 - OD-04 labor breaks and OT authority
 - OD-05 CS offsets/date basis
-- OD-06 commercial due
+- OD-06 commercial due: **decided by the owner on 2026-11-02.** The delivery due date is the aircraft's planned unload
+  date at the last control station (744) plus the 2-day grace, as a whole local day. No source carries a customer
+  delivery date. It no longer blocks live executable plans; an aircraft without that date still has an unknown cost.
 - OD-07 concurrency meanings
 - OD-08 rework classification source
 - OD-09 affirmative no-cert census

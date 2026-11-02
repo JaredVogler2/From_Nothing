@@ -2,7 +2,7 @@
   "schema_version": 1,
   "type": "PolicyFile",
   "policy_id": "rebuild-v1",
-  "revision": 3,
+  "revision": 4,
   "scope": "DEMO",
   "mode": "fixture",
   "effective_from_utc": "2026-01-01T00:00:00Z",
@@ -355,23 +355,23 @@
     },
     "due.basis": {
       "value": "CS_PLANNING_PROXY",
-      "authority": "open_decision",
-      "ref": "S09,S12 OD-06 commercial due"
+      "authority": "owner_decision",
+      "ref": "S09,S12 OD-06, decided by the owner on 2026-11-02: the delivery due date is the aircraft's planned unload date at the last control station (744) plus the 2-day grace"
     },
     "due.proxy_station": {
       "value": "744",
-      "authority": "fixture_default",
-      "ref": "S09,S18"
+      "authority": "owner_decision",
+      "ref": "S09,S18 OD-06 (owner, 2026-11-02): station 744, the last control station"
     },
     "due.proxy_date_basis": {
       "value": "BASELINE_PROXY",
-      "authority": "fixture_default",
-      "ref": "S09 GRACE"
+      "authority": "owner_decision",
+      "ref": "S09 GRACE, OD-06 (owner, 2026-11-02): the planned unload date plus gate.proxy_grace_days, added once"
     },
     "due.instant": {
       "value": "END_OF_LOCAL_DATE",
-      "authority": "fixture_default",
-      "ref": "S12"
+      "authority": "owner_decision",
+      "ref": "S12, OD-06 (owner, 2026-11-02): the due date is a whole local day, so the due instant is its end"
     },
     "gate.weight": {
       "value": 35,
@@ -743,12 +743,6 @@
       "live_effect": "If producer semantics are not approved, conflicting loads or offset-based rows produce CS_WINDOW_GAP / CS_CONVERSION_POLICY_MISSING."
     },
     {
-      "id": "OD-06",
-      "topic": "Commercial delivery due",
-      "fixture_choice": "Station 744 unload date as an explicit planning delivery proxy plus 2-day grace (baseline_proxy).",
-      "live_effect": "No contractual due without commercial authority. Missing due leaves modeled cost unknown, never zero."
-    },
-    {
       "id": "OD-07",
       "topic": "CONCURRENT / NON-CONCURRENT relationship meaning",
       "fixture_choice": "CONCURRENT=required overlap, NON-CONCURRENT=no overlap (fixture meaning).",
@@ -808,6 +802,14 @@
       "decided_by": "owner",
       "decided_on": "2026-10-31",
       "policy_key": "duration.total_mechanics_semantics"
+    },
+    {
+      "id": "OD-06",
+      "topic": "Commercial delivery due",
+      "decision": "The delivery due date is the aircraft's planned unload date at the last control station (744) plus the 2-day grace, as a whole local day. Lateness, and so the modeled delay cost, counts from it. No source carries a customer delivery date; an aircraft without this date still has an unknown cost, never zero.",
+      "decided_by": "owner",
+      "decided_on": "2026-11-02",
+      "policy_key": "due.basis"
     }
   ]
 }

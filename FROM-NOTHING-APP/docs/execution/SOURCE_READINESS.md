@@ -20,7 +20,7 @@ tests. Live entries come from the manual's S04 authoring observations
 | Per-line calendars | Verified: one active load (7001), dense bounds 2026-10-24..2026-11-15. | 5,079 WORKING / 2,409 WEEKEND / 1,305 NONWORKING active rows observed; generation selection per line required. |
 | CS windows | Verified: same-run lineage, station 744, signed offsets preserved. | 40,840 rows; date basis open (OD-05). |
 | Parts | Verified: linked, unresolved used-on and unknown ECD cases. | 450 active shortages with null ECD and 1,484 blank USED_ON become blocked/conditional gaps. |
-| Economics | Verified: assumed terms labeled; one aircraft unmapped stays unknown. | No production default rate; commercial due open (OD-06, OD-12). |
+| Economics | Verified: assumed terms labeled; one aircraft unmapped stays unknown. | No production default rate; due date decided (OD-06); terms, caps and checkpoints open (OD-12). |
 | Timezone policy | Fixture producer receipts declare America/New_York. | `FOCUS_SOURCE_TIMEZONE_MAP_JSON` required; missing gives `SOURCE_TIMEZONE_POLICY_MISSING`. |
 
 ## Clock semantics (P03 step 5)
