@@ -60,6 +60,7 @@ class SimSpec:
     budget_seconds: float = 3600.0
     cutoff_lead_minutes: int = 15
     cutoff_gap: bool = True                     # what happens after the next cutoff reaches the source only after it (D-26)
+    late_plan_share: float = 0.0                # a shift's plan accepted after the shift starts: the previous plan stays its goal
     seed: int = 20261026
     shifts: int | None = None                   # stop after this many shifts (a trial); None runs every shift of every day
     planning: str = "full"                      # full | repair | auto: how each shift's plans are made (orchestrator.plan_by_mode)
@@ -180,7 +181,12 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         floor_plan = dispatch if dispatch.run.validation.valid else replace(dispatch, plan=replace(dispatch.plan, assignments=()))
         if day_goals is not None and day_goals.day != day:
             day_goals = None
-        if dispatch.run.validation.valid:
+        # a plan accepted after its shift started is only a proposal for it: the previous plan stays the goal of record (D-26)
+        late_plan = (number > 1 and day_goals is not None and spec.late_plan_share > 0
+                     and random.Random(spec.seed * 31 + k).random() < spec.late_plan_share)
+        if late_plan:
+            db.insert("exec_event", [(k, "plan_accepted_late", None, None, None, "the previous plan stays this shift's goal of record")])
+        if dispatch.run.validation.valid and not late_plan:
             # each shift is scored against the plan published for it (D-26): a valid plan freezes this shift's goals; its
             # later windows stand in for the day's next shifts only if their own plans are invalid
             windows = {n: (w.start, w.end) for n in range(number, 4) for w in [build_shift(day, n, shift_policy, settings.site)]}

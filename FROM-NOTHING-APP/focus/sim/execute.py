@@ -122,6 +122,8 @@ class FloorSpec:
     oos_discretionary: float = 0.6     # share of out-of-sequence work done by choice (charged), not directed
     deviation: float = 0.05            # a team works an unplanned ready task in place of one dispatched task
     pull_ahead: float = 0.35           # a team with idle hours pulls ready work forward
+    pull_horizon_minutes: int = 600    # how far past the shift end a team looks for planned work to pull forward or swap in
+    swap_pick: str = "first"           # the task a deviating team swaps in: the first ready one ("first") or the largest ("largest")
     unannounced_slip: float = 0.5      # share of part slips nobody enters before the part is needed (work finds it missing)
     kit_shortage: float = 0.003        # a dispatched task's kit is found short at the point of use: a new dated shortage
     upstream_defect: float = 0.35      # rework found on the floor traced to another team's finished work at the station
@@ -337,8 +339,8 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
 
     todo = sorted((a for a in plan.assignments if s0 <= to_minute(a.start) < s1), key=lambda a: (to_minute(a.start), a.id))
     planned_ids = {a.phase for a in todo}
-    upcoming: dict[str, list[Any]] = defaultdict(list)                # team -> its tasks planned in the next ten hours
-    for a in sorted((a for a in plan.assignments if s1 <= to_minute(a.start) < s1 + 600 and a.phase not in planned_ids),
+    upcoming: dict[str, list[Any]] = defaultdict(list)                # team -> its tasks planned in the next hours (pull horizon)
+    for a in sorted((a for a in plan.assignments if s1 <= to_minute(a.start) < s1 + spec.pull_horizon_minutes and a.phase not in planned_ids),
                     key=lambda a: (to_minute(a.start), a.id)):
         upcoming[team_of_phase.get(a.phase) or "?"].append(a)
     # emergency additions: the shift lead amends the team's goal with rework found after the goals froze that the accepted
@@ -432,10 +434,17 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
                 cause, evidence = "absence", f"ATTENDANCE:{gone[0]}:{shift.start_date.isoformat()}:S{shift.number}"
         latest = max(start, start_floor)
         if cause is None and team in deviating:
-            swap = next((u for u in upcoming.get(team, ()) if u.phase not in taken and ready_at(u.phase, latest)), None)
-            if swap is not None and offplan(team, swap, latest, "deviation") is not None:
-                cause = "deviation"
-                deviating.discard(team)
+            if spec.swap_pick == "largest":                           # cherry-picking: the biggest ready task that still fits
+                ready = sorted((u for u in upcoming.get(team, ()) if u.phase not in taken and ready_at(u.phase, latest)),
+                               key=lambda u: (-phases[u.phase].standard_person_minutes, to_minute(u.start), u.id))
+                if any(offplan(team, u, latest, "deviation") is not None for u in ready):
+                    cause = "deviation"
+                    deviating.discard(team)
+            else:
+                swap = next((u for u in upcoming.get(team, ()) if u.phase not in taken and ready_at(u.phase, latest)), None)
+                if swap is not None and offplan(team, swap, latest, "deviation") is not None:
+                    cause = "deviation"
+                    deviating.discard(team)
         if cause is None:
             actual_start = latest
             actual_end = max(actual_start + max(5, round(planned * math.exp(rng.gauss(0.0, spec.duration_sigma)))), end_floor)
