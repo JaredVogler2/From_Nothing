@@ -2,6 +2,8 @@
 
 > **Goal:** Transfer the source-driven FOCUS manufacturing scheduler from the synthetic demonstration to an **approved company-only environment** without sending any real source names beyond this repository's existing reference contract, data rows, employee information, credentials, proprietary query results or company policy decisions to this chat or personal GitHub.
 >
+> Start with [HANDOFF.md](HANDOFF.md): the current state, the SQL Server staging job and the GitLab pipeline, and the engineering work before going live.
+>
 > Read together with [SOURCE_REPLACEMENT_CROSSWALK.md](SOURCE_REPLACEMENT_CROSSWALK.md), [SCHEDULING_CONSTRAINTS.md](SCHEDULING_CONSTRAINTS.md), the [machine-generated contract exporter](../../scripts/export_integration_contract.py), [SQL_SCHEMA_LEDGER.md](../execution/SQL_SCHEMA_LEDGER.md), [SOURCE_READINESS.md](../execution/SOURCE_READINESS.md), [VALIDATION_COVERAGE.md](../execution/VALIDATION_COVERAGE.md), [DECISIONS.md](../execution/DECISIONS.md) and the source code.
 
 ## 1. Confidentiality and authority

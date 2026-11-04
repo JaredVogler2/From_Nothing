@@ -58,9 +58,15 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
 5. **Validate.** The independent validator checks each candidate from the snapshot, with every check required. Only a
    valid plan becomes the next incumbent. The floor works only a valid EXECUTABLE plan; when it is invalid, the floor
    gets no dispatch that shift.
-6. **Freeze the day's goals.** The first valid EXECUTABLE plan of a production day freezes that day's team-shift goals,
-   as `GoalRegistry` does in production. Later plans of the day are proposals: the floor works the latest one, while
-   the goals stay frozen.
+6. **Freeze the shift's goals.** Each shift is scored against the plan published for it, as `GoalRegistry` does in
+   production (D-26). The scheduler runs before every shift; its valid EXECUTABLE plan freezes that shift's team-shift
+   goals. If a shift's plan is invalid, the day's last valid plan stands in for it.
+   - **The cutoff gap** (`cutoff_gap`, on by default). The plan is made `cutoff_lead_minutes` before the previous shift
+     ends. What the previous shift does after that cutoff reaches the source only after this admission: jobs finished
+     then, kits found short then, and rework found then (each rework gets a discovery time within its shift).
+   - The floor does not work a job this plan still holds but the previous shift already finished; its goal unit is
+     `DONE_BEFORE_SHIFT`. The previous shift's score counts the completion after the fact.
+   - Part arrivals and slips, and overrun progress, are still written at the shift's end.
 7. **Publish.** Both plans' assignments, duties, aircraft completions, costs and exceptions are written to tables, with
    every commitment's defense outcome.
 8. **Execute.** A seeded shop-floor model works the EXECUTABLE assignments that start in the shift (see below). The
@@ -148,10 +154,10 @@ same function production uses (S14):
 - **Additions.** At the start of each shift the team's lead adds the rework found after the goals froze that the accepted
   plan assigns in the shift (basis `ASSIGNED_IN_ACCEPTED_PLAN`). The original units are never changed.
 - **Relief.** E is the effort of missed units relieved by approved claims, and D = B − E.
-- **Earned.** Cp is the planned or added effort finished, once. A frozen unit finished in an earlier shift of the day is
-  credited to its own goal.
-- **Offplan.** U is finished work that is no unit of the goal: pulled ahead, a deviation, or work a later plan dispatched
-  outside the day's goals.
+- **Earned.** Cp is the planned or added effort finished, once, in its own shift. Nothing is credited early: work an
+  earlier plan had put in a later shift counts as offplan output in the shift that did it. A unit already finished
+  before its shift started (only when an earlier plan stands in) is `DONE_BEFORE_SHIFT`: out of D with the relief.
+- **Offplan.** U is finished work that is no unit of this shift's goal: pulled ahead, or a deviation.
 - **Formula.** attainment A = min(1, Cp/D); adherence H = Cp/(Cp + U), so offplan work is discounted; score =
   100 × (0.70 A + 0.30 H) − 100 × O/D, where O is the once-only out-of-sequence charge. Grades are A 90+, B 80+, C 70+,
   D 60+ and F below.
@@ -194,12 +200,13 @@ The dashboard compares:
 
 | Layer | Tables | What they hold |
 | --- | --- | --- |
+| Run | `sim_run`, `sim_person` | The run's id, creation time, spec, facts, status and note; the roster (person, native id, display name, team, shift, role). |
 | Pulled | `src_<dataset>` | Every source row version, the shift it was loaded in (`load_shift`) and `op` (`upsert`/`delete`). |
-| Calculated | `calc_count`, `calc_job`, `calc_aircraft`, `calc_pool` | Each shift's admitted snapshot. Per open job: team, window, duration, crew, earliest start, open shortage and disposition. Per aircraft: customer, model, due date and daily penalty. Per team and shift: pool size and activation cap. |
+| Calculated | `calc_count`, `calc_job`, `calc_aircraft`, `calc_pool` | Each shift's admitted snapshot: inventory counts per item (`calc_count`). Per open job: team, window, duration, crew, earliest start, open shortage and disposition. Per aircraft: customer, model, due date and daily penalty. Per team and shift: pool size and activation cap. |
 | Method | `sim_shift`, `method_stage`, `method_move`, `method_check`, `method_violation`, `method_commitment` | Stage timings and notes, accepted moves, validator check counts and violations, the first 500 violations of each plan (check, code, entity, detail), each incumbent commitment's defense outcome (with the code of each UNSAFE one), stop reason, decision digest, each step's wall time and peak memory. |
 | Results | `plan_assignment`, `plan_duty`, `plan_aircraft`, `plan_exception` | Both purposes' published plans. |
-| Outcomes | `exec_assignment`, `exec_event`, `exec_offplan`, `exec_oos` | The floor's outcome for each dispatched assignment with its cause, source events, offplan work with its kind, and out-of-sequence starts with their evidence. |
-| Performance | `perf_goal_day`, `perf_unit`, `perf_unlock`, `perf_amendment`, `perf_claim`, `perf_team_shift` | Each day's frozen goals, every goal unit (frozen or added) with its status, cause and claim and whether its role needs a certificate group at most two of the frozen membership hold (`scarce`), the other jobs each earned unit's completion released as their last prerequisite (`perf_unlock`), the emergency additions, the claims with their decisions and reasons, and each team-shift's B0, additions, B, E, Cp, U, attainment, adherence, score and grade, scored by `status_and_score` with its parts kept: base before the out-of-sequence charge, the charge O, the clamped final, the policy id and hash, and why a goal is NEUTRAL (NO_PLAN or ALL_EXCUSED). Runs made before this change lack those last columns; the dashboard shows them as —. |
+| Outcomes | `exec_assignment`, `exec_event`, `exec_offplan`, `exec_oos` | The floor's outcome for each dispatched assignment with its cause, source events, offplan work with its kind (`pull_ahead`, `deviation`, `outside_goals`), and out-of-sequence starts with their evidence. `exec_event` kinds: `call_off`, `done_before_shift`, `kit_short_at_point_of_use`, `shortage_found_undated`, `shortage_dated`, `part_slipped`, `part_late_unannounced`, `part_arrived`, `rework_found` and `plan_accepted_late` (only with `SimSpec.late_plan_share` > 0, which has no CLI flag; `docs/task-valuation-investigation/evidence/scripts/offplan_paired.py --late-plans` sets it). |
+| Performance | `perf_goal_day`, `perf_unit`, `perf_unlock`, `perf_amendment`, `perf_claim`, `perf_team_shift` | Each shift's frozen goals with the simulation shift whose plan froze them, every goal unit (frozen or added) with its status, cause and claim and whether its role needs a certificate group at most two of the frozen membership hold (`scarce`), the other jobs each earned unit's completion released as their last prerequisite (`perf_unlock`), the emergency additions, the claims with their decisions and reasons, and each team-shift's missed units by cause (part, absence, predecessor, overrun, deviation), planned, actual and available hours, utilization, B0, additions, B, E, Cp, U, attainment, adherence, score and grade, scored by `status_and_score` with its parts kept: base before the out-of-sequence charge, the charge O, the clamped final, the policy id and hash, and why a goal is NEUTRAL (NO_PLAN or ALL_EXCUSED). Runs made before this change lack those last columns; the dashboard shows them as —. |
 
 ## Dashboard and API
 

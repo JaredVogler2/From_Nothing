@@ -9,7 +9,7 @@ Hosting is **Posit Connect** first, then **VMware Tanzu**, with **Python 3.12** 
 
 ## 1. Migrations (installer role)
 
-The versioned set is `sql/migrations/001`-`009`. Each version has a generated rollback in `sql/migrations/rollback/`,
+The versioned set is `sql/migrations/001`-`010`. Each version has a generated rollback in `sql/migrations/rollback/`,
 and roles and grants are in `sql/grants/focus_fn_roles.sql`.
 
 | Version | Content |
@@ -23,8 +23,9 @@ and roles and grants are in `sql/grants/focus_fn_roles.sql`.
 | 007 | Immutable publication: stage, readback, validation, accept (head last) |
 | 008 | Lifecycle landing tables, actuals, claims, reviewed excusals, observation runs |
 | 009 | Evaluation revisions, evidence, recognition, badges |
+| 010 | Light per-team-shift performance rows (`TeamShiftPerformance`) and compact job records (`JobOutcome`, `JobName`) (D-25) |
 
-Versions 003-009 consolidate the reviewed P04-P18 drafts. Their statements are unchanged (verified by a
+Version 010 is new (D-25), not a consolidated draft. Versions 003-009 consolidate the reviewed P04-P18 drafts. Their statements are unchanged (verified by a
 comment-stripped comparison).
 
 The runner (`focus/migrations.py`) never runs at import or start. Its rules:
@@ -40,7 +41,11 @@ The runner (`focus/migrations.py`) never runs at import or start. Its rules:
   - bigint identities;
   - no `TRUNCATE` or `DROP`;
   - `DELETE` only in the two locked retention procedures;
-  - nullable added columns.
+  - added columns nullable or with a default;
+  - every version ships a rollback, and the rollback lint allows only its own objects, guarded drops and no `DELETE`;
+  - the generated rollbacks and grants script are fresh (`ROLLBACK_STALE`, `GRANTS_STALE`): regenerate both with
+    `python -m focus.cli migrate --write-generated`;
+  - the grant lint (separation of duties, below).
 - **Plan.** The plan against the catalog names `APPLIED`, `PENDING`, `COLLISION`, `CHECKSUM_MISMATCH`, `DRIFT`,
   `UNKNOWN_RECORDED_VERSION` and `BLOCKED`.
 - **One transaction per version.** Each version takes `sp_getapplock('FOCUS_FN_MIGRATIONS')` and verifies every
@@ -84,7 +89,8 @@ python -m focus.cli migrate --apply --catalog live --installer "<subject>" --con
 This applies the pending versions. It refuses without a reviewed manifest checksum, and refuses unless the principal
 can `CREATE TABLE`.
 
-Before any of this, re-run `queries/discovery/fn_collisions.sql`. On 2026-10-27 the manual saw no `FOCUS_FN_%`
+Before any of this, re-run `queries/discovery/fn_collisions.sql`. It lists tables only; views, procedures, `TR_FN_`
+triggers and constraint names are checked by `migrate --dry-run --catalog live`. On 2026-10-27 the manual saw no `FOCUS_FN_%`
 object, and that is not proof for today.
 
 **Rehearsal versus live.** All of the above was rehearsed against the fixture catalog: apply, replay, an injected
@@ -98,14 +104,26 @@ Apply `sql/grants/focus_fn_roles.sql` after 001-010, then add members:
 | Database role | Login (one per process) | Permissions |
 | --- | --- | --- |
 | `FOCUS_FN_AppReader`, `FOCUS_FN_AppCommand` | web app (Connect content or Tanzu `web`) | SELECT on views and outputs; INSERT/UPDATE `WorkerRun` (enqueue, cancel); no EXECUTE |
-| `FOCUS_FN_SourceWorker` + `FOCUS_FN_PipelineWorker` | source worker | source-run procedures, source and inference inserts |
+| `FOCUS_FN_SourceWorker` + `FOCUS_FN_PipelineWorker` | source worker | source-run procedures; source, inference and duration-evidence inserts |
+| `FOCUS_FN_PipelineWorker` + read access | app pipeline role (`focus-app`: schedule, validate, forecast) | pipeline state; needs SELECT on the source run, snapshot and plan tables it reads (no grant drafted yet) |
 | `FOCUS_FN_Stager` + `FOCUS_FN_PipelineWorker` | stager | `StagePlan`, `ReadPlanStage`, `RecordValidation` |
-| `FOCUS_FN_Signer` + `FOCUS_FN_PipelineWorker` | signer | `AcceptPlan` only; signing key referenced on this process only |
-| `FOCUS_FN_Evaluator` + `FOCUS_FN_PipelineWorker` | evaluator | `AppendEvaluation`, `RecordAmendment`, `RecordDeliveryObservation`, lifecycle inserts |
+| `FOCUS_FN_Signer` + `FOCUS_FN_PipelineWorker` | signer | `AcceptPlan` only; signing key referenced on this process only (see the open item below) |
+| `FOCUS_FN_Evaluator` + `FOCUS_FN_PipelineWorker` | evaluator | `AppendEvaluation`, `RecordAmendment`, `RecordDeliveryObservation`; INSERT lifecycle history, `RecognitionEvent`, `BadgeAward`, `JobOutcome`; INSERT/UPDATE `TeamShiftPerformance`, `JobName` |
 | `FOCUS_FN_ObservationProducer` | approved producer (OD-15) | landing tables and producer receipts |
 | `FOCUS_FN_Retention` | retention operator | the two retention procedures, with the operator's own period |
 
 The installer is a DBA principal with DDL rights, and no script grants DDL.
+
+**Open items in the drafted grants** (to resolve with the live adapter; `docs/integration/HANDOFF.md` §6):
+
+- Worker roles hold no SELECT; only `FOCUS_FN_AppReader` does. Each worker login needs read access to what its steps
+  read: acquisition reads `TeamInference`, `ClockObservation` and `SourceHead`; the app role reads the admitted
+  snapshot and plans.
+- The signer step runs the full `publish`, which stages, reads back and records the readback validation before it
+  accepts, and it records FORECAST delivery commitments. Those calls map to the stager's procedures and to
+  `RecordDeliveryObservation` (evaluator). Either the signer path or `ROLE_GRANTS` must change.
+- `DeliveryReceipt` and `CommitmentResult` have no writing role or procedure; no role can UPDATE `Outbox`
+  (`DeliveredAtUtc`) or advance an `ObservationProducerReceipt` watermark (INSERT only).
 
 The grant lint enforces separation of duties:
 
@@ -180,6 +198,16 @@ compact job record (D-25). That is what the period rollups and the job patterns 
 (`GET /api/v1/performance/rollup` and `/performance/jobs`), so no further pipeline step is needed. A store from before
 D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator role).
 
+- **One pipeline before every shift (D-26).** The scheduler runs three times a day, before each shift. Each shift is
+  scored against the executable plan accepted before it starts, so `sign_accept` must finish before the shift begins.
+  In the GitLab draft that step is a manual operator promotion. A plan promoted after its shift starts is only a
+  proposal for that shift: the previous plan stays its goal of record, and the late plan becomes the next shift's.
+  `observe_evaluate` scores a shift once its overtime window has closed. The run before shift 2 starts while shift 1
+  is still finishing, so shift 1's final score comes from the next run, or from the evaluator-only pipeline scheduled
+  right after shift 1's overtime window (`evaluate_closed_shifts`, below). In live mode the in-pipeline
+  `observe_evaluate` step stops with `LIVE_OBSERVATIONS_UNAVAILABLE` until the live observation path is built
+  (`docs/integration/HANDOFF.md` §6).
+
 - **Executable first.** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only the executable plan, the one
   crews are dispatched on. `forecast` needs the accepted executable plan, so each role's first run stops before the
   forecast and the shift's dispatch never waits for it. The forecast (delivery dates, days late and penalties for every
@@ -247,8 +275,15 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 - **Verify** runs the import check, migration lint and bundle, preflight, the full non-UI suite, the UI suite and a
   fixture rehearsal of the whole pipeline. None of it needs secrets.
 - **Live jobs** each run one role in a protected environment, chained with `needs` and serialized per scope with
-  `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included. `sign_accept` is
-  `when: manual` and holds the only signing reference.
+  `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included, and for the staged
+  sources. `sign_accept` is `when: manual` and holds the only signing reference.
+- **Staging** (`stage_sources`, then `verify_staged_sources`) loads the official sources into the SQL Server tables the
+  reference queries read, through the company loader named by `FOCUS_STAGE_COMMAND`, and checks the staged schema
+  against the S04 contract before acquisition. It runs while the verify jobs run. The loader's contract is
+  `docs/integration/HANDOFF.md` §4.
+- **Evaluator-only pipelines** (`FOCUS_PIPELINE_PART=evaluate`, one schedule just after each shift's overtime window)
+  run only `stage_observations` and `evaluate_closed_shifts` (`tools/evaluate_closed_shifts.py`), which scores every
+  shift whose credit window has closed. The schedules are listed in `HANDOFF.md` §5.2.
 - **Display retention** (`display_retention`) runs before acquisition with retention credentials only. It is
   `allow_failure`, so it never holds back the shift's plan. The fixture rehearsal runs it too.
 - **Detail retention** (`detail_retention`) deletes per-job evaluation evidence past the owner's 90 days, with
@@ -291,7 +326,7 @@ heads only forward.
 
 ## 7. Retention
 
-### History (never deletes)
+### History (never deleted by this command)
 
 ```bash
 python -m focus.cli retain-history --keep-days <N> [--legal-hold holds.json] [--apply]
@@ -305,7 +340,9 @@ There is no default period: the operator supplies it.
   evaluation goes after the owner's 90 days: see Per-job details below.)
 - **Archived** (`--apply`, fixture only): only superseded, unreferenced candidates, their receipts and old scenario
   artifacts. They move to `<runtime>/archive/<receipt>/` with a SHA-256 receipt and can be restored byte for byte.
-- **Live:** the installed retention procedures, run by the retention role with the operator's period.
+- **Live:** the installed retention procedures, run by the retention role with the operator's period. They do delete:
+  `PurgeTeamInference` and `PurgeDurationEvidence` remove inference and duration rows of runs that no head or stage
+  references. Two commands delete records too: `display-retention` (D-24) and `performance-details` (D-25), below.
 
 ### Display parts (D-24)
 
@@ -329,9 +366,9 @@ ledger of released packages (so later runs open only new ones) and a receipt, th
 a view means a current part is gone for another reason; `python -m focus.cli display --current-source` or
 `--current-plans` rebuilds it. `DISPLAY_PACKAGE.md` has the full rule and the measurements.
 
-**Live:** this needs the pending live adapter to implement the store's `exists`, `stored_ids` and `delete_immutable` for
-`display_parts`, with the delete granted to the retention role only. Until then the command reports
-`REPOSITORY_UNAVAILABLE`, like every live store operation.
+**Live:** display parts have no FOCUS_FN table yet. This needs a new migration (display-package tables and a locked
+purge procedure that the retention role executes) and the live adapter's `exists`, `stored_ids` and `delete_immutable`
+for `display_parts`. Until then the command reports `REPOSITORY_UNAVAILABLE`, like every live store operation.
 
 ### Per-job details (D-25)
 
@@ -363,5 +400,7 @@ a job record whose evidence is already gone (it says how many). A row written an
 org chart as of the shift start.
 
 **Live:** the light rows and job records are the proposed tables of migration 010 (`FOCUS_FN_TeamShiftPerformance`,
-`FOCUS_FN_JobOutcome`, `FOCUS_FN_JobName`), and the deletion needs the pending live adapter, run by the retention role.
-Until then both commands report `REPOSITORY_UNAVAILABLE`, like every live store operation.
+`FOCUS_FN_JobOutcome`, `FOCUS_FN_JobName`). The deletion needs a new migration as well as the adapter:
+`TR_FN_EvaluationEvidence_Immutable` (009) blocks every DELETE, no purge procedure exists for evaluation evidence, and
+the retention role has no SELECT on `JobOutcome`, which the deletion must check first. Until then both commands report
+`REPOSITORY_UNAVAILABLE`, like every live store operation.

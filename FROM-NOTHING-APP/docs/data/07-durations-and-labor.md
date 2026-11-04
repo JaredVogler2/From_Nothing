@@ -19,7 +19,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 | Grain and key | One row per clock event revision. The drafted table is unique on (RunId, SourceEventKey, SourceRevision); FOCUS keeps only the latest `SOURCE_REVISION` of each `SOURCE_EVENT_KEY`. |
 | Required | No |
 | Capabilities | duration |
-| If missing or empty | Plans do not change. Empty without a certificate (every empty live read) gives `DATASET_EMPTY_UNCERTIFIED`; a capture error gives `DATASET_FAILED`. In live mode a database error, such as the missing producer table, is not a handled capture error: it stops the whole acquisition. |
+| If missing or empty | Plans do not change. Empty without a certificate (every empty live read) gives `DATASET_EMPTY_UNCERTIFIED`; a capture error gives `DATASET_FAILED`. In live mode a database error, such as the missing producer table, marks the dataset `FAILED` (`SOURCE_QUERY_FAILED`, gap `DATASET_FAILED`) and the run continues. |
 | Time and cutoff | `START_UTC` and `END_UTC` are UTC instants. Nothing compares them with the cutoff, the as-of instant of a source run (one capture of all datasets): there is no cutoff column and no freshness check. The live query returns the rows stored under this scope's current head (`FOCUS_FN_SourceHead`, the last completed source run promoted for the scope), not rows of the run being captured. |
 | Read by | `focus/data/duration_gauge.py` (`cli_duration_stats` and `episode_metrics`, the `duration-stats` command); `focus/data/fixture_reader.py` (live query) |
 
@@ -42,7 +42,8 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 - Send every revision and void as raw rows; FOCUS picks the latest revision itself. Do not merge or sum intervals before delivery.
 - The timestamps are UTC. The live reader writes the `datetime2` values of these `_UTC` columns with their offset, so live rows parse.
 - These rows do not feed the planner. Filling `FOCUS_FN_ClockObservation` alone does not make a live P75 available (see `duration_episodes`).
-- In live mode this query runs on every acquisition. `FOCUS_FN_ClockObservation` and `FOCUS_FN_SourceHead` must exist first, or the acquisition stops.
+- In live mode this query runs on every acquisition. Until `FOCUS_FN_ClockObservation` and `FOCUS_FN_SourceHead` exist, the
+  dataset is `FAILED` (`SOURCE_QUERY_FAILED`) on every run; the run continues.
 
 ## `duration_episodes`
 
@@ -54,7 +55,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 | Grain and key | One row per completed episode. Neither S04 nor the code enforces a key, and rows are not deduplicated: a repeated episode counts twice. |
 | Required | No |
 | Capabilities | duration |
-| If missing or empty | Live: `NOT_PROBED`, gap `DATASET_NOT_PROBED`. With no episodes there are no statistics, so every job that `rework_classification` classes NC, PU or CI, and that has no sourced remaining work, is BLOCKED with `DURATION_UNAVAILABLE` in every plan; its successors get `PREDECESSOR_NOT_SCHEDULABLE`. |
+| If missing or empty | Live: `NOT_PROBED`, gap `DATASET_NOT_PROBED`. With no episodes there are no statistics, so every job that `rework_classification` classes NC, PU or CI, and that has no sourced remaining work, is BLOCKED with `DURATION_UNAVAILABLE` in every plan; its successors get `PREDECESSOR_NOT_SCHEDULABLE`. In live mode the snapshot also carries the open-decision gaps `OD-02` and `OD-08`. |
 | Time and cutoff | `COMPLETED_AT_UTC` (UTC with offset) sets each group's sample window and staleness: a group is stale when its newest admitted completion is more than `duration.stale_after_days` (365) days before the cutoff. No cutoff column; FOCUS does not drop episodes completed after the cutoff. |
 | Read by | `focus/data/duration_gauge.py` (`compute_statistics`), called from `focus/data/snapshot_builder.py` and the `duration-stats` command; estimates in `focus/data/durations.py` (`resolve`) |
 

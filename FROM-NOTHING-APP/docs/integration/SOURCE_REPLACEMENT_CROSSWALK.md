@@ -42,7 +42,7 @@ The exact authoritative list is in:
 | master_task_list | FOCUS_MASTER_TASK_LIST | All-WIP master census, status, zone, team, first available, completion; query includes COMPLETE anchors on every line with any non-COMPLETE work. Never top-N cap. |
 | pnet_dag | FOCUS_PNET_DAG | Template PNet edge endpoints, relationship FS/SS/FF/SF or concurrency, hard flag, signed offset; map across correct line/model/effectivity. |
 | neo_graph_rework | NEO_GRAPH_REWORK | Line-specific rework parent→child topology; no unrelated cross-line edges. |
-| flow_budget | FOCUS_FLOW_BUDGET | Exact (LINE_NUMBER, JOB_NUMBER) minutes + TOTAL/PRIMARY/ASSIST crew and labor; require approved simultaneous-vs-sequential meaning. |
+| flow_budget | FOCUS_FLOW_BUDGET | Exact (LINE_NUMBER, JOB_NUMBER) minutes + TOTAL/PRIMARY/ASSIST crew and labor. OD-01 decided (owner, 2026-10-31): TOTAL_MECHANICS is the crew that must be on the job at once. |
 | buyoff_plan | FOCUS_BUYOFF_PLAN | Inspection kinds/counts (IP, FINAL, CC, ODA, partner etc.); does NOT locate IP hold progress. |
 | inspection_counts | FOCUS_INSPECTION_COUNTS | Auxiliary inspection count crosscheck; counts alone do not authorize placement. |
 | inspection_standards | FOCUS_INSPECTION_STANDARDS | Typed inspection minutes and relation types; reconcile whether work standard already embeds QA effort. |
@@ -53,7 +53,7 @@ The exact authoritative list is in:
 | actual_labor | FOCUS_ACTUAL_LABOR | Aggregate person-effort evidence, **not** raw elapsed intervals for P75 rework duration. |
 | soi_cert_requirements | NEO_SOI_CERT_REQUIREMENTS | Positive critical-process/cert requirements; absence of rows does NOT prove a job needs no cert. |
 | cert_course_map | NEO_CERT_COURSE_MAP | Map cert/course/spec metadata; approved substitutions separately controlled. |
-| mechanic_certs | FOCUS_MECHANIC_CERTS | Individual cert holdings, status/effective/expiry and corrected revocations; exact shift-interval validity. |
+| mechanic_certs | FOCUS_MECHANIC_CERTS | Individual cert holdings, status/effective/expiry; exact shift-interval validity. Revocations and reinstatements come only from the supplemental `holding_events`. |
 | cert_eligibility_matrix | FOCUS_CERT_ELIGIBILITY | Display/diagnostic only: ELIGIBLE, PCT or SUBSTITUTION labels can NEVER grant scheduling authority. |
 | mech_team_inferred | FOCUS_MECH_TEAM_INFERRED | Legacy historical inferred home team, FORECAST evidence only. Not a current roster. |
 | dept_team_skill_ref | FOCUS_DEPT_TEAM_SKILL_REF | Department-to-team skill history evidence; cannot by itself prove availability or certification. |
@@ -61,7 +61,7 @@ The exact authoritative list is in:
 | attendance_shift | FOCUS_ATTENDANCE_SHIFT | Actual attendance/availability per person/day/shift; no historical team inference substitution for EXECUTABLE. |
 | labor_shift | FOCUS_LABOR_SHIFT | Shift-level labor/clock observation, only if owner defines temporal and person-effort meaning. |
 | econ_mapping_revision | FOCUS_SOL_TESTING2_MappingRevision | Approved line/customer/model mapping revision and source provenance; current revision selection. |
-| econ_aircraft_mapping | FOCUS_SOL_TESTING2_AircraftMapping | Effective line→customer/model/mapping facts, version conflict and stale mapping checks. |
+| econ_aircraft_mapping | FOCUS_SOL_TESTING2_AircraftMapping | Effective line→customer/model/mapping facts. FOCUS selects the mapping by `IsCurrent` alone; version conflicts and stale mappings are checked only by the read-only `queries/economics/effective_terms.sql`. |
 | econ_scenario | FOCUS_SOL_TESTING2_EconomicsScenario | Active authorized economic scenario, currency/cap/penalty model and approval status. |
 | econ_contract_assignment | FOCUS_SOL_TESTING2_ContractAssignment | Effective line-to-contract assignment; active/non-conflicting, owner-approved. |
 | econ_term | FOCUS_SOL_TESTING2_EconomicsTerm | Scoped price, daily penalty, terms and selectors; no fallback to fictional global $/day. |
@@ -76,17 +76,17 @@ The existing LiveSourceReader executes an SQL path for **only** team_inference a
 
 | Supplemental dataset | Source needed INSIDE work | Replaces / unblocks | Current producer |
 |---|---|---|---|
-| scope_receipt | Signed/approved inclusion/exclusion census by line/job | ALL-WIP scope and documented exceptions | NOT_PROBED |
+| scope_receipt | Signed exclusion of whole lines (EXCLUDE + reason); no job-level rows have any effect | Documented whole-line exceptions to the all-WIP scope | NOT_PROBED |
 | team_inference | Versioned SQL-owned inference derived from historical evidence | FORECAST nominal team; not EXECUTABLE attendance | queries/workforce/read_team_inference.sql (proposed FOCUS_FN table) |
 | shift_roster | Approved per-person team/role/shift planned roster with effective dates | Prospective named crew membership | NOT_PROBED |
 | availability_exceptions | PTO, sick/leave, off-shift obligations, already-booked time | Accurate available regular/OT intervals | NOT_PROBED |
-| ot_authorizations | Team/shift/day/person overtime authorization per owner policy | OT > 0 | NOT_PROBED |
+| ot_authorizations | Team/shift/day overtime authorization per owner policy (the dataset has no person column) | OT > 0 | NOT_PROBED |
 | requirement_census | **Affirmative** complete per-SOI cert requirement/no-cert receipt | Stops false cert-free eligibility | NOT_PROBED |
 | requirement_alternatives | Owner-approved OR alternative certificate groups | Legal OR substitution; default AND otherwise | NOT_PROBED |
 | holding_events | Effective-dated revocation/reinstatement events | Current cert evidence over entire job duty | NOT_PROBED |
 | rework_classification | Authoritative NC/PU/CI + root and defect-origin linkage | Rework P75 cohort and rework graph | NOT_PROBED |
 | inspection_holds | Actual progress-point and required inspector minutes for each IP hold | IP QA placement / hold segmentation | NOT_PROBED |
-| clock_observations | Raw person owner start/stop/correction/void intervals and lineage | Elapsed rework calibration | queries/durations/read_clock_observations.sql (proposed FOCUS_FN table) |
+| clock_observations | Raw person owner start/stop/correction/void intervals and lineage | Only the `duration-stats` report; a live P75 also needs a `duration_episodes` producer | queries/durations/read_clock_observations.sql (proposed FOCUS_FN table) |
 | duration_episodes | Verified completed comparable NC/PU/CI episode measurements | Rework percentiles/censoring/staleness | NOT_PROBED |
 | work_progress | Sourced completed and remaining elapsed work for IN_PROGRESS jobs | Avoid restarting already performed work | NOT_PROBED |
 | part_events | Sourced physical receipt/reopen/cancellation with event time | EXECUTABLE material availability | NOT_PROBED |
@@ -111,7 +111,7 @@ All query texts are in the repository under queries/. The exporter provides an e
 | queries/parts/shortage_profile.sql | Shortage linkage and ECD unknowns | ECD is not physical receipt. |
 | queries/quality/inspection_profile.sql | QA counts vs sourced holds and inspection classification | QA counts alone cannot locate hold. |
 | queries/economics/effective_terms.sql, liability_floor.sql | Authoritative effective pricing and accounted-liability comparison | No approved terms means cost UNKNOWN. |
-| queries/actuals/actual_intervals.sql, defect_evidence.sql, disruption_claims.sql, excusal_decisions.sql, goal_amendments.sql, lifecycle_events.sql, producer_receipts.sql | Exact observation feed SELECT with as-of parameter and source revision | Proposed FOCUS_FN landing tables; not installed or validated in live. |
+| queries/actuals/actual_intervals.sql, defect_evidence.sql, disruption_claims.sql, excusal_decisions.sql, goal_amendments.sql, lifecycle_events.sql, producer_receipts.sql | Exact observation feed SELECT with as-of parameter and source revision | Proposed FOCUS_FN landing tables (migration 008); not installed or validated in live. `attendance_evidence` and `holding_evidence` have no query, landing table, receipt value or history table yet (fixture only). |
 
 **Important query-time invariants:** use explicit projected aliases in spec.columns order; values parameterized, identifiers from an allowlist; cutoff/watermark and source identity controlled server-side; never SELECT *, never loose JOIN that duplicates jobs or personnel, never row-limit WIP to 50, never allow a future load to be mistaken as an observation at the cutoff; preserve raw source date precision and all voided/corrected revisions until latest valid version selected.
 
@@ -134,15 +134,19 @@ Some already checked-in source queries do not themselves accept an as-of paramet
 
 ## D. FOCUS-owned storage and draft SQL objects — not source replacements
 
-These are **proposed application persistence tables**, not incoming work-source views. See sql/migrations/*.sql; in source code focus/data/sql.py::FN_OBJECTS is the checked-in allowlist. The migration scripts were drafted; authoring records say not installed. Do NOT automatically run them.
+These are **application persistence tables**, not incoming work-source views: the versioned migrations 001-010 in sql/migrations/, none installed. Do NOT automatically run them. `focus/data/sql.py::FN_OBJECTS` is the reader's allowlist and is out of date (it names Artifact and State, which no migration creates, and lacks the objects marked † below); `docs/execution/SQL_SCHEMA_LEDGER.md` has the full inventory, the runtime collections that have no table yet, and the schema issues the live adapter must resolve.
 
 | Groups | FOCUS_FN objects and role |
 |---|---|
 | Run/metadata | SchemaVersion, Policy, SourceRun, SourceDataset, SourceHead, SourceRow |
 | Derived inputs | ClockObservation, TeamInference, DurationObservation, DurationStatistics |
 | Scheduling & publication | PlanStage, Validation, PublishedPlan, PlanHead, FrozenGoal, Commitment |
-| Observation & scoring | Event, ExcusalDecision, Evaluation, ObservationProducerReceipt, LifecycleSource, ActualIntervalSource, DefectEvidenceSource, GoalAmendmentSource, DisruptionClaimSource, ExcusalDecisionSource |
-| Runtime state | WorkerRun, Artifact, State |
+| Commitments | CommitmentObservation†, DeliveryReceipt†, CommitmentResult† (006) |
+| Observation landing (producer role) | ObservationProducerReceipt, LifecycleSource, ActualIntervalSource, DefectEvidenceSource, GoalAmendmentSource, DisruptionClaimSource, ExcusalDecisionSource (008) |
+| Lifecycle history | Event, ExcusalDecision (001); ActualInterval†, DefectEvidence†, DisruptionClaim†, SequenceViolation†, GoalAmendment†, IEReview†, ObservationRun†, ObservationFeedReceipt†, ObservationQuarantine† (008) |
+| Evaluation and rollup | Evaluation (001); EvaluationEvidence†, EvaluationHead†, RecognitionEvent†, BadgeAward† (009); TeamShiftPerformance†, JobOutcome†, JobName† (010) |
+| Runtime state | WorkerRun (001); PipelineRun†, PipelineStep†, Outbox† (002) |
+| Read views | TeamInferenceAtHead†, DurationStatisticsAtHead†, DeliveryCommitmentState†, IncumbentAtHead†, CurrentPlan†, CurrentEvaluation†, TeamXp† |
 
 All above have WEB_APP.FOCUS_FN_ prefix in the reference SQL adapter (not guaranteed internal schema). Versioned source and publication heads require durable optimistic CAS semantics, immutable/readback proof and separate signed acceptance authority.
 

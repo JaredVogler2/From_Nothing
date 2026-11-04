@@ -13,7 +13,7 @@ carries an authority label:
 | `manual_specified` | A value the manual fixes explicitly. |
 | `fixture_default` | An explicit demonstration choice, valid in fixture mode only. |
 | `demo_default` | A proposed S14 grading/recognition demo default, never an approved labor grade. |
-| `open_decision` | A live semantic with no owner decision yet. The fixture choice is recorded and the live effect is a precise readiness gap (OD-02..OD-17 in the policy file). |
+| `open_decision` | A live semantic with no owner decision yet. The fixture choice is recorded and the live effect is a readiness gap named by the decision's id (OD-02 to OD-05 and OD-07 to OD-17 in the policy file; OD-01 and OD-06 are decided). |
 | `owner_decision` | A live semantic the owner has decided. The value's ref records the decision and its date, and the decision leaves the open list (`decided_decisions` in the policy file). |
 
 ## Capabilities (P01 step 3)
@@ -50,8 +50,9 @@ attendance. A conditional ETA is never physical receipt.
 - **D-14 Hosting (user directive).** Posit Connect first, then VMware Tanzu. The WSGI entrypoint is `app:app`. URLs are prefix-safe (`request.script_root` plus a `<meta name="focus-base">` read by the JS). Identity providers: `fixture` (demo login, visibly labeled), `posit_connect` (trusted `RStudio-Connect-Credentials` header) and `trusted_header` (Tanzu SSO / oauth2-proxy header named by `FOCUS_TRUSTED_USER_HEADER`). Grants are always server-owned (`FOCUS_GRANTS_JSON`). Tanzu `$PORT` and `VCAP_SERVICES` are read only by `focus/config.py`.
 - **D-16 Performance semantics (P17/P18).** Recorded in `PERFORMANCE_POLICY.md`:
   - B0 comes from the first accepted executable plan of each obligation day; later replans only propose.
+    *Superseded by D-26:* each shift is scored against the plan accepted before it starts.
   - A completion credits its goal inside the shift window, then the authorized OT window, then early; otherwise it is
-    offplan U where it happened.
+    offplan U where it happened. *Superseded by D-26:* never early.
   - Bands apply to the displayed one-decimal score, rounded once after every sum.
   - Planned OOS work keeps its frozen XP: the OOS charge lives once, in O ("no second charge in bonus/XP").
   - Offplan output never earns XP.
@@ -67,7 +68,7 @@ attendance. A conditional ETA is never physical receipt.
   - "Knowledge time" is the clock, never before the latest collected observations, so reads, version checks and workers agree. Live it equals the clock; in a fixture replay it moves to the last observation point.
 - **D-18 Operational views and scenarios (P20).**
   - **One dispatch rule.** `publication.dispatch.assess_action` is the pure current-facts rule that `dispatch_check` applies, so the Team Lead ranking and the dispatch check can never disagree. Only `dispatch_check` records repair requests.
-  - **One amendment rule.** `performance.amendments.assess_addition` is the pure readiness and crew-feasibility rule behind both amendment proposals and `amend_goal`.
+  - **One amendment rule.** `performance.amendments.assess_addition` is the pure readiness and crew-feasibility rule behind both amendment proposals and `amend_goal`. `amend_goal` also refuses `PLAN_NOT_OF_RECORD` and `SHIFT_ENDED`, and since D-26 `SHIFT_NOT_STARTED`; the Team Lead view lists no proposal outside the shift window, and the `goal_amendments` feed quarantines a row whose `DECISION_AT_UTC` is outside it.
   - **Scenarios** (`analytics/scenarios.py`) copy the admitted snapshot into their own namespace and apply typed, allowlisted changes. A same-settings baseline and the changed copy run through the same optimizer and validator with purpose SCENARIO.
   - **Scenario isolation.** Publication refuses SCENARIO candidates outright (`PURPOSE_NOT_PUBLISHABLE`), so no head, frozen goal, commitment, actual or evaluation can change. Queued runs can be cancelled; running ones are bounded by their budget.
   - **`demo-run`** (`pipeline.demo_run`) runs the whole fixture pipeline idempotently: a rerun leaves the runtime byte-identical.
@@ -122,8 +123,8 @@ attendance. A conditional ETA is never physical receipt.
     `--benchmark-sizes`.
 - **D-21 Migrations, roles, pipeline and retention (P23).**
   - **One versioned set.**
-    - `sql/migrations/001`-`009` (001 is S06 verbatim; 002 is new; 003-009 are the reviewed drafts with their
-      statements unchanged).
+    - `sql/migrations/001`-`010` (001 is S06 verbatim; 002 is new; 003-009 are the reviewed drafts with their
+      statements unchanged; 010 was added by D-25).
     - Rollbacks and the grants script are generated from one authority each (`rollback_script`, `ROLE_GRANTS`) and
       checked for freshness.
     - Migration files that are not versioned are never applied, so other modules' design drafts stay out.
@@ -203,8 +204,9 @@ attendance. A conditional ETA is never physical receipt.
     target (80 by default), the lowest, the highest, the range and the grades. The official score weights teams by
     planned work; the spread shows whether one large team carries the rest.
   - **The jobs behind each score, kept for good** (`job_outcomes`). Each planned unit records its job's shop order id
-    (shared across aircraft), aircraft, phase, planned minutes and outcome (done, missed, excused with the claim causes,
-    open) and whether it was done out of sequence. Each unplanned completion records the same identity and minutes. A
+    (shared across aircraft), aircraft, phase, planned minutes and outcome (done, missed, excused or open), the causes
+    (every submitted claim cause on the unit whatever its outcome, plus `DONE_BEFORE_SHIFT` for work finished before the
+    shift, D-26) and whether the unit drew the out-of-sequence charge. Each unplanned completion records the same identity and minutes. A
     record adds up to its score: planned minutes to B, done to Cp, excused to E, unplanned to U. Work on a team-shift no
     plan covered is listed as `no_plan`: its neutral score leaves it out of U. This answers which jobs made a score and
     which jobs miss, or are done out of plan, aircraft after aircraft (`job_patterns`). About 107 jobs per team-shift
@@ -220,24 +222,80 @@ attendance. A conditional ETA is never physical receipt.
     `--apply`, deletes. CI runs `detail_retention` with retention credentials, `allow_failure`.
   - **Live.** Migration 010 is the proposed storage (`FOCUS_FN_TeamShiftPerformance`, `FOCUS_FN_JobOutcome`,
     `FOCUS_FN_JobName`). It is a draft and has not been executed.
+- **D-26 Each shift is scored against its own plan (owner direction, November 2, 2026).**
+  - **The cycle.** The scheduler runs before every shift, three times a day, as a global optimization through
+    delivery. Each run accounts for the previous shift's completions, what it did not complete, and new constraints
+    such as rework and late parts, and sets the next shift's plan. Shift 1's performance compares shift 1's plan with
+    what was verified complete by the end of shift 1 and its authorized overtime.
+  - **Goals of record per shift** (`performance.lifecycle.GoalRegistry`). A team-shift's goal of record is the last
+    accepted EXECUTABLE plan covering the shift's day that was accepted at or before the shift starts. When none was
+    accepted before the start, the first accepted plan covering the day stands in, even though it was accepted after
+    the shift started. Plans accepted later are proposals for that shift. Until this decision, the first accepted plan of a production day froze all three of the
+    day's shifts, so shifts 2 and 3 were scored against the morning plan while the floor worked the newer one.
+  - **Adherence is job identity, not timing.** A planned job not done in its shift is not adhered to there. If the next
+    run plans it again and the next shift does it, it counts in that shift. If the next run leaves it out and a team
+    does it anyway, it is offplan work. Start and finish times are never compared with the plan.
+  - **No early credit.** A completion before a goal's window earns nothing early. Each shift's plan is made after the
+    earlier shifts' work, so work done ahead of a later shift's plan is offplan output in the shift that did it.
+  - **Done before the shift.** The next plan is made while the previous shift is still finishing (cutoff lead and
+    overtime). A unit whose phase has a verified `COMPLETED` effective before its shift started is `DONE_BEFORE_SHIFT`
+    (reason `VERIFIED_COMPLETE_BEFORE_SHIFT_START`). It stays in B0, counts in E (so it leaves D), is listed as excused
+    with that cause in the job record, and is never earned twice. Only a whole-phase completion qualifies: a segment
+    verified early by `PROGRESS` earns nothing in the goal and ends `MISSED`. The code does not check that the work
+    was finished after the plan was made.
+  - **Amendments** are accepted only during the shift, once its goal of record is fixed: the command refuses
+    `SHIFT_NOT_STARTED` before the start and `SHIFT_ENDED` after the end; the `goal_amendments` feed applies the
+    same rule to `DECISION_AT_UTC` and quarantines the row; the Team Lead view lists no addition before the start.
+  - **Late events are captured after the fact (owner, November 2, 2026).** Data retrieval and the scheduler run in
+    the last 15–20 minutes of a shift. Completions and new constraints in those minutes are few but real, and the
+    performance record still captures them:
+    - each shift's score is computed from timestamped completions once its window and overtime close, and is revised
+      when data arrives late;
+    - a job the next plan still holds but the previous shift already finished is `DONE_BEFORE_SHIFT` in the next shift;
+    - a constraint the next plan missed (a kit found short, rework found) is excused through the claim review or added
+      as an amendment, and the following plan sees it.
+
+    The simulation models this gap (`SimSpec.cutoff_gap`, the cutoff `cutoff_lead_minutes` before the shift ends).
+  - **Run time.** Each shift's plan must be accepted before the shift starts, which is why the cycle's run time is
+    critical (D-22). The GitLab draft's signing step is a manual operator promotion. A plan promoted after its shift
+    starts is a proposal for that shift, and the previous plan stays its goal of record (when there is no earlier plan
+    covering the day, the late plan stands in). The calibration (`docs/task-valuation-investigation/10_CALIBRATION.md`
+    §7) measured what late plans cost the teams and lists the owner decision this needs.
+  - **Simulation.** `focus.sim` freezes each shift's goals from that shift's valid plan. The day's last valid plan
+    stands in when a shift's own plan is invalid.
+  - **Measured** (10 aircraft, 12 shifts, the same floor behavior and seed, so the work done is identical; evidence
+    `PERSHIFT.json` in `docs/task-valuation-investigation/evidence/outputs/`):
+    - **No pull-ahead.** Plan-following work counted as offplan fell from 2,335 standard minutes to 0. Units missed
+      because a predecessor was unfinished fell from 16,800 to 635 minutes, since each plan now accounts for the
+      previous shift. The mean team-shift score rose from 98.6 to 99.8.
+    - **Heavy pull-ahead.** All pulled-ahead work is now offplan (80,302 minutes against 27,850), because none of it is
+      credited early to a later shift any more. Today's adherence term penalizes it more (mean 96.3 against 97.9),
+      so the offplan credit rule in `docs/task-valuation-investigation/09_OFFPLAN_CREDIT.md` matters more under
+      per-shift goals.
 
 ## Semantic gaps (live), each a precise readiness effect
 
-These are the policy file's `open_decisions`. None of them blocks local
-fixture implementation (S00). Each one blocks the matching live executable
-capability until the owner admits the semantic:
+These are the policy file's `open_decisions` (OD-18 is tracked here only). None of them blocks local
+fixture implementation (S00). In live mode each one still open appears in every snapshot as a readiness gap named
+by its id (scope `policy`, labelled `BLOCKS_EXECUTABLE`); the validator does not act on that label. Besides OD-05
+(`CS_DATE_SEMANTICS_UNCONFIRMED` on every job) and OD-07 (both jobs of a hard concurrent or non-concurrent edge
+quarantined), what each one withholds comes from the data its answer unlocks:
 
 - OD-01 TOTAL_MECHANICS simultaneity: **decided by the owner on 2026-10-31.** TOTAL_MECHANICS is the number of mechanics
   that must be on the job at once to work it (SIMULTANEOUS). It no longer withholds live jobs.
-- OD-02 raw clock intervals for elapsed P75
-- OD-03 QA hold locations/inspector roles
+- OD-02 raw clock intervals for elapsed P75. Correction to the policy's `live_effect`: the P75 comes only from
+  `duration_episodes` (no live reader), not from `FOCUS_FN_ClockObservation`, which feeds the `duration-stats` report.
+- OD-03 QA hold locations/inspector roles. Correction: a job with in-process inspections and no located hold is
+  blocked in every plan (`IP_HOLD_UNKNOWN_LOCATION`), not only executable ones.
 - OD-04 labor breaks and OT authority
-- OD-05 CS offsets/date basis
+- OD-05 CS offsets/date basis. Correction: every live job is kept out of executable plans (`CS_DATE_SEMANTICS_UNCONFIRMED`), and conflicting
+  active loads give `CS_LOAD_CONFLICT`.
 - OD-06 commercial due: **decided by the owner on 2026-11-02.** The delivery due date is the aircraft's planned unload
   date at the last control station (744) plus the 2-day grace, as a whole local day. No source carries a customer
   delivery date. It no longer blocks live executable plans; an aircraft without that date still has an unknown cost.
 - OD-07 concurrency meanings
-- OD-08 rework classification source
+- OD-08 rework classification source. Correction: without a classification source, open `IS_REWORK` jobs are
+  blocked (`REWORK_CLASS_UNKNOWN`), not `DURATION_UNAVAILABLE`; unflagged rework uses the flow standard.
 - OD-09 affirmative no-cert census
 - OD-10 assignment/attendance feeds (currently empty)
 - OD-11 shift-start travel origin
@@ -251,7 +309,7 @@ capability until the owner admits the semantic:
   grade needs the owner's approval receipt; personal grades need their own policy (both disabled).
 - OD-17 excusal reviewer identity: decisions require the server-granted `excusal_decider` role (`disruption.reviewer_roles`)
   and never self-review; the live mapping of reviewer subjects to that grant is the operator's.
-- OD-18 explanation provider: no BCAI endpoint, credential or response adapter is approved. Live explanations stay deterministic
+- OD-18 (tracked here only; not in the policy file, so it raises no live gap) explanation provider: no BCAI endpoint, credential or response adapter is approved. Live explanations stay deterministic
   (`FOCUS_LLM_PROVIDER=none`) until an approved https endpoint returns the `focus-explain-v1` contract. Its outputs are validated like
   any provider's.
 

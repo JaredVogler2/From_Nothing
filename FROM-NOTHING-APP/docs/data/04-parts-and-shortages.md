@@ -41,6 +41,9 @@ These datasets tell FOCUS which parts are short, which jobs need them, when they
 - An ECD is never a receipt, even after it has passed. Only a `RECEIVED` or `DELETED` event in `part_events` confirms a part.
 - Declare a source timezone for `etracs_active` (or `*`). Without one, every dated shortage becomes UNKNOWN (`SOURCE_TIMEZONE_MISSING`) and blocks its jobs, and the freshness clock cannot be read.
 - Several shortages on one job each add a release. The latest floor binds, and any unknown release blocks the job.
+- Release reasons name the floor: `TIMED_ETA` (a precise conditional time from `part_events`) or `DATE_ONLY_ECD_FLOOR`
+  (the end of the local ECD date, a conservative default). A cyclic `PARENT_SOI` chain gates the used-on job with no
+  root (`ROOT_CHAIN_CYCLE`).
 - In the validator's parts check (V9) for executable plans, and at dispatch, a shortage whose status is `UNKNOWN_ECD` or `REOPENED` blocks every job it affects (`SHORTAGE_BLOCKED` at dispatch).
 
 ## `etracs_history`

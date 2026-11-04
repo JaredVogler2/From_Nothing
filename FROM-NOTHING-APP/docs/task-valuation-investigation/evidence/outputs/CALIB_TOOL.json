@@ -1,0 +1,6548 @@
+{
+"B50_DF_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "B50_DF_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0102,
+"p95": 0.0171,
+"p99": 0.0368
+},
+"mean": 0.0027,
+"share_zero": 0.8522
+},
+"scores": {
+"R0_today": {
+"p1": 96.9,
+"p5": 98.2,
+"p10": 98.8,
+"p25": 99.2,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 96.6025,
+"p5": 98.3584,
+"p10": 99.0971,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 96.6025,
+"p5": 98.3584,
+"p10": 99.1004,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 96.6025,
+"p5": 98.3584,
+"p10": 99.1004,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 96.6025,
+"p5": 98.3584,
+"p10": 99.1004,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 96.6025,
+"p5": 98.3584,
+"p10": 99.1004,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 96.6025,
+"p5": 98.3903,
+"p10": 99.1004,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.966,
+"p5": 0.9839,
+"p10": 0.991,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0152,
+"p90": 1.0276,
+"p95": 1.0329,
+"p99": 1.0408
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 372
+},
+"R5_w0.8": {
+"A": 372
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0,
+"R0_to_R5_w0.8_grade_change": {
+"same": 372
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 371,
+"B": 1
+},
+"R5_w0.8": {
+"A": 371,
+"B": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 372
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 372
+},
+"R5_w0.8": {
+"A": 372
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0,
+"R0_to_R5_w0.8_grade_change": {
+"same": 372
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 372
+},
+"R5_w0.8": {
+"A": 372
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0,
+"R0_to_R5_w0.8_grade_change": {
+"same": 372
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 98.7831,
+"p5": 99.1434,
+"p10": 99.4521,
+"p25": 99.8978,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 130,
+"share": 0.3495,
+"U_over_D_when_present": {
+"p1": 0.0083,
+"p5": 0.0102,
+"p10": 0.014,
+"p25": 0.0184,
+"p50": 0.0236,
+"p75": 0.0301,
+"p90": 0.0375,
+"p95": 0.0424,
+"p99": 0.0504
+},
+"P2_additive_minutes": 13145.0,
+"P2_substitutive_minutes": 2325.0,
+"P2_substitutive_share": 0.1503,
+"team_shifts_P2_substitutive": 21
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.186,
+"max_gain": -0.771
+},
+"w0.5_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.131,
+"max_gain": -0.751
+},
+"w0.5_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.023,
+"max_gain": -0.713
+},
+"w0.5_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.862,
+"max_gain": -0.559
+},
+"w0.6_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.186,
+"max_gain": -0.771
+},
+"w0.6_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.12,
+"max_gain": -0.748
+},
+"w0.6_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.99,
+"max_gain": -0.685
+},
+"w0.6_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.798,
+"max_gain": -0.468
+},
+"w0.7_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.186,
+"max_gain": -0.771
+},
+"w0.7_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.11,
+"max_gain": -0.744
+},
+"w0.7_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.958,
+"max_gain": -0.655
+},
+"w0.7_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.733,
+"max_gain": -0.376
+},
+"w0.8_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.186,
+"max_gain": -0.771
+},
+"w0.8_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.099,
+"max_gain": -0.74
+},
+"w0.8_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.925,
+"max_gain": -0.624
+},
+"w0.8_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.668,
+"max_gain": -0.263
+},
+"w0.9_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.186,
+"max_gain": -0.771
+},
+"w0.9_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.088,
+"max_gain": -0.736
+},
+"w0.9_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.893,
+"max_gain": -0.594
+},
+"w0.9_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.604,
+"max_gain": -0.131
+},
+"w1.0_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.186,
+"max_gain": -0.771
+},
+"w1.0_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -1.077,
+"max_gain": -0.732
+},
+"w1.0_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.86,
+"max_gain": -0.559
+},
+"w1.0_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -0.539,
+"max_gain": 0.0
+}
+},
+"relief": {
+"B_minutes": 1926420,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 34675,
+"DONE_BEFORE_SHIFT": 7610,
+"LATE_PART": 6720,
+"CROSS_TEAM_PREDECESSOR": 2020
+},
+"excused_share_of_B": 0.0265,
+"done_before_shift_minutes": 7610.0,
+"done_before_shift_share_of_B": 0.004
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 30514,
+"share_in_last_lead_minutes": 0.0344,
+"share_in_overtime": 0.0095,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": 0.0779,
+"spearman_planned_minutes_vs_output_index": -0.1343,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"DF_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_DF_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0155,
+"p95": 0.0616,
+"p99": 0.1287
+},
+"mean": 0.007,
+"share_zero": 0.8976
+},
+"scores": {
+"R0_today": {
+"p1": 88.0,
+"p5": 93.0,
+"p10": 95.3,
+"p25": 97.1,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 87.1287,
+"p5": 94.9425,
+"p10": 98.7216,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 87.1287,
+"p5": 94.9425,
+"p10": 98.9773,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 87.1287,
+"p5": 94.9425,
+"p10": 99.233,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 87.1287,
+"p5": 94.9425,
+"p10": 99.4886,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 87.1287,
+"p5": 94.9425,
+"p10": 99.7443,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 87.1287,
+"p5": 94.9425,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8713,
+"p5": 0.9494,
+"p10": 1.0,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0807,
+"p90": 1.1389,
+"p95": 1.1826,
+"p99": 1.2857
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 363,
+"B": 8
+},
+"R5_w0.8": {
+"A": 364,
+"B": 7
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0324,
+"R0_to_R5_w0.8_grade_change": {
+"same": 366,
+"down": 2,
+"up": 3
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 337,
+"B": 26,
+"C": 7,
+"D": 1
+},
+"R5_w0.8": {
+"A": 352,
+"B": 12,
+"C": 4,
+"D": 3
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0941,
+"R0_to_R5_w0.8_grade_change": {
+"same": 348,
+"up": 18,
+"down": 5
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 370,
+"B": 1
+},
+"R5_w0.8": {
+"A": 368,
+"B": 3
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0176,
+"R0_to_R5_w0.8_grade_change": {
+"same": 369,
+"down": 2
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 359,
+"B": 11,
+"C": 1
+},
+"R5_w0.8": {
+"A": 362,
+"B": 6,
+"C": 3
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0441,
+"R0_to_R5_w0.8_grade_change": {
+"same": 366,
+"down": 2,
+"up": 3
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 95.6522,
+"p5": 97.7011,
+"p10": 99.2523,
+"p25": 99.7392,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 130,
+"share": 0.3504,
+"U_over_D_when_present": {
+"p1": 0.0365,
+"p5": 0.0506,
+"p10": 0.0576,
+"p25": 0.0839,
+"p50": 0.1124,
+"p75": 0.1583,
+"p90": 0.1921,
+"p95": 0.2674,
+"p99": 0.3333
+},
+"P2_additive_minutes": 23930.0,
+"P2_substitutive_minutes": 3370.0,
+"P2_substitutive_share": 0.1234,
+"team_shifts_P2_substitutive": 21
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.644,
+"max_gain": -1.549
+},
+"w0.5_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.415,
+"max_gain": -1.228
+},
+"w0.5_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.965,
+"max_gain": -0.774
+},
+"w0.5_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.347,
+"max_gain": -0.774
+},
+"w0.6_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.644,
+"max_gain": -1.549
+},
+"w0.6_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.369,
+"max_gain": -1.164
+},
+"w0.6_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.829,
+"max_gain": -0.619
+},
+"w0.6_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.088,
+"max_gain": -0.619
+},
+"w0.7_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.644,
+"max_gain": -1.549
+},
+"w0.7_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.323,
+"max_gain": -1.1
+},
+"w0.7_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.693,
+"max_gain": -0.465
+},
+"w0.7_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -3.829,
+"max_gain": -0.465
+},
+"w0.8_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.644,
+"max_gain": -1.549
+},
+"w0.8_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.277,
+"max_gain": -1.035
+},
+"w0.8_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.557,
+"max_gain": -0.31
+},
+"w0.8_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -3.569,
+"max_gain": -0.31
+},
+"w0.9_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.644,
+"max_gain": -1.549
+},
+"w0.9_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.231,
+"max_gain": -0.971
+},
+"w0.9_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.421,
+"max_gain": -0.155
+},
+"w0.9_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -3.31,
+"max_gain": -0.155
+},
+"w1.0_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.644,
+"max_gain": -1.549
+},
+"w1.0_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.186,
+"max_gain": -0.907
+},
+"w1.0_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.286,
+"max_gain": 0.0
+},
+"w1.0_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -3.05,
+"max_gain": 0.0
+}
+},
+"relief": {
+"B_minutes": 695841,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 15410,
+"CAPACITY_SHORTAGE": 12900,
+"LATE_PART": 2285,
+"CROSS_TEAM_PREDECESSOR": 215
+},
+"excused_share_of_B": 0.0443,
+"done_before_shift_minutes": 15410.0,
+"done_before_shift_share_of_B": 0.0221
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6048,
+"share_in_last_lead_minutes": 0.0575,
+"share_in_overtime": 0.0602,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0612,
+"spearman_planned_minutes_vs_output_index": -0.0283,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"DF_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_DF_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.0603,
+"p99": 0.1398
+},
+"mean": 0.0081,
+"share_zero": 0.9032
+},
+"scores": {
+"R0_today": {
+"p1": 88.1,
+"p5": 92.8,
+"p10": 95.0,
+"p25": 96.9,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 85.7915,
+"p5": 93.9726,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 85.7915,
+"p5": 93.9726,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 85.7915,
+"p5": 93.9726,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 85.7915,
+"p5": 93.9726,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 85.7915,
+"p5": 93.9726,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 85.7915,
+"p5": 93.9726,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8602,
+"p5": 0.9397,
+"p10": 1.0,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0714,
+"p90": 1.1429,
+"p95": 1.1774,
+"p99": 1.2911
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 363,
+"B": 8,
+"C": 1
+},
+"R5_w0.8": {
+"A": 363,
+"B": 8,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0528,
+"R0_to_R5_w0.8_grade_change": {
+"same": 365,
+"down": 4,
+"up": 3
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 336,
+"B": 27,
+"C": 7,
+"D": 1,
+"F": 1
+},
+"R5_w0.8": {
+"A": 345,
+"B": 18,
+"C": 6,
+"D": 2,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1349,
+"R0_to_R5_w0.8_grade_change": {
+"same": 348,
+"down": 8,
+"up": 16
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 370,
+"B": 2
+},
+"R5_w0.8": {
+"A": 369,
+"B": 2,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0176,
+"R0_to_R5_w0.8_grade_change": {
+"same": 370,
+"down": 2
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 355,
+"B": 15,
+"C": 2
+},
+"R5_w0.8": {
+"A": 359,
+"B": 10,
+"C": 2,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0674,
+"R0_to_R5_w0.8_grade_change": {
+"same": 364,
+"down": 3,
+"up": 5
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 93.3333,
+"p5": 97.0068,
+"p10": 98.3467,
+"p25": 99.8933,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 130,
+"share": 0.3495,
+"U_over_D_when_present": {
+"p1": 0.0435,
+"p5": 0.0537,
+"p10": 0.0603,
+"p25": 0.0764,
+"p50": 0.1205,
+"p75": 0.1583,
+"p90": 0.2069,
+"p95": 0.2889,
+"p99": 0.3786
+},
+"P2_additive_minutes": 23975.0,
+"P2_substitutive_minutes": 3845.0,
+"P2_substitutive_share": 0.1382,
+"team_shifts_P2_substitutive": 21
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.45,
+"max_gain": -1.27
+},
+"w0.5_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.184,
+"max_gain": -1.095
+},
+"w0.5_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.653,
+"max_gain": -0.746
+},
+"w0.5_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.978,
+"max_gain": -0.635
+},
+"w0.6_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.45,
+"max_gain": -1.27
+},
+"w0.6_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.131,
+"max_gain": -1.06
+},
+"w0.6_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.494,
+"max_gain": -0.641
+},
+"w0.6_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.684,
+"max_gain": -0.508
+},
+"w0.7_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.45,
+"max_gain": -1.27
+},
+"w0.7_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.078,
+"max_gain": -1.025
+},
+"w0.7_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.334,
+"max_gain": -0.537
+},
+"w0.7_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.389,
+"max_gain": -0.381
+},
+"w0.8_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.45,
+"max_gain": -1.27
+},
+"w0.8_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.025,
+"max_gain": -0.99
+},
+"w0.8_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.175,
+"max_gain": -0.432
+},
+"w0.8_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.095,
+"max_gain": -0.254
+},
+"w0.9_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.45,
+"max_gain": -1.27
+},
+"w0.9_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.972,
+"max_gain": -0.956
+},
+"w0.9_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.016,
+"max_gain": -0.327
+},
+"w0.9_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -3.801,
+"max_gain": -0.127
+},
+"w1.0_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -6.45,
+"max_gain": -1.27
+},
+"w1.0_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.919,
+"max_gain": -0.921
+},
+"w1.0_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.856,
+"max_gain": -0.222
+},
+"w1.0_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -3.506,
+"max_gain": 0.0
+}
+},
+"relief": {
+"B_minutes": 696127,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 16000,
+"CAPACITY_SHORTAGE": 10780,
+"LATE_PART": 1940,
+"CROSS_TEAM_PREDECESSOR": 100
+},
+"excused_share_of_B": 0.0414,
+"done_before_shift_minutes": 16000.0,
+"done_before_shift_share_of_B": 0.023
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6080,
+"share_in_last_lead_minutes": 0.0605,
+"share_in_overtime": 0.0592,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": 0.0122,
+"spearman_planned_minutes_vs_output_index": -0.0506,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"DL_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_DL_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 4
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0769,
+"p95": 0.1304,
+"p99": 0.2195
+},
+"mean": 0.0211,
+"share_zero": 0.7601
+},
+"scores": {
+"R0_today": {
+"p1": 80.6,
+"p5": 89.1,
+"p10": 92.5,
+"p25": 95.8,
+"p50": 99.3,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 81.0811,
+"p5": 89.0244,
+"p10": 92.9006,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 81.0811,
+"p5": 89.4378,
+"p10": 93.3934,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 81.0811,
+"p5": 89.7098,
+"p10": 93.6842,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 81.0811,
+"p5": 90.3047,
+"p10": 93.8389,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 81.0811,
+"p5": 90.5172,
+"p10": 93.8389,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 81.0811,
+"p5": 90.5172,
+"p10": 94.1176,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8108,
+"p5": 0.9052,
+"p10": 0.9412,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0751,
+"p90": 1.1463,
+"p95": 1.1733,
+"p99": 1.2674
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 349,
+"B": 18,
+"C": 3,
+"D": 1
+},
+"R5_w0.8": {
+"A": 353,
+"B": 14,
+"C": 3,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0853,
+"R0_to_R5_w0.8_grade_change": {
+"same": 352,
+"up": 10,
+"down": 9
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 299,
+"B": 50,
+"C": 12,
+"D": 6,
+"F": 4
+},
+"R5_w0.8": {
+"A": 327,
+"B": 26,
+"C": 10,
+"D": 4,
+"F": 4
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.2294,
+"R0_to_R5_w0.8_grade_change": {
+"same": 320,
+"down": 14,
+"up": 37
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 361,
+"B": 9,
+"C": 1
+},
+"R5_w0.8": {
+"A": 363,
+"B": 7,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0412,
+"R0_to_R5_w0.8_grade_change": {
+"same": 362,
+"down": 4,
+"up": 5
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 338,
+"B": 23,
+"C": 9,
+"F": 1
+},
+"R5_w0.8": {
+"A": 345,
+"B": 18,
+"C": 6,
+"D": 1,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1353,
+"R0_to_R5_w0.8_grade_change": {
+"same": 345,
+"down": 10,
+"up": 16
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 89.9434,
+"p5": 95.5556,
+"p10": 96.2356,
+"p25": 99.1564,
+"p50": 99.867,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 150,
+"share": 0.4043,
+"U_over_D_when_present": {
+"p1": 0.0328,
+"p5": 0.038,
+"p10": 0.0521,
+"p25": 0.0781,
+"p50": 0.1084,
+"p75": 0.1583,
+"p90": 0.1921,
+"p95": 0.2486,
+"p99": 0.3333
+},
+"P2_additive_minutes": 26733.0,
+"P2_substitutive_minutes": 3325.0,
+"P2_substitutive_share": 0.1106,
+"team_shifts_P2_substitutive": 21
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.576,
+"max_gain": -1.522
+},
+"w0.5_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.351,
+"max_gain": -1.207
+},
+"w0.5_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.901,
+"max_gain": -0.576
+},
+"w0.5_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0476,
+"mean_gain": -4.265,
+"max_gain": 0.109
+},
+"w0.6_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.576,
+"max_gain": -1.522
+},
+"w0.6_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.306,
+"max_gain": -1.143
+},
+"w0.6_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.767,
+"max_gain": -0.387
+},
+"w0.6_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0476,
+"mean_gain": -4.002,
+"max_gain": 0.435
+},
+"w0.7_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.576,
+"max_gain": -1.522
+},
+"w0.7_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.261,
+"max_gain": -1.08
+},
+"w0.7_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.632,
+"max_gain": -0.198
+},
+"w0.7_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0476,
+"mean_gain": -3.74,
+"max_gain": 0.761
+},
+"w0.8_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.576,
+"max_gain": -1.522
+},
+"w0.8_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.216,
+"max_gain": -1.017
+},
+"w0.8_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -4.497,
+"max_gain": -0.009
+},
+"w0.8_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0476,
+"mean_gain": -3.478,
+"max_gain": 1.087
+},
+"w0.9_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.576,
+"max_gain": -1.522
+},
+"w0.9_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.171,
+"max_gain": -0.954
+},
+"w0.9_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0476,
+"mean_gain": -4.362,
+"max_gain": 0.18
+},
+"w0.9_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0476,
+"mean_gain": -3.216,
+"max_gain": 1.413
+},
+"w1.0_q0.0": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.576,
+"max_gain": -1.522
+},
+"w1.0_q0.05": {
+"team_shifts": 21,
+"share_that_pays": 0.0,
+"mean_gain": -5.126,
+"max_gain": -0.891
+},
+"w1.0_q0.15": {
+"team_shifts": 21,
+"share_that_pays": 0.0476,
+"mean_gain": -4.227,
+"max_gain": 0.37
+},
+"w1.0_q0.3": {
+"team_shifts": 21,
+"share_that_pays": 0.0476,
+"mean_gain": -2.954,
+"max_gain": 1.739
+}
+},
+"relief": {
+"B_minutes": 714073,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 16035,
+"CAPACITY_SHORTAGE": 12835,
+"CROSS_TEAM_PREDECESSOR": 6020,
+"LATE_PART": 3185,
+"REWORK_INJECTION": 1990
+},
+"excused_share_of_B": 0.0561,
+"done_before_shift_minutes": 16035.0,
+"done_before_shift_share_of_B": 0.0225
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6048,
+"share_in_last_lead_minutes": 0.0575,
+"share_in_overtime": 0.0602,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": 0.0312,
+"spearman_planned_minutes_vs_output_index": -0.1296,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"DL_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_DL_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 3
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0781,
+"p95": 0.1294,
+"p99": 0.1996
+},
+"mean": 0.0198,
+"share_zero": 0.7957
+},
+"scores": {
+"R0_today": {
+"p1": 84.6,
+"p5": 90.0,
+"p10": 91.9,
+"p25": 96.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 81.4815,
+"p5": 87.6712,
+"p10": 92.7386,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 81.4815,
+"p5": 87.6712,
+"p10": 92.7386,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 81.4815,
+"p5": 87.6712,
+"p10": 92.8339,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 81.4815,
+"p5": 87.6712,
+"p10": 92.8339,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 81.4815,
+"p5": 87.6712,
+"p10": 92.8339,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 81.4815,
+"p5": 87.6712,
+"p10": 92.8339,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8148,
+"p5": 0.8767,
+"p10": 0.9283,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0698,
+"p90": 1.1429,
+"p95": 1.1818,
+"p99": 1.3083
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 353,
+"B": 16,
+"C": 2,
+"D": 1
+},
+"R5_w0.8": {
+"A": 347,
+"B": 21,
+"C": 2,
+"D": 1,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1466,
+"R0_to_R5_w0.8_grade_change": {
+"same": 353,
+"down": 14,
+"up": 5
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 307,
+"B": 46,
+"C": 14,
+"D": 2,
+"F": 3
+},
+"R5_w0.8": {
+"A": 320,
+"B": 27,
+"C": 15,
+"D": 6,
+"F": 4
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.2581,
+"R0_to_R5_w0.8_grade_change": {
+"same": 325,
+"down": 23,
+"up": 24
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 366,
+"B": 5,
+"C": 1
+},
+"R5_w0.8": {
+"A": 361,
+"B": 9,
+"C": 1,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0645,
+"R0_to_R5_w0.8_grade_change": {
+"same": 365,
+"down": 7
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 334,
+"B": 33,
+"C": 3,
+"D": 2
+},
+"R5_w0.8": {
+"A": 340,
+"B": 22,
+"C": 8,
+"F": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.173,
+"R0_to_R5_w0.8_grade_change": {
+"same": 348,
+"down": 12,
+"up": 12
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 83.918,
+"p5": 94.4444,
+"p10": 95.4306,
+"p25": 98.878,
+"p50": 99.9064,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 145,
+"share": 0.3898,
+"U_over_D_when_present": {
+"p1": 0.0081,
+"p5": 0.0376,
+"p10": 0.0509,
+"p25": 0.0727,
+"p50": 0.1137,
+"p75": 0.1538,
+"p90": 0.215,
+"p95": 0.2889,
+"p99": 0.3786
+},
+"P2_additive_minutes": 25667.0,
+"P2_substitutive_minutes": 3913.0,
+"P2_substitutive_share": 0.1323,
+"team_shifts_P2_substitutive": 23
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -6.044,
+"max_gain": -1.27
+},
+"w0.5_q0.05": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.798,
+"max_gain": -1.095
+},
+"w0.5_q0.15": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.305,
+"max_gain": -0.746
+},
+"w0.5_q0.3": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -4.677,
+"max_gain": -0.635
+},
+"w0.6_q0.0": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -6.044,
+"max_gain": -1.27
+},
+"w0.6_q0.05": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.748,
+"max_gain": -1.06
+},
+"w0.6_q0.15": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.157,
+"max_gain": -0.641
+},
+"w0.6_q0.3": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -4.404,
+"max_gain": -0.508
+},
+"w0.7_q0.0": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -6.044,
+"max_gain": -1.27
+},
+"w0.7_q0.05": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.699,
+"max_gain": -1.025
+},
+"w0.7_q0.15": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.009,
+"max_gain": -0.537
+},
+"w0.7_q0.3": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -4.13,
+"max_gain": -0.381
+},
+"w0.8_q0.0": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -6.044,
+"max_gain": -1.27
+},
+"w0.8_q0.05": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.65,
+"max_gain": -0.99
+},
+"w0.8_q0.15": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -4.862,
+"max_gain": -0.432
+},
+"w0.8_q0.3": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -3.857,
+"max_gain": -0.254
+},
+"w0.9_q0.0": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -6.044,
+"max_gain": -1.27
+},
+"w0.9_q0.05": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.601,
+"max_gain": -0.956
+},
+"w0.9_q0.15": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -4.714,
+"max_gain": -0.327
+},
+"w0.9_q0.3": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -3.583,
+"max_gain": -0.127
+},
+"w1.0_q0.0": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -6.044,
+"max_gain": -1.27
+},
+"w1.0_q0.05": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -5.551,
+"max_gain": -0.921
+},
+"w1.0_q0.15": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -4.566,
+"max_gain": -0.222
+},
+"w1.0_q0.3": {
+"team_shifts": 23,
+"share_that_pays": 0.0,
+"mean_gain": -3.31,
+"max_gain": 0.0
+}
+},
+"relief": {
+"B_minutes": 707967,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 16440,
+"CAPACITY_SHORTAGE": 10780,
+"CROSS_TEAM_PREDECESSOR": 2465,
+"LATE_PART": 1940,
+"REWORK_INJECTION": 1550
+},
+"excused_share_of_B": 0.0469,
+"done_before_shift_minutes": 16440.0,
+"done_before_shift_share_of_B": 0.0232
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6080,
+"share_in_last_lead_minutes": 0.0605,
+"share_in_overtime": 0.0592,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": 0.1372,
+"spearman_planned_minutes_vs_output_index": -0.1155,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"N0_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_N0_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.0,
+"p99": 0.1209
+},
+"mean": 0.0043,
+"share_zero": 0.9596
+},
+"scores": {
+"R0_today": {
+"p1": 91.5,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 87.907,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 87.907,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 87.907,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 87.907,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 87.907,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 87.907,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8791,
+"p5": 1.0,
+"p10": 1.0,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0,
+"p90": 1.0,
+"p95": 1.0,
+"p99": 1.0
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 367,
+"B": 4
+},
+"R5_w0.8": {
+"A": 363,
+"B": 6,
+"C": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0441,
+"R0_to_R5_w0.8_grade_change": {
+"same": 365,
+"down": 6
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 360,
+"B": 7,
+"C": 3,
+"D": 1
+},
+"R5_w0.8": {
+"A": 360,
+"B": 3,
+"C": 4,
+"D": 2,
+"F": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0559,
+"R0_to_R5_w0.8_grade_change": {
+"same": 363,
+"down": 8
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 370,
+"B": 1
+},
+"R5_w0.8": {
+"A": 367,
+"B": 4
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0206,
+"R0_to_R5_w0.8_grade_change": {
+"same": 368,
+"down": 3
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 365,
+"B": 5,
+"C": 1
+},
+"R5_w0.8": {
+"A": 362,
+"B": 5,
+"C": 4
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.05,
+"R0_to_R5_w0.8_grade_change": {
+"same": 365,
+"down": 6
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 92.2039,
+"p5": 96.4646,
+"p10": 99.4186,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 0,
+"share": 0.0,
+"U_over_D_when_present": {},
+"P2_additive_minutes": 0.0,
+"P2_substitutive_minutes": 0.0,
+"P2_substitutive_share": null,
+"team_shifts_P2_substitutive": 0
+},
+"swap_gain": {
+"note": "no team-shift P2 calls substitutive"
+},
+"relief": {
+"B_minutes": 694590,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 13370,
+"DONE_BEFORE_SHIFT": 5485,
+"LATE_PART": 1840,
+"CROSS_TEAM_PREDECESSOR": 65
+},
+"excused_share_of_B": 0.0299,
+"done_before_shift_minutes": 5485.0,
+"done_before_shift_share_of_B": 0.0079
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6182,
+"share_in_last_lead_minutes": 0.0587,
+"share_in_overtime": 0.0545,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0823,
+"spearman_planned_minutes_vs_output_index": -0.0037,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"N0_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_N0_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.0,
+"p99": 0.0952
+},
+"mean": 0.0032,
+"share_zero": 0.9543
+},
+"scores": {
+"R0_today": {
+"p1": 93.3,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 90.4762,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 90.4762,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 90.4762,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 90.4762,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 90.4762,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 90.4762,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.9048,
+"p5": 1.0,
+"p10": 1.0,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0,
+"p90": 1.0,
+"p95": 1.0,
+"p99": 1.0
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 370,
+"B": 2
+},
+"R5_w0.8": {
+"A": 369,
+"B": 1,
+"C": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0176,
+"R0_to_R5_w0.8_grade_change": {
+"same": 369,
+"down": 3
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 367,
+"B": 3,
+"C": 2
+},
+"R5_w0.8": {
+"A": 363,
+"B": 6,
+"C": 1,
+"F": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0469,
+"R0_to_R5_w0.8_grade_change": {
+"same": 365,
+"down": 7
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 372
+},
+"R5_w0.8": {
+"A": 370,
+"B": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0117,
+"R0_to_R5_w0.8_grade_change": {
+"same": 370,
+"down": 2
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 369,
+"B": 3
+},
+"R5_w0.8": {
+"A": 367,
+"B": 3,
+"C": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0264,
+"R0_to_R5_w0.8_grade_change": {
+"same": 368,
+"down": 4
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 94.0321,
+"p5": 97.8571,
+"p10": 98.8984,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 0,
+"share": 0.0,
+"U_over_D_when_present": {},
+"P2_additive_minutes": 0.0,
+"P2_substitutive_minutes": 0.0,
+"P2_substitutive_share": null,
+"team_shifts_P2_substitutive": 0
+},
+"swap_gain": {
+"note": "no team-shift P2 calls substitutive"
+},
+"relief": {
+"B_minutes": 698719,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 12024,
+"DONE_BEFORE_SHIFT": 5980,
+"LATE_PART": 1885,
+"CROSS_TEAM_PREDECESSOR": 45
+},
+"excused_share_of_B": 0.0285,
+"done_before_shift_minutes": 5980.0,
+"done_before_shift_share_of_B": 0.0086
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6206,
+"share_in_last_lead_minutes": 0.054,
+"share_in_overtime": 0.0593,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": 0.0614,
+"spearman_planned_minutes_vs_output_index": -0.0682,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"PF_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_PF_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.0396,
+"p99": 0.1444
+},
+"mean": 0.0061,
+"share_zero": 0.9164
+},
+"scores": {
+"R0_today": {
+"p1": 83.2,
+"p5": 91.7,
+"p10": 93.6,
+"p25": 95.4,
+"p50": 96.6,
+"p75": 97.5,
+"p90": 98.3,
+"p95": 99.3,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 92.7778,
+"p5": 98.0183,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 94.2222,
+"p5": 98.4146,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 95.6667,
+"p5": 98.811,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 97.1111,
+"p5": 99.1275,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 98.2235,
+"p5": 99.4944,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 99.1275,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 1.0,
+"p5": 1.0,
+"p10": 1.0541,
+"p25": 1.0854,
+"p50": 1.1192,
+"p75": 1.1618,
+"p90": 1.2216,
+"p95": 1.2687,
+"p99": 1.3915
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 360,
+"B": 9,
+"C": 2
+},
+"R5_w0.8": {
+"A": 370,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 361,
+"up": 10
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 297,
+"B": 63,
+"C": 6,
+"D": 3,
+"F": 2
+},
+"R5_w0.8": {
+"A": 369,
+"B": 1,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0118,
+"R0_to_R5_w0.8_grade_change": {
+"same": 298,
+"up": 73
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 366,
+"B": 5
+},
+"R5_w0.8": {
+"A": 370,
+"B": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 367,
+"up": 4
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 351,
+"B": 15,
+"C": 4,
+"D": 1
+},
+"R5_w0.8": {
+"A": 369,
+"B": 1,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0118,
+"R0_to_R5_w0.8_grade_change": {
+"same": 352,
+"up": 19
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 98.8655,
+"p5": 99.3904,
+"p10": 99.531,
+"p25": 99.9163,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 353,
+"share": 0.9515,
+"U_over_D_when_present": {
+"p1": 0.045,
+"p5": 0.0598,
+"p10": 0.073,
+"p25": 0.0924,
+"p50": 0.125,
+"p75": 0.1667,
+"p90": 0.2277,
+"p95": 0.2692,
+"p99": 0.3915
+},
+"P2_additive_minutes": 77668.0,
+"P2_substitutive_minutes": 0.0,
+"P2_substitutive_share": 0.0,
+"team_shifts_P2_substitutive": 0
+},
+"swap_gain": {
+"note": "no team-shift P2 calls substitutive"
+},
+"relief": {
+"B_minutes": 691395,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 29120,
+"CAPACITY_SHORTAGE": 13135,
+"LATE_PART": 1020,
+"CROSS_TEAM_PREDECESSOR": 170
+},
+"excused_share_of_B": 0.0628,
+"done_before_shift_minutes": 29120.0,
+"done_before_shift_share_of_B": 0.0421
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 5918,
+"share_in_last_lead_minutes": 0.0568,
+"share_in_overtime": 0.0632,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0245,
+"spearman_planned_minutes_vs_output_index": -0.6483,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"PF_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_PF_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.033,
+"p99": 0.12
+},
+"mean": 0.005,
+"share_zero": 0.9247
+},
+"scores": {
+"R0_today": {
+"p1": 87.2,
+"p5": 91.9,
+"p10": 94.0,
+"p25": 95.6,
+"p50": 96.6,
+"p75": 97.5,
+"p90": 98.1,
+"p95": 98.5,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 94.0,
+"p5": 98.3516,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 95.2,
+"p5": 98.6813,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 96.4,
+"p5": 98.9474,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 97.6,
+"p5": 99.2486,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 98.8,
+"p5": 99.6243,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 99.1855,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 1.0,
+"p5": 1.0152,
+"p10": 1.0612,
+"p25": 1.0871,
+"p50": 1.1232,
+"p75": 1.1653,
+"p90": 1.2126,
+"p95": 1.243,
+"p99": 1.4525
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 361,
+"B": 10,
+"C": 1
+},
+"R5_w0.8": {
+"A": 370,
+"B": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0117,
+"R0_to_R5_w0.8_grade_change": {
+"same": 362,
+"up": 10
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 307,
+"B": 54,
+"C": 8,
+"D": 2,
+"F": 1
+},
+"R5_w0.8": {
+"A": 369,
+"B": 1,
+"C": 1,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0176,
+"R0_to_R5_w0.8_grade_change": {
+"same": 307,
+"up": 64,
+"down": 1
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 368,
+"B": 4
+},
+"R5_w0.8": {
+"A": 371,
+"B": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 367,
+"up": 4,
+"down": 1
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 352,
+"B": 17,
+"C": 3
+},
+"R5_w0.8": {
+"A": 369,
+"B": 2,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0176,
+"R0_to_R5_w0.8_grade_change": {
+"same": 352,
+"up": 19,
+"down": 1
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 98.6628,
+"p5": 99.4643,
+"p10": 99.6327,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 356,
+"share": 0.957,
+"U_over_D_when_present": {
+"p1": 0.0486,
+"p5": 0.0627,
+"p10": 0.0742,
+"p25": 0.0956,
+"p50": 0.1313,
+"p75": 0.1679,
+"p90": 0.2172,
+"p95": 0.2544,
+"p99": 0.4525
+},
+"P2_additive_minutes": 79715.0,
+"P2_substitutive_minutes": 0.0,
+"P2_substitutive_share": 0.0,
+"team_shifts_P2_substitutive": 0
+},
+"swap_gain": {
+"note": "no team-shift P2 calls substitutive"
+},
+"relief": {
+"B_minutes": 694365,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 32685,
+"CAPACITY_SHORTAGE": 10925,
+"LATE_PART": 2070,
+"CROSS_TEAM_PREDECESSOR": 90
+},
+"excused_share_of_B": 0.0659,
+"done_before_shift_minutes": 32685.0,
+"done_before_shift_share_of_B": 0.0471
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 5967,
+"share_in_last_lead_minutes": 0.0566,
+"share_in_overtime": 0.0649,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0458,
+"spearman_planned_minutes_vs_output_index": -0.6593,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"PH_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_PH_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.0396,
+"p99": 0.1444
+},
+"mean": 0.0061,
+"share_zero": 0.9164
+},
+"scores": {
+"R0_today": {
+"p1": 83.2,
+"p5": 91.7,
+"p10": 93.6,
+"p25": 95.4,
+"p50": 96.6,
+"p75": 97.5,
+"p90": 98.3,
+"p95": 99.3,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 92.7778,
+"p5": 98.0183,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 94.2222,
+"p5": 98.4146,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 95.6667,
+"p5": 98.811,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 97.1111,
+"p5": 99.1275,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 98.2235,
+"p5": 99.4944,
+"p10": 99.8788,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 99.1275,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 1.0,
+"p5": 1.0,
+"p10": 1.0541,
+"p25": 1.0854,
+"p50": 1.1192,
+"p75": 1.1618,
+"p90": 1.2216,
+"p95": 1.2687,
+"p99": 1.3915
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 360,
+"B": 9,
+"C": 2
+},
+"R5_w0.8": {
+"A": 370,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 361,
+"up": 10
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 297,
+"B": 63,
+"C": 6,
+"D": 3,
+"F": 2
+},
+"R5_w0.8": {
+"A": 369,
+"B": 1,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0118,
+"R0_to_R5_w0.8_grade_change": {
+"same": 298,
+"up": 73
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 366,
+"B": 5
+},
+"R5_w0.8": {
+"A": 370,
+"B": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 367,
+"up": 4
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 351,
+"B": 15,
+"C": 4,
+"D": 1
+},
+"R5_w0.8": {
+"A": 369,
+"B": 1,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0118,
+"R0_to_R5_w0.8_grade_change": {
+"same": 352,
+"up": 19
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 98.8655,
+"p5": 99.3904,
+"p10": 99.531,
+"p25": 99.9163,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 353,
+"share": 0.9515,
+"U_over_D_when_present": {
+"p1": 0.045,
+"p5": 0.0598,
+"p10": 0.073,
+"p25": 0.0924,
+"p50": 0.125,
+"p75": 0.1667,
+"p90": 0.2277,
+"p95": 0.2692,
+"p99": 0.3915
+},
+"P2_additive_minutes": 77668.0,
+"P2_substitutive_minutes": 0.0,
+"P2_substitutive_share": 0.0,
+"team_shifts_P2_substitutive": 0
+},
+"swap_gain": {
+"note": "no team-shift P2 calls substitutive"
+},
+"relief": {
+"B_minutes": 691395,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 29120,
+"CAPACITY_SHORTAGE": 13135,
+"LATE_PART": 1020,
+"CROSS_TEAM_PREDECESSOR": 170
+},
+"excused_share_of_B": 0.0628,
+"done_before_shift_minutes": 29120.0,
+"done_before_shift_share_of_B": 0.0421
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 5918,
+"share_in_last_lead_minutes": 0.0568,
+"share_in_overtime": 0.0632,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0245,
+"spearman_planned_minutes_vs_output_index": -0.6483,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"PH_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_PH_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.033,
+"p99": 0.12
+},
+"mean": 0.005,
+"share_zero": 0.9247
+},
+"scores": {
+"R0_today": {
+"p1": 87.2,
+"p5": 91.9,
+"p10": 94.0,
+"p25": 95.6,
+"p50": 96.6,
+"p75": 97.5,
+"p90": 98.1,
+"p95": 98.5,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 94.0,
+"p5": 98.3516,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 95.2,
+"p5": 98.6813,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 96.4,
+"p5": 98.9474,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 97.6,
+"p5": 99.2486,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 98.8,
+"p5": 99.6243,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 99.1855,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 1.0,
+"p5": 1.0152,
+"p10": 1.0612,
+"p25": 1.0871,
+"p50": 1.1232,
+"p75": 1.1653,
+"p90": 1.2126,
+"p95": 1.243,
+"p99": 1.4525
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 361,
+"B": 10,
+"C": 1
+},
+"R5_w0.8": {
+"A": 370,
+"B": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0117,
+"R0_to_R5_w0.8_grade_change": {
+"same": 362,
+"up": 10
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 307,
+"B": 54,
+"C": 8,
+"D": 2,
+"F": 1
+},
+"R5_w0.8": {
+"A": 369,
+"B": 1,
+"C": 1,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0176,
+"R0_to_R5_w0.8_grade_change": {
+"same": 307,
+"up": 64,
+"down": 1
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 368,
+"B": 4
+},
+"R5_w0.8": {
+"A": 371,
+"B": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 367,
+"up": 4,
+"down": 1
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 352,
+"B": 17,
+"C": 3
+},
+"R5_w0.8": {
+"A": 369,
+"B": 2,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0176,
+"R0_to_R5_w0.8_grade_change": {
+"same": 352,
+"up": 19,
+"down": 1
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 98.6628,
+"p5": 99.4643,
+"p10": 99.6327,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 356,
+"share": 0.957,
+"U_over_D_when_present": {
+"p1": 0.0486,
+"p5": 0.0627,
+"p10": 0.0742,
+"p25": 0.0956,
+"p50": 0.1313,
+"p75": 0.1679,
+"p90": 0.2172,
+"p95": 0.2544,
+"p99": 0.4525
+},
+"P2_additive_minutes": 79715.0,
+"P2_substitutive_minutes": 0.0,
+"P2_substitutive_share": 0.0,
+"team_shifts_P2_substitutive": 0
+},
+"swap_gain": {
+"note": "no team-shift P2 calls substitutive"
+},
+"relief": {
+"B_minutes": 694365,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 32685,
+"CAPACITY_SHORTAGE": 10925,
+"LATE_PART": 2070,
+"CROSS_TEAM_PREDECESSOR": 90
+},
+"excused_share_of_B": 0.0659,
+"done_before_shift_minutes": 32685.0,
+"done_before_shift_share_of_B": 0.0471
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 5967,
+"share_in_last_lead_minutes": 0.0566,
+"share_in_overtime": 0.0649,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0458,
+"spearman_planned_minutes_vs_output_index": -0.6593,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"PL_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_PL_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.0,
+"p99": 0.0856
+},
+"mean": 0.0032,
+"share_zero": 0.9569
+},
+"scores": {
+"R0_today": {
+"p1": 92.2,
+"p5": 94.5,
+"p10": 95.7,
+"p25": 97.3,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 91.6667,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 92.5501,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 92.5501,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 92.5501,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 92.5501,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 92.5501,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.9255,
+"p5": 1.0,
+"p10": 1.0,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0894,
+"p90": 1.1506,
+"p95": 1.1857,
+"p99": 1.2874
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 367,
+"B": 3,
+"C": 1
+},
+"R5_w0.8": {
+"A": 369,
+"B": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0118,
+"R0_to_R5_w0.8_grade_change": {
+"same": 367,
+"up": 3,
+"down": 1
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 348,
+"B": 19,
+"C": 3,
+"F": 1
+},
+"R5_w0.8": {
+"A": 364,
+"B": 5,
+"C": 1,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0353,
+"R0_to_R5_w0.8_grade_change": {
+"same": 351,
+"up": 17,
+"down": 3
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 370,
+"B": 1
+},
+"R5_w0.8": {
+"A": 370,
+"B": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 369,
+"down": 1,
+"up": 1
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 367,
+"B": 3,
+"C": 1
+},
+"R5_w0.8": {
+"A": 367,
+"B": 3,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0235,
+"R0_to_R5_w0.8_grade_change": {
+"same": 364,
+"down": 4,
+"up": 3
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 97.5755,
+"p5": 99.2613,
+"p10": 99.7545,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 124,
+"share": 0.3342,
+"U_over_D_when_present": {
+"p1": 0.042,
+"p5": 0.0623,
+"p10": 0.0768,
+"p25": 0.0894,
+"p50": 0.1183,
+"p75": 0.1606,
+"p90": 0.2222,
+"p95": 0.2748,
+"p99": 0.3333
+},
+"P2_additive_minutes": 27190.0,
+"P2_substitutive_minutes": 0.0,
+"P2_substitutive_share": 0.0,
+"team_shifts_P2_substitutive": 0
+},
+"swap_gain": {
+"note": "no team-shift P2 calls substitutive"
+},
+"relief": {
+"B_minutes": 692178,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 13025,
+"DONE_BEFORE_SHIFT": 12733,
+"LATE_PART": 1380,
+"CROSS_TEAM_PREDECESSOR": 170
+},
+"excused_share_of_B": 0.0395,
+"done_before_shift_minutes": 12733.0,
+"done_before_shift_share_of_B": 0.0184
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6085,
+"share_in_last_lead_minutes": 0.0633,
+"share_in_overtime": 0.056,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0439,
+"spearman_planned_minutes_vs_output_index": -0.0822,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"PL_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_PL_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0,
+"p90": 0.0,
+"p95": 0.0077,
+"p99": 0.0952
+},
+"mean": 0.004,
+"share_zero": 0.9435
+},
+"scores": {
+"R0_today": {
+"p1": 89.5,
+"p5": 94.5,
+"p10": 95.5,
+"p25": 97.4,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 91.9476,
+"p5": 99.322,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 91.9476,
+"p5": 99.322,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 91.9476,
+"p5": 99.3973,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 91.9476,
+"p5": 99.5982,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 91.9476,
+"p5": 99.7991,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 91.9476,
+"p5": 100.0,
+"p10": 100.0,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.9195,
+"p5": 1.0,
+"p10": 1.0,
+"p25": 1.0,
+"p50": 1.0,
+"p75": 1.0805,
+"p90": 1.1467,
+"p95": 1.1913,
+"p99": 1.2857
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 367,
+"B": 4,
+"C": 1
+},
+"R5_w0.8": {
+"A": 370,
+"B": 1,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0117,
+"R0_to_R5_w0.8_grade_change": {
+"same": 366,
+"up": 4,
+"down": 2
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 345,
+"B": 22,
+"C": 3,
+"D": 1,
+"F": 1
+},
+"R5_w0.8": {
+"A": 365,
+"B": 5,
+"C": 1,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0381,
+"R0_to_R5_w0.8_grade_change": {
+"same": 347,
+"up": 22,
+"down": 3
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 370,
+"B": 2
+},
+"R5_w0.8": {
+"A": 371,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0059,
+"R0_to_R5_w0.8_grade_change": {
+"same": 370,
+"down": 1,
+"up": 1
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 366,
+"B": 4,
+"C": 2
+},
+"R5_w0.8": {
+"A": 367,
+"B": 4,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0293,
+"R0_to_R5_w0.8_grade_change": {
+"same": 364,
+"up": 4,
+"down": 4
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 95.251,
+"p5": 99.3274,
+"p10": 99.646,
+"p25": 100.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 123,
+"share": 0.3306,
+"U_over_D_when_present": {
+"p1": 0.0513,
+"p5": 0.0584,
+"p10": 0.0692,
+"p25": 0.0851,
+"p50": 0.1266,
+"p75": 0.1692,
+"p90": 0.2167,
+"p95": 0.2613,
+"p99": 0.3485
+},
+"P2_additive_minutes": 27340.0,
+"P2_substitutive_minutes": 0.0,
+"P2_substitutive_share": 0.0,
+"team_shifts_P2_substitutive": 0
+},
+"swap_gain": {
+"note": "no team-shift P2 calls substitutive"
+},
+"relief": {
+"B_minutes": 698713,
+"excused_minutes_by_cause": {
+"DONE_BEFORE_SHIFT": 16610,
+"CAPACITY_SHORTAGE": 10980,
+"LATE_PART": 1705,
+"CROSS_TEAM_PREDECESSOR": 45
+},
+"excused_share_of_B": 0.042,
+"done_before_shift_minutes": 16610.0,
+"done_before_shift_share_of_B": 0.0238
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6143,
+"share_in_last_lead_minutes": 0.0563,
+"share_in_overtime": 0.061,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": 0.0349,
+"spearman_planned_minutes_vs_output_index": -0.105,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"SC_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_SC_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0203,
+"p75": 0.063,
+"p90": 0.0873,
+"p95": 0.1097,
+"p99": 0.1667
+},
+"mean": 0.035,
+"share_zero": 0.4852
+},
+"scores": {
+"R0_today": {
+"p1": 82.4,
+"p5": 87.0,
+"p10": 89.9,
+"p25": 92.6,
+"p50": 96.6,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 83.3333,
+"p5": 89.0295,
+"p10": 91.2698,
+"p25": 93.7046,
+"p50": 97.9654,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 83.3333,
+"p5": 89.0295,
+"p10": 91.2698,
+"p25": 93.7046,
+"p50": 97.9654,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 83.3333,
+"p5": 89.0295,
+"p10": 91.2698,
+"p25": 93.7046,
+"p50": 97.9654,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 83.3333,
+"p5": 89.0295,
+"p10": 91.2698,
+"p25": 93.7046,
+"p50": 97.9654,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 83.3333,
+"p5": 89.0295,
+"p10": 91.2698,
+"p25": 93.7046,
+"p50": 97.9654,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 83.3333,
+"p5": 89.0295,
+"p10": 91.2698,
+"p25": 93.7046,
+"p50": 97.9654,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8333,
+"p5": 0.8903,
+"p10": 0.9127,
+"p25": 0.937,
+"p50": 0.9797,
+"p75": 1.0,
+"p90": 1.0,
+"p95": 1.0,
+"p99": 1.0
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 331,
+"B": 39,
+"C": 1
+},
+"R5_w0.8": {
+"A": 349,
+"B": 20,
+"C": 1,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1088,
+"R0_to_R5_w0.8_grade_change": {
+"same": 347,
+"down": 4,
+"up": 20
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 228,
+"B": 103,
+"C": 34,
+"D": 5,
+"F": 1
+},
+"R5_w0.8": {
+"A": 247,
+"B": 102,
+"C": 16,
+"D": 4,
+"F": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.4794,
+"R0_to_R5_w0.8_grade_change": {
+"same": 323,
+"up": 42,
+"down": 6
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 359,
+"B": 12
+},
+"R5_w0.8": {
+"A": 364,
+"B": 6,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0294,
+"R0_to_R5_w0.8_grade_change": {
+"same": 361,
+"down": 3,
+"up": 7
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 294,
+"B": 71,
+"C": 5,
+"D": 1
+},
+"R5_w0.8": {
+"A": 320,
+"B": 45,
+"C": 5,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.2294,
+"R0_to_R5_w0.8_grade_change": {
+"same": 337,
+"up": 30,
+"down": 4
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 90.1814,
+"p5": 92.6798,
+"p10": 93.8383,
+"p25": 95.1488,
+"p50": 97.021,
+"p75": 98.1204,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 188,
+"share": 0.5067,
+"U_over_D_when_present": {
+"p1": 0.0355,
+"p5": 0.0427,
+"p10": 0.0472,
+"p25": 0.059,
+"p50": 0.0873,
+"p75": 0.134,
+"p90": 0.2283,
+"p95": 0.2652,
+"p99": 0.3608
+},
+"P2_additive_minutes": 0.0,
+"P2_substitutive_minutes": 35105.0,
+"P2_substitutive_share": 1.0,
+"team_shifts_P2_substitutive": 188
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.197,
+"max_gain": -0.59
+},
+"w0.5_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.921,
+"max_gain": -0.509
+},
+"w0.5_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.374,
+"max_gain": -0.347
+},
+"w0.5_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.632,
+"max_gain": -0.295
+},
+"w0.6_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.197,
+"max_gain": -0.59
+},
+"w0.6_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.866,
+"max_gain": -0.493
+},
+"w0.6_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.209,
+"max_gain": -0.298
+},
+"w0.6_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.319,
+"max_gain": -0.236
+},
+"w0.7_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.197,
+"max_gain": -0.59
+},
+"w0.7_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.81,
+"max_gain": -0.476
+},
+"w0.7_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.044,
+"max_gain": -0.249
+},
+"w0.7_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.006,
+"max_gain": -0.177
+},
+"w0.8_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.197,
+"max_gain": -0.59
+},
+"w0.8_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.755,
+"max_gain": -0.46
+},
+"w0.8_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.88,
+"max_gain": -0.191
+},
+"w0.8_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -3.693,
+"max_gain": -0.118
+},
+"w0.9_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.197,
+"max_gain": -0.59
+},
+"w0.9_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.7,
+"max_gain": -0.444
+},
+"w0.9_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.715,
+"max_gain": -0.095
+},
+"w0.9_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -3.38,
+"max_gain": -0.059
+},
+"w1.0_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.197,
+"max_gain": -0.59
+},
+"w1.0_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.645,
+"max_gain": -0.428
+},
+"w1.0_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.551,
+"max_gain": 0.0
+},
+"w1.0_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -3.067,
+"max_gain": 0.0
+}
+},
+"relief": {
+"B_minutes": 688466,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 12995,
+"DONE_BEFORE_SHIFT": 9020,
+"LATE_PART": 1845,
+"CROSS_TEAM_PREDECESSOR": 1045
+},
+"excused_share_of_B": 0.0362,
+"done_before_shift_minutes": 9020.0,
+"done_before_shift_share_of_B": 0.0131
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6000,
+"share_in_last_lead_minutes": 0.0583,
+"share_in_overtime": 0.0607,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.1077,
+"spearman_planned_minutes_vs_output_index": 0.0672,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"SC_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_SC_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0588,
+"p90": 0.0821,
+"p95": 0.1038,
+"p99": 0.1498
+},
+"mean": 0.0315,
+"share_zero": 0.5242
+},
+"scores": {
+"R0_today": {
+"p1": 85.7,
+"p5": 88.2,
+"p10": 90.3,
+"p25": 93.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 85.0242,
+"p5": 89.6226,
+"p10": 91.791,
+"p25": 94.1176,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 85.0242,
+"p5": 89.6226,
+"p10": 91.791,
+"p25": 94.1176,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 85.0242,
+"p5": 89.6226,
+"p10": 91.791,
+"p25": 94.1176,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 85.0242,
+"p5": 89.6226,
+"p10": 91.791,
+"p25": 94.1176,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 85.0242,
+"p5": 89.6226,
+"p10": 91.791,
+"p25": 94.1176,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 85.0242,
+"p5": 89.6226,
+"p10": 91.791,
+"p25": 94.1176,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8502,
+"p5": 0.8962,
+"p10": 0.9179,
+"p25": 0.9412,
+"p50": 1.0,
+"p75": 1.0,
+"p90": 1.0,
+"p95": 1.0,
+"p99": 1.0
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 340,
+"B": 30,
+"C": 2
+},
+"R5_w0.8": {
+"A": 351,
+"B": 20,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1114,
+"R0_to_R5_w0.8_grade_change": {
+"same": 349,
+"down": 6,
+"up": 17
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 237,
+"B": 103,
+"C": 29,
+"D": 1,
+"F": 2
+},
+"R5_w0.8": {
+"A": 257,
+"B": 94,
+"C": 17,
+"D": 3,
+"F": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.434,
+"R0_to_R5_w0.8_grade_change": {
+"same": 326,
+"down": 8,
+"up": 38
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 368,
+"B": 4
+},
+"R5_w0.8": {
+"A": 365,
+"B": 6,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0352,
+"R0_to_R5_w0.8_grade_change": {
+"same": 366,
+"down": 5,
+"up": 1
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 307,
+"B": 62,
+"C": 3
+},
+"R5_w0.8": {
+"A": 329,
+"B": 39,
+"C": 3,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.2023,
+"R0_to_R5_w0.8_grade_change": {
+"same": 340,
+"up": 26,
+"down": 6
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 91.5819,
+"p5": 92.4482,
+"p10": 94.0487,
+"p25": 95.3228,
+"p50": 97.1759,
+"p75": 98.6207,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 169,
+"share": 0.4543,
+"U_over_D_when_present": {
+"p1": 0.0397,
+"p5": 0.0438,
+"p10": 0.047,
+"p25": 0.0616,
+"p50": 0.0857,
+"p75": 0.1373,
+"p90": 0.2267,
+"p95": 0.2941,
+"p99": 0.3355
+},
+"P2_additive_minutes": 0.0,
+"P2_substitutive_minutes": 33655.0,
+"P2_substitutive_share": 1.0,
+"team_shifts_P2_substitutive": 169
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.87,
+"max_gain": -0.585
+},
+"w0.5_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.587,
+"max_gain": -0.347
+},
+"w0.5_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.052,
+"max_gain": -0.292
+},
+"w0.5_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.349,
+"max_gain": -0.292
+},
+"w0.6_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.87,
+"max_gain": -0.585
+},
+"w0.6_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.531,
+"max_gain": -0.3
+},
+"w0.6_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.888,
+"max_gain": -0.234
+},
+"w0.6_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.045,
+"max_gain": -0.234
+},
+"w0.7_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.87,
+"max_gain": -0.585
+},
+"w0.7_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.475,
+"max_gain": -0.252
+},
+"w0.7_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.724,
+"max_gain": -0.175
+},
+"w0.7_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -3.741,
+"max_gain": -0.175
+},
+"w0.8_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.87,
+"max_gain": -0.585
+},
+"w0.8_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.418,
+"max_gain": -0.205
+},
+"w0.8_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.561,
+"max_gain": -0.117
+},
+"w0.8_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -3.437,
+"max_gain": 0.372
+},
+"w0.9_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.87,
+"max_gain": -0.585
+},
+"w0.9_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.362,
+"max_gain": -0.157
+},
+"w0.9_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.397,
+"max_gain": -0.058
+},
+"w0.9_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0118,
+"mean_gain": -3.132,
+"max_gain": 0.931
+},
+"w1.0_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.87,
+"max_gain": -0.585
+},
+"w1.0_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.305,
+"max_gain": -0.11
+},
+"w1.0_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.234,
+"max_gain": 0.0
+},
+"w1.0_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0118,
+"mean_gain": -2.828,
+"max_gain": 1.49
+}
+},
+"relief": {
+"B_minutes": 693884,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 10790,
+"DONE_BEFORE_SHIFT": 8280,
+"LATE_PART": 1725,
+"CROSS_TEAM_PREDECESSOR": 690
+},
+"excused_share_of_B": 0.031,
+"done_before_shift_minutes": 8280.0,
+"done_before_shift_share_of_B": 0.0119
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6084,
+"share_in_last_lead_minutes": 0.0613,
+"share_in_overtime": 0.0621,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": 0.0706,
+"spearman_planned_minutes_vs_output_index": -0.0355,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"SE_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_SE_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0246,
+"p75": 0.0651,
+"p90": 0.0902,
+"p95": 0.1159,
+"p99": 0.1702
+},
+"mean": 0.0368,
+"share_zero": 0.4825
+},
+"scores": {
+"R0_today": {
+"p1": 84.4,
+"p5": 88.9,
+"p10": 90.9,
+"p25": 93.6,
+"p50": 96.8,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 82.9787,
+"p5": 88.4106,
+"p10": 90.9836,
+"p25": 93.4132,
+"p50": 97.5385,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 82.9787,
+"p5": 88.4106,
+"p10": 90.9836,
+"p25": 93.4132,
+"p50": 97.5385,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 82.9787,
+"p5": 88.4106,
+"p10": 90.9836,
+"p25": 93.4132,
+"p50": 97.5385,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 82.9787,
+"p5": 88.4106,
+"p10": 90.9836,
+"p25": 93.4132,
+"p50": 97.5385,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 82.9787,
+"p5": 88.4106,
+"p10": 90.9836,
+"p25": 93.4132,
+"p50": 97.5385,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 82.9787,
+"p5": 88.4106,
+"p10": 90.9836,
+"p25": 93.4132,
+"p50": 97.5385,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8298,
+"p5": 0.8841,
+"p10": 0.9098,
+"p25": 0.9349,
+"p50": 0.9754,
+"p75": 1.0,
+"p90": 1.0,
+"p95": 1.0,
+"p99": 1.0
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 344,
+"B": 26,
+"C": 1
+},
+"R5_w0.8": {
+"A": 342,
+"B": 26,
+"C": 3
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1441,
+"R0_to_R5_w0.8_grade_change": {
+"same": 363,
+"up": 2,
+"down": 6
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 240,
+"B": 104,
+"C": 22,
+"D": 4,
+"F": 1
+},
+"R5_w0.8": {
+"A": 241,
+"B": 101,
+"C": 20,
+"D": 6,
+"F": 3
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.4559,
+"R0_to_R5_w0.8_grade_change": {
+"same": 344,
+"up": 10,
+"down": 17
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 365,
+"B": 6
+},
+"R5_w0.8": {
+"A": 359,
+"B": 12
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0588,
+"R0_to_R5_w0.8_grade_change": {
+"same": 365,
+"down": 6
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 320,
+"B": 46,
+"C": 5
+},
+"R5_w0.8": {
+"A": 320,
+"B": 42,
+"C": 9
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.2324,
+"R0_to_R5_w0.8_grade_change": {
+"same": 359,
+"down": 8,
+"up": 4
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 90.8778,
+"p5": 92.1622,
+"p10": 92.7763,
+"p25": 94.7867,
+"p50": 96.793,
+"p75": 98.1728,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 188,
+"share": 0.5067,
+"U_over_D_when_present": {
+"p1": 0.0203,
+"p5": 0.0324,
+"p10": 0.0379,
+"p25": 0.0466,
+"p50": 0.0615,
+"p75": 0.0791,
+"p90": 0.1,
+"p95": 0.135,
+"p99": 0.1618
+},
+"P2_additive_minutes": 0.0,
+"P2_substitutive_minutes": 21625.0,
+"P2_substitutive_share": 1.0,
+"team_shifts_P2_substitutive": 188
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.845,
+"max_gain": -0.59
+},
+"w0.5_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.678,
+"max_gain": -0.509
+},
+"w0.5_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.343,
+"max_gain": -0.347
+},
+"w0.5_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.844,
+"max_gain": -0.295
+},
+"w0.6_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.845,
+"max_gain": -0.59
+},
+"w0.6_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.644,
+"max_gain": -0.493
+},
+"w0.6_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.242,
+"max_gain": -0.298
+},
+"w0.6_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.644,
+"max_gain": -0.236
+},
+"w0.7_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.845,
+"max_gain": -0.59
+},
+"w0.7_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.611,
+"max_gain": -0.476
+},
+"w0.7_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.141,
+"max_gain": -0.249
+},
+"w0.7_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.444,
+"max_gain": -0.177
+},
+"w0.8_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.845,
+"max_gain": -0.59
+},
+"w0.8_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.577,
+"max_gain": -0.46
+},
+"w0.8_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.041,
+"max_gain": -0.201
+},
+"w0.8_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.243,
+"max_gain": -0.118
+},
+"w0.9_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.845,
+"max_gain": -0.59
+},
+"w0.9_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.544,
+"max_gain": -0.444
+},
+"w0.9_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.94,
+"max_gain": -0.152
+},
+"w0.9_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.043,
+"max_gain": -0.059
+},
+"w1.0_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.845,
+"max_gain": -0.59
+},
+"w1.0_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.51,
+"max_gain": -0.428
+},
+"w1.0_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.84,
+"max_gain": -0.103
+},
+"w1.0_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -3.843,
+"max_gain": 0.0
+}
+},
+"relief": {
+"B_minutes": 695529,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 12705,
+"DONE_BEFORE_SHIFT": 9425,
+"LATE_PART": 1900,
+"CROSS_TEAM_PREDECESSOR": 1000
+},
+"excused_share_of_B": 0.036,
+"done_before_shift_minutes": 9425.0,
+"done_before_shift_share_of_B": 0.0136
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 5949,
+"share_in_last_lead_minutes": 0.062,
+"share_in_overtime": 0.061,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0948,
+"spearman_planned_minutes_vs_output_index": 0.0878,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"SE_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_SE_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0609,
+"p90": 0.0884,
+"p95": 0.1144,
+"p99": 0.1574
+},
+"mean": 0.0329,
+"share_zero": 0.5269
+},
+"scores": {
+"R0_today": {
+"p1": 85.7,
+"p5": 89.6,
+"p10": 90.9,
+"p25": 94.0,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 84.2553,
+"p5": 88.5621,
+"p10": 91.1647,
+"p25": 93.9058,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 84.2553,
+"p5": 88.5621,
+"p10": 91.1647,
+"p25": 93.9058,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 84.2553,
+"p5": 88.5621,
+"p10": 91.1647,
+"p25": 93.9058,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 84.2553,
+"p5": 88.5621,
+"p10": 91.1647,
+"p25": 93.9058,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 84.2553,
+"p5": 88.5621,
+"p10": 91.1647,
+"p25": 93.9058,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 84.2553,
+"p5": 88.5621,
+"p10": 91.1647,
+"p25": 93.9058,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8426,
+"p5": 0.8856,
+"p10": 0.9116,
+"p25": 0.9391,
+"p50": 1.0,
+"p75": 1.0,
+"p90": 1.0,
+"p95": 1.0,
+"p99": 1.0
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 347,
+"B": 25
+},
+"R5_w0.8": {
+"A": 341,
+"B": 31
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1466,
+"R0_to_R5_w0.8_grade_change": {
+"same": 358,
+"down": 10,
+"up": 4
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 257,
+"B": 90,
+"C": 22,
+"D": 3
+},
+"R5_w0.8": {
+"A": 255,
+"B": 86,
+"C": 23,
+"D": 8
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.4282,
+"R0_to_R5_w0.8_grade_change": {
+"same": 343,
+"down": 21,
+"up": 8
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 368,
+"B": 4
+},
+"R5_w0.8": {
+"A": 362,
+"B": 10
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.044,
+"R0_to_R5_w0.8_grade_change": {
+"same": 366,
+"down": 6
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 324,
+"B": 45,
+"C": 3
+},
+"R5_w0.8": {
+"A": 318,
+"B": 46,
+"C": 8
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.2405,
+"R0_to_R5_w0.8_grade_change": {
+"same": 351,
+"down": 16,
+"up": 5
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 90.4098,
+"p5": 92.4743,
+"p10": 93.3589,
+"p25": 94.8658,
+"p50": 97.162,
+"p75": 98.7261,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 169,
+"share": 0.4543,
+"U_over_D_when_present": {
+"p1": 0.0161,
+"p5": 0.0271,
+"p10": 0.0371,
+"p25": 0.045,
+"p50": 0.0567,
+"p75": 0.0772,
+"p90": 0.1084,
+"p95": 0.1429,
+"p99": 0.2102
+},
+"P2_additive_minutes": 0.0,
+"P2_substitutive_minutes": 19965.0,
+"P2_substitutive_share": 1.0,
+"team_shifts_P2_substitutive": 169
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.648,
+"max_gain": -0.183
+},
+"w0.5_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.478,
+"max_gain": -0.091
+},
+"w0.5_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.143,
+"max_gain": -0.091
+},
+"w0.5_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -4.644,
+"max_gain": 0.647
+},
+"w0.6_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.648,
+"max_gain": -0.183
+},
+"w0.6_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.443,
+"max_gain": -0.073
+},
+"w0.6_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.042,
+"max_gain": -0.073
+},
+"w0.6_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -4.443,
+"max_gain": 1.209
+},
+"w0.7_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.648,
+"max_gain": -0.183
+},
+"w0.7_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.409,
+"max_gain": -0.055
+},
+"w0.7_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.941,
+"max_gain": -0.055
+},
+"w0.7_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -4.242,
+"max_gain": 1.77
+},
+"w0.8_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.648,
+"max_gain": -0.183
+},
+"w0.8_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.375,
+"max_gain": -0.037
+},
+"w0.8_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -4.841,
+"max_gain": 0.086
+},
+"w0.8_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -4.042,
+"max_gain": 2.331
+},
+"w0.9_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.648,
+"max_gain": -0.183
+},
+"w0.9_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.341,
+"max_gain": -0.018
+},
+"w0.9_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -4.74,
+"max_gain": 0.367
+},
+"w0.9_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -3.841,
+"max_gain": 2.892
+},
+"w1.0_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.648,
+"max_gain": -0.183
+},
+"w1.0_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.307,
+"max_gain": 0.0
+},
+"w1.0_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -4.639,
+"max_gain": 0.647
+},
+"w1.0_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -3.64,
+"max_gain": 3.453
+}
+},
+"relief": {
+"B_minutes": 697560,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 11365,
+"DONE_BEFORE_SHIFT": 8870,
+"LATE_PART": 1765,
+"CROSS_TEAM_PREDECESSOR": 680
+},
+"excused_share_of_B": 0.0325,
+"done_before_shift_minutes": 8870.0,
+"done_before_shift_share_of_B": 0.0127
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6033,
+"share_in_last_lead_minutes": 0.0602,
+"share_in_overtime": 0.0625,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0265,
+"spearman_planned_minutes_vs_output_index": -0.003,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"SF_s6": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_SF_s6.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 371,
+"no_plan": 0,
+"all_excused_or_no_obligation": 1,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0167,
+"p75": 0.0618,
+"p90": 0.0856,
+"p95": 0.1132,
+"p99": 0.2201
+},
+"mean": 0.0362,
+"share_zero": 0.4852
+},
+"scores": {
+"R0_today": {
+"p1": 79.4,
+"p5": 86.8,
+"p10": 88.9,
+"p25": 92.2,
+"p50": 96.5,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 77.9923,
+"p5": 88.6792,
+"p10": 91.2766,
+"p25": 93.8202,
+"p50": 98.3333,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 77.9923,
+"p5": 88.6792,
+"p10": 91.2766,
+"p25": 93.8202,
+"p50": 98.3333,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 77.9923,
+"p5": 88.6792,
+"p10": 91.2766,
+"p25": 93.8202,
+"p50": 98.3333,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 77.9923,
+"p5": 88.6792,
+"p10": 91.2766,
+"p25": 93.8202,
+"p50": 98.3333,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 77.9923,
+"p5": 88.6792,
+"p10": 91.2766,
+"p25": 93.8202,
+"p50": 98.3333,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 77.9923,
+"p5": 88.6792,
+"p10": 91.2766,
+"p25": 93.8202,
+"p50": 98.3333,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.7799,
+"p5": 0.8868,
+"p10": 0.9144,
+"p25": 0.9382,
+"p50": 0.9833,
+"p75": 1.0,
+"p90": 1.0,
+"p95": 1.0,
+"p99": 1.0
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 320,
+"B": 46,
+"C": 5
+},
+"R5_w0.8": {
+"A": 345,
+"B": 21,
+"C": 3,
+"D": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1294,
+"R0_to_R5_w0.8_grade_change": {
+"same": 340,
+"up": 27,
+"down": 4
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 208,
+"B": 112,
+"C": 39,
+"D": 7,
+"F": 5
+},
+"R5_w0.8": {
+"A": 251,
+"B": 94,
+"C": 17,
+"D": 4,
+"F": 5
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.45,
+"R0_to_R5_w0.8_grade_change": {
+"same": 296,
+"up": 72,
+"down": 3
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 358,
+"B": 12,
+"C": 1
+},
+"R5_w0.8": {
+"A": 361,
+"B": 7,
+"C": 3
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.0471,
+"R0_to_R5_w0.8_grade_change": {
+"same": 362,
+"down": 4,
+"up": 5
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 287,
+"B": 72,
+"C": 9,
+"D": 3
+},
+"R5_w0.8": {
+"A": 321,
+"B": 41,
+"C": 6,
+"D": 3
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.2412,
+"R0_to_R5_w0.8_grade_change": {
+"same": 328,
+"up": 40,
+"down": 3
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 90.0,
+"p5": 91.9639,
+"p10": 93.3078,
+"p25": 95.0464,
+"p50": 96.8481,
+"p75": 98.1229,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 188,
+"share": 0.5067,
+"U_over_D_when_present": {
+"p1": 0.0365,
+"p5": 0.0482,
+"p10": 0.0601,
+"p25": 0.0728,
+"p50": 0.115,
+"p75": 0.1837,
+"p90": 0.2492,
+"p95": 0.3,
+"p99": 0.4192
+},
+"P2_additive_minutes": 0.0,
+"P2_substitutive_minutes": 44340.0,
+"P2_substitutive_share": 1.0,
+"team_shifts_P2_substitutive": 188
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.255,
+"max_gain": -0.59
+},
+"w0.5_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.909,
+"max_gain": -0.461
+},
+"w0.5_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.242,
+"max_gain": -0.295
+},
+"w0.5_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.374,
+"max_gain": -0.295
+},
+"w0.6_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.255,
+"max_gain": -0.59
+},
+"w0.6_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.84,
+"max_gain": -0.435
+},
+"w0.6_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.04,
+"max_gain": -0.236
+},
+"w0.6_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -3.998,
+"max_gain": -0.236
+},
+"w0.7_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.255,
+"max_gain": -0.59
+},
+"w0.7_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.771,
+"max_gain": -0.409
+},
+"w0.7_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.837,
+"max_gain": -0.177
+},
+"w0.7_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -3.622,
+"max_gain": -0.078
+},
+"w0.8_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.255,
+"max_gain": -0.59
+},
+"w0.8_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.702,
+"max_gain": -0.383
+},
+"w0.8_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.635,
+"max_gain": -0.118
+},
+"w0.8_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0106,
+"mean_gain": -3.246,
+"max_gain": 0.724
+},
+"w0.9_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.255,
+"max_gain": -0.59
+},
+"w0.9_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.633,
+"max_gain": -0.358
+},
+"w0.9_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.432,
+"max_gain": -0.059
+},
+"w0.9_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.0106,
+"mean_gain": -2.869,
+"max_gain": 1.525
+},
+"w1.0_q0.0": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -6.255,
+"max_gain": -0.59
+},
+"w1.0_q0.05": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -5.563,
+"max_gain": -0.31
+},
+"w1.0_q0.15": {
+"team_shifts": 188,
+"share_that_pays": 0.0,
+"mean_gain": -4.229,
+"max_gain": 0.0
+},
+"w1.0_q0.3": {
+"team_shifts": 188,
+"share_that_pays": 0.016,
+"mean_gain": -2.493,
+"max_gain": 2.326
+}
+},
+"relief": {
+"B_minutes": 686364,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 12955,
+"DONE_BEFORE_SHIFT": 7375,
+"LATE_PART": 1695,
+"CROSS_TEAM_PREDECESSOR": 785
+},
+"excused_share_of_B": 0.0332,
+"done_before_shift_minutes": 7375.0,
+"done_before_shift_share_of_B": 0.0107
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6024,
+"share_in_last_lead_minutes": 0.0606,
+"share_in_overtime": 0.0576,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": -0.0432,
+"spearman_planned_minutes_vs_output_index": 0.0916,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+},
+"SF_s7": {
+"schema": 1,
+"meta": {
+"source": "sim",
+"path": "C_SF_s7.db",
+"lead": 20,
+"notes": {},
+"stale_plans": {
+"status": "sim",
+"late_plans": 0
+}
+},
+"coverage": {
+"team_shifts": 372,
+"scored": 372,
+"no_plan": 0,
+"all_excused_or_no_obligation": 0,
+"unknown": 0,
+"teams": 31,
+"days": 4
+},
+"shortfall": {
+"definition": "s = 1 - Cp/D, unexcused planned work not done",
+"percentiles": {
+"p1": 0.0,
+"p5": 0.0,
+"p10": 0.0,
+"p25": 0.0,
+"p50": 0.0,
+"p75": 0.0603,
+"p90": 0.0824,
+"p95": 0.1071,
+"p99": 0.1822
+},
+"mean": 0.0321,
+"share_zero": 0.5323
+},
+"scores": {
+"R0_today": {
+"p1": 83.6,
+"p5": 87.3,
+"p10": 89.6,
+"p25": 92.4,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.5": {
+"p1": 81.7757,
+"p5": 89.2857,
+"p10": 91.7603,
+"p25": 93.9726,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.6": {
+"p1": 81.7757,
+"p5": 89.2857,
+"p10": 91.7603,
+"p25": 93.9726,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.7": {
+"p1": 81.7757,
+"p5": 89.2857,
+"p10": 91.7603,
+"p25": 93.9726,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.8": {
+"p1": 81.7757,
+"p5": 89.2857,
+"p10": 91.7603,
+"p25": 93.9726,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w0.9": {
+"p1": 81.7757,
+"p5": 89.2857,
+"p10": 91.7603,
+"p25": 93.9726,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+},
+"R5_w1.0": {
+"p1": 81.7757,
+"p5": 89.2857,
+"p10": 91.7603,
+"p25": 93.9726,
+"p50": 100.0,
+"p75": 100.0,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"output_index": {
+"p1": 0.8178,
+"p5": 0.8929,
+"p10": 0.9176,
+"p25": 0.9397,
+"p50": 1.0,
+"p75": 1.0,
+"p90": 1.0,
+"p95": 1.0,
+"p99": 1.0
+},
+"grades": {
+"demo 90/80/70/60": {
+"R0": {
+"A": 327,
+"B": 42,
+"C": 3
+},
+"R5_w0.8": {
+"A": 348,
+"B": 22,
+"C": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.1232,
+"R0_to_R5_w0.8_grade_change": {
+"same": 342,
+"down": 4,
+"up": 26
+}
+},
+"strict 95/90/85/80": {
+"R0": {
+"A": 225,
+"B": 102,
+"C": 36,
+"D": 6,
+"F": 3
+},
+"R5_w0.8": {
+"A": 263,
+"B": 85,
+"C": 16,
+"D": 6,
+"F": 2
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.4311,
+"R0_to_R5_w0.8_grade_change": {
+"same": 300,
+"up": 66,
+"down": 6
+}
+},
+"today's effective 85.7/71.4/57.1/42.9": {
+"R0": {
+"A": 361,
+"B": 11
+},
+"R5_w0.8": {
+"A": 363,
+"B": 8,
+"C": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.044,
+"R0_to_R5_w0.8_grade_change": {
+"same": 365,
+"down": 3,
+"up": 4
+}
+},
+"wide 92/85/75/65": {
+"R0": {
+"A": 295,
+"B": 68,
+"C": 8,
+"D": 1
+},
+"R5_w0.8": {
+"A": 327,
+"B": 37,
+"C": 7,
+"D": 1
+},
+"flip_rate_consecutive_shifts_R5_w0.8": 0.2141,
+"R0_to_R5_w0.8_grade_change": {
+"same": 329,
+"up": 38,
+"down": 5
+}
+}
+},
+"daily_pooled_R5_w0.8": {
+"team_days": 124,
+"percentiles": {
+"p1": 88.9926,
+"p5": 92.6918,
+"p10": 93.6324,
+"p25": 95.122,
+"p50": 97.2534,
+"p75": 98.4962,
+"p90": 100.0,
+"p95": 100.0,
+"p99": 100.0
+}
+},
+"offplan": {
+"team_shifts_with_offplan": 169,
+"share": 0.4543,
+"U_over_D_when_present": {
+"p1": 0.0427,
+"p5": 0.0458,
+"p10": 0.0558,
+"p25": 0.078,
+"p50": 0.1248,
+"p75": 0.184,
+"p90": 0.2512,
+"p95": 0.2834,
+"p99": 0.3791
+},
+"P2_additive_minutes": 0.0,
+"P2_substitutive_minutes": 42220.0,
+"P2_substitutive_share": 1.0,
+"team_shifts_P2_substitutive": 169
+},
+"swap_gain": {
+"w0.5_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -6.091,
+"max_gain": -0.811
+},
+"w0.5_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.74,
+"max_gain": -0.674
+},
+"w0.5_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.063,
+"max_gain": -0.406
+},
+"w0.5_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.201,
+"max_gain": -0.406
+},
+"w0.6_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -6.091,
+"max_gain": -0.811
+},
+"w0.6_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.669,
+"max_gain": -0.647
+},
+"w0.6_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.857,
+"max_gain": -0.325
+},
+"w0.6_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -3.823,
+"max_gain": -0.325
+},
+"w0.7_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -6.091,
+"max_gain": -0.811
+},
+"w0.7_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.599,
+"max_gain": -0.62
+},
+"w0.7_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.651,
+"max_gain": -0.243
+},
+"w0.7_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0059,
+"mean_gain": -3.445,
+"max_gain": 0.011
+},
+"w0.8_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -6.091,
+"max_gain": -0.811
+},
+"w0.8_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.529,
+"max_gain": -0.592
+},
+"w0.8_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.445,
+"max_gain": -0.162
+},
+"w0.8_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0118,
+"mean_gain": -3.067,
+"max_gain": 0.731
+},
+"w0.9_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -6.091,
+"max_gain": -0.811
+},
+"w0.9_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.458,
+"max_gain": -0.565
+},
+"w0.9_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.24,
+"max_gain": -0.081
+},
+"w0.9_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0118,
+"mean_gain": -2.689,
+"max_gain": 1.525
+},
+"w1.0_q0.0": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -6.091,
+"max_gain": -0.811
+},
+"w1.0_q0.05": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -5.388,
+"max_gain": -0.538
+},
+"w1.0_q0.15": {
+"team_shifts": 169,
+"share_that_pays": 0.0,
+"mean_gain": -4.034,
+"max_gain": 0.0
+},
+"w1.0_q0.3": {
+"team_shifts": 169,
+"share_that_pays": 0.0178,
+"mean_gain": -2.311,
+"max_gain": 2.326
+}
+},
+"relief": {
+"B_minutes": 693613,
+"excused_minutes_by_cause": {
+"CAPACITY_SHORTAGE": 11425,
+"DONE_BEFORE_SHIFT": 7145,
+"LATE_PART": 1740,
+"CROSS_TEAM_PREDECESSOR": 715
+},
+"excused_share_of_B": 0.0303,
+"done_before_shift_minutes": 7145.0,
+"done_before_shift_share_of_B": 0.0103
+},
+"boundary": {
+"lead_minutes": 20,
+"team_shifts_with_times": 372,
+"completions": 6134,
+"share_in_last_lead_minutes": 0.0579,
+"share_in_overtime": 0.0611,
+"note": "completions after the next plan's data cut reach that plan as DONE_BEFORE_SHIFT relief (D-26)"
+},
+"fairness": {
+"spearman_planned_minutes_vs_R5_gain": 0.0618,
+"spearman_planned_minutes_vs_output_index": -0.0145,
+"note": "planned minutes stand in for load; join available hours from attendance for the load itself"
+}
+}
+}

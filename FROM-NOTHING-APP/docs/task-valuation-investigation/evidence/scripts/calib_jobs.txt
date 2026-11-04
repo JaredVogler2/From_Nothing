@@ -1,0 +1,18 @@
+N0 s6 20261026 --deviation 0 --pull-ahead 0
+PL s6 20261026 --deviation 0 --pull-ahead 0.35
+PH s6 20261026 --deviation 0 --pull-ahead 1.0
+PF s6 20261026 --deviation 0 --pull-ahead 1.0 --horizon 1440
+SE s6 20261026 --deviation 0.5 --pull-ahead 0
+SC s6 20261026 --deviation 0.5 --pull-ahead 0 --swap-pick largest
+SF s6 20261026 --deviation 0.5 --pull-ahead 0 --swap-pick largest --horizon 1440
+DF s6 20261026 --deviation 0.05 --pull-ahead 0.35
+DL s6 20261026 --deviation 0.05 --pull-ahead 0.35 --late-plans 0.3
+N0 s7 20261027 --deviation 0 --pull-ahead 0
+PL s7 20261027 --deviation 0 --pull-ahead 0.35
+PH s7 20261027 --deviation 0 --pull-ahead 1.0
+PF s7 20261027 --deviation 0 --pull-ahead 1.0 --horizon 1440
+SE s7 20261027 --deviation 0.5 --pull-ahead 0
+SC s7 20261027 --deviation 0.5 --pull-ahead 0 --swap-pick largest
+SF s7 20261027 --deviation 0.5 --pull-ahead 0 --swap-pick largest --horizon 1440
+DF s7 20261027 --deviation 0.05 --pull-ahead 0.35
+DL s7 20261027 --deviation 0.05 --pull-ahead 0.35 --late-plans 0.3

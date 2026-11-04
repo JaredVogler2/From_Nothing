@@ -5,7 +5,8 @@ counts, elapsed or actual burn, never dollars, and never multiplied by crew agai
 
 * B0 = original frozen effort.
 * B = B0 + approved feasible emergency additions.
-* E = approved relief on still-missed units.
+* E = approved relief on still-missed units, plus units verified complete before their shift started
+  (``DONE_BEFORE_SHIFT``: the previous shift finished them after the shift's plan was made; D-26).
 * D = B - E.
 * Cp = verified planned/amended completion, counted once.
 * U = unapproved offplan verified completion.
@@ -116,7 +117,7 @@ def components(facts: Iterable[UnitFact], offplan: Iterable[OffplanFact], oos: I
     B0 = Fraction(sum(f.effort for f in facts if f.origin == "ORIGINAL"))
     additions = Fraction(sum(f.effort for f in facts if f.origin == "AMENDMENT"))
     Cp = Fraction(sum(f.effort for f in facts if f.status == "EARNED"))
-    E = Fraction(sum(f.effort for f in facts if f.status == "MISSED" and f.relief))
+    E = Fraction(sum(f.effort for f in facts if (f.status == "MISSED" and f.relief) or f.status == "DONE_BEFORE_SHIFT"))
     unknown_units = [f for f in facts if f.status in ("UNKNOWN", "PENDING")]
     if any(f.status == "PENDING" for f in unknown_units):
         reasons.append(WINDOW_OPEN)
@@ -155,7 +156,7 @@ def status_and_score(parts: dict[str, Any], policy: Any, extra_reasons: list[str
     if reasons:
         return EvaluationStatus.UNKNOWN, blank, reasons
     if parts["B"] - parts["E"] <= 0:
-        why = "NO_PLAN: no frozen obligation (B = 0)" if parts["B"] == 0 else "ALL_EXCUSED: approved relief covers every missed obligation (D = 0)"
+        why = "NO_PLAN: no frozen obligation (B = 0)" if parts["B"] == 0 else "ALL_EXCUSED: approved relief, or work finished before the shift, covers every obligation (D = 0)"
         return EvaluationStatus.NEUTRAL, blank, [why]
     result = formula(parts["B"], parts["E"], parts["Cp"], parts["U"], parts["O"], policy)
     status = EvaluationStatus.OFFICIAL if policy.str("score.policy_status") == "OFFICIAL" else EvaluationStatus.DEMONSTRATION
@@ -331,10 +332,8 @@ def cli_evaluate(services: Any, args: argparse.Namespace) -> dict[str, Any]:
         return {"status": "invalid", "error": {"code": "BAD_ARGUMENT", "message": str(exc)}}
     registry = GoalRegistry.load(services)
     teams = [args.team] if args.team else sorted({r.team for (team, shift), r in registry.records.items() if shift == args.shift})
-    if args.plan:
-        _, day, _ = parse_shift_id(args.shift)
-        if registry.day_plan.get(day) != args.plan:
-            return {"status": "invalid", "error": {"code": "PLAN_NOT_OF_RECORD", "message": "that plan is not the obligation plan of record for the day"}}
+    if args.plan and registry.plan_of_record(args.shift) != args.plan:
+        return {"status": "invalid", "error": {"code": "PLAN_NOT_OF_RECORD", "message": "that plan is not the plan of record for the shift"}}
     if not teams:
         return {"status": "unknown", "shift": args.shift, "as_of": as_of.isoformat(), "evaluations": [],
                 "reasons": ["NO_OBLIGATION_PLAN: no accepted executable plan froze goals for this shift; name --team to record a neutral evaluation"]}

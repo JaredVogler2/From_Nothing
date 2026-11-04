@@ -4,8 +4,8 @@ An amendment adds one whole open phase to one frozen team-shift goal, so B = B0 
 original B0 and units are never changed. The command is a worker run, so the browser never mutates a
 plan. ``amend_goal`` decides it under a per-goal lock:
 
-1. **Plan and version.** ``plan_id`` must be the goal's obligation plan of record, verified end to
-   end. ``expected_version`` must equal the goal's amendment count (optimistic concurrency): a
+1. **Plan and version.** ``plan_id`` must be the goal's plan of record (the plan accepted before the
+   shift started, D-26), verified end to end, and the shift must have started. ``expected_version`` must equal the goal's amendment count (optimistic concurrency): a
    concurrent amendment makes the later one ``STALE_VERSION``.
 2. **Authority.** The requester's server-owned scope (injected at enqueue, never client-supplied)
    must cover the goal's team.
@@ -159,6 +159,8 @@ def amend_goal(services: Any, *, request_id: str, requested_by: str, plan_id: st
     if record.plan_id != plan_id:
         raise DomainError("PLAN_NOT_OF_RECORD", f"the goal of record for {team} {shift_id} was frozen by {record.plan_id}")
     window = record.window
+    if at < window.start:
+        raise DomainError("SHIFT_NOT_STARTED", "the shift's goal of record is the plan accepted before it starts; add work once it has started")
     if at >= window.end:
         raise DomainError("SHIFT_ENDED", "work completed after the shift is offplan output, not an emergency addition")
     if any(u.phase == phase_id for u in record.original_units):

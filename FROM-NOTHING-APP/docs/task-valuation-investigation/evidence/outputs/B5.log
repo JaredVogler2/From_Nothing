@@ -1,0 +1,8 @@
+fixture n=5 team_size=(5, 8): 0.8s scale=1.2504 mech/shift=199 qa=4 late_parts={'undated': 0, 'history': 221, '1-3 days': 253}
+admitted 29698 jobs, 46030 phases, 125341 edges in 9.6s; rss peak 439 MB
+{"plan": {"placed": 30282, "deferred": 0, "controllable_usd": 4846815.972222222, "unknown": [], "concurrency_edges": 0, "hard_latest": 0}, "redispatch_accepted": true, "deterministic": true}
+units=378 b 0.01s c 0.02s c0 0.01s rss 600 MB
+d1: 378 counterfactuals in 489.0s wall
+d2: 24 in 69.0s wall; baseline {'ctrl_usd': 4846815.972222222, 'plan_ctrl_usd': 4846815.972222222, 'kept': 16332, 'rehomed': 0, 'unknown': [], 'redispatch_kept': False, 'seconds': 5.117192814000191}
+joint: 13 sets
+{"build_admit_s": 10.447, "ctx_s": 1.388, "plan_s": 8.2, "a_plan_all_s": 0.119, "decode_eval_s": 2.694, "graph_build_s": 0.811, "b_all_s": 0.111, "b_units_s": 0.007, "c_units_s": 0.021, "c0_units_s": 0.007, "d1_wall_s": 488.999, "d1_n": 378, "d2_wall_s": 69.028, "d2_n": 24} peak MB 643

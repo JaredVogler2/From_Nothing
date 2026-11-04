@@ -1,0 +1,34 @@
+rev 44caf008fefa85f140fefd7a5a7a3d4f513f654b start 13:19:24
+generated fleet in 3.0s: [('QTR', 10), ('THY', 9), ('UAL', 9)]..., 234 mechanics per shift
+shift 0 (DEMO:2026-10-26:S1): admitted 59397 jobs, 89193 phases in 20.9s
+{"shift": 0, "id": "DEMO:2026-10-26:S1", "valid": true, "assignments": 9749, "executed": {"completed": 655, "slipped": 42}, "jobs_completed": 664, "load_s": 20.9, "plan_s": 119.4, "validate_s": 11.1, "write_s": 2.3, "plan_forecast_s": 87.6, "plan_executable_s": 31.8, "execute_s": 0.3, "rss_mb": 1242, "rss_after_mb": 1048}
+shift 1 (DEMO:2026-10-26:S2): admitted 59661 jobs, 89045 phases in 19.0s
+{"shift": 1, "id": "DEMO:2026-10-26:S2", "valid": true, "assignments": 9324, "executed": {"completed": 628, "slipped": 15}, "jobs_completed": 636, "load_s": 19.0, "plan_s": 168.6, "validate_s": 11.3, "write_s": 2.6, "plan_forecast_s": 139.8, "plan_executable_s": 28.8, "execute_s": 0.6, "rss_mb": 1929, "rss_after_mb": 1467}
+shift 2 (DEMO:2026-10-26:S3): admitted 59988 jobs, 89054 phases in 15.6s
+{"shift": 2, "id": "DEMO:2026-10-26:S3", "valid": true, "assignments": 9001, "executed": {"completed": 482, "slipped": 19}, "jobs_completed": 491, "load_s": 15.6, "plan_s": 244.2, "validate_s": 10.7, "write_s": 2.3, "plan_forecast_s": 215.3, "plan_executable_s": 28.9, "execute_s": 0.7, "rss_mb": 1939, "rss_after_mb": 1395}
+shift 3 (DEMO:2026-10-27:S1): admitted 60271 jobs, 89121 phases in 15.9s
+{"shift": 3, "id": "DEMO:2026-10-27:S1", "valid": true, "assignments": 8695, "executed": {"completed": 575, "slipped": 4}, "jobs_completed": 592, "load_s": 15.9, "plan_s": 206.6, "validate_s": 12.2, "write_s": 2.5, "plan_forecast_s": 178.9, "plan_executable_s": 27.7, "execute_s": 0.9, "rss_mb": 1943, "rss_after_mb": 1556}
+shift 4 (DEMO:2026-10-27:S2): admitted 60540 jobs, 89059 phases in 14.8s
+{"shift": 4, "id": "DEMO:2026-10-27:S2", "valid": true, "assignments": 8359, "executed": {"completed": 562, "slipped": 19}, "jobs_completed": 581, "load_s": 14.8, "plan_s": 188.7, "validate_s": 10.3, "write_s": 2.3, "plan_forecast_s": 163.2, "plan_executable_s": 25.6, "execute_s": 0.7, "rss_mb": 1943, "rss_after_mb": 1584}
+shift 5 (DEMO:2026-10-27:S3): admitted 60826 jobs, 89044 phases in 15.5s
+{"shift": 5, "id": "DEMO:2026-10-27:S3", "valid": true, "assignments": 8040, "executed": {"completed": 449, "slipped": 2}, "jobs_completed": 461, "load_s": 15.5, "plan_s": 162.3, "validate_s": 11.5, "write_s": 3.3, "plan_forecast_s": 137.2, "plan_executable_s": 25.2, "execute_s": 0.7, "rss_mb": 1943, "rss_after_mb": 1594}
+shift 6 (DEMO:2026-10-28:S1): admitted 61113 jobs, 89153 phases in 14.5s
+{"shift": 6, "id": "DEMO:2026-10-28:S1", "valid": true, "assignments": 7937, "executed": {"completed": 528, "slipped": 27}, "jobs_completed": 540, "load_s": 14.5, "plan_s": 164.4, "validate_s": 12.0, "write_s": 2.4, "plan_forecast_s": 137.3, "plan_executable_s": 27.2, "execute_s": 0.9, "rss_mb": 1943, "rss_after_mb": 1609}
+shift 7 (DEMO:2026-10-28:S2): admitted 61402 jobs, 89182 phases in 15.4s
+{"shift": 7, "id": "DEMO:2026-10-28:S2", "valid": true, "assignments": 7671, "executed": {"completed": 495, "slipped": 31}, "jobs_completed": 509, "load_s": 15.4, "plan_s": 125.8, "validate_s": 11.6, "write_s": 2.4, "plan_forecast_s": 98.7, "plan_executable_s": 27.1, "execute_s": 0.8, "rss_mb": 1943, "rss_after_mb": 1620}
+shift 8 (DEMO:2026-10-28:S3): admitted 61698 jobs, 89259 phases in 15.5s
+{"shift": 8, "id": "DEMO:2026-10-28:S3", "valid": true, "assignments": 7451, "executed": {"completed": 412, "slipped": 15}, "jobs_completed": 426, "load_s": 15.5, "plan_s": 161.5, "validate_s": 13.0, "write_s": 2.6, "plan_forecast_s": 132.0, "plan_executable_s": 29.5, "execute_s": 0.8, "rss_mb": 1943, "rss_after_mb": 1629}
+shift 9 (DEMO:2026-10-29:S1): admitted 61981 jobs, 89390 phases in 18.0s
+{"shift": 9, "id": "DEMO:2026-10-29:S1", "valid": true, "assignments": 7932, "executed": {"completed": 483, "slipped": 6}, "jobs_completed": 497, "load_s": 18.0, "plan_s": 171.7, "validate_s": 13.3, "write_s": 2.5, "plan_forecast_s": 140.1, "plan_executable_s": 31.7, "execute_s": 1.1, "rss_mb": 1945, "rss_after_mb": 1648}
+shift 10 (DEMO:2026-10-29:S2): admitted 62290 jobs, 89505 phases in 17.7s
+{"shift": 10, "id": "DEMO:2026-10-29:S2", "valid": true, "assignments": 7732, "executed": {"completed": 506, "slipped": 6}, "jobs_completed": 527, "load_s": 17.7, "plan_s": 174.5, "validate_s": 13.4, "write_s": 2.4, "plan_forecast_s": 146.0, "plan_executable_s": 28.5, "execute_s": 0.9, "rss_mb": 1949, "rss_after_mb": 1670}
+shift 11 (DEMO:2026-10-29:S3): admitted 62576 jobs, 89546 phases in 15.4s
+{"shift": 11, "id": "DEMO:2026-10-29:S3", "valid": true, "assignments": 7478, "executed": {"completed": 410, "slipped": 7}, "jobs_completed": 425, "load_s": 15.4, "plan_s": 156.1, "validate_s": 12.8, "write_s": 2.3, "plan_forecast_s": 133.2, "plan_executable_s": 22.9, "execute_s": 0.8, "rss_mb": 1954, "rss_after_mb": 1662}
+shift 12 (DEMO:2026-10-30:S1): admitted 62884 jobs, 89721 phases in 16.8s
+{"shift": 12, "id": "DEMO:2026-10-30:S1", "valid": true, "assignments": 8025, "executed": {"completed": 460, "slipped": 31}, "jobs_completed": 467, "load_s": 16.8, "plan_s": 103.0, "validate_s": 12.1, "write_s": 2.3, "plan_forecast_s": 81.6, "plan_executable_s": 21.4, "execute_s": 1.0, "rss_mb": 1954, "rss_after_mb": 1653}
+shift 13 (DEMO:2026-10-30:S2): admitted 63181 jobs, 89842 phases in 15.9s
+{"shift": 13, "id": "DEMO:2026-10-30:S2", "valid": true, "assignments": 7451, "executed": {"completed": 495, "slipped": 3}, "jobs_completed": 518, "load_s": 15.9, "plan_s": 175.7, "validate_s": 12.7, "write_s": 2.7, "plan_forecast_s": 147.4, "plan_executable_s": 28.3, "execute_s": 0.9, "rss_mb": 1954, "rss_after_mb": 1684}
+shift 14 (DEMO:2026-10-30:S3): admitted 63482 jobs, 89913 phases in 16.0s
+{"shift": 14, "id": "DEMO:2026-10-30:S3", "valid": true, "assignments": 7212, "executed": {"completed": 379, "slipped": 13}, "jobs_completed": 385, "load_s": 16.0, "plan_s": 194.2, "validate_s": 13.4, "write_s": 2.4, "plan_forecast_s": 166.9, "plan_executable_s": 27.3, "execute_s": 1.0, "rss_mb": 1967, "rss_after_mb": 1695}
+{"sim_id": "SIMa9d9d978a5d61f3d6500", "shifts": 15, "peak_rss_mb": 1967}
+exit=0 end 14:07:25

@@ -11,7 +11,7 @@ After FOCUS publishes a plan and freezes each team-shift's goal, these eight fee
 | [`holding_evidence`](#holding_evidence) | FEED | No | holding_evidence | None: NOT_PROBED (QUERY_MISSING) | Yes | Certificate revocations and reinstatements observed after planning: evidence for automatic SKILL_SHORTAGE claims. |
 | [`goal_amendments`](#goal_amendments) | FEED | Yes | goal_amendments | None: NOT_PROBED (NOT_INSTALLED) | Yes | Approved feasible emergency additions to a frozen goal (B = B0 + additions). |
 | [`disruption_claims`](#disruption_claims) | FEED | Yes | disruption_claims | None: NOT_PROBED (NOT_INSTALLED) | Yes | Manual claims that missed frozen units had a cause: evidence for review, never relief. |
-| [`excusal_decisions`](#excusal_decisions) | FEED | Yes | excusal_decisions | None: NOT_PROBED (NOT_INSTALLED) | Yes | Reviewed excusal decisions and appeals: the only source of relief (E). |
+| [`excusal_decisions`](#excusal_decisions) | FEED | Yes | excusal_decisions | None: NOT_PROBED (NOT_INSTALLED) | Yes | Reviewed excusal decisions and appeals: the only source of relief, which with work done before the shift makes E. |
 
 ## How FOCUS reads these feeds
 
@@ -21,12 +21,12 @@ The feed contract is `FEEDS` in `focus/performance/actuals.py`. The typed facts 
 
 - **Job, line and SOI.** A job is one SOI (the master task list's shop-order identifier) on one line. FOCUS identifies it as `JobKey(site, program, LINE_NUMBER, SOI)`.
 - **Phase, phase kind and ordinal.** FOCUS splits each job into typed phases: WORK segments, IP_QA (in-process QA holds), FINAL_QA, OTHER_BUYOFF branches and a zero-work RELEASE milestone. The phase kind is that type. The ordinal numbers the phases of one kind within the job, from 0.
-- **Goal of record and B0.** For each obligation day, the first accepted EXECUTABLE plan freezes a goal for every team-shift. B0 is that goal's original effort in standard person-minutes. Later replans never change it.
+- **Goal of record and B0.** Each shift is scored against the plan published for it (D-26): the last accepted EXECUTABLE plan covering the day that was accepted at or before the shift starts freezes the shift's goal for every team; when no plan was accepted before the shift starts, the first accepted plan covering the day stands in. B0 is that goal's original effort in standard person-minutes. Plans accepted after the shift starts never change it.
 - **Earning unit and segment.** A frozen goal is a set of earning units: one per time segment of one planned assignment, numbered from 0, each with its share of the phase's standard effort.
-- **Credit window and credit deadline.** A verified completion credits the goal whose shift window contains it, then the goal whose authorized OT window contains it, then the next goal that planned it (early). The credit deadline is the end of the authorized OT window, or the shift end.
+- **Credit window and credit deadline.** A verified completion credits the goal whose shift window contains it, then the goal whose authorized OT window contains it; it is never credited early (D-26). The credit deadline is the end of the authorized OT window, or the shift end.
 - **Offplan output (U).** A verified completion that falls in no goal's credit window. It counts for the team-shift whose window contains it.
-- **OOS (sequence violation).** Out-of-sequence work: an actual start before a hard FS or SS predecessor is satisfied, or a finish before an FF predecessor finished. A discretionary violation draws the O charge, once per unit. A DIRECTED one does not.
-- **Claim, decision, relief (E) and review (excusal) track.** A claim says missed units had one of eight causes. An excusal decision reviews claims. Relief E is the effort of approved units that are still missed. The review track is STANDARD or PLAN_CHURN.
+- **OOS (sequence violation).** Out-of-sequence work: an actual start before a hard FS or SS predecessor is satisfied, or a finish before an FF predecessor finished. A discretionary violation draws the O charge, once per unit, in the goal whose shift or authorized OT window contains it; an out-of-sequence start made before the shift that planned the work charges no goal (that work is offplan, already in U). A DIRECTED one does not.
+- **Claim, decision, relief (E) and review (excusal) track.** A claim says missed units had one of eight causes. An excusal decision reviews claims. Relief is the effort of approved units that are still missed; E adds the units done before the shift (`DONE_BEFORE_SHIFT`). The review track is STANDARD or PLAN_CHURN.
 - **Plan's source cutoff.** The cutoff of the source run an accepted plan was built on. Attendance and certificate evidence count only if observed after it.
 - **As-of.** The instant a collection runs at. It is also the ingestion time of everything that run admits.
 
@@ -68,14 +68,14 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 
 - **Cp** (verified planned or amended completion, counted once): the effort of goal units credited by verified COMPLETED and PROGRESS facts from `lifecycle_events`, under the credit-window rule above.
 - **U** (offplan output): verified completions from `lifecycle_events` outside every credit window.
-- **O** (OOS charge): `score.oos_rate` (demo 0.10) times the planned effort of discretionary sequence violations, once per unit. Violations come from actual starts and finishes in `lifecycle_events` and from `actual_intervals`.
+- **O** (OOS charge): `score.oos_rate` (demo 0.10) times the planned effort of discretionary sequence violations, once per unit, charged to the goal whose shift or OT window contains the violation. Violations come from actual starts and finishes in `lifecycle_events` and from `actual_intervals`.
 - **B = B0 + approved emergency additions**, from `goal_amendments`.
-- **E** (relief): the effort of units approved by `excusal_decisions` on submitted claims (from `disruption_claims` or automatic attribution) that are still missed at the cutoff.
+- **E** (excused effort): the effort of units approved by `excusal_decisions` on submitted claims (from `disruption_claims` or automatic attribution) that are still missed at the cutoff, plus units whose phase was verified COMPLETED before their shift started (`DONE_BEFORE_SHIFT`, reason `VERIFIED_COMPLETE_BEFORE_SHIFT_START`, D-26).
 - **D = B − E.** When D > 0: A = min(1, Cp/D); H = Cp/(Cp+U), or 0 when Cp+U = 0; final = clamp(100·(wA·A + wH·H) − 100·O/D, 0, 100), with demo weights 0.70 and 0.30. D = 0 is NEUTRAL. Missing coverage, an UNKNOWN unit, unknown U or O, or an open window makes the evaluation UNKNOWN.
 
 ## `lifecycle_events`
 
-**Purpose.** The record of what happened to each job and phase after publication: starts, verified completions, verified segment progress, cancellations, detabs, terminal statuses, reopens, and the voids and corrections that revise them. FOCUS replays these facts in effective order to decide which frozen units were earned, missed or unknown, which completions are offplan, and which starts broke the sequence (OOS). Only verified completion earns credit.
+**Purpose.** The record of what happened to each job and phase after publication: starts, verified completions, verified segment progress, cancellations, detabs, terminal statuses, reopens, and the voids and corrections that revise them. FOCUS replays these facts in effective order to decide which frozen units were earned, missed, unknown or done before their shift, which completions are offplan, and which starts broke the sequence (OOS). Only verified completion earns credit.
 
 | | |
 | --- | --- |
@@ -100,7 +100,7 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 | `SEGMENTS` | JSON list of distinct integers ≥ 0; null or empty for none | The frozen segment earning units that a PROGRESS fact verifies. | A verified PROGRESS credits exactly these units. Required for PROGRESS, and allowed only on PROGRESS and its CORRECTION. |
 | `KIND` | text, one of the lifecycle kinds listed below; required | What happened. | Drives the ordered lifecycle (see the kinds below). DISAPPEARED is refused as `DERIVED_ONLY`. |
 | `PERSON_KEY` | text, optional | The native id of the person the fact names; the code does not define the person's role further. | Resolved to the FOCUS person id and stored; a CORRECTION can replace it. Nothing reads it after normalization. |
-| `EFFECTIVE_AT_UTC` | timestamp, required | When the fact took effect (008: "when it physically happened"). | Orders each phase's facts and sets the credit time, the start time for sequence checks, and cancel-versus-completion order. |
+| `EFFECTIVE_AT_UTC` | timestamp, required | When the fact took effect (008: "when it physically happened"). | Orders each phase's facts and sets the credit time, the start time for sequence checks, and cancel-versus-completion order. A verified COMPLETED effective before a goal's shift start makes that goal's units of the phase `DONE_BEFORE_SHIFT`. |
 | `RECORDED_AT_UTC` | timestamp, required | When the source system recorded the fact. | Decides what was known when work started (OOS classification), picks the latest CORRECTION, and breaks revision ties. |
 | `OBSERVED_AT_UTC` | timestamp, required | When the producer saw the row (008: "seen by the producer query"). | The visibility cutoff. Stored; nothing reads it after capture. |
 | `VERIFIED` | boolean, required | Whether the source verified the fact. | Only a verified COMPLETED or PROGRESS earns credit. A REPORTED_COMPLETION must be false (`REPORTED_NOT_VERIFIED`). |
@@ -114,7 +114,7 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 
 - **STARTED:** work began. It sets the phase start and is an actual start for sequence checks.
 - **PROGRESS:** verified completion of the segment earning units in `SEGMENTS`. Unverified PROGRESS earns nothing.
-- **COMPLETED:** verified physical completion of the whole phase. It credits that phase's units in exactly one goal. Unverified COMPLETED earns nothing.
+- **COMPLETED:** verified physical completion of the whole phase. It credits that phase's units in exactly one goal, never early: completed before a goal's shift starts, it credits the goal whose window contains it if that goal planned the work (otherwise it is offplan output there), and the later goal holds its units as `DONE_BEFORE_SHIFT`. Unverified COMPLETED earns nothing.
 - **REPORTED_COMPLETION:** a reported completion. Always a claim, never verified credit.
 - **CANCELLED and DETABBED:** administrative withdrawal; the code treats both the same and does not define detab further. Before completion they earn nothing and the unit stays in B0. After verified completion, `lifecycle.cancel_after_verified_completion` decides (shipped: PRIOR_VERIFIED_COMPLETION_EARNS).
 - **TERMINAL_STATUS:** a terminal source status. Without verified completion the disposition is UNKNOWN.
@@ -282,7 +282,7 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 | Required for official evaluation | Yes (`FeedSpec.required`). |
 | Store collection | `goal_amendments` (type `GoalAmendment`). It also holds amendments made with `POST /api/v1/amendments`. Proposed SQL history: `FOCUS_FN_GoalAmendment`, written by `FOCUS_FN_RecordAmendment`. |
 | If missing or empty | Live today: NOT_PROBED (`NOT_INSTALLED`), so every evaluation gets `COVERAGE_GOAL_AMENDMENTS_NOT_PROBED` and is UNKNOWN. Fixture: FAILED gives `COVERAGE_GOAL_AMENDMENTS_FAILED`; EMPTY_UNCERTIFIED gives `COVERAGE_GOAL_AMENDMENTS_EMPTY_UNCERTIFIED`; a watermark short of the credit deadline gives `COVERAGE_GOAL_AMENDMENTS_BEHIND`. CERTIFIED_EMPTY is a valid empty feed (no additions). |
-| Time and cutoff | Cutoff `OBSERVED_AT_UTC`, used only for visibility. `DECISION_AT_UTC` is stored but not used. The addition counts from the run that ingests it. |
+| Time and cutoff | Cutoff `OBSERVED_AT_UTC`, used only for visibility. `DECISION_AT_UTC` must fall inside the shift window: before the start it is quarantined (`SHIFT_NOT_STARTED`), at or after the end (`SHIFT_ENDED`), the same rule as the amendment command (D-26). The addition counts from the run that ingests it. |
 | Quarantine codes | Common codes, plus `GOAL_NOT_FOUND`, `BAD_WORK_REF`, `ALREADY_IN_GOAL`, `ALREADY_AMENDED` and `FEASIBILITY_REQUIRED`. |
 | Read by | `focus/performance/actuals.py` (normalization and the `ALREADY_AMENDED` check); `focus/performance/lifecycle.py` (addition units in goal records, credit); `focus/performance/score.py` (B); `focus/performance/disruption.py` (claim units; additions as rework candidates); `focus/web/serializers.py` (`goal_versions`, `team_lead`); `focus/web/api.py` (`create_amendment` version check). |
 
@@ -304,6 +304,7 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 **Rules and pitfalls.**
 - B = B0 + approved emergency additions. The added unit can earn credit like a planned unit. B0 and the original unit ids never change.
 - One whole phase per row: `WORK_REF` carries no segment.
+- The feed path applies the command's shift-window rule to `DECISION_AT_UTC` (above), but there is no plan id in the feed, so `PLAN_NOT_OF_RECORD` cannot apply: the row is added to whatever goal of record covers the team-shift.
 - The feed path trusts the producer. It does not rerun the command path's readiness and crew-feasibility check (`amendments.assess_addition`), check that the phase belongs to `TEAM`, or take the effort from the phase's sourced standard. It only requires a non-empty `FEASIBILITY_REF`, so send only additions that passed an equivalent check.
 - There is no withdrawal or correction path. A changed row under the same key is `REVISION_CONTENT_CONFLICT`, and a new key for the same phase is `ALREADY_AMENDED`.
 - An amendment is not relief. Relief comes only from an excusal decision.
@@ -347,11 +348,11 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 - The eight causes are fixed: LATE_PART, CROSS_TEAM_PREDECESSOR, SAME_TEAM_PREDECESSOR, CAPACITY_SHORTAGE, SKILL_SHORTAGE, DURATION_OVERRUN, REWORK_INJECTION and PLAN_CHURN. Five are nominally excusable: LATE_PART, CROSS_TEAM_PREDECESSOR, CAPACITY_SHORTAGE, SKILL_SHORTAGE and REWORK_INJECTION. A policy that changes these lists quarantines every claim (`POLICY_TAXONOMY_MISMATCH`).
 - Never edit a row. Revise or withdraw with a new `CLAIM_KEY` that names the old one in `SUPERSEDES_CLAIM_KEY`.
 - Rows are processed in the order the reader returns them, and the draft query sorts by `CLAIM_KEY`. A row whose target comes later in the same run is quarantined as `SUPERSEDED_CLAIM_NOT_FOUND` and admitted on the next collection.
-- Units already verified complete cannot be claimed (`UNIT_ALREADY_EARNED`). Duplicate and overlapping claims are kept as separate records; relief is a union, so they never multiply it.
+- Units this goal earned cannot be claimed or approved (`UNIT_ALREADY_EARNED`). A `DONE_BEFORE_SHIFT` unit can be, but approving it adds nothing: it already counts in E. Duplicate and overlapping claims are kept as separate records; relief is a union, so they never multiply it.
 
 ## `excusal_decisions`
 
-**Purpose.** Reviewed decisions on submitted claims, including appeals that supersede earlier decisions. An approval names the missed units it relieves. The union of approved units still missed at the evaluation cutoff is the relief E in D = B − E, and this is the only path to relief.
+**Purpose.** Reviewed decisions on submitted claims, including appeals that supersede earlier decisions. An approval names the missed units it relieves. The union of approved units still missed at the evaluation cutoff is the relief in E (D = B − E), and this is the only path to relief; E also holds the units done before the shift (`DONE_BEFORE_SHIFT`), which need no decision.
 
 | | |
 | --- | --- |
@@ -386,7 +387,7 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 - Review tracks: STANDARD for every cause except PLAN_CHURN. PLAN_CHURN is reviewed on its own track and never mixed with other causes in one decision.
 - Approving a cause outside the five nominal categories is recorded as an exception and needs a substantive reason.
 - Appeals append: send a new `DECISION_KEY` with `SUPERSEDES_DECISION_KEY`. The draft query sorts by `DECISION_KEY`, so an appeal whose target sorts later in the same run is admitted on the next collection.
-- Relief E is the union of units approved by effective APPROVED decisions whose reviewed claims are still SUBMITTED, limited to units still missed at the cutoff. Earned units are never relief, and overlapping approvals never multiply it.
+- Relief is the union of units approved by effective APPROVED decisions whose reviewed claims are still SUBMITTED, limited to units still missed at the cutoff; E = relief + `DONE_BEFORE_SHIFT` effort. Earned units are never relief, and overlapping approvals never multiply it.
 - Automatic claims are created after decisions in each run. A decision can therefore cite an automatic claim, by its FOCUS claim id, only from an earlier collection.
 
 ## Producer receipts

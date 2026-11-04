@@ -166,8 +166,11 @@ def job_rows(evidence: Any, view: Any, goal_id: str | None) -> tuple[list[list[A
     jobs = []
     for f in evidence.unit_facts:
         soi, line, kind, ordinal, job = identity(f.job, f.phase)
-        outcome = "excused" if f.status == "MISSED" and f.relief else {"EARNED": "done", "MISSED": "missed"}.get(f.status, "open")
-        jobs.append([soi, line, kind, ordinal, f.effort, outcome, int(bool(f.oos_charged)), "|".join(sorted(causes.get(f.unit_id, ()))) or None,
+        # work the previous shift finished before this shift began is out of D with the relief (score.components, D-26)
+        before = f.status == "DONE_BEFORE_SHIFT"
+        outcome = "excused" if (f.status == "MISSED" and f.relief) or before else {"EARNED": "done", "MISSED": "missed"}.get(f.status, "open")
+        why = set(causes.get(f.unit_id, ())) | ({"DONE_BEFORE_SHIFT"} if before else set())
+        jobs.append([soi, line, kind, ordinal, f.effort, outcome, int(bool(f.oos_charged)), "|".join(sorted(why)) or None,
                      "added" if f.origin == "AMENDMENT" else "planned", job])
     unplanned = []
     for o in evidence.offplan:

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -92,15 +92,38 @@ def test_work_cut_short_at_the_shift_end_comes_back_with_its_remaining_minutes(o
     for k, line, soi, start in cut:
         worked = (datetime.fromisoformat(ends[k]) - datetime.fromisoformat(start)).total_seconds() // 60 + 60
         progress = _all(overruns, "SELECT load_shift, PERFORMED_ELAPSED_MINUTES, REMAINING_ELAPSED_MINUTES FROM src_work_progress "
-                                  f"WHERE LINE_NUMBER = {line} AND SOI = '{soi}' ORDER BY load_shift")
+                                  f"WHERE LINE_NUMBER = {line} AND SOI = '{soi}' ORDER BY load_shift, rowid")
         earlier = [p for p in progress if p[0] <= k]
-        (now,) = [p for p in progress if p[0] == k + 1]
+        now = [p for p in progress if p[0] == k + 1][-1]       # the latest write the next admission sees (a late completion of the
+                                                               # shift before reaches the source after this shift's cutoff, D-26)
         assert now[1] - (earlier[-1][1] if earlier else 0) >= worked and now[2] > 0          # performed accumulates; work remains
         assert _all(overruns, f"SELECT SHOP_ORDER_STATUS FROM src_master_task_list WHERE load_shift = {k + 1} AND LINE_NUMBER = {line} "
-                              f"AND SHOP_ORDER_IDENTIFIER = '{soi}'") == [("IN WORK",)]
+                              f"AND SHOP_ORDER_IDENTIFIER = '{soi}' ORDER BY rowid")[-1] == ("IN WORK",)
         (admitted,) = _all(overruns, f"SELECT status, disposition, work_minutes FROM calc_job WHERE shift_no = {k + 1} AND line = {line} "
                                      f"AND soi = '{soi}'")
         assert admitted[:2] == ("IN WORK", "admitted") and admitted[2] >= now[2]              # the remainder (and inspections left)
+
+
+def test_work_finished_after_the_next_cutoff_counts_once_in_its_own_shift(sims) -> None:
+    """D-26: the next shift's plan is made before this shift ends (``cutoff_lead_minutes``). A job finished after that cutoff
+    is credited to its own shift after the fact. The next plan may still hold it: there it is DONE_BEFORE_SHIFT, out of D,
+    never missed and never earned twice."""
+    first, _ = sims
+    late = _all(first, "SELECT shift_no, team, job_id FROM perf_unit WHERE status = 'DONE_BEFORE_SHIFT'")
+    assert late, "the gap between the next cutoff and the shift end is modeled"
+    ends = {k: datetime.fromisoformat(e) for k, e in _all(first, "SELECT shift_no, end_utc FROM sim_shift")}
+    cutoff = {k: ends[k] - timedelta(minutes=SPEC.cutoff_lead_minutes) for k in ends}
+    for k, team, job in late:
+        done = [datetime.fromisoformat(t) for (t,) in _all(first, "SELECT actual_end FROM exec_assignment WHERE shift_no = "
+                                                                  f"{k - 1} AND job_id = '{job}' AND outcome = 'completed'")]
+        done += [datetime.fromisoformat(t) for (t,) in _all(first, f"SELECT end_utc FROM exec_offplan WHERE shift_no = {k - 1} "
+                                                                   f"AND job_id = '{job}'")]
+        assert done and max(done) > cutoff[k - 1], (k, job)                                  # finished after the next plan's cutoff
+        assert not _all(first, f"SELECT 1 FROM exec_assignment WHERE shift_no = {k} AND job_id = '{job}' AND outcome = 'completed'")
+        credited = _all(first, f"SELECT COUNT(*) FROM perf_unit WHERE shift_no = {k - 1} AND job_id = '{job}' AND status = 'EARNED'")[0][0]
+        credited += _all(first, f"SELECT COUNT(*) FROM exec_offplan WHERE shift_no = {k - 1} AND job_id = '{job}'")[0][0]
+        assert credited, (k, job)                                                             # counted in the shift that did it
+    assert _all(first, "SELECT COUNT(*) FROM exec_event WHERE kind = 'done_before_shift'")[0][0] >= 1
 
 
 def test_the_same_arguments_repeat_exactly(sims) -> None:
@@ -228,7 +251,9 @@ def test_team_scores_are_the_canonical_formula_over_their_goal_units(sims, app_r
         assert B0 == sum(u[0] for u in units if u[4] == "ORIGINAL") and additions == sum(u[0] for u in units if u[4] == "AMENDMENT")
         assert B == B0 + additions and Cp == sum(u[0] for u in units if u[1] == "EARNED")
         assert additions == _all(first, f"SELECT COALESCE(SUM(effort), 0) FROM perf_amendment WHERE shift_no = {shift_no} AND team = '{team}'")[0][0]
-        assert E == sum(u[0] for u in units if u[1] == "MISSED" and u[2]) and not any(u[2] for u in units if u[1] == "EARNED")
+        # E = approved relief plus work the previous shift finished after this shift's plan was made (D-26)
+        assert E == sum(u[0] for u in units if (u[1] == "MISSED" and u[2]) or u[1] == "DONE_BEFORE_SHIFT")
+        assert not any(u[2] for u in units if u[1] == "EARNED")
         assert oos_effort == sum(u[0] for u in units if u[3])
         assert U == (_all(first, f"SELECT COALESCE(SUM(effort), 0) FROM exec_offplan WHERE shift_no = {shift_no} AND team = '{team}'")[0][0])
         assert status in ("DEMONSTRATION", "OFFICIAL", "NEUTRAL")
@@ -278,9 +303,15 @@ def test_only_verified_excusable_causes_relieve_a_team(sims, app_root) -> None:
         person, day, number = evidence.split(":")[1:4]
         assert _all(first, f"SELECT COUNT(*) FROM src_attendance_shift WHERE BEMS_ID = '{person}' AND PRODUCTION_DAY = '{day}' "
                            f"AND SHIFT_NUMBER = {number[1:]} AND SOURCE = 'SIM_LATE_CALLOFF'")[0][0] >= 1
-    # no unit is earned twice: within a production day each phase is EARNED in one shift's goal at most
-    assert not _all(first, "SELECT u.phase FROM perf_unit u JOIN sim_shift s ON s.shift_no = u.shift_no WHERE u.status = 'EARNED' "
-                           "GROUP BY s.production_day, u.phase HAVING COUNT(DISTINCT u.shift_no) > 1")
+    # no unit is earned twice: each shift's goal is frozen from its own plan (D-26), so an earned original unit is an
+    # assignment of that shift's plan that the floor completed in that shift (finished work is written back, and phase
+    # ordinals restart, so the next shift's plan never holds it again)
+    assert not _all(first, "SELECT u.shift_no, u.assignment_id FROM perf_unit u WHERE u.status = 'EARNED' AND u.origin = 'ORIGINAL' "
+                           "AND NOT EXISTS (SELECT 1 FROM exec_assignment a WHERE a.shift_no = u.shift_no AND a.assignment_id = u.assignment_id "
+                           "AND a.outcome = 'completed')")
+    # and every frozen goal is the shift's own plan: a valid plan freezes the goals of the shift it was made for
+    assert not _all(first, "SELECT g.frozen_shift_no, s.shift_no FROM perf_goal_day g JOIN sim_shift s ON s.production_day = g.production_day "
+                           "AND s.shift_number = g.shift_number WHERE s.valid = 1 AND g.frozen_shift_no != s.shift_no")
 
 
 def test_recognition_is_the_frozen_value_of_earned_goal_units(sims, app_root) -> None:

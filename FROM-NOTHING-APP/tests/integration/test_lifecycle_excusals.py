@@ -11,6 +11,7 @@ read back from the evaluator. Mutating cases run on private copies of the world.
 """
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -100,7 +101,7 @@ def test_goal_of_record_freezes_b0_and_amendment_adds_without_mutating(world) ->
     w = world
     view = ObservationView.build(w.services, P3)
     reg = view.registry
-    assert set(reg.day_plan.values()) == {w.plan_id}
+    assert {pid for plans in reg.day_plans.values() for pid, _ in plans} == {w.plan_id} and reg.plan_of_record(S1) == w.plan_id
     record, facts = facts_by(view, "PROD-B")
     frozen = reg.goals[record.goal_id]
     assert record.goal is frozen and frozen.hash == frozen.computed_hash()                  # the accepted goal, unchanged
@@ -497,16 +498,56 @@ def test_open_window_and_live_reader_are_honest(published, tmp_path, app_root) -
     assert cap.status == "NOT_PROBED" and not cap.complete and cap.reason.startswith("NOT_INSTALLED")
 
 
-def test_later_replan_goals_are_proposals_not_b0(published, tmp_path, app_root) -> None:
+def test_each_shift_is_scored_against_the_plan_accepted_before_it_starts(published, tmp_path, app_root) -> None:
+    """D-26: the scheduler runs before every shift; a shift's goal of record is the last plan accepted at or before its
+    start. A plan accepted after a shift has started is only a proposal for it, and becomes the record of the next shift."""
     services = copy_of(published, tmp_path, app_root)
     run2 = acquire(services, make_reader(services, "manufacturing_demo"), cutoff=FIXTURE_CUTOFF, idempotency_key="life-2")
     candidate, _ = schedule(services, source_run=run2.run_id, purpose=Purpose.EXECUTABLE, budget_seconds=5, max_moves=7)
-    second = publish(services, candidate.id)
+    second = publish(services, candidate.id)                                                 # accepted at 10:00, the start of S1
     assert second.status == "ACCEPTED", second.reasons
     reg = GoalRegistry.load(services)
-    assert set(reg.day_plan.values()) == {published.plan_id}                                 # the first acceptance of the day stays of record
+    assert reg.plan_of_record(S1) == second.plan_id != published.plan_id                    # the run before S1 sets S1's plan
     record = reg.records[("PROD-B", S1)]
-    assert record.plan_id == published.plan_id and record.later_goal_ids                     # the replan's goal is only a proposal
+    assert record.plan_id == second.plan_id and record.later_goal_ids                        # the earlier plan's goal is only a proposal
+    services.clock.advance(minutes=120)                                                       # 12:00: S1 has started
+    run3 = acquire(services, make_reader(services, "manufacturing_demo"), cutoff=FIXTURE_CUTOFF, idempotency_key="life-3")
+    candidate3, _ = schedule(services, source_run=run3.run_id, purpose=Purpose.EXECUTABLE, budget_seconds=5, max_moves=9)
+    third = publish(services, candidate3.id)
+    assert third.status == "ACCEPTED", third.reasons
+    reg = GoalRegistry.load(services)
+    s2 = S1.replace(":S1", ":S2")
+    assert reg.plan_of_record(S1) == second.plan_id                                          # accepted mid-shift: a proposal for S1
+    assert reg.plan_of_record(s2) == third.plan_id                                           # ... and the plan of record of S2
+    assert all(r.plan_id == reg.plan_of_record(r.shift_id) for r in reg.records.values())
+    assert reg.record("NO-SUCH-TEAM", s2).plan_id == third.plan_id                           # a team with no units: B0 = 0 under S2's plan
+
+
+def test_an_amendment_waits_for_its_shift_to_start(published, tmp_path, app_root) -> None:
+    """D-26: a shift's goal of record is fixed when the shift starts, so work is added to it only from then on."""
+    from focus.performance.amendments import amend_goal
+
+    services = copy_of(published, tmp_path, app_root)
+    s2 = S1.replace(":S1", ":S2")                                                            # starts 18:30; the clock reads 10:00
+    with pytest.raises(DomainError) as err:
+        amend_goal(services, request_id="early-0001", requested_by="lead", plan_id=published.plan_id, expected_version=0,
+                   change={"kind": "ADD_EMERGENCY_WORK", "team": "PROD-B", "shift_id": s2, "phase_id": "J0.WORK.0"},
+                   reason="emergency rework found before the shift began", allowed_teams="*", at=FIXTURE_CUTOFF)
+    assert err.value.code == "SHIFT_NOT_STARTED"
+
+
+def test_a_feed_amendment_follows_the_same_shift_window_rule(published, tmp_path, app_root) -> None:
+    """D-26: the amendment feed quarantines additions approved before the shift started or after it ended, like the command."""
+    base = json.loads((INPUTS / "observations" / "goal_amendments.json").read_text(encoding="utf-8"))
+    row = base["rows"][0]                                                                     # approved 12:30 in S1 (10:00-18:30)
+    rows = [row | {"AMENDMENT_KEY": "AMD-EARLY", "DECISION_AT_UTC": "2026-10-26T09:59:00Z", "OBSERVED_AT_UTC": "2026-10-26T10:01:00Z"},
+            row | {"AMENDMENT_KEY": "AMD-LATE", "DECISION_AT_UTC": "2026-10-26T18:30:00Z", "OBSERVED_AT_UTC": "2026-10-26T18:31:00Z"},
+            row]
+    services = copy_of(published, tmp_path, app_root)
+    run = collect_observations(services, as_of=P1, reader=FixtureObservationReader(INPUTS, overrides={"goal_amendments": base | {"rows": rows}}))
+    assert {q.source_key: q.code for q in run.quarantine if q.feed == "goal_amendments"} == {"AMD-EARLY": "SHIFT_NOT_STARTED",
+                                                                                             "AMD-LATE": "SHIFT_ENDED"}
+    assert run.feed("goal_amendments").admitted == 1
 
 
 # ---------------------------------------------------------------------- commands through durable worker runs

@@ -237,7 +237,7 @@ def conditional_reasons(plan: Any) -> dict[str, int]:
 
 def team_shifts(inp: Inputs) -> list[tuple[str, str]]:
     """Every team-shift of an obligation day of record: the pools of those days plus the goals of record."""
-    days = set(inp.registry.day_plan)
+    days = set(inp.registry.day_plans)
     keys = {(r.team, r.shift_id) for r in inp.registry.records.values()}
     for pool in inp.canon.snapshot.pools:
         if pool.key.start_date in days:
@@ -286,6 +286,8 @@ def observed_cells(inp: Inputs, visible: Callable[[str | None], bool]) -> tuple[
             elif f.status == "MISSED":
                 c["missed_minutes"] += f.effort
                 c["relieved_minutes"] += f.effort if f.relief else 0
+            elif f.status == "DONE_BEFORE_SHIFT":                      # finished before the shift began: out of D with the relief
+                c["relieved_minutes"] += f.effort
             elif f.status == "PENDING":
                 c["pending_minutes"] += f.effort
             else:
@@ -439,15 +441,14 @@ def inventory_check(inv: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def b0_checks(inp: Inputs, planned: dict[Coord, dict[str, Any]], visible: Callable[[str | None], bool]) -> list[dict[str, Any]]:
-    """On each obligation day whose plan of record is the current executable plan, planned standard effort == frozen B0."""
+    """On each shift whose plan of record is the current executable plan, planned standard effort == frozen B0."""
     plan_id = inp.canon.plan_id("EXECUTABLE")
     out = []
     if plan_id is None:
         return out
-    days = {d for d, pid in inp.registry.day_plan.items() if pid == plan_id}
     for team, shift_id in team_shifts(inp):
         _, day, number = parse_shift_id(shift_id)
-        if day not in days or not visible(team):
+        if inp.registry.plan_of_record(shift_id) != plan_id or not visible(team):
             continue
         record = inp.registry.records.get((team, shift_id))
         frozen = 0 if record is None or record.goal is None else record.goal.standard_person_minutes

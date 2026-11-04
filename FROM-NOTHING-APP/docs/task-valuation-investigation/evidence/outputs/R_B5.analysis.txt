@@ -1,0 +1,54 @@
+== out/R_B5.json: n=5 units=378 fleet={'late_part_share': '0.02', 'late_delays': '((1.0, 1, 3),)'} plan=4,846,816 USD redispatch=True deterministic=True exec_overlap=240 exec={'seconds': 7.4, 'first_shift_units': 384, 'unknown_aircraft': 5, 'controllable_known_cents': 0.0, 'redispatch_accepted': True}
+  1201 late                           late 1.01 d rate 357000.0 ctrl 359479.1666666666
+  1202 late                           late 6.16 d rate 255000.0 ctrl 1570729.1666666665
+  1203 late                           late 6.73 d rate 328000.0 ctrl 2206027.777777778
+  1204 late                           late 1.34 d rate 380000.0 ctrl 509305.5555555555
+  1205 late                           late 0.59 d rate 343000.0 ctrl 201274.30555555556
+  graph {'prec_edges': 69503, 'person_edges': 15199, 'cyclic_nodes': 0} timings {'build_admit_s': 11.879, 'ctx_s': 1.729, 'plan_s': 10.017, 'a_plan_all_s': 0.163, 'decode_eval_s': 2.418, 'graph_build_s': 0.817, 'b_all_s': 0.096, 'b_units_s': 0.004, 'c_units_s': 0.014, 'c0_units_s': 0.004, 'd1_wall_s': 521.712, 'd1_n': 378} peak MB 643
+  units per aircraft {1201: 18, 1202: 9, 1203: 7, 1204: 10, 1205: 334}
+  precedence float TF (days): min 3.70 median 4.62 max 37.49; D (min) median 287.0
+
+-- distribution over the shift's units (USD for a one-shift slip)
+  a_seed_usd  {'n': 378, 'zero_share': 0.029, 'neg_share': 0.0, 'pos_share': 0.971, 'sum_pos': 18908116, 'sum_all': 18908116, 'top1pct_share': 0.025, 'top10pct_share': 0.237, 'max': 117906, 'min': 0, 'median': 38826}
+  a_plan_usd  {'n': 378, 'zero_share': 0.026, 'neg_share': 0.0, 'pos_share': 0.974, 'sum_pos': 509778, 'sum_all': 509778, 'top1pct_share': 0.037, 'top10pct_share': 0.276, 'max': 4755, 'min': 0, 'median': 1061}
+  b_usd       {'n': 378, 'zero_share': 1.0, 'neg_share': 0.0, 'pos_share': 0.0, 'sum_pos': 0, 'sum_all': 0, 'top1pct_share': None, 'top10pct_share': None, 'max': 0, 'min': 0, 'median': 0}
+  c0_usd      {'n': 378, 'zero_share': 1.0, 'neg_share': 0.0, 'pos_share': 0.0, 'sum_pos': 0, 'sum_all': 0, 'top1pct_share': None, 'top10pct_share': None, 'max': 0, 'min': 0, 'median': 0}
+  c_usd       {'n': 378, 'zero_share': 1.0, 'neg_share': 0.0, 'pos_share': 0.0, 'sum_pos': 0, 'sum_all': 0, 'top1pct_share': None, 'top10pct_share': None, 'max': 0, 'min': 0, 'median': 0}
+  d1_usd      {'n': 378, 'zero_share': 1.0, 'neg_share': 0.0, 'pos_share': 0.0, 'sum_pos': 0, 'sum_all': 0, 'top1pct_share': None, 'top10pct_share': None, 'max': 0, 'min': 0, 'median': 0}
+
+-- agreement with the exact counterfactual d1 (units with d1)
+  units 378; d1 nonzero 0 (pos 0, neg 0); unknown set changed 0; mean d1 0; d1 decode s median 2.64
+  a_seed_usd  n=378 spearman=None pearson=None MAE=$50,021 zero/nonzero agreement=0.029 both-zero=0.029 top10% overlap=None
+  a_plan_usd  n=378 spearman=None pearson=None MAE=$1,349 zero/nonzero agreement=0.026 both-zero=0.026 top10% overlap=None
+  b_usd       n=378 spearman=None pearson=None MAE=$0 zero/nonzero agreement=1.000 both-zero=1.000 top10% overlap=None
+  c0_usd      n=378 spearman=None pearson=None MAE=$0 zero/nonzero agreement=1.000 both-zero=1.000 top10% overlap=None
+  c_usd       n=378 spearman=None pearson=None MAE=$0 zero/nonzero agreement=1.000 both-zero=1.000 top10% overlap=None
+  largest |c_usd - d1|:
+    J0106ff3298381cfcc4cf.WORK line 1205 team T14 kind WORK TF 5.1d work 94 c_usd=0.0 d1=0 per-aircraft={} shifts={} moved=31
+    J01687db8897fc0a3ca65.WORK line 1205 team T16 kind WORK TF 4.4d work 94 c_usd=0.0 d1=0 per-aircraft={} shifts={} moved=20
+    J01c0d544fdab1e18b128.WORK line 1205 team T26 kind WORK TF 4.1d work 94 c_usd=0.0 d1=0 per-aircraft={} shifts={} moved=11
+    J05fdb6c29a3e2e2333b5.WORK line 1205 team T11 kind WORK TF 4.6d work 94 c_usd=0.0 d1=0 per-aircraft={} shifts={} moved=5
+    J06bc7be130fae4239099.WORK line 1205 team T19 kind WORK TF 5.1d work 94 c_usd=0.0 d1=0 per-aircraft={} shifts={} moved=17
+    J06dde012f1d88195aed4.WORK line 1205 team T22 kind WORK TF 3.9d work 94 c_usd=0.0 d1=0 per-aircraft={} shifts={} moved=556
+  largest |a_plan_usd - d1|:
+    J5e97e0a619f843148c52.WORK line 1205 team T22 kind WORK TF 3.8d work 94 a_plan_usd=4755.453709027778 d1=0 per-aircraft={} shifts={} moved=553
+    Ja1db203b96f2266fab28.WORK line 1205 team T22 kind WORK TF 3.8d work 94 a_plan_usd=4755.453709027778 d1=0 per-aircraft={} shifts={} moved=552
+    J06dde012f1d88195aed4.WORK line 1205 team T22 kind WORK TF 3.9d work 94 a_plan_usd=4571.6969375 d1=0 per-aircraft={} shifts={} moved=556
+    J3a30e7389d6128a9176a.WORK line 1205 team T22 kind WORK TF 3.9d work 94 a_plan_usd=4571.6969375 d1=0 per-aircraft={} shifts={} moved=555
+    J3a7a07bb058dafa95270.WORK line 1205 team T28 kind WORK TF 4.0d work 94 a_plan_usd=4571.6969375 d1=0 per-aircraft={} shifts={} moved=494
+    J9c70febe9b1b3e0d7182.WORK line 1205 team T12 kind WORK TF 3.9d work 94 a_plan_usd=4571.6969375 d1=0 per-aircraft={} shifts={} moved=354
+
+-- totals per team-shift and per aircraft (USD)
+  a_plan_usd: team-shifts 31, zero-total 0, top team 30,355, top-3 share 0.16473542804739955
+     by aircraft (own units): {1201: 1, 1202: 2, 1203: 289, 1204: 1374, 1205: 508112}
+  c_usd: team-shifts 31, zero-total 31, top team 0, top-3 share None
+     by aircraft (own units): {1201: 0, 1202: 0, 1203: 0, 1204: 0, 1205: 0}
+  d1_usd: team-shifts 31, zero-total 31, top team 0, top-3 share None
+     by aircraft (own units): {1201: 0, 1202: 0, 1203: 0, 1204: 0, 1205: 0}
+
+-- d1 impact attributed to aircraft (sum of d1_per over units)
+   {}
+  units whose d1 moved another aircraft's cost: 0 of 378
+
+-- variant pricing of the same completion shifts (own aircraft re-priced; others as planned)
+  d1_shift: total {'late': 0, 'early_2d': 0, 'at_cap': 0, 'unknown': 0} nonzero units {'late': 0, 'early_2d': 0, 'at_cap': 0, 'unknown': 0} units with unknown part {'late': 0, 'early_2d': 0, 'at_cap': 0, 'unknown': 0}

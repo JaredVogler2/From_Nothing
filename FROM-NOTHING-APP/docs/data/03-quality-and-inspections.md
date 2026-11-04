@@ -115,7 +115,7 @@ These four datasets add quality (QA) work to each job. `buyoff_plan` says which 
 | Grain and key | One row per hold point; a job (`LINE_NUMBER` + `SOI`) can have several. Neither S04 nor the code enforces a key; two holds of one job at the same position give `IP_HOLD_DUPLICATE_POSITION`. |
 | Required | No |
 | Capabilities | executable (registry tag; a missing hold also blocks forecast plans) |
-| If missing or empty | Live: `NOT_PROBED`, gap `DATASET_NOT_PROBED`. Without holds, every job whose buyoff plan has `IN_PROCESS_QUALITY_INSP` above 0 is BLOCKED with `IP_HOLD_UNKNOWN_LOCATION` in every plan, and its successors get `PREDECESSOR_NOT_SCHEDULABLE`. An empty fixture file without a certificate adds `DATASET_EMPTY_UNCERTIFIED`. |
+| If missing or empty | Live: `NOT_PROBED`, gap `DATASET_NOT_PROBED`. Without holds, every job whose buyoff plan has `IN_PROCESS_QUALITY_INSP` above 0 is BLOCKED with `IP_HOLD_UNKNOWN_LOCATION` in every plan, and its successors get `PREDECESSOR_NOT_SCHEDULABLE`. An empty fixture file without a certificate adds `DATASET_EMPTY_UNCERTIFIED`. In live mode the snapshot also carries the open-decision gap `OD-03`. |
 | Time and cutoff | No time columns, no freshness check, no cutoff column. Positions are production minutes, not clock times. |
 | Read by | `focus/data/inspections.py` (`build_triggers`, `phase_plan`), `focus/data/graph.py` |
 

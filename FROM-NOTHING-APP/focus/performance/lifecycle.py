@@ -1,10 +1,17 @@
 """Ordered lifecycle facts, goals of record, earning-unit facts and sequence violations (S14 OBSERVATIONS/OOS, P17).
 
-**Goals of record (B0).** For every obligation day, the first accepted EXECUTABLE plan (verified
-end to end) whose obligation set covers that day freezes B0 for every team-shift of the day. A
-team-shift without units in that plan has B0 = 0. Goals frozen for the same team-shift by later
-replans are proposals only: their new work counts only through an approved ``GoalAmendment``.
-Original units never shrink on replan, cancellation, reopen or transfer.
+**Goals of record (B0), one plan per shift (owner direction, November 2, 2026; D-26).** The scheduler
+runs before every shift and publishes that shift's plan. Each team-shift is scored against it: the last
+accepted EXECUTABLE plan (verified end to end) whose obligation set covers the shift's day and that was
+accepted at or before the shift starts. When no plan was accepted before the start, the first accepted
+plan covering the day stands in. A team-shift without units in its plan of record has B0 = 0.
+
+* Goals frozen for the same team-shift by the other accepted plans are proposals only: their new work
+  counts only through an approved ``GoalAmendment``.
+* Original units never shrink on replan, cancellation, reopen or transfer.
+* A unit whose work was verified complete before its shift started is ``DONE_BEFORE_SHIFT``: the next
+  plan was made while the previous shift was still finishing it, so nothing was left to do. It stays in
+  B0 and is taken out of D with the relief (``score.components``); it is never earned twice.
 
 **Revisions.** Revisions are applied before ordering:
 
@@ -31,11 +38,12 @@ effective order:
 goal is chosen by where the completion falls:
 
 1. inside the goal's shift window;
-2. otherwise inside its authorized OT window;
-3. otherwise before the window (early).
+2. otherwise inside its authorized OT window.
 
-A completion that lands in no goal's credit window is offplan (U) for the team-shift whose window
-contains it. Earning, relief and offplan sets are disjoint by construction.
+A completion before a goal's window earns nothing early: each shift is measured against its own plan,
+and a later shift's plan is made after the earlier shift's work. A completion that lands in no goal's
+credit window is offplan (U) for the team-shift whose window contains it. Earning, relief and offplan
+sets are disjoint by construction.
 
 **Sequence violations.** An actual start (start event, actual interval or implied by completion)
 that precedes satisfaction of a hard FS/SS predecessor in the admitted graph is recorded as a
@@ -89,13 +97,13 @@ def containing_shift_id(policy: Any, at: datetime, site: str) -> str | None:
 @dataclass(frozen=True)
 class GoalRecord:
     goal_id: str
-    plan_id: str                                  # the obligation plan of record for the shift day
+    plan_id: str                                  # the plan of record for the shift: accepted before it started
     team: str
     shift_id: str
     window: ShiftWindow
     goal: FrozenGoal | None                       # None: the obligation plan froze no units here (B0 = 0)
     amendments: tuple[GoalAmendment, ...] = ()
-    later_goal_ids: tuple[str, ...] = ()          # same team-shift frozen by later replans: proposals, never B0
+    later_goal_ids: tuple[str, ...] = ()          # same team-shift frozen by the other accepted plans: proposals, never B0
 
     @property
     def original_units(self) -> tuple[EarningUnit, ...]:
@@ -127,7 +135,8 @@ class GoalRegistry:
     scope: str
     site: str
     policy: Any
-    day_plan: dict[date, str] = field(default_factory=dict)              # obligation day -> plan id of record
+    day_plans: dict[date, list[tuple[str, datetime]]] = field(default_factory=dict)   # obligation day -> (plan id, accepted at), acceptance order
+    shift_plan: dict[str, str] = field(default_factory=dict)            # shift id -> plan id of record (filled as resolved)
     plan_snapshot: dict[str, str] = field(default_factory=dict)          # plan id -> snapshot id
     records: dict[tuple[str, str], GoalRecord] = field(default_factory=dict)
     goals: dict[str, FrozenGoal] = field(default_factory=dict)           # every accepted goal (records and proposals)
@@ -150,6 +159,7 @@ class GoalRegistry:
         reg.rejected = list(bad)
         repo = repository_for(services)
         proposals: dict[tuple[str, str], list[str]] = defaultdict(list)
+        valid: list[tuple[Any, dict[str, FrozenGoal]]] = []
         for current in plans:
             artifact, published = current.artifact, current.published
             reg.plan_snapshot[published.id] = artifact.snapshot_id
@@ -163,26 +173,30 @@ class GoalRegistry:
                 reg.rejected.append((published.id, "SECURITY_FAILURE: stored goals differ from the signed artifact"))
                 continue
             reg.goals.update(goals)
-            new_days = [d for d in artifact.obligation_dates if d not in reg.day_plan]
-            for d in new_days:
-                reg.day_plan[d] = published.id
-            starts = {a.id: a.start for a in artifact.candidate.assignments}
-            ends = {a.id: a.end for a in artifact.candidate.assignments}
-            crews = {a.id: tuple(r.person for r in a.crew) for a in artifact.candidate.assignments}
-            committed = {a.id for a in artifact.candidate.assignments if a.committed}
+            reg._covers(published.id, published.accepted_at, artifact.obligation_dates)
+            valid.append((current, goals))
+        # every plan is known before any shift's plan of record is chosen: a later acceptance can still precede a shift
+        for current, goals in valid:
+            artifact, published = current.artifact, current.published
+            mine = [g for g in goals.values() if reg.plan_of_record(g.shift_id) == published.id]
+            if mine:
+                starts = {a.id: a.start for a in artifact.candidate.assignments}
+                ends = {a.id: a.end for a in artifact.candidate.assignments}
+                crews = {a.id: tuple(r.person for r in a.crew) for a in artifact.candidate.assignments}
+                committed = {a.id for a in artifact.candidate.assignments if a.committed}
             for g in goals.values():
                 key = (g.team, g.shift_id)
-                if g.shift_start_date in new_days:
-                    reg.records[key] = GoalRecord(g.id, published.id, g.team, g.shift_id, shift_window(reg.policy, g.shift_id), g)
-                    for u in g.earning_units:
-                        if u.assignment_id in starts:
-                            reg.unit_start[u.id] = starts[u.assignment_id]
-                            reg.unit_end[u.id] = ends[u.assignment_id]
-                            reg.unit_crew[u.id] = crews[u.assignment_id]
-                        if u.assignment_id in committed:
-                            reg.committed_units.add(u.id)
-                else:
+                if reg.plan_of_record(g.shift_id) != published.id:
                     proposals[key].append(g.id)
+                    continue
+                reg.records[key] = GoalRecord(g.id, published.id, g.team, g.shift_id, shift_window(reg.policy, g.shift_id), g)
+                for u in g.earning_units:
+                    if u.assignment_id in starts:
+                        reg.unit_start[u.id] = starts[u.assignment_id]
+                        reg.unit_end[u.id] = ends[u.assignment_id]
+                        reg.unit_crew[u.id] = crews[u.assignment_id]
+                    if u.assignment_id in committed:
+                        reg.committed_units.add(u.id)
         for key, ids in proposals.items():
             if key in reg.records:
                 reg.records[key] = replace(reg.records[key], later_goal_ids=tuple(ids))
@@ -205,6 +219,7 @@ class GoalRegistry:
         reg.rejected = list(rejected or ())
         repo = repository_for(services)
         proposals: dict[tuple[str, str], list[str]] = defaultdict(list)
+        valid: list[tuple[Any, dict[str, FrozenGoal]]] = []
         for vp in plans:
             published, summary = vp.published, vp.summary
             reg.plan_snapshot[published.id] = summary.snapshot_id
@@ -218,11 +233,13 @@ class GoalRegistry:
                 reg.rejected.append((published.id, "SECURITY_FAILURE: stored goals differ from the signed artifact"))
                 continue
             reg.goals.update(goals)
-            new_days = [d for d in summary.obligation_dates if d not in reg.day_plan]
-            for d in new_days:
-                reg.day_plan[d] = published.id
+            reg._covers(published.id, published.accepted_at, summary.obligation_dates)
+            valid.append((vp, goals))
+        for vp, goals in valid:
+            published = vp.published
+            days = sorted({g.shift_start_date for g in goals.values() if reg.plan_of_record(g.shift_id) == published.id})
             facts: dict[str, Any] = {}
-            for d in new_days:
+            for d in days:
                 ref = vp.manifest.part(f"goals:{d.isoformat()}")
                 if ref is None:
                     continue
@@ -234,44 +251,62 @@ class GoalRegistry:
                 facts.update({f.assignment_id: f for f in part.facts})
             for g in goals.values():
                 key = (g.team, g.shift_id)
-                if g.shift_start_date in new_days:
-                    reg.records[key] = GoalRecord(g.id, published.id, g.team, g.shift_id, shift_window(reg.policy, g.shift_id), g)
-                    for u in g.earning_units:
-                        f = facts.get(u.assignment_id)
-                        if f is not None:
-                            reg.unit_start[u.id] = f.start
-                            reg.unit_end[u.id] = f.end
-                            reg.unit_crew[u.id] = f.crew
-                            if f.committed:
-                                reg.committed_units.add(u.id)
-                else:
+                if reg.plan_of_record(g.shift_id) != published.id:
                     proposals[key].append(g.id)
+                    continue
+                reg.records[key] = GoalRecord(g.id, published.id, g.team, g.shift_id, shift_window(reg.policy, g.shift_id), g)
+                for u in g.earning_units:
+                    f = facts.get(u.assignment_id)
+                    if f is not None:
+                        reg.unit_start[u.id] = f.start
+                        reg.unit_end[u.id] = f.end
+                        reg.unit_crew[u.id] = f.crew
+                        if f.committed:
+                            reg.committed_units.add(u.id)
         for key, ids in proposals.items():
             if key in reg.records:
                 reg.records[key] = replace(reg.records[key], later_goal_ids=tuple(ids))
         return reg
 
-    def goal_id_for(self, team: str, shift_id: str) -> str | None:
-        record = self.records.get((team, shift_id))
-        if record is not None:
-            return record.goal_id
+    def _covers(self, plan_id: str, accepted_at: datetime, days: Iterable[date]) -> None:
+        for d in days:
+            self.day_plans.setdefault(d, []).append((plan_id, accepted_at))
+
+    def plan_of_record(self, shift_id: str) -> str | None:
+        """The plan whose frozen goals a shift is scored against: the last accepted plan covering the shift's day that was
+        accepted at or before the shift started (the run before the shift), else the first accepted plan covering it."""
+        found = self.shift_plan.get(shift_id)
+        if found is not None:
+            return found
         try:
             _, day, _ = parse_shift_id(shift_id)
         except ValueError:
             return None
-        plan_id = self.day_plan.get(day)
+        plans = self.day_plans.get(day)
+        if not plans:
+            return None
+        start = shift_window(self.policy, shift_id).start
+        before = [pid for pid, at in plans if at <= start]
+        chosen = before[-1] if before else plans[0][0]
+        self.shift_plan[shift_id] = chosen
+        return chosen
+
+    def goal_id_for(self, team: str, shift_id: str) -> str | None:
+        record = self.records.get((team, shift_id))
+        if record is not None:
+            return record.goal_id
+        plan_id = self.plan_of_record(shift_id)
         return None if plan_id is None else digest_id("GOAL", plan_id, team, shift_id)
 
     def record(self, team: str, shift_id: str) -> GoalRecord | None:
-        """The record of a team-shift, including a B0 = 0 record when the day's obligation plan froze nothing for it."""
+        """The record of a team-shift, including a B0 = 0 record when the shift's plan of record froze nothing for it."""
         found = self.records.get((team, shift_id))
         if found is not None:
             return found
         goal_id = self.goal_id_for(team, shift_id)
         if goal_id is None:
             return None
-        _, day, _ = parse_shift_id(shift_id)
-        return GoalRecord(goal_id, self.day_plan[day], team, shift_id, shift_window(self.policy, shift_id), None)
+        return GoalRecord(goal_id, self.plan_of_record(shift_id) or "", team, shift_id, shift_window(self.policy, shift_id), None)
 
     def by_goal_id(self) -> dict[str, GoalRecord]:
         return {r.goal_id: r for r in self.records.values()}
@@ -650,16 +685,14 @@ class Credit:
 
 
 def select_goal(at: datetime, candidates: list[GoalRecord]) -> GoalRecord | None:
-    """The one goal a completion at ``at`` credits: shift window, then authorized OT window, then the next planned (early)."""
+    """The one goal a completion at ``at`` credits: its shift window, then its authorized OT window. Never early: each
+    shift is scored against its own plan, made after the earlier shifts' work (D-26)."""
     proper = [r for r in candidates if r.window.start <= at < r.window.end]
     if proper:
         return min(proper, key=lambda r: (r.window.start, r.goal_id))
     grace = [r for r in candidates if r.window.end <= at < r.window.credit_deadline]
     if grace:
         return min(grace, key=lambda r: (r.window.start, r.goal_id))
-    early = [r for r in candidates if at < r.window.start]
-    if early:
-        return min(early, key=lambda r: (r.window.start, r.goal_id))
     return None
 
 
@@ -832,6 +865,9 @@ class ObservationView:
             reasons: list[str] = list(cycle.reasons) if cycle else []
             if credit is not None:
                 status = "EARNED"
+            elif cycle is not None and cycle.completed_at is not None and cycle.completed_at < record.window.start:
+                status = "DONE_BEFORE_SHIFT"                          # finished before the shift began: nothing was left to do
+                reasons.append("VERIFIED_COMPLETE_BEFORE_SHIFT_START")
             elif cycle is not None and cycle.unknown:
                 status = "UNKNOWN"
             elif record.window.credit_deadline > self.as_of:

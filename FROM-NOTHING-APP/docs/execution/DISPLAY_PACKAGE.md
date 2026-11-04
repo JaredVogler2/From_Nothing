@@ -131,8 +131,9 @@ precompute yet.
   - Every writer checks each part its manifest names, not just the manifest, and puts back what is missing. The build
     is deterministic, so a rebuilt part hashes to the stored manifest.
 - **Not yet done:** the live SQL mapping of the display collections (parts, manifests, receipts, candidate digests, the
-  retention ledger and its receipts). It is the same pending live adapter as every other collection
-  (`focus/data/sql_store.py`), and for parts it must also implement the store's retention operations (below).
+  retention ledger and its receipts). None of these collections has a FOCUS_FN table yet, so a new migration comes
+  first (`SQL_SCHEMA_LEDGER.md`); then the pending live adapter (`focus/data/sql_store.py`), which for parts must also
+  implement the store's retention operations (below), with a locked purge procedure for the retention role.
 
 ## Retention (D-24)
 

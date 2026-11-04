@@ -1,0 +1,82 @@
+== out/R_H5.json: n=5 units=121 fleet={'late_part_share': '0.02', 'late_delays': '((1.0, 1, 3),)'} plan=4,846,816 USD redispatch=True deterministic=True exec_overlap=None exec=None
+  1201 late                           late 1.01 d rate 357000.0 ctrl 359479.1666666666
+  1202 late                           late 6.16 d rate 255000.0 ctrl 1570729.1666666665
+  1203 late                           late 6.73 d rate 328000.0 ctrl 2206027.777777778
+  1204 late                           late 1.34 d rate 380000.0 ctrl 509305.5555555555
+  1205 late                           late 0.59 d rate 343000.0 ctrl 201274.30555555556
+  graph {'prec_edges': 69503, 'person_edges': 15199, 'cyclic_nodes': 0} timings {'build_admit_s': 14.687, 'ctx_s': 1.211, 'plan_s': 9.158, 'a_plan_all_s': 0.131, 'decode_eval_s': 3.204, 'graph_build_s': 1.058, 'b_all_s': 0.155, 'b_units_s': 0.003, 'c_units_s': 0.651, 'c0_units_s': 0.048, 'd1_wall_s': 173.253, 'd1_n': 121, 'd2_wall_s': 53.339, 'd2_n': 14} peak MB 642
+  units per aircraft {1201: 30, 1202: 21, 1203: 19, 1204: 24, 1205: 27}
+  precedence float TF (days): min 0.00 median 0.82 max 21.50; D (min) median 345.0
+
+-- distribution over the shift's units (USD for a one-shift slip)
+  a_seed_usd  {'n': 121, 'zero_share': 0.008, 'neg_share': 0.0, 'pos_share': 0.992, 'sum_pos': 5959801, 'sum_all': 5959801, 'top1pct_share': 0.044, 'top10pct_share': 0.266, 'max': 130625, 'min': 0, 'median': 38826}
+  a_plan_usd  {'n': 121, 'zero_share': 0.008, 'neg_share': 0.0, 'pos_share': 0.992, 'sum_pos': 6309649, 'sum_all': 6309649, 'top1pct_share': 0.041, 'top10pct_share': 0.249, 'max': 130625, 'min': 0, 'median': 46927}
+  b_usd       {'n': 121, 'zero_share': 0.744, 'neg_share': 0.0, 'pos_share': 0.256, 'sum_pos': 2260177, 'sum_all': 2260177, 'top1pct_share': 0.11, 'top10pct_share': 0.594, 'max': 130625, 'min': 0, 'median': 0}
+  c0_usd      {'n': 121, 'zero_share': 0.736, 'neg_share': 0.0, 'pos_share': 0.264, 'sum_pos': 2700292, 'sum_all': 2700292, 'top1pct_share': 0.128, 'top10pct_share': 0.594, 'max': 172302, 'min': 0, 'median': 0}
+  c_usd       {'n': 121, 'zero_share': 0.702, 'neg_share': 0.0, 'pos_share': 0.298, 'sum_pos': 2941115, 'sum_all': 2941115, 'top1pct_share': 0.117, 'top10pct_share': 0.545, 'max': 172302, 'min': 0, 'median': 0}
+  d1_usd      {'n': 121, 'zero_share': 0.612, 'neg_share': 0.033, 'pos_share': 0.355, 'sum_pos': 4052181, 'sum_all': 3090483, 'top1pct_share': 0.147, 'top10pct_share': 0.52, 'max': 421458, 'min': -472639, 'median': 0}
+  d2_usd      {'n': 14, 'zero_share': 0.857, 'neg_share': 0.0, 'pos_share': 0.143, 'sum_pos': 72250, 'sum_all': 72250, 'top1pct_share': 0.755, 'top10pct_share': 1.0, 'max': 54542, 'min': 0, 'median': 0}
+
+-- agreement with the exact counterfactual d1 (units with d1)
+  units 121; d1 nonzero 47 (pos 43, neg 4); unknown set changed 0; mean d1 25,541; d1 decode s median 2.71
+  a_seed_usd  n=121 spearman=0.465 pearson=0.268 MAE=$42,693 zero/nonzero agreement=0.397 both-zero=0.008 top10% overlap=0.46153846153846156
+  a_plan_usd  n=121 spearman=0.489 pearson=0.348 MAE=$43,696 zero/nonzero agreement=0.397 both-zero=0.008 top10% overlap=0.46153846153846156
+  b_usd       n=121 spearman=0.757 pearson=0.498 MAE=$22,821 zero/nonzero agreement=0.868 both-zero=0.612 top10% overlap=0.5384615384615384
+  c0_usd      n=121 spearman=0.767 pearson=0.517 MAE=$19,121 zero/nonzero agreement=0.876 both-zero=0.612 top10% overlap=0.6153846153846154
+  c_usd       n=121 spearman=0.706 pearson=0.471 MAE=$19,741 zero/nonzero agreement=0.893 both-zero=0.603 top10% overlap=0.6153846153846154
+  d2_usd      n=14 spearman=1.0 pearson=1.0 MAE=$0 zero/nonzero agreement=1.000 both-zero=0.857 top10% overlap=0.0
+  largest |c_usd - d1|:
+    J500800ad2e71f5456387.WORK line 1204 team T11 kind WORK TF 2.6d work 150 c_usd=0.0 d1=-472,639 per-aircraft={'1203': -472638.8888888889} shifts={'1203': -2075} moved=5558
+    J11e3864f70fb297e7fab.FINA line 1201 team QA kind FINAL_QA TF 2.2d work 45 c_usd=0.0 d1=421,458 per-aircraft={'1202': 421458.3333333334} shifts={'1202': 2380} moved=1230
+    Jaa0b1d00abccde798222.WORK line 1204 team T18 kind WORK TF 0.7d work 150 c_usd=55416.66666666667 d1=-200,809 per-aircraft={'1201': -259072.9166666667, '1202': 166458.33333333334, '1203': -108194.44444444444} shifts={'1201': -1045, '1202': 940, '1203': -475} moved=13874
+    Je1b3e8151a21aba6092b.WORK line 1201 team T18 kind WORK TF 1.6d work 150 c_usd=82875.0 d1=-112,448 per-aircraft={'1202': -112447.91666666666} shifts={'1202': -635} moved=1116
+    J68143dd06976ea43660b.WORK line 1201 team T25 kind WORK TF 2.7d work 225 c_usd=0.0 d1=-175,802 per-aircraft={'1201': -58260.41666666667, '1202': -38958.333333333336, '1203': -78583.33333333333} shifts={'1201': -235, '1202': -220, '1203': -345} moved=7495
+    Jbffa91abea4cca332596.WORK line 1201 team T11 kind WORK TF 4.0d work 150 c_usd=0.0 d1=158,306 per-aircraft={'1203': 158305.55555555556} shifts={'1203': 695} moved=1872
+  largest |a_plan_usd - d1|:
+    J500800ad2e71f5456387.WORK line 1204 team T11 kind WORK TF 2.6d work 150 a_plan_usd=19279.398958333335 d1=-472,639 per-aircraft={'1203': -472638.8888888889} shifts={'1203': -2075} moved=5558
+    J11e3864f70fb297e7fab.FINA line 1201 team QA kind FINAL_QA TF 2.2d work 45 a_plan_usd=48599.67561458333 d1=421,458 per-aircraft={'1202': 421458.3333333334} shifts={'1202': 2380} moved=1230
+    Jaa0b1d00abccde798222.WORK line 1204 team T18 kind WORK TF 0.7d work 150 a_plan_usd=71250.0 d1=-200,809 per-aircraft={'1201': -259072.9166666667, '1202': 166458.33333333334, '1203': -108194.44444444444} shifts={'1201': -1045, '1202': 940, '1203': -475} moved=13874
+    J68143dd06976ea43660b.WORK line 1201 team T25 kind WORK TF 2.7d work 225 a_plan_usd=29276.91302083333 d1=-175,802 per-aircraft={'1201': -58260.41666666667, '1202': -38958.333333333336, '1203': -78583.33333333333} shifts={'1201': -235, '1202': -220, '1203': -345} moved=7495
+    Je1b3e8151a21aba6092b.WORK line 1201 team T18 kind WORK TF 1.6d work 150 a_plan_usd=69416.66666666667 d1=-112,448 per-aircraft={'1202': -112447.91666666666} shifts={'1202': -635} moved=1116
+    Jbffa91abea4cca332596.WORK line 1201 team T11 kind WORK TF 4.0d work 150 a_plan_usd=11575.37171875 d1=158,306 per-aircraft={'1203': 158305.55555555556} shifts={'1203': 695} moved=1872
+
+-- totals per team-shift and per aircraft (USD)
+  a_plan_usd: team-shifts 30, zero-total 0, top team 730,731, top-3 share 0.30498552079826385
+     by aircraft (own units): {1201: 1880597, 1202: 796045, 1203: 859834, 1204: 1482016, 1205: 1291158}
+  c_usd: team-shifts 30, zero-total 15, top team 488,267, top-3 share 0.42731107467052953
+     by aircraft (own units): {1201: 1240469, 1202: 88542, 1203: 499972, 1204: 352292, 1205: 759840}
+  d1_usd: team-shifts 30, zero-total 10, top team 929,083, top-3 share 0.44161310767536843
+     by aircraft (own units): {1201: 1474608, 1202: 198333, 1203: 616139, 1204: 16552, 1205: 784851}
+
+-- d1 impact attributed to aircraft (sum of d1_per over units)
+   {'1201': (919771, 13), '1202': (1845208, 13), '1203': (-756222, 14), '1204': (296875, 4), '1205': (784851, 11)}
+  units whose d1 moved another aircraft's cost: 10 of 121
+
+-- variant pricing of the same completion shifts (own aircraft re-priced; others as planned)
+  d1_shift: total {'late': 3090483, 'early_2d': 15441, 'at_cap': -42819, 'unknown': 15441} nonzero units {'late': 47, 'early_2d': 10, 'at_cap': 10, 'unknown': 10} units with unknown part {'late': 0, 'early_2d': 0, 'at_cap': 0, 'unknown': 39}
+
+-- non-additivity: joint counterfactual vs the sum of individual d1
+  aircraft_critical      k=10 sum=1,064,802 max=172,302 joint=172,302 sum_c=1,074,719 sum_b=763,583 unknown_changed=False
+  aircraft_critical      k=5 sum=492,000 max=127,556 joint=127,556 sum_c=447,583 sum_b=408,861 unknown_changed=False
+  aircraft_critical      k=4 sum=296,875 max=134,583 joint=134,583 sum_c=296,875 sum_b=281,042 unknown_changed=False
+  aircraft_critical      k=7 sum=619,306 max=121,479 joint=121,479 sum_c=619,306 sum_b=551,420 unknown_changed=False
+  random_missed          k=4 sum=5,844 max=118,292 joint=40,375 sum_c=165,750 sum_b=0 unknown_changed=False
+  random_missed          k=4 sum=68,177 max=68,177 joint=68,177 sum_c=73,135 sum_b=48,344 unknown_changed=False
+  random_missed          k=4 sum=127,167 max=71,750 joint=127,167 sum_c=55,417 sum_b=51,458 unknown_changed=False
+  random_missed          k=4 sum=98,851 max=98,851 joint=98,851 sum_c=98,851 sum_b=95,278 unknown_changed=False
+  random_missed          k=4 sum=484,424 max=421,458 joint=129,372 sum_c=45,257 sum_b=46,448 unknown_changed=False
+  random_missed          k=4 sum=69,062 max=69,062 joint=69,062 sum_c=69,062 sum_b=71,719 unknown_changed=False
+  random_missed          k=4 sum=121,479 max=121,479 joint=121,479 sum_c=121,479 sum_b=117,906 unknown_changed=False
+  random_missed          k=4 sum=136,062 max=68,177 joint=136,062 sum_c=141,021 sum_b=112,656 unknown_changed=False
+  random_missed          k=4 sum=104,125 max=104,125 joint=104,125 sum_c=104,125 sum_b=100,406 unknown_changed=False
+  random_missed          k=4 sum=79,333 max=79,333 joint=79,333 sum_c=79,333 sum_b=75,615 unknown_changed=False
+  random_missed          k=4 sum=127,556 max=127,556 joint=127,556 sum_c=105,917 sum_b=102,500 unknown_changed=False
+  random_missed          k=4 sum=116,000 max=104,125 joint=116,000 sum_c=116,000 sum_b=108,323 unknown_changed=False
+  random_missed          k=4 sum=557,205 max=421,458 joint=557,205 sum_c=135,747 sum_b=133,219 unknown_changed=False
+  random_missed          k=4 sum=-472,639 max=0 joint=131,042 sum_c=9,740 sum_b=0 unknown_changed=False
+  random_missed          k=4 sum=0 max=0 joint=0 sum_c=0 sum_b=0 unknown_changed=False
+  aircraft_all_sampled   k=10 sum=291,514 max=421,458 joint=814,646 sum_c=82,875 sum_b=0 unknown_changed=False
+  aircraft_all_sampled   k=10 sum=0 max=0 joint=0 sum_c=0 sum_b=0 unknown_changed=False
+  aircraft_all_sampled   k=10 sum=0 max=0 joint=0 sum_c=0 sum_b=0 unknown_changed=False
+  aircraft_all_sampled   k=10 sum=-673,448 max=0 joint=-36,809 sum_c=55,417 sum_b=0 unknown_changed=False
+  aircraft_all_sampled   k=10 sum=0 max=0 joint=0 sum_c=0 sum_b=0 unknown_changed=False

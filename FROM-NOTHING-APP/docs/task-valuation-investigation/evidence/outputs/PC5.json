@@ -1,0 +1,94 @@
+{
+ "n": 5,
+ "team_size": [
+  5,
+  8
+ ],
+ "fleet": {
+  "late_part_share": "0.02",
+  "late_delays": "((1.0, 1, 3),)"
+ },
+ "K": 9,
+ "phases": 46030,
+ "jobs": 29698,
+ "redispatch_accepted": true,
+ "known_economics": 5,
+ "plans": {
+  "redispatch": {
+   "units": 378,
+   "graph_build_s": 0.47,
+   "probe_all_units_s": 0.07,
+   "probe_per_unit_ms": 0.18,
+   "classes": {
+    "base": {
+     "FLOAT": 378
+    },
+    "due_minus_1d": {
+     "FLOAT": 378
+    },
+    "due_plus_1d": {
+     "FLOAT": 378
+    }
+   },
+   "changed_vs_base": {
+    "due_minus_1d": 0,
+    "due_plus_1d": 0
+   },
+   "changed_share": {
+    "due_minus_1d": 0.0,
+    "due_plus_1d": 0.0
+   },
+   "aircraft_state": {
+    "late": 5
+   },
+   "controllable_usd": 4846815.972222222
+  },
+  "seed": {
+   "units": 347,
+   "graph_build_s": 1.13,
+   "probe_all_units_s": 2.03,
+   "probe_per_unit_ms": 5.86,
+   "classes": {
+    "base": {
+     "FLOAT": 336,
+     "AT_RISK": 11
+    },
+    "due_minus_1d": {
+     "FLOAT": 336,
+     "AT_RISK": 11
+    },
+    "due_plus_1d": {
+     "FLOAT": 336,
+     "AT_RISK": 11
+    }
+   },
+   "changed_vs_base": {
+    "due_minus_1d": 0,
+    "due_plus_1d": 0
+   },
+   "changed_share": {
+    "due_minus_1d": 0.0,
+    "due_plus_1d": 0.0
+   },
+   "aircraft_state": {
+    "late": 5
+   },
+   "controllable_usd": 8966229.166666666
+  }
+ },
+ "seed_vs_redispatch": {
+  "common_units": 28,
+  "agree": 27,
+  "agree_share": 0.9643,
+  "transitions_seed_to_redispatch": {
+   "AT_RISK->FLOAT": 1,
+   "FLOAT->FLOAT": 27
+  }
+ },
+ "timings": {
+  "build_admit_s": 10.1,
+  "ctx_s": 1.3,
+  "plan_s": 8.7
+ },
+ "peak_rss_mb": 581
+}

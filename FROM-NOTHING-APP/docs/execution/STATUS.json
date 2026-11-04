@@ -1833,7 +1833,7 @@
       ],
       "live_verified": false,
       "remaining_gaps": [
-        "live repository adapter onto the FOCUS_FN tables not built: live hosts stay REPOSITORY_UNAVAILABLE until it exists and 001-009 are installed by an authorized installer",
+        "live repository adapter onto the FOCUS_FN tables not built: live hosts stay REPOSITORY_UNAVAILABLE until it exists and 001-010 are installed by an authorized installer",
         "no SQL installed, no grant applied, no CI pushed or activated, no host deployed; SqlCatalog and the confirmed installer path are untested live",
         "live observation producers (OD-15) not installed: the evaluator step refuses live",
         "re-run queries/discovery/fn_collisions.sql against the target before any install",
@@ -1935,7 +1935,7 @@
         "verdict": "review/VERDICT-001.json"
       },
       "remaining_gaps": [
-        "LG-01 SQL schema: FOCUS_FN migrations 001-009 are not installed on any SQL Server. Effect: A live host starts with REPOSITORY_UNAVAILABLE: /health/live is 200, /health/ready is 503, nothing is stored and pipeline steps stop with typed unavailability.",
+        "LG-01 SQL schema: FOCUS_FN migrations 001-010 are not installed on any SQL Server. Effect: A live host starts with REPOSITORY_UNAVAILABLE: /health/live is 200, /health/ready is 503, nothing is stored and pipeline steps stop with typed unavailability.",
         "LG-02 Live repository adapter: The mapping of the repository protocol onto the FOCUS_FN tables is not built; focus/data/sql_store.py refuses every write. Effect: Even with the schema installed, live storage stays REPOSITORY_UNAVAILABLE.",
         "LG-03 Roles and grants: sql/grants/focus_fn_roles.sql is generated and linted but not applied, and no login is mapped to a role. Effect: No live process holds its role's permissions; the separation of duties exists only as a reviewed script.",
         "LG-04 Signing key custody: No production signing key or FOCUS_SIGN_KEY_REF exists; only the fixture TEST key is present. Effect: Live publication refuses, so there is no executable acceptance and no executable dispatch.",

@@ -1,0 +1,32 @@
+rev 5d1236c8e5777b9075a652571707ae57bf5357ff
+=== study.py 5 5,8 R_H5 --units horizon --d1 all --d2 14 --joint 15 --late-share 0.02 --late-max 3 (12:52:27)
+fixture n=5 team_size=(5, 8): 1.3s scale=1.2504 mech/shift=199 qa=4 late_parts={'undated': 0, 'history': 221, '1-3 days': 253}
+admitted 29698 jobs, 46030 phases, 125341 edges in 12.3s; rss peak 438 MB
+{"plan": {"placed": 30282, "deferred": 0, "controllable_usd": 4846815.972222222, "unknown": [], "concurrency_edges": 0, "hard_latest": 0}, "redispatch_accepted": true, "deterministic": true}
+units=121 b 0.00s c 0.65s c0 0.05s rss 601 MB
+d1: 121 counterfactuals in 173.3s wall
+d2: 14 in 53.3s wall; baseline {'ctrl_usd': 4846815.972222222, 'plan_ctrl_usd': 4846815.972222222, 'kept': 16332, 'rehomed': 0, 'unknown': [], 'redispatch_kept': False, 'seconds': 6.809184793999975}
+joint: 24 sets
+{"build_admit_s": 14.687, "ctx_s": 1.211, "plan_s": 9.158, "a_plan_all_s": 0.131, "decode_eval_s": 3.204, "graph_build_s": 1.058, "b_all_s": 0.155, "b_units_s": 0.003, "c_units_s": 0.651, "c0_units_s": 0.048, "d1_wall_s": 173.253, "d1_n": 121, "d2_wall_s": 53.339, "d2_n": 14} peak MB 642
+exit=0 (12:57:25)
+=== inversions.py 20 8,16 R_INV20 (12:57:25)
+fixture n=20 team_size=(8, 16): 2.1s scale=0.5451 mech/shift=347 qa=9 late_parts={'undated': 0, 'history': 8345, '1-3 days': 6648, '8-14 days': 540, '4-7 days': 2375}
+admitted 118021 jobs, 178568 phases, 504903 edges in 37.8s; rss peak 1355 MB
+EXECUTABLE {"seconds": 24.5, "units": 3532, "team_shifts": 93, "person_shifts": 834, "units_with_nonzero_a": 3429, "a_p90_nonzero_usd": 2065.6635312500002, "unknown_aircraft": 20, "redispatch_kept": true, "causes_all_units": {"crew_or_capacity_wait": 3212, "precedence": 272, "precedence_same_job": 46, "station_window": 2}, "units_waited": 3212}
+  V1_spm                           team-shift inv 0.957 changed 0.798 rel med/p90 0.047619047619047554/0.3650793650793651 (changed 0.07112068965517242/0.5420454545454545) block med/p90/max 22/43/61 pairs 0.149 | person inv 0.597 changed 0.412 rel p90 0.375 block max 11
+  V2_spm_x_weight(a)               team-shift inv 1.0 changed 0.766 rel med/p90 0.046875/0.45078125 (changed 0.0833333333333334/0.6042857142857143) block med/p90/max 20/37/51 pairs 0.148 | person inv 0.617 changed 0.394 rel p90 0.375 block max 11
+  V3_delay_usd(a)+floor            team-shift inv 1.0 changed 0.586 rel med/p90 0.05149668694540243/1.2497081568922388 (changed 0.216566439992999/3.062648991526978) block med/p90/max 11/18/31 pairs 0.124 | person inv 0.771 changed 0.339 rel p90 0.334600929473341 block max 9
+FORECAST {"seconds": 46.3, "units": 3533, "team_shifts": 93, "person_shifts": 834, "units_with_nonzero_a": 3419, "a_p90_nonzero_usd": 2223.715826388889, "unknown_aircraft": 0, "redispatch_kept": true, "causes_all_units": {"crew_or_capacity_wait": 3220, "precedence": 261, "precedence_same_job": 49, "station_window": 3}, "units_waited": 3220}
+  V1_spm                           team-shift inv 0.957 changed 0.788 rel med/p90 0.046428571428571354/0.3418803418803419 (changed 0.06534090909090917/0.5464285714285715) block med/p90/max 22/36/61 pairs 0.147 | person inv 0.616 changed 0.422 rel p90 0.375 block max 11
+  V2_spm_x_weight(a)               team-shift inv 0.989 changed 0.782 rel med/p90 0.05042613636363633/0.42857142857142855 (changed 0.0833333333333334/0.596078431372549) block med/p90/max 20/33/49 pairs 0.149 | person inv 0.647 changed 0.414 rel p90 0.375 block max 11
+  V3_delay_usd(a)+floor            team-shift inv 0.978 changed 0.609 rel med/p90 0.0657655035662129/1.324273238958208 (changed 0.22043578333608774/3.015030624872723) block med/p90/max 10/21/39 pairs 0.145 | person inv 0.806 changed 0.376 rel p90 0.3883044158330967 block max 7
+peak MB 1582
+exit=0 (12:59:24)
+=== study.py 5 5,8 R_B5 --d1 all --exec --late-share 0.02 --late-max 3 (12:59:24)
+fixture n=5 team_size=(5, 8): 0.9s scale=1.2504 mech/shift=199 qa=4 late_parts={'undated': 0, 'history': 221, '1-3 days': 253}
+admitted 29698 jobs, 46030 phases, 125341 edges in 10.9s; rss peak 439 MB
+{"plan": {"placed": 30282, "deferred": 0, "controllable_usd": 4846815.972222222, "unknown": [], "concurrency_edges": 0, "hard_latest": 0}, "redispatch_accepted": true, "deterministic": true}
+units=378 b 0.00s c 0.01s c0 0.00s rss 600 MB
+d1: 378 counterfactuals in 521.7s wall
+{"build_admit_s": 11.879, "ctx_s": 1.729, "plan_s": 10.017, "a_plan_all_s": 0.163, "decode_eval_s": 2.418, "graph_build_s": 0.817, "b_all_s": 0.096, "b_units_s": 0.004, "c_units_s": 0.014, "c0_units_s": 0.004, "d1_wall_s": 521.712, "d1_n": 378} peak MB 643
+exit=0 (13:08:43)

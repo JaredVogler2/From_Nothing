@@ -1,0 +1,16 @@
+out/R_H5.json: n=121 exact nonzero=47 negative=4
+  A effort (standard person-minutes)                      spearman -0.197  top-10% overlap 0.17
+  B1 CPM tail (pure work minutes)                         spearman -0.371  top-10% overlap 0.08
+  B2 negative precedence float (-TF)                      spearman +0.662  top-10% overlap 0.25
+  C FOCUS cost_of_delay on plan (a)                       spearman +0.489  top-10% overlap 0.42  zero/nonzero agreement 0.40
+  D-proxy precedence float $ (b)                          spearman +0.757  top-10% overlap 0.50  zero/nonzero agreement 0.87
+  D-proxy schedule-graph right shift $ (c)                spearman +0.706  top-10% overlap 0.58  zero/nonzero agreement 0.89
+  F effort x band(c) [1, 2 if c>0, 3 if c top decile]     spearman +0.173  top-10% overlap 0.17
+out/H5.json: n=80 exact nonzero=33 negative=1
+  A effort (standard person-minutes)                      spearman -0.227  top-10% overlap 0.12
+  B1 CPM tail (pure work minutes)                         spearman -0.440  top-10% overlap 0.00
+  B2 negative precedence float (-TF)                      spearman +0.729  top-10% overlap 0.38
+  C FOCUS cost_of_delay on plan (a)                       spearman +0.581  top-10% overlap 0.50  zero/nonzero agreement 0.41
+  D-proxy precedence float $ (b)                          spearman +0.795  top-10% overlap 0.62  zero/nonzero agreement 0.90
+  D-proxy schedule-graph right shift $ (c)                spearman +0.828  top-10% overlap 0.62  zero/nonzero agreement 0.91
+  F effort x band(c) [1, 2 if c>0, 3 if c top decile]     spearman +0.248  top-10% overlap 0.25

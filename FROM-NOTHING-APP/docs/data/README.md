@@ -3,7 +3,7 @@
 This folder describes every input FOCUS reads: what it is for, its grain and key, whether a run needs it, what happens
 when it is missing or empty, its clocks, and what each column means and how FOCUS uses it.
 
-- **44 planning datasets** (387 columns), captured together at each cutoff into one source run:
+- **44 planning datasets** (388 columns), captured together at each cutoff into one source run:
   - 28 **SOURCE** datasets, each a projection of a reference table with checked-in SQL;
   - 16 **SUPPLEMENTAL** datasets: typed inputs that table metadata alone cannot establish (rosters, leave, overtime
     authority, certificate census, part receipts and so on).
@@ -82,7 +82,7 @@ FOCUS" says whether anything beyond freshness checks and display uses the conten
 | [`person_team_map`](05-people-teams-and-availability.md#person_team_map) | SOURCE | No | Reference SQL query | Yes | Current effective team assignment; needed for any executable crew member |
 | [`team_inference`](05-people-teams-and-availability.md#team_inference) | SUPPLEMENTAL | No | Supplemental SQL path; producer table not installed | Display only | SQL-computed nominal home team; labels and review queue only |
 | [`mech_team_inferred`](05-people-teams-and-availability.md#mech_team_inferred) | SOURCE | No | Reference SQL query | No | Legacy inferred team; comparison evidence for the SQL inference |
-| [`dept_team_skill_ref`](05-people-teams-and-availability.md#dept_team_skill_ref) | SOURCE | No | Reference SQL query | No | Department-to-team map behind the SQL inference's department fallback |
+| [`dept_team_skill_ref`](05-people-teams-and-availability.md#dept_team_skill_ref) | SOURCE | No | Reference SQL query | No (freshness check only) | Department-to-team map behind the SQL inference's department fallback |
 | [`shift_roster`](05-people-teams-and-availability.md#shift_roster) | SUPPLEMENTAL | No | None yet: reports NOT_PROBED | Yes | Who works which team and shift over which dates; the only way into a pool |
 | [`attendance_shift`](05-people-teams-and-availability.md#attendance_shift) | SOURCE | No | Reference SQL query | Yes | Presence or absence per person and shift on the production day |
 | [`availability_exceptions`](05-people-teams-and-availability.md#availability_exceptions) | SUPPLEMENTAL | No | None yet: reports NOT_PROBED | Yes | Leave and other duty that remove or reduce availability |
@@ -156,9 +156,9 @@ Each dataset in a run ends with one status:
 | Status | Meaning |
 | --- | --- |
 | `ROWS` | The dataset returned rows. |
-| `CERTIFIED_EMPTY` | No rows, and the producer's receipt affirms that empty is complete and correct. |
+| `CERTIFIED_EMPTY` | No rows, and the producer's receipt affirms that empty is complete and correct. In fixture mode, a dataset with a cutoff column whose rows all fall after the cutoff is also `CERTIFIED_EMPTY`: the producer is complete, and nothing was visible yet. |
 | `EMPTY_UNCERTIFIED` | No rows and no such receipt. FOCUS never treats this as "nothing to do". |
-| `FAILED` | The capture raised an error: a database or connection error (`SOURCE_QUERY_FAILED`), schema drift or an incomplete receipt. |
+| `FAILED` | The capture raised an error. Live: `SOURCE_QUERY_FAILED` (any driver error, including a missing table, a refused login and the reader's own `SQL_NOT_CONFIGURED`, `NOT_READ_ONLY` and `OBJECT_NOT_ALLOWLISTED` checks), `SCHEMA_DRIFT` or `SCOPE_KEY_MISSING`. Fixture: `DATASET_MISSING`, `DATASET_INVALID`, `RECEIPT_INCOMPLETE`, `UNSUPPORTED_SOURCE_TYPE`, or `NAIVE_DATETIME` / `BAD_DATETIME` in a cutoff column. |
 | `NOT_PROBED` | No producer is installed for this input, so FOCUS did not read it. |
 
 What a status does to the run:
@@ -168,9 +168,18 @@ What a status does to the run:
   `soi_cert_requirements` and `mechanic_certs`. If one fails to capture, the whole run is rejected
   (`MANDATORY_DATASET_FAILED`). If one is empty without a certified-empty receipt, the run is rejected too:
   `CENSUS_UNAVAILABLE` for `master_task_list`, `MANDATORY_DATASET_EMPTY` for the others.
-- **Unreadable values.** A value admission cannot read (a `_UTC` text without an offset in a fixture file, a null where
-  a number or date is needed, text where a number is needed) rejects the run (`SOURCE_VALUE_INVALID`). A data problem
-  ends the run REJECTED with a code; it no longer leaves the run CAPTURING.
+- **Unreadable values.** A value admission cannot read rejects the run (`SOURCE_VALUE_INVALID`): for example a
+  `_UTC` text without an offset in a parsed column such as `holding_events.EFFECTIVE_AT_UTC`, a null where a date is
+  needed, a naive `person_team_map` or `availability_exceptions` time with no zone policy, or an unknown zone name
+  (`BAD_TIMEZONE`). A data problem ends the run REJECTED with a code; it no longer leaves the run CAPTURING. Some
+  columns are deliberately more lenient, and each page says so: a bad cutoff column (`OBSERVED_AT_UTC`, `AS_OF_UTC`)
+  fails that dataset's capture instead (`DATASET_FAILED`, all its rows dropped); bad flow numbers block the job;
+  bad economics values give `DAILY_RATE_INVALID`; buyoff and inspection counts and `team_inference`
+  `EVIDENCE_COUNT` / `EFFORT_MINUTES` read null or bad text as 0.
+- **Other rejections.** Admission also rejects a run whose stored datasets cannot be read back
+  (`DATASET_READBACK_MISSING`, `DATASET_READBACK_INVALID`, `DATASET_FOREIGN_RUN`, `DATASET_HASH_MISMATCH`), whose
+  census rows do not reconcile with the admitted jobs (`CENSUS_NOT_RECONCILED`), or whose `cs_windows` rows name a
+  load other than the one the producer declared (`CS_GENERATION_MISMATCH`).
 - **Optional datasets** with a status problem get a readiness gap named `DATASET_NOT_PROBED`,
   `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`, and the run continues. The gap is labelled as blocking executable work
   and shown in the data-gap queue. What it actually withholds depends on the dataset: each page's "If missing or empty"
@@ -195,7 +204,10 @@ What a status does to the run:
   snapshot carries `SOURCE_TIMEZONE_POLICY_MISSING`, labelled as blocking all plans; what it actually withholds depends
   on the dataset, as its page says (`focus/data/sourcetime.py`).
 - **Daylight saving.** A local time inside a spring-forward gap moves forward to the transition. An ambiguous local time
-  uses its first occurrence. Both rules are recorded with each conversion.
+  uses its first occurrence. Both rules are fixed in `focus/data/sourcetime.py`; a conversion does not record which
+  rule applied. A master time that cannot be converted quarantines its row (`DST_GAP_UNRESOLVED`, `BAD_TIMEZONE`).
+- **Without a zone policy** for a dataset: naive `person_team_map` or `availability_exceptions` times reject the run,
+  dated shortages become UNKNOWN, every holding becomes UNKNOWN, and row clocks give `SOURCE_CLOCK_UNKNOWN`.
 - **Columns ending in `_UTC`** are UTC instants. Columns ending in `_LOCAL` are local wall times in the site's zone.
 - **Effective, recorded and observed time differ.** Effective time is when something happened. Recorded time is when
   the source wrote it. Observed time is when FOCUS could first have known it.
@@ -219,11 +231,16 @@ At admission FOCUS checks how old each dataset is (`focus/data/freshness.py`):
   | 168 h | `cert_course_map`, `dept_team_skill_ref` |
   | 240 h | `cday_op_plan`, `cs_windows` |
 
-  These are fixture defaults; the live load cadences are an open decision.
+  These are fixture defaults. The live load cadences are not set yet; they are not a numbered open decision, so no
+  live gap is raised for them.
 - **Findings.** Older than the limit is `SOURCE_STALE`. No readable clock is `SOURCE_CLOCK_UNKNOWN`, because unknown is
-  never assumed fresh.
-- **Capture skew.** All datasets of a run must be captured within `admission.max_capture_skew_minutes` (30) of each
-  other. Beyond that the run is `CAPTURE_SKEW`, because its tables may straddle a source load.
+  never assumed fresh. A dataset with no rows and no receipt `loaded_at` is not age-checked: its capture-status gap
+  covers it. The live reader's receipt carries no `loaded_at`, so live freshness comes from the row clocks, which the
+  loading process must stamp on every row.
+- **Capture skew.** All datasets of a run must be captured by FOCUS within `admission.max_capture_skew_minutes` (30) of
+  each other. Beyond that the run is `CAPTURE_SKEW`, because its tables may straddle a source load. It measures FOCUS's
+  capture times, not the source load times: a table half-loaded at capture is not detected here, so the loading
+  process must publish each load atomically (`docs/integration/HANDOFF.md`).
 - **Effect.** The validator rejects an EXECUTABLE plan on a snapshot with any of these three findings (`E_LINEAGE`).
   FORECAST plans still run.
 
@@ -231,8 +248,8 @@ At admission FOCUS checks how old each dataset is (`focus/data/freshness.py`):
 
 - **Jobs** are keyed by line number and job identifier: `LINE_NUMBER` with `SHOP_ORDER_IDENTIFIER`, `SOI`, `SOI_ID` or
   `CHILD_SOI`, depending on the table. Feeds resolve to the same job, phase and person identities as admission.
-- **People** are `BEMS_ID` in SOURCE tables and `PERSON_KEY` in supplemental inputs and feeds. In live mode both are in
-  the `BEMS` namespace; fixture people use a separate `fixture-demo` namespace, so invented people never share an
+- **People** are `BEMS_ID` in SOURCE tables and `PERSON_KEY` in supplemental inputs and feeds, except `holding_events`,
+  which uses `BEMS_ID`. In live mode both are in the `BEMS` namespace; fixture people use a separate `fixture-demo` namespace, so invented people never share an
   identity with real ones (`focus.data.workforce.person_namespace`).
 - **Scope.** A run belongs to one scope, `FOCUS_SCOPE_KEY`. Supplemental reads are bound to that scope's source head.
 
@@ -240,8 +257,9 @@ At admission FOCUS checks how old each dataset is (`focus/data/freshness.py`):
 
 - Every capture must return exactly the projection's columns in order. Anything else is `SCHEMA_DRIFT`.
 - There is no `SELECT *` and no row cap: the WIP census includes completed anchors on every line with open work.
-- Values keep their raw types until admission parses them. A value that cannot be parsed is a row error or a
-  quarantined row with a stable code. It never becomes a default.
+- Values keep their raw types until admission parses them. A value that cannot be parsed rejects the run, blocks or
+  quarantines its job, or excludes its row with a stable code, as each column's row says. The lenient exceptions are
+  named under "Unreadable values" above.
 
 ## Owner decisions that gate live plans
 
@@ -254,9 +272,16 @@ OD-01 is decided (owner, 2026-10-31): `flow_budget.TOTAL_MECHANICS` is the numbe
 at once to work it. The policy records it with the authority `owner_decision`, so live jobs no longer carry
 `FLOW_SEMANTICS_UNCONFIRMED`.
 
-The other open decisions, OD-02 to OD-17 apart from OD-05, each withhold one live capability: raw clock intervals, QA hold locations,
-OT authority, the commercial due date, the no-certificate census, the assignment and attendance feeds, the observation
-producers and so on. `docs/execution/DECISIONS.md` lists them, and the policy file records each one's live effect.
+OD-06 is decided too (owner, 2026-11-02): the due date is the CS744 unload plus a 2-day grace.
+
+The other 14 open decisions (OD-02 to OD-04 and OD-07 to OD-17) appear in every live snapshot as readiness gaps named by
+their id (scope `policy`, labelled `BLOCKS_EXECUTABLE`); the validator does not act on those labels. Besides OD-05, only
+OD-07 changes admission: both jobs of a hard concurrent or non-concurrent template edge are quarantined
+(`CONCURRENCY_SEMANTICS_UNRESOLVED`). What each decision
+actually withholds comes from the data its answer would unlock (QA hold locations, OT authority, the no-certificate
+census, the assignment and attendance feeds, the observation producers and so on), as each dataset page says.
+`docs/execution/DECISIONS.md` lists them. Some `live_effect` texts in the policy file are out of date; DECISIONS.md
+records the corrections.
 
 ## Known gaps before going live
 
@@ -296,6 +321,8 @@ Writing this reference turned up behaviour that matters for a live connection. E
 
 ## Related documents
 
+- `docs/integration/HANDOFF.md`: moving to the official data sources, the SQL Server staging job and the GitLab
+  pipeline.
 - `docs/integration/SOURCE_REPLACEMENT_CROSSWALK.md`: the mapping checklist for each dataset and the SQL query
   families.
 - `docs/execution/SQL_SCHEMA_LEDGER.md`: the S04 contracts, reader projections and drafted FOCUS tables.

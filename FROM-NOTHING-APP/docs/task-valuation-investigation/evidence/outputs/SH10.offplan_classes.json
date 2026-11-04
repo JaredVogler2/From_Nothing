@@ -1,0 +1,45 @@
+{
+ "shifts_classified": 15,
+ "effort_by_class": {
+  "planned_goal_units": {
+   "FLOAT": 580615,
+   "AT_RISK": 91585,
+   "UNMAPPED": 222370
+  },
+  "offplan_outside_goals": {
+   "FLOAT": 1080,
+   "UNMAPPED": 2700
+  },
+  "offplan_pull_ahead": {
+   "FLOAT": 6085,
+   "UNMAPPED": 2415,
+   "AT_RISK": 2010
+  },
+  "offplan_deviation": {
+   "UNMAPPED": 570,
+   "AT_RISK": 330,
+   "FLOAT": 330
+  }
+ },
+ "share_by_class": {
+  "planned_goal_units": {
+   "FLOAT": 0.649,
+   "AT_RISK": 0.1024,
+   "UNMAPPED": 0.2486
+  },
+  "offplan_outside_goals": {
+   "FLOAT": 0.2857,
+   "UNMAPPED": 0.7143
+  },
+  "offplan_pull_ahead": {
+   "FLOAT": 0.579,
+   "UNMAPPED": 0.2298,
+   "AT_RISK": 0.1912
+  },
+  "offplan_deviation": {
+   "UNMAPPED": 0.4634,
+   "AT_RISK": 0.2683,
+   "FLOAT": 0.2683
+  }
+ }
+}

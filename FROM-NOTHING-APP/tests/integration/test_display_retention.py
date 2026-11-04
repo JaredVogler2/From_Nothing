@@ -179,7 +179,7 @@ def registry_facts(services) -> tuple:
 
     plans, bad = accepted_display(services, "EXECUTABLE")
     reg = GoalRegistry.from_display(services, plans, bad)
-    return ([p.published.id for p in plans], bad, sorted((k, v.goal_id, v.plan_id) for k, v in reg.records.items()), dict(reg.day_plan),
+    return ([p.published.id for p in plans], bad, sorted((k, v.goal_id, v.plan_id) for k, v in reg.records.items()), dict(reg.day_plans),
             dict(reg.unit_start), dict(reg.unit_end), dict(reg.unit_crew), sorted(reg.committed_units))
 
 
