@@ -676,6 +676,11 @@
       "authority": "fixture_default",
       "ref": "auto mode: a run plans the shift containing its cutoff plus this lead (a pipeline runs shortly before each shift)"
     },
+    "pipeline.pre_shift_budget_minutes": {
+      "value": 20,
+      "authority": "owner_decision",
+      "ref": "D-28 (owner, 2026-11-10): data gathering, scheduling and the dashboard ready within 20 minutes before each shift. Measured from the data cut to the acceptance of the executable plan, which publishes its dashboard data (orchestration.window)"
+    },
     "planning.repair_max_incumbent_age_hours": {
       "value": 12,
       "authority": "fixture_default",

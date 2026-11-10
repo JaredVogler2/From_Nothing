@@ -73,7 +73,8 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 - **Tests that pin decisions.** Update them in the same change as the decision they pin:
   - `tests/unit/test_policy_config.py` pins which OD ids are open and that `cs.date_mode` is `open_decision`;
   - `tests/integration/test_migration_pipeline.py::test_ci_draft_orders_roles_and_protects_signing` pins
-    `when: manual` on both signing jobs, and pins that acquisition needs every verify job;
+    `when: manual` on both signing jobs, that acquisition needs every verify job in its pipeline, and that the long
+    suites run on merge while a live run requires a protected ref (D-28);
   - `tests/unit/test_data_reference_docs.py` pins the dataset columns against `docs/data/`.
 - **Validate before you push.**
   - Fast checks: `python tools/check_imports.py`, then `python -m focus.cli migrate --dry-run`, then the test files
@@ -115,6 +116,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | Done before the shift | A unit whose phase was verified complete before its shift started is `DONE_BEFORE_SHIFT` and counts in E | `lifecycle.unit_facts`, `score.components` |
 | Amendments during the shift only | The command and the feed refuse `SHIFT_NOT_STARTED` / `SHIFT_ENDED` | `amendments.py`, `actuals.amendment_from_row` |
 | Late events after the fact | Scores come from timestamped events once overtime closes, and are revised when data arrives late | D-26 |
+| 20 minutes before each shift (D-28) | Data gathering, scheduling and the dashboard are ready within 20 minutes, from the data cut to the accepted executable plan. The test suites run on merge, not in the run | `orchestration.window`, `.gitlab-ci.yml`, `pipeline.pre_shift_budget_minutes` |
 | Extra work earns credit (D-27) | Every unplanned job a team gets done counts toward its score at 80% of the same planned work (rate confirmed by the owner) and never lowers it. A missed planned job costs points on its own unless excused. Adherence is the planned jobs done over the expected work | `score.formula`, `score.components`, `docs/execution/SCORING_EXPLAINED.md` |
 | OD-01 crew | `TOTAL_MECHANICS` is the crew needed on the job at once (owner, 2026-10-31) | `duration.total_mechanics_semantics` |
 | OD-06 due date | CS744 planned unload + 2-day grace, as a whole local day (owner, 2026-11-02) | `due.*` |
@@ -138,9 +140,9 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-07 | Certified-empty and `loaded_at` for live captures | ENGINEERING | producer receipt table | now |
 | DEC-08 | Staging loader design | ENGINEERING | per `HANDOFF.md` §4 | now |
 | DEC-09 | Order of supplemental producers | ENGINEERING | `work_progress` first | now |
-| DEC-10 | Test suite inside the live window | OWNER | recommend: verified branch only | before go-live |
+| DEC-10 | Test suite inside the live window | **settled 2026-11-10 by the 20-minute requirement (D-28), built** | suites run on merge; live runs need a protected ref | now |
 | DEC-11 | Signing before each shift | OWNER | recommend: automatic with a kill switch | before go-live |
-| DEC-12 | Cutoff lead and schedule times | DATA | 20 min; crons in `HANDOFF.md` §5.2 | after 1 week of runs |
+| DEC-12 | Schedule times inside the 20-minute budget | DATA | start 20 min before each shift; crons in `HANDOFF.md` §5.2 | after 1 week of runs |
 | DEC-13 | Freshness limits (load cadences) | DATA | fixture limits 18–240 h | after 2 weeks of loads |
 | OD-02…OD-17 | Data semantics (§5) | DATA, then the owner confirms the relabel | fixture meanings; live withheld | as each source is wired |
 | DEC-19 | Validate the score on real data | DATA, then OWNER | no grade counts until done | after 4 weeks of pilot |
@@ -368,22 +370,18 @@ first owner-confirmed OD, because any edit changes the policy hash.
 
 ## 6. Operations decisions
 
-### DEC-10 The test suite inside the live window
+### DEC-10 The test suite inside the live window: settled (D-28)
 
-- **Authority:** OWNER. It changes decision P23, "every verification first".
-- **Why.** In `.gitlab-ci.yml`, `acquire_admit` needs every verify job, including the full suite. The non-UI suite
-  alone takes 10.5 minutes; with installs, the UI suite and the rehearsal, little of the 15–20 minute window is left.
-- **Options:**
-  - (a) keep the full suite before every live run;
-  - (b) run live schedules only from a protected branch or tag whose merge pipeline passed, and keep only
-    `import_and_lint` (migrations dry-run, preflight) and `native_wheel` in the live path.
-- **Recommendation: (b).**
-- **Build now.** Behind a variable (`FOCUS_LIVE_VERIFY=full|fast`, default `full`), add rules to
-  `unit_and_integration`, `ui` and `fixture_pipeline_rehearsal` that skip them on live schedules when `fast` is set,
-  and make `acquire_admit`'s needs conditional. Update `test_ci_draft_orders_roles_and_protects_signing` to assert
-  both modes.
-- **Measure.** The time from pipeline start to acceptance, per run, over a week.
-- **Ask the owner** with that measurement.
+- **Settled on 2026-11-10** by the owner's requirement: data gathering, scheduling and the dashboard ready within
+  20 minutes. The suites alone take about half of that.
+- **Built in `.gitlab-ci.yml`.**
+  - `unit_and_integration`, `ui` and `fixture_pipeline_rehearsal` run on merge requests and on the default branch.
+  - A live run does not repeat them. `acquire_admit` refuses a ref that is not protected.
+  - `import_and_lint`, the preflights, `native_wheel` and the staged-schema check stay in every run.
+  - `FOCUS_LIVE_VERIFY=full` puts the suites back in every live run.
+- **Your part.** Protect the default branch, require a passed pipeline to merge, and run the live schedules on that
+  branch. Cache the native build, or fetch the wheel built on merge, so it does not cost minutes in every run.
+- **Measure** on every run: `pipeline --status`, section `window` (minutes used, per step, late or not).
 
 ### DEC-11 Signing before each shift
 
@@ -406,14 +404,15 @@ first owner-confirmed OD, because any edit changes the policy hash.
 ### DEC-12 Cutoff lead and schedule times
 
 - **Authority:** DATA.
-- **Default now.** A 20-minute lead. Plan crons at 05:40, 14:10 and 22:40; score crons at 15:35, 00:05 and 07:05,
-  site time (`HANDOFF.md` §5.2). Set each GitLab schedule's time zone to America/New_York.
+- **The owner's budget is 20 minutes** (D-28): from the data cut to the accepted plan and its dashboard data.
+- **Default now.** Plan crons at 05:40, 14:10 and 22:40; score crons at 15:35, 00:05 and 07:05, site time
+  (`HANDOFF.md` §5.2). Set each GitLab schedule's time zone to America/New_York.
 - **Measure**, after one week of runs:
-  - the end-to-end pipeline duration, from data cut to acceptance, staging included;
+  - `window.minutes` and `window.step_seconds` from `pipeline --status`, for every run, staging included;
   - from `calibrate_scores.py store`: `boundary.share_in_last_lead_minutes` and `boundary.share_in_overtime`.
-- **Decision rule.** Lead = 95th-percentile pipeline duration + 5 minutes, rounded up to 5, kept between 15 and 30.
-  If more than 10% of completions land inside the lead, shorten the pipeline (DEC-08, DEC-10) before lengthening the
-  lead.
+- **Decision rule.** Start each run as late as the 95th-percentile duration plus 3 minutes allows, and never more
+  than 20 minutes before the shift. A run that cannot finish in 20 minutes is a defect to fix (DEC-01, DEC-08,
+  DEC-30), not a reason to start earlier: tell the owner before changing the start.
 - **Implement in:** the GitLab schedule crons. `planning.cutoff_lead_minutes` (60) is a different parameter, the
   auto-mode look-ahead; leave it unless the lead goes past 45 minutes.
 - **Record:** a D-entry with the measured 95th percentile.
@@ -680,16 +679,16 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
 
 ## 9. Suggested order
 
-1. **Now (no data):** DEC-00 first, then DEC-01 to DEC-09; build DEC-10, DEC-11 and DEC-24 behind switches that are
-   off. DEC-22 is decided and built: port it.
+1. **Now (no data):** DEC-00 first, then DEC-01 to DEC-09; build DEC-11 and DEC-24 behind switches that are off.
+   DEC-10 and DEC-22 are settled and built: port them.
 2. **Data wired, read-only:**
    - staging (DEC-08) and the OD profiling (§5), with OD-05 first, then OD-10, OD-13, OD-03, OD-07, OD-08, OD-09 and
      OD-04;
    - a FORECAST plan for the complete scope, with the unknown-cost counts of DEC-29 and the calendar check of
      DEC-28;
    - review the readiness gaps with their owners.
-3. **First week of pipeline runs:** DEC-12; the evidence for DEC-10 and DEC-11; DEC-24's measurement.
+3. **First week of pipeline runs:** DEC-12; the evidence for DEC-11; DEC-24's measurement.
 4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-25 and
    DEC-23. Ask the owner about DEC-26 before the pilot starts.
-5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-10, DEC-11, DEC-23 to
-   DEC-26 and, last, OD-16.
+5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-11, DEC-23 to DEC-26
+   and, last, OD-16.

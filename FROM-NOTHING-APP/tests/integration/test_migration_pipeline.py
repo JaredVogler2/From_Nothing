@@ -326,6 +326,43 @@ def test_executable_plan_is_accepted_before_the_forecast_is_scheduled(pipeline_s
     assert forecast.published.source_run_id == executable.published.source_run_id                   # the same admitted snapshot
 
 
+def test_the_window_report_measures_the_data_cut_to_the_accepted_plan_against_the_owners_budget(pipeline_services) -> None:
+    """D-28: data gathering, scheduling and the dashboard ready within 20 minutes. The clock runs from the data cut to the
+    acceptance of the executable plan, which writes the dashboard's data; the forecast that follows is outside it."""
+    from focus.clock import FIXTURE_CUTOFF
+    from focus.display.store import has_plan_display
+
+    services = pipeline_services
+    assert services.policy.int("pipeline.pre_shift_budget_minutes") == 20
+    assert services.policy.authority_of("pipeline.pre_shift_budget_minutes") == "owner_decision"
+    pid = _pid(services, "window")
+    before = O.status(services, pid)["window"]
+    assert (before["budget_minutes"], before["data_cut"], before["minutes"], before["within_budget"]) == (20, None, None, None)
+    for role, minutes in (("source", 6), ("app", 3), ("stager", 2)):
+        O.run_role(services, pid, role)
+        services.clock.advance(minutes=minutes)
+    waiting = O.status(services, pid)["window"]
+    assert waiting["data_cut"] == FIXTURE_CUTOFF and waiting["plan_and_dashboard_ready_at"] is None and waiting["within_budget"] is None
+    O.run_role(services, pid, "signer")
+    w = O.status(services, pid)["window"]
+    plan_id = O.load(services, pid)[0]["steps"]["sign_accept"]["output"]["EXECUTABLE"]["plan_id"]
+    assert has_plan_display(services.repositories, plan_id)                             # acceptance wrote the dashboard's data
+    assert (w["minutes"], w["within_budget"]) == (11.0, True)                            # 6 + 3 + 2 minutes after the cut
+    assert w["plans_shift"] == "DEMO:2026-10-26:S1" and w["late"] is True                # the fixture cuts at the shift's start
+    assert set(w["step_seconds"]) == set(O.WINDOW_STEPS) and all(v == 0.0 for v in w["step_seconds"].values())
+    services.clock.advance(minutes=30)
+    for role in ("app", "stager", "signer"):                                             # the forecast follows acceptance
+        O.run_role(services, pid, role)
+    assert O.status(services, pid)["window"]["minutes"] == 11.0                          # ... and is outside the window
+    slow = _pid(services, "window-slow")
+    O.run_role(services, slow, "source")
+    services.clock.advance(minutes=25)
+    for role in ("app", "stager", "signer"):
+        O.run_role(services, slow, role)
+    over = O.status(services, slow)["window"]
+    assert over["minutes"] > 20 and over["within_budget"] is False
+
+
 def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> None:
     """``auto`` at the fixture cutoff (06:00 local, shift 1) is the daily full solve and measures the repair it replaced;
     a ``repair`` pipeline then repairs both plans the first one accepted."""
@@ -528,8 +565,19 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
             assert f"needs: [{previous}]" in jobs[job] or f"needs: [{previous}," in jobs[job], job   # each role needs the one before it
     assert "--role evaluator" in jobs["observe_evaluate"] and "needs: [sign_accept]" in jobs["observe_evaluate"]
     # P23: every verification precedes acquisition, and the scheduler runs the native wheel built from the same commit
+    needs = jobs["acquire_admit"].split("needs:")[1].splitlines()[0]
     for verify in ("import_and_lint", "unit_and_integration", "ui", "fixture_pipeline_rehearsal", "native_wheel"):
-        assert verify in jobs["acquire_admit"].split("needs:")[1].splitlines()[0], verify
+        assert verify in needs, verify
+    # D-28: the 20-minute window. The long suites run on merge; a live run needs them only when they are in its pipeline
+    # (FOCUS_LIVE_VERIFY=full), and otherwise refuses any ref that is not protected
+    for long in ("unit_and_integration", "ui", "fixture_pipeline_rehearsal"):
+        assert "extends: .merge_verify" in jobs[long] and f"{{ job: {long}, optional: true }}" in needs, long
+    assert "import_and_lint," in needs and "{ job: import_and_lint" not in needs and "{ job: native_wheel" not in needs   # always in the run
+    skip, always = jobs[".merge_verify"].split("when: never")[0], jobs[".merge_verify"].split("when: never")[1]
+    assert '$FOCUS_MODE == "live"' in skip and '$FOCUS_LIVE_VERIFY != "full"' in skip and "when: on_success" in always
+    assert 'FOCUS_LIVE_VERIFY: "merged"' in jobs["variables"]
+    guard = 'test "$FOCUS_LIVE_VERIFY" = "full" -o "$CI_COMMIT_REF_PROTECTED" = "true"'
+    assert jobs["acquire_admit"].index(guard) < jobs["acquire_admit"].index("--role source")
     assert "{ job: native_wheel, artifacts: true }" in jobs["schedule_validate"] and "dist/focus_native-" in jobs["schedule_validate"]
     assert "focus-native==" not in jobs["schedule_validate"]                     # never an index wheel from another commit
     assert "when: manual" in jobs["sign_accept"] and "focus-signer" in jobs["sign_accept"]

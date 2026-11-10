@@ -330,6 +330,27 @@ attendance. A conditional ETA is never physical receipt.
     both seeds; the credit rule ranks them as production does. Those runs gave swapped-in work no credit, which the
     owner's rule does. `tools/calibrate_scores.py` re-runs every figure on real scores.
 
+- **D-28 The pre-shift run takes 20 minutes at most (owner requirement, November 10, 2026).**
+  - **The owner's words.** "The scheduling is for production prior to each shift to set the plan. The data gathering
+    and scheduling and dashboard should be ready to go within 20 minutes."
+  - **What is measured** (`orchestration.window`, shown by `python -m focus.cli pipeline --key K --status`). The
+    clock runs from the data cut, which is the source run's cutoff, to the end of `sign_accept`. Acceptance writes the
+    executable plan's display package, which is what the dashboard reads, so the plan and its dashboard are ready at
+    the same moment. The budget is policy `pipeline.pre_shift_budget_minutes` = 20 (`owner_decision`).
+    - Staging at the cut counts. A preload before the cut does not, and suits only data that does not change within
+      a shift.
+    - The forecast (delivery dates and costs for every aircraft) follows acceptance in the same pipeline and is
+      outside the window. Its dashboard views update when it is accepted.
+    - The report gives the minutes used, whether they are within the budget, the seconds per step, and whether the
+      plan was accepted after its shift had started (`late`; D-26 then scores that shift against the previous plan).
+  - **Tests run on merge, not before every shift.** The full suites take about half of the budget. The pipeline
+    draft therefore runs them on merge requests and on the default branch, and a live run uses only code from a
+    protected ref (`acquire_admit` refuses any other). `FOCUS_LIVE_VERIFY=full` puts them back in every live run. The
+    import check, the migration dry run, the preflights and the staged-schema check stay in every run. This changes
+    P23's "every verification first" from "in this run" to "on the merge that put this code on the protected ref".
+  - **Still open:** who accepts the plan (DEC-11). The draft's `sign_accept` waits for a person, three times a day,
+    inside these 20 minutes.
+
 ## Semantic gaps (live), each a precise readiness effect
 
 These are the policy file's `open_decisions` (OD-18 is tracked here only). None of them blocks local

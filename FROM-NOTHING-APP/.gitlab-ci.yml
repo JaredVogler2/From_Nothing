@@ -44,10 +44,22 @@ default:
 variables:
   FOCUS_SCOPE_KEY: "DEMO-787"
   PIPELINE_KEY: "ci-$CI_PIPELINE_ID"
+  # D-28 (owner, 2026-11-10): data gathering, scheduling and the dashboard ready within 20 minutes before each shift.
+  # The full test suites take about half of that, so a live run does not repeat them: it runs only code from a protected
+  # ref, whose merge pipeline already passed them (acquire_admit refuses any other ref). "full" runs them before every
+  # plan again, as P23 first had it.
+  FOCUS_LIVE_VERIFY: "merged"
 
 stages: [verify, retain, stage_sql, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
 
 # ---------------------------------------------------------------------- verify (fixture only, no secrets)
+
+# The long checks: on every merge request and on the default branch, and in a live run only with FOCUS_LIVE_VERIFY=full.
+.merge_verify:
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_LIVE_VERIFY != "full" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+      when: never
+    - when: on_success
 
 import_and_lint:
   stage: verify
@@ -62,6 +74,7 @@ import_and_lint:
     paths: [ci-receipts/]
 
 unit_and_integration:
+  extends: .merge_verify
   stage: verify
   script:
     - python -m pytest -q -p no:cacheprovider tests --ignore=tests/ui
@@ -71,6 +84,7 @@ unit_and_integration:
     paths: [fixtures/runtime/]
 
 ui:
+  extends: .merge_verify
   stage: verify
   image: mcr.microsoft.com/playwright/python:v1.50.0-noble
   script:
@@ -87,6 +101,7 @@ native_wheel:
     paths: [dist/]
 
 fixture_pipeline_rehearsal:
+  extends: .merge_verify
   stage: verify
   needs: [import_and_lint]
   script:
@@ -122,7 +137,7 @@ fixture_pipeline_rehearsal:
 display_retention:
   extends: .live
   stage: retain
-  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel]
+  needs: [import_and_lint, { job: unit_and_integration, optional: true }, { job: ui, optional: true }, { job: fixture_pipeline_rehearsal, optional: true }, native_wheel]
   allow_failure: true
   environment: { name: focus-retention }            # retention role (FOCUS_FN_Retention); no live SQL delete path exists yet (INSTALL section 7)
   script:
@@ -133,7 +148,7 @@ display_retention:
 detail_retention:
   extends: .live
   stage: retain
-  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel]
+  needs: [import_and_lint, { job: unit_and_integration, optional: true }, { job: ui, optional: true }, { job: fixture_pipeline_rehearsal, optional: true }, native_wheel]
   allow_failure: true
   environment: { name: focus-retention }            # retention role (FOCUS_FN_Retention); no live SQL delete path exists yet (INSTALL section 7)
   script:
@@ -167,9 +182,11 @@ verify_staged_sources:
 acquire_admit:
   extends: .live
   stage: source
-  needs: [import_and_lint, unit_and_integration, ui, fixture_pipeline_rehearsal, native_wheel, display_retention, verify_staged_sources]   # every verification first (P23)
+  # every verification first (P23): in this run with FOCUS_LIVE_VERIFY=full, else on the merge that put this code on the protected ref
+  needs: [import_and_lint, { job: unit_and_integration, optional: true }, { job: ui, optional: true }, { job: fixture_pipeline_rehearsal, optional: true }, native_wheel, display_retention, verify_staged_sources]
   environment: { name: focus-source }               # source-worker SQL credentials only
   script:
+    - test "$FOCUS_LIVE_VERIFY" = "full" -o "$CI_COMMIT_REF_PROTECTED" = "true"   # unverified code never plans a shift
     - mkdir -p ci-receipts && python -m focus.cli preflight --role worker --probe-sql > ci-receipts/preflight-source.json
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source > ci-receipts/source.json
 

@@ -42,7 +42,8 @@ stay in company storage. This public repository keeps the synthetic reference co
   - a short summary of how the system works;
   - every difference between a documented rule and the code, with file and line;
   - your open questions.
-- **The pre-shift clock runs from the data cut to plan acceptance.** Staging counts toward it (§3).
+- **The pre-shift run has 20 minutes** (owner, D-28): from the data cut to the accepted plan and its dashboard data.
+  Staging counts toward it (§3). The pipeline status reports the minutes used on every run.
 - **Scoring** is explained in `SCORING_EXPLAINED.md`. One file computes it: `focus/performance/score.py`. Scoring
   is part of the application, not an extra: verified completions earn credit for the team-shift whose plan held
   the job, and the record behind every score is kept. Do not design a second completions store.
@@ -114,7 +115,8 @@ Shift times come from the site policy (`config/policies/shift_fixture.json`, Ame
 | 2 | 14:30 | 23:00 | 00:00 |
 | 3 | 23:00 | 06:00 | 07:00 |
 
-Before each shift, inside a 15–20 minute window (owner, 2026-11-02):
+Before each shift, within 20 minutes (owner, 2026-11-10, D-28: "the data gathering and scheduling and dashboard should
+be ready to go within 20 minutes"):
 
 | Step | Budget | Measured |
 | --- | --- | --- |
@@ -126,7 +128,12 @@ Before each shift, inside a 15–20 minute window (owner, 2026-11-02):
 | **The plan must be accepted before the shift starts** | | |
 
 - **What counts toward the window.** The clock starts at the data cut (the pipeline's start, which is the loader's
-  `--as-of`) and stops when `sign_accept` finishes.
+  `--as-of`) and stops when `sign_accept` finishes. Acceptance writes the plan's dashboard data, so the plan and the
+  dashboard are ready together.
+  - `python -m focus.cli pipeline --key "$PIPELINE_KEY" --status` reports it under `window`: the minutes used against
+    the 20-minute budget, the seconds per step, and whether the plan was accepted after its shift started. Keep that
+    report with every run.
+  - The forecast (delivery dates and costs) follows acceptance and is outside the window.
   - Everything in between counts, staging included. Work finished after the cut is not in the plan, so every minute
     of staging, checking, planning and signing widens the gap that is captured after the fact.
   - `stage_sources` runs alongside the verify jobs. The wall-clock total is therefore the longer of the two paths,
@@ -296,13 +303,14 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
 
 ### 5.3 Two timing risks to settle before go-live
 
-- **Verification inside the live window.**
-  - The draft makes acquisition wait for every verify job (P23), including the whole test suite. The full non-UI suite
-    alone took 10.5 minutes here (906 tests). With the installs, the UI suite and the rehearsal, verification would
-    use most of the 15–20 minute window before acquisition could start.
-  - Recommendation: run the live schedules from a protected branch or tag whose merge pipeline already passed. Keep
-    `import_and_lint` and the preflights in the live path, and drop the suite from it. This changes a recorded
-    decision (P23), so it needs the owner.
+- **Verification inside the live window: settled by the 20-minute requirement (D-28).**
+  - The full non-UI suite alone takes about 10 minutes. With the installs, the UI suite and the rehearsal,
+    verification would use most of the window before acquisition could start.
+  - The draft therefore runs the suites on merge requests and on the default branch. A live run uses only code from
+    a protected ref, and `acquire_admit` refuses any other. `import_and_lint`, the preflights and the staged-schema
+    check stay in every run.
+  - `FOCUS_LIVE_VERIFY=full` puts the suites back into every live run.
+  - Protect the default branch and require a passed pipeline to merge, or the rule protects nothing.
 - **Manual signing.**
   - `sign_accept` is `when: manual`. With about five minutes between the end of planning and the shift start, a
     missed promotion makes a late plan.

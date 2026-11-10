@@ -7,8 +7,9 @@ port to real data must keep. Reading needs no approval; approval is for changes.
 
 1. **Schedule every aircraft with open work, through delivery, at the lowest late-delivery cost**, without breaking
    a constraint. The scheduler is a fixed, rule-based procedure. There is no AI in it.
-2. **Run before every shift**, three times a day. A pipeline gathers the data, schedules, validates and publishes;
-   the web application only displays what the pipeline published.
+2. **Run before every shift**, three times a day, within 20 minutes from the data cut to the plan and its dashboard
+   being ready. A pipeline gathers the data, schedules, validates and publishes; the web application only displays
+   what the pipeline published.
 3. **Score each team's shift** against the plan accepted before that shift started, with an excusal process so a
    team is not marked down for causes outside its control.
 

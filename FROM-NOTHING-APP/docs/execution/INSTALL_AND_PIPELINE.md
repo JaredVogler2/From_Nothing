@@ -275,8 +275,13 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 - **Verify** runs the import check, migration lint and bundle, preflight, the full non-UI suite, the UI suite and a
   fixture rehearsal of the whole pipeline. None of it needs secrets.
 - **Live jobs** each run one role in a protected environment, chained with `needs` and serialized per scope with
-  `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included, and for the staged
-  sources. `sign_accept` is `when: manual` and holds the only signing reference.
+  `resource_group`. Acquisition waits for the verify jobs in its pipeline and for the staged sources. In a live run
+  the long suites (non-UI, UI, rehearsal) are not in the pipeline: they ran on the merge that put the code on the
+  protected ref, and acquisition refuses any other ref (D-28; `FOCUS_LIVE_VERIFY=full` runs them every time).
+  `sign_accept` is `when: manual` and holds the only signing reference.
+- **The window.** `python -m focus.cli pipeline --key K --status` reports, under `window`, the minutes from the data
+  cut to the accepted executable plan against the owner's 20-minute budget, the seconds per step, and whether the plan
+  was accepted after its shift started.
 - **Staging** (`stage_sources`, then `verify_staged_sources`) loads the official sources into the SQL Server tables the
   reference queries read, through the company loader named by `FOCUS_STAGE_COMMAND`, and checks the staged schema
   against the S04 contract before acquisition. It runs while the verify jobs run. The loader's contract is
