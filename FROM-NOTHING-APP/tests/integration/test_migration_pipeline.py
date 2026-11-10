@@ -388,6 +388,14 @@ def test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan(pipel
     assert (f["cost_known"], f["finish_conditional"], f["finish_unknown"]) == (5, 1, 1)  # an expected part gives a conditional finish
     assert f["aircraft_without_finish"] == [1306] and f["unplanned_open_jobs_by_reason"] == {"FLOW_CREW_INVALID": 1}
     assert f["aircraft_without_rate"] == [1306] and "5 of 6 aircraft" in f["message"]
+    # D-29: the same status reports each aircraft's criticality (the cost of one more day late). Nothing is scored with it.
+    crit = O.status(services, pid)["criticality"]
+    assert set(crit) == {"EXECUTABLE", "FORECAST"}
+    fc = crit["FORECAST"]
+    assert (fc["aircraft"], fc["known"], fc["unknown"]) == (6, 5, 1) and fc["states"] == {"ON_TIME": 5, "NO_RATE_OR_DUE_DATE": 1}
+    assert fc["highest_cost_per_day_usd"] == 0                                           # the demo fleet finishes ahead of its due dates
+    assert {x["line"]: x["weight"] for x in fc["lines"]}[1306] is None                   # no rate: unknown, never zero
+    assert crit["EXECUTABLE"]["states"] == {"ON_TIME": 4, "FINISH_UNKNOWN": 1, "NO_RATE_OR_DUE_DATE": 1}
 
 
 def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> None:

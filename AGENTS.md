@@ -49,6 +49,9 @@ Then read the code those pages name. The two explainer pages list each rule with
   - `objective`: how many aircraft have a rate, a due date and a finish date, and the open jobs that could not be
     planned, by reason. A run that publishes a plan while every cost is unknown has not optimized cost.
   - `window`: the minutes from the data cut to the accepted plan and its dashboard data, against the owner's 20.
+- **One definition of criticality**, from the cost objective (`OBJECTIVE_EXPLAINED.md` §5): the aircraft's cost of
+  one more day late in the accepted forecast. Do not rank jobs by a hand-made list, a job type or a second formula,
+  and do not weight scores by it until the owner decides (`DECISION_PLAYBOOK.md`, DEC-31).
 - **Keep what the scoring needs.** Verified completions, claims, decisions and the accepted plans are the record
   every score is built from. Do not trim or overwrite them to save time.
 - **Work in the order the owner cares about:** correct first (constraints, objective, scores), then complete (every

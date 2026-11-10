@@ -143,13 +143,47 @@ How to use it:
   the unplanned jobs by reason), until the forecast plan shows `cost_steering` `full`.
 - Speed work does not come before this. A fast pipeline whose objective compares nothing is not doing its job.
 
-## 5. Open, not built
+## 5. How critical is a job?
+
+The owner's rule (D-29): criticality is a function of the cost objective, never a label assigned by hand or by job
+type.
+
+**A job's criticality is the modeled cost of one more day late for its aircraft, in the accepted forecast plan, as a
+share of the highest such cost in the fleet** (0 to 1). It is the number the scheduler's own search orders work by.
+The code is `focus/valuation/criticality.py`; the tests are `tests/unit/test_criticality.py`.
+
+| State of the aircraft in the plan | Cost of one more day late | Example at $380,000 a day |
+| --- | --- | --- |
+| `LATE`: finishes after its due date | the daily rate | $380,000 |
+| `ON_TIME`: finishes before its due date | only what would fall past the due date | 12 hours of margin: $190,000; a week of margin: $0 |
+| `PAST_DUE`: due date passed, finish unknown | the daily rate, whatever the finish turns out to be | $380,000 |
+| `FINISH_UNKNOWN`: not yet due, finish unknown | unknown, never read as zero | — |
+| `NO_RATE_OR_DUE_DATE` | unknown, never read as zero and never filled in | — |
+| `NO_OPEN_WORK` | nothing | $0 |
+
+Example: three late aircraft at $380,000, $190,000 and $95,000 a day have criticality 1, 0.5 and 0.25. An aircraft
+with a week of margin has 0.
+
+Read it under `criticality` in the pipeline status, beside `objective`. Use the forecast's entry.
+
+- **It is the aircraft's, shared by its jobs.** On the test fleets a single job slipping one shift moved no delivery,
+  because one job can be re-sequenced; what moves a delivery is how much of the aircraft's work gets done. Which job
+  of an aircraft comes first is the plan's sequence.
+- **It is reported only.** No plan, goal or score reads it. Whether it should weight a team's score is the owner's
+  decision (`DECISION_PLAYBOOK.md`, DEC-31).
+- **It needs the cost objective to work** (§4). With every finish date unknown, it is known only for the aircraft
+  already past due.
+
+## 6. Open, not built
 
 - **Live economics terms, caps and booked liability** (OD-12). Until approved terms are loaded, live costs are
   unknown or assumed.
-- **A carrying cost for early aircraft.** Today an aircraft costs nothing until it passes its due date.
+- **A carrying cost for early aircraft.** Today an aircraft costs nothing until it passes its due date, so its jobs
+  have criticality 0 until then.
 - **A proven optimum.** The optional solver only proposes job orders to the same comparison
   (`SOLVER_ENABLEMENT.md`).
-- **Dollars per job, and points by how critical a job is.** Investigated and not adopted
-  (`docs/task-valuation-investigation/`, reports `01` to `08`): the cost of delay is a search aid, not a value of a
-  job, and team scores stay in standard minutes (`SCORING_EXPLAINED.md`).
+- **Dollars per job.** Investigated and not adopted (`docs/task-valuation-investigation/`, reports `01` to `08`):
+  single-job costs were zero for a one-shift slip and overlapped where they were not, so they cannot be added up.
+  The scheduler's per-job cost of delay stays a search aid.
+- **Points weighted by criticality.** Not built. The definition and the report exist (§5); the weighting is DEC-31,
+  and team scores stay in standard minutes until the owner decides (`SCORING_EXPLAINED.md`).

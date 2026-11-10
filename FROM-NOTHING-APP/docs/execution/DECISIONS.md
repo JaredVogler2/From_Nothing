@@ -351,6 +351,46 @@ attendance. A conditional ETA is never physical receipt.
   - **Still open:** who accepts the plan (DEC-11). The draft's `sign_accept` waits for a person, three times a day,
     inside these 20 minutes.
 
+- **D-29 A job's criticality comes from the cost objective (owner direction, November 10, 2026).**
+  - **The owner's words.** "Criticality should be a function of how critical that job is toward the objective
+    function of global minimization of penalty costs."
+  - **Decision.** FOCUS has one definition of criticality and it is derived from the objective, never assigned by
+    hand, by job type or by a list: a job's criticality is **the modeled cost of one more day late for its aircraft,
+    in the accepted forecast plan, as a share of the highest such cost in the fleet** (0 to 1). It is the number the
+    scheduler's own search orders work by (`EconomicsRegistry.derive_priority_weights`), read from the plan's cost
+    lines, so it needs no second model.
+    - `LATE`: the plan finishes the aircraft after its due date. One more day costs its daily rate.
+    - `ON_TIME`: the plan finishes it before the due date. One more day costs only what would fall past the due
+      date, which is nothing when there is more than a day of margin.
+    - `PAST_DUE`: the due date has passed and the finish date is unknown. Every further day costs the rate
+      whatever the finish turns out to be, so the criticality is known although the cost is not.
+    - `FINISH_UNKNOWN`, `NO_RATE_OR_DUE_DATE`: unknown. Never read as zero, never filled in.
+  - **Built** (`focus/valuation/criticality.py`; `tests/unit/test_criticality.py`). Every pipeline run reports it
+    under `criticality` in its status, for the executable plan and the forecast; the forecast's is the one to read.
+    **It is reported only: no plan, goal or score reads it.**
+  - **Why it is the aircraft's and not one job's.** The measurements in `docs/task-valuation-investigation`:
+    - Slipping a single job by one shift moved no delivery: 378 of 378 first-shift jobs at 5 aircraft and 60 of 60
+      sampled at 10, each re-planned exactly; 3,189 of 3,189 at 50 aircraft, all late, by the schedule graph. One job
+      can be re-sequenced. What moves a delivery is how much of the aircraft's work gets done, which the score
+      already counts in standard minutes.
+    - Where single jobs did have a cost, the costs did not add up: two jobs on one late aircraft each carried the
+      whole delay (2.2 to 6.2 times over when summed). A dollar value per job cannot be a points currency.
+    - The scheduler's per-job urgency (`urgency.cost_of_delay`) is the aircraft's cost reduced by the job's slack. It
+      was positive for 99% of jobs where the exact re-plan found a cost for 39%. It stays a search aid.
+    - Which job of an aircraft comes first is the plan's sequence. The plan is the objective's own statement of what
+      matters this shift, and D-27 already scores it that way: planned work counts in full, other work at 80%.
+  - **What it would do to scores** (`evidence/scripts/aircraft_weighted.py`, output `AW50.json`: the stored
+    50-aircraft, 14-day simulation, 1,302 team-shifts, every aircraft late). Counting a job on the most critical
+    aircraft double moves a team's attainment by 0.05 points on average and by at most 2.8; 0.5% of team-shifts
+    move a point or more; the order of teams is unchanged (rank agreement 0.9996). Counting it four times: 0.08 on
+    average, at most 4.7, 0.9% move a point or more. A team's shift mixes aircraft, and most planned work gets done,
+    so the weights largely cancel. On a fleet where some aircraft are late and others have weeks of margin the
+    weights differ more inside one shift, so the effect can be larger; that has to be measured on real plans.
+  - **Still the owner's to decide** (`docs/integration/DECISION_PLAYBOOK.md`, DEC-31): whether criticality stays
+    information for leads and managers, or also weights a team's score. Until then scores stay in standard minutes.
+  - **Depends on the cost objective working** (DEC-29). With every aircraft's finish date unknown, criticality is
+    known only for the aircraft already past due.
+
 ## Semantic gaps (live), each a precise readiness effect
 
 These are the policy file's `open_decisions` (OD-18 is tracked here only). None of them blocks local

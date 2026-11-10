@@ -12,6 +12,13 @@
 
 Modeled money is the airline-revenue proxy: a planning assumption, never a contract or a realized loss.
 
+**Status (2026-11-10).** The owner then directed that criticality be a function of the cost objective. That is
+recorded and built as D-29 (`docs/execution/DECISIONS.md`): a job's criticality is its aircraft's modeled cost of one
+more day late in the accepted forecast, reported with every run and read by no score. It is choice (2) below at the
+aircraft level, without the per-job classes that failed T8. A new measurement (`AW50`, `EVIDENCE_INDEX.md`) shows
+what weighting scores by it would do: 0.05 points on average. Whether to weight is open (`DECISION_PLAYBOOK.md`,
+DEC-31). The findings below stand.
+
 ## A. Executive decision
 
 **Update after the measurements (2026-11-02, `06` §2.6–§2.7, §6.1).** The pre-registered tests were run:

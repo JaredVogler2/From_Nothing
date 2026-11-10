@@ -118,6 +118,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | Late events after the fact | Scores come from timestamped events once overtime closes, and are revised when data arrives late | D-26 |
 | 20 minutes before each shift (D-28) | Data gathering, scheduling and the dashboard are ready within 20 minutes, from the data cut to the accepted executable plan. The test suites run on merge, not in the run | `orchestration.window`, `.gitlab-ci.yml`, `pipeline.pre_shift_budget_minutes` |
 | Extra work earns credit (D-27) | Every unplanned job a team gets done counts toward its score at 80% of the same planned work (rate confirmed by the owner) and never lowers it. A missed planned job costs points on its own unless excused. Adherence is the planned jobs done over the expected work | `score.formula`, `score.components`, `docs/execution/SCORING_EXPLAINED.md` |
+| Criticality comes from the objective (D-29) | A job's criticality is its aircraft's modeled cost of one more day late in the accepted forecast, as a share of the fleet's highest. Never assigned by hand or by job type. Reported only; whether it weights a score is DEC-31 | `focus/valuation/criticality.py` |
 | OD-01 crew | `TOTAL_MECHANICS` is the crew needed on the job at once (owner, 2026-10-31) | `duration.total_mechanics_semantics` |
 | OD-06 due date | CS744 planned unload + 2-day grace, as a whole local day (owner, 2026-11-02) | `due.*` |
 | Time | The database holds UTC; the app shows site local time (America/New_York); live `FOCUS_SOURCE_TIMEZONE_MAP_JSON={"*": "UTC"}` | owner, 2026-10-31 |
@@ -157,6 +158,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-28 | Calendar days after the last control station | DATA, then OWNER | the producer sends the site's working days through the horizon | with the first live plans |
 | DEC-29 | Make the cost objective steer on live data | ENGINEERING and DATA | count the unknowns every run; work them before speed | with the first live plans |
 | DEC-30 | Completed jobs in the planning snapshot | ENGINEERING | keep them; fix the writes first | with the first live plans |
+| DEC-31 | Should criticality weight a team's score | OWNER (with data) | no: reported only (D-29) | after 4 weeks of pilot |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
@@ -635,6 +637,35 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   work.
 - **Until decided:** additions stay obligations. No live amendment feed exists yet (OD-15), so nothing is affected.
 
+### DEC-31 Should criticality weight a team's score
+
+- **Authority:** OWNER, with data.
+- **What exists** (D-29). Criticality is defined from the cost objective: the modeled cost of one more day late for
+  the job's aircraft in the accepted forecast, as a share of the fleet's highest. Every pipeline run reports it
+  (`criticality` in the status). No score reads it.
+- **The question.** Should a planned job on a more critical aircraft be worth more points than the same minutes on
+  a less critical one, so that a team is graded on points earned over points expected?
+- **Options:**
+  - (a) reported only: leads and managers see each aircraft's criticality; scores stay in standard minutes;
+  - (b) weighted: a job's points are its standard minutes times (1 + k x criticality), with k set by the owner
+    (k = 1 counts a job on the most critical aircraft double). Extra work keeps the 80% rate on its points. The
+    weights are those of the forecast accepted for the shift, frozen with it; a job on an aircraft whose criticality
+    is unknown counts its plain minutes;
+  - (c) reported now, weighted later if the pilot shows it changes what teams protect.
+- **What is measured** (D-29; `evidence/outputs/AW50.json`). On the stored 50-aircraft simulation, k = 1 moves a
+  team's attainment by 0.05 points on average and by a point or more in 0.5% of team-shifts; k = 3 by 0.08 and
+  0.9%. The order of teams does not change. So weighting would not make scores unfair, and it would not tell teams
+  apart either. Its use is as a signal: when a shift goes wrong, protect the work on the aircraft that costs most.
+- **Decide from data.** Run `aircraft_weighted.py`'s comparison on four weeks of real job records and accepted
+  forecasts. Weight the score only if both hold:
+  1. the weights differ inside a typical team-shift (the simulation's spread was 0.15 on a 0 to 1 scale), and
+  2. teams that missed work on critical aircraft are the ones whose scores fall, when a supervisor reviews a blind
+     sample.
+- **Recommendation:** (c). Show it first. A weighted score is harder to explain to a team, and the measurements so
+  far say it changes almost nothing.
+- **Do not:** value single jobs in dollars and add them up (the values overlap, D-29), or assign criticality by
+  hand or by job type.
+
 ### OD-16 The OFFICIAL score policy (last)
 
 - **Authority:** OWNER only. Never self-approve.
@@ -690,6 +721,6 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
    - review the readiness gaps with their owners.
 3. **First week of pipeline runs:** DEC-12; the evidence for DEC-11; DEC-24's measurement.
 4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-25 and
-   DEC-23. Ask the owner about DEC-26 before the pilot starts.
+   DEC-23. Ask the owner about DEC-26 before the pilot starts. DEC-31 is decided on the same pilot data.
 5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-11, DEC-23 to DEC-26
    and, last, OD-16.

@@ -123,3 +123,27 @@ def test_the_reason_codes_and_decisions_it_names_exist() -> None:
     playbook = (ROOT / "docs" / "integration" / "DECISION_PLAYBOOK.md").read_text(encoding="utf-8")
     for decision in ("OD-02", "OD-05", "OD-12", "DEC-28"):
         assert decision in TEXT and decision in playbook
+
+
+def test_the_criticality_section_names_the_codes_states_and_its_example_is_what_the_code_returns(policy) -> None:
+    from datetime import timedelta
+
+    from focus.contracts.planning import AircraftCompletion
+    from focus.economics.evaluator import line_costs, summarize
+    from focus.valuation.criticality import STATES, aircraft_criticality
+
+    section = TEXT[TEXT.index("## 5. How critical is a job?"):TEXT.index("## 6. Open, not built")]
+    assert all(f"`{state}`" in section for state in STATES)
+    for path in ("focus/valuation/criticality.py", "tests/unit/test_criticality.py"):
+        assert f"`{path}`" in section and (ROOT / path).is_file()
+    now, day = datetime(2027, 3, 10, 12, tzinfo=UTC), timedelta(days=1)
+    reg = EconomicsRegistry({1: _econ(1, 380_000, now), 2: _econ(2, 190_000, now), 3: _econ(3, 95_000, now),
+                             4: _econ(4, 380_000, now + 10 * day), 5: _econ(5, 380_000, now + 10 * day)}, policy)
+    done = {1: now + 2 * day, 2: now + 2 * day, 3: now + 2 * day, 4: now + 10 * day - timedelta(hours=12), 5: now + 3 * day}
+    costs = summarize(line_costs(reg, {line: AircraftCompletion(line, "known", at, 1, 1, (), ()) for line, at in done.items()}, to_minute(now)))
+    crit = aircraft_criticality(costs, now)
+    assert [crit[n].weight for n in (1, 2, 3)] == [1, Fraction(1, 2), Fraction(1, 4)] and "1, 0.5 and 0.25" in section
+    assert crit[4].cost_per_day_cents == 190_000 * 100 and "12 hours of margin: $190,000" in section
+    assert crit[5].cost_per_day_cents == 0 and "a week of margin: $0" in section
+    assert "DEC-31" in section and "DEC-31" in (ROOT / "docs" / "integration" / "DECISION_PLAYBOOK.md").read_text(encoding="utf-8")
+    assert "D-29" in section and "D-29" in (ROOT / "docs" / "execution" / "DECISIONS.md").read_text(encoding="utf-8")
