@@ -1,5 +1,8 @@
 # Performance, excusal and recognition policy (P17, P18)
 
+**New here? Read [SCORING_EXPLAINED.md](SCORING_EXPLAINED.md) first:** the score in plain terms, a worked example, and
+each rule with its code and tests.
+
 This document records how FOCUS turns observed work into one canonical shift evaluation, and
 how supplementary recognition is projected from it. The rules are implemented in
 `focus/performance/` (`actuals`, `lifecycle`, `disruption`, `amendments`, `score`, `history`, `rollup`, `details`) and

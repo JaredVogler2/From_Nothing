@@ -240,10 +240,54 @@ cause.
 The incentive tests (§3 to §5) need counterfactual floors, which only the simulation can produce. Everything else can
 be measured on real team-shifts once FOCUS scores them.
 
+**What real data can and cannot decide.**
+
+- **It is a poor way to pick the weights.** The 70/30 split, the 10% out-of-sequence rate and w state what the
+  owner wants to reward.
+  - Fitting them needs a target, such as supervisor judgments or flow outcomes. With tens of teams, the fitted
+    value would be mostly noise.
+  - Past behavior was not shaped by this score, so history cannot show how crews respond to it. Only the simulated
+    floors test that.
+  - The split matters little. Moving it by 10 points changes a team's score by a tenth of the gap between its two
+    percentages (done ÷ expected, and done ÷ (done + extra)): one point for a team at 80% and 90%.
+
+  Data can show whether the choice matters; it should not make the choice.
+- **It must set the bands.** A band is a tolerance on unexcused shortfall, and only real shifts show how large that
+  shortfall normally is.
+- **It should show the score behaves sensibly before any grade counts.** These are the checks:
+
+  | Check | Question | How | In `tools/calibrate_scores.py` today |
+  | --- | --- | --- | --- |
+  | Spread | Where do normal shifts land? | Shortfall percentiles; grades under each band set | Yes |
+  | Noise | Does a team's score one week predict the next? | Rank correlation of each team's weekly pooled score with the following week's; grade flips | Flips only |
+  | Fairness | Do shift number, team size or work mix move the score for reasons the team does not control? | Pooled scores by shift number and by team; planned minutes against the gain | Partly |
+  | Agreement | Do supervisors see the same thing? | A blind sample of about 30 of the highest- and 30 of the lowest-scoring team-shifts, labeled good, normal or bad | No (the review sample covers off-plan work only) |
+  | Outcomes | Do higher-scoring team-weeks have better flow? | Rank correlation with blocked successors, rework and stations finished on time, per team-week | No |
+  | Sensitivity | Do rankings change with the weights? | Recompute at 60/40, 70/30 and 80/20, and at w = 0.7–0.9 | w only |
+  | Classifier | How often is a swap misread? | Step 2 below | Yes |
+
+- **Rules of thumb for reading them** (judgment calls, for the owner to confirm):
+  - rankings nearly identical across the weights (rank correlation 0.95 or more): keep the defaults;
+  - week-to-week correlation below about 0.3: single shifts are mostly noise, so grade weeks, not shifts;
+  - supervisors disagree on more than about a quarter of the sample: find the cause before touching the weights.
+    It is usually the plan, the standard minutes or missing excusals.
+- **Pilot data, not shadow data.** A score only measures a team that was dispatched from the plan it is scored
+  against. In pure shadow mode, where crews follow another schedule, the numbers say how closely FOCUS's plan matched
+  what the floor did. That validates the plan, not the teams.
+- **A backtest on old history is optional.** It needs two records for past shifts: what each team was assigned, and
+  when each job was verified complete.
+  - With both, the same arithmetic gives base rates: how much assigned work normally gets done, and how much
+    completed work was not assigned.
+  - Without the assignment record, replaying FOCUS's own plans over history has the shadow problem above.
+  - History has no claims and no reviews, so excused work can only be approximated from shortage and attendance
+    records.
+  - Treat the result as a rough prior for the bands, never as the answer.
+
 **Prerequisites.**
 
-- FOCUS runs the pipeline before every shift against the company's data. Shadow mode is enough: plans accepted
-  and goals frozen, whether or not crews are dispatched on them.
+- FOCUS runs the pipeline before every shift against the company's data, and the teams being measured are
+  dispatched from its accepted plan (a pilot). Shadow mode is enough only for the pipeline measures: timing, stale
+  plans and the shift boundary.
 - The observation feeds are installed (OD-15). At minimum: `lifecycle_events`, `actual_intervals`,
   `disruption_claims` and `excusal_decisions` (`docs/data/09-observation-feeds.md`).
 - The evaluator runs after every shift's overtime window (`docs/execution/INSTALL_AND_PIPELINE.md` §4).

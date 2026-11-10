@@ -22,6 +22,10 @@ needed. Make the data-dependent decisions once real data is wired, using the rul
 
 ## 0. Guardrails (apply to every decision)
 
+- **Reading needs no approval.**
+  - Read the whole repository, run the tests and run read-only commands without asking, and without waiting for a
+    reading plan to be approved.
+  - Approval is for changes only: the writes listed below and the decisions marked OWNER.
 - **Confidentiality.**
   - This public repository holds synthetic data only. Real system names, object names, query text, mappings,
     credentials, data rows, team scores and calibration outputs stay in company storage and the company's internal
@@ -112,6 +116,7 @@ needed. Make the data-dependent decisions once real data is wired, using the rul
 
 | Id | Decision | Authority | Default now | Decide when |
 | --- | --- | --- | --- | --- |
+| DEC-00 | First full read, with the scoring check | ENGINEERING | read-only, no approval | first |
 | DEC-01 | Live store adapter and migration 011 | ENGINEERING | build it | now |
 | DEC-02 | Code ids vs `uniqueidentifier` columns | ENGINEERING | deterministic UUID mapping | now |
 | DEC-03 | Signer path vs separation of duties | ENGINEERING | signer only accepts | now |
@@ -126,17 +131,33 @@ needed. Make the data-dependent decisions once real data is wired, using the rul
 | DEC-12 | Cutoff lead and schedule times | DATA | 20 min; crons in `HANDOFF.md` §5.2 | after 1 week of runs |
 | DEC-13 | Freshness limits (load cadences) | DATA | fixture limits 18–240 h | after 2 weeks of loads |
 | OD-02…OD-17 | Data semantics (§5) | DATA, then the owner confirms the relabel | fixture meanings; live withheld | as each source is wired |
-| DEC-20 | Off-plan classifier error rates | DATA | P2 team-shift rule | after 4 weeks of shadow |
+| DEC-19 | Validate the score on real data | DATA, then OWNER | no grade counts until done | after 4 weeks of pilot |
+| DEC-20 | Off-plan classifier error rates | DATA | P2 team-shift rule | after 4 weeks of pilot |
 | DEC-21 | Exchange rate w | DATA, then OWNER confirms | 0.8 | after DEC-20 |
 | DEC-22 | Turn on R5 off-plan credit | OWNER | off (R0 stays) | after DEC-21 |
-| DEC-23 | Grade bands | OWNER (with data) | demo 90/80/70/60, DEMONSTRATION | after 4 weeks of shadow |
+| DEC-23 | Grade bands | OWNER (with data) | demo 90/80/70/60, DEMONSTRATION | after 4 weeks of pilot |
 | DEC-24 | Late-plan protection | OWNER | evidence-only `PLAN_CHURN` claims | after 1 week of runs |
-| DEC-25 | Overtime credit | OWNER (with data) | today's rule | after 4 weeks of shadow |
+| DEC-25 | Overtime credit | OWNER (with data) | today's rule | after 4 weeks of pilot |
 | DEC-26 | Approved additions under R5 | with DEC-22 | obligations | with DEC-22 |
 | DEC-27 | Policy `live_effect` text corrections | ENGINEERING | with the first policy batch | first policy batch |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
+
+### DEC-00 First full read, with the scoring check
+
+- **Authority:** ENGINEERING. It is read-only, so it needs no approval and no approved plan.
+- **Do:**
+  1. Read `HANDOFF.md`, this playbook and `docs/execution/SCORING_EXPLAINED.md`.
+  2. Read the code, following `HANDOFF.md` §9 ("Where things are").
+  3. Check the code against the scoring rules, as `SCORING_EXPLAINED.md` §4 describes.
+  4. Run the fast checks and the scoring tests named there.
+- **Report:**
+  - a short summary of how the system works;
+  - every difference between a documented rule and the code, with file and line;
+  - your open questions, each checked against this playbook first.
+- **Do not** change code, docs or policy during the read. Where a rule and the code disagree, the owner decides
+  which one is wrong.
 
 ### DEC-01 Live store adapter and migration 011
 
@@ -261,10 +282,13 @@ needed. Make the data-dependent decisions once real data is wired, using the rul
   - the complete census;
   - append-only observation history;
   - delta loads with a nightly full reconciliation.
+- **Staging counts toward the pre-shift window.** The window runs from the data cut to plan acceptance
+  (`HANDOFF.md` §3). Only a preload that runs before the cut is outside it.
 - **Measure** (once wired): the duration of each dataset load; the 95th percentile must fit the 2-minute budget.
 - **Decision rule.** If the 95th percentile is over 2 minutes, move the slowest datasets to an earlier preload, at
   T−40 minutes, for slowly changing tables (`cday_op_plan`, `cs_windows`, `pnet_dag`, `cert_course_map`,
-  `dept_team_skill_ref`), and keep the fast-moving ones at T−20.
+  `dept_team_skill_ref`), and keep the fast-moving ones at T−20. Never preload completions, work in progress,
+  shortages, rosters or attendance: the plan would be built on data older than the cut.
 - **Verify:** `verify_staged_sources` passes, and a week of `stage.json` receipts shows complete loads.
 
 ### DEC-09 Order of the supplemental producers
@@ -370,7 +394,7 @@ first owner-confirmed OD, because any edit changes the policy hash.
 - **Default now.** A 20-minute lead. Plan crons at 05:40, 14:10 and 22:40; score crons at 15:35, 00:05 and 07:05,
   site time (`HANDOFF.md` §5.2). Set each GitLab schedule's time zone to America/New_York.
 - **Measure**, after one week of runs:
-  - the end-to-end pipeline duration, from data cut to acceptance;
+  - the end-to-end pipeline duration, from data cut to acceptance, staging included;
   - from `calibrate_scores.py store`: `boundary.share_in_last_lead_minutes` and `boundary.share_in_overtime`.
 - **Decision rule.** Lead = 95th-percentile pipeline duration + 5 minutes, rounded up to 5, kept between 15 and 30.
   If more than 10% of completions land inside the lead, shorten the pipeline (DEC-08, DEC-10) before lengthening the
@@ -390,10 +414,12 @@ first owner-confirmed OD, because any edit changes the policy hash.
 - **Implement in:** `config/policies/rebuild-v1.json`, as one policy batch, with the evidence in `ref`.
 - **Verify:** `tests/integration/test_source_freshness.py`.
 
-## 7. Scoring decisions (after at least 4 weeks of shadow scores)
+## 7. Scoring decisions (after at least 4 weeks of pilot scores)
 
 **Prerequisites:**
 
+- The teams being measured are dispatched from FOCUS's accepted plan (a pilot). Scores from pure shadow mode, where
+  crews follow another schedule, say how closely FOCUS's plan matched the floor; they do not measure the teams.
 - DEC-01, DEC-06 and OD-15 are done, so scores exist live.
 - OD-17 is done, so claims can be decided.
 - At least about 1,000 scored team-shifts.
@@ -404,6 +430,28 @@ The tool for all of these is `tools/calibrate_scores.py`, and `docs/task-valuati
 ```bash
 python tools/calibrate_scores.py store --from <start> --to <end> --out calibration.json --review-sample 60 --review-csv review.csv
 ```
+
+### DEC-19 Validate the score on real data before any grade counts
+
+- **Authority:** DATA for the measurements; OWNER for what follows from them.
+- **Why.** Real data is a poor way to pick the weights: they state what the owner wants to reward, a fit on tens of
+  teams is mostly noise, and the split moves scores very little (`10_CALIBRATION.md` §8). Real data can show
+  whether the score behaves sensibly. The simulation cannot, because its floor is synthetic.
+- **Measure** (`10_CALIBRATION.md` §8, "What real data can and cannot decide"):
+  - spread: the shortfall percentiles and the grades under each band set;
+  - noise: does a team's score one week predict its score the next;
+  - fairness: do shift number, team size or work mix move the score for reasons the team does not control;
+  - agreement: do supervisors, shown a blind sample of the highest- and lowest-scoring shifts, see the same thing;
+  - outcomes: do higher-scoring team-weeks have better flow (fewer blocked successors, less rework);
+  - sensitivity: do rankings change between 60/40, 70/30 and 80/20.
+- **Decision rules** (rules of thumb, for the owner to confirm):
+  - rankings nearly identical across the weights (rank correlation 0.95 or more): keep the defaults;
+  - week-to-week correlation below about 0.3: single shifts are mostly noise, so grade weeks, not shifts;
+  - supervisors disagree on more than about a quarter of the sample: find the cause first. It is usually the
+    plan, the standard minutes or missing excusals, not the weights.
+- **Tooling.** `tools/calibrate_scores.py` reports spread, flips and the w grid today. The noise, by-shift fairness,
+  blind sample, outcome and 60/40–80/20 checks are not built yet.
+- **Record:** a D-entry with the measurements (summary only).
 
 ### DEC-20 Off-plan classifier error rates
 
@@ -446,7 +494,7 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   - Implement R5 in `score.formula` and `score.components`, using P2 over the evaluation evidence: missed planned
     units with no submitted claim.
   - Mirror it in the simulation and the reference views; add tests.
-  - Show R5 as a shadow score beside R0 for at least two weeks.
+  - Show R5 beside R0 as an unofficial second score for at least two weeks.
 - **Ask the owner** with DEC-20, DEC-21 and the R0-versus-R5 grade changes (`grades.R0_to_R5_w0.8_grade_change`).
 - **Record:** a D-entry and `PERFORMANCE_POLICY.md`.
 
@@ -515,7 +563,7 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 ### OD-16 The OFFICIAL score policy (last)
 
 - **Authority:** OWNER only. Never self-approve.
-- **When.** After DEC-20 to DEC-25 are settled and at least two weeks of shadow scores look right to supervisors.
+- **When.** After DEC-20 to DEC-25 are settled and at least two weeks of pilot scores look right to supervisors.
 - **What the owner provides.** An approval reference, which goes in `score.policy_approval_ref`, with
   `score.policy_status = OFFICIAL`. The decision on personal grades is separate and needs its own policy;
   `score.personal_grades_enabled` stays false until then.
@@ -557,13 +605,14 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
 
 ## 9. Suggested order
 
-1. **Now (no data):** DEC-01 to DEC-09; build DEC-10, DEC-11, DEC-22 and DEC-24 behind switches that are off.
+1. **Now (no data):** DEC-00 first, then DEC-01 to DEC-09; build DEC-10, DEC-11, DEC-22 and DEC-24 behind switches that are off.
 2. **Data wired, read-only:**
    - staging (DEC-08) and the OD profiling (§5), with OD-05 first, then OD-10, OD-13, OD-03, OD-07, OD-08, OD-09 and
      OD-04;
    - a FORECAST plan for the complete scope;
    - review the readiness gaps with their owners.
 3. **First week of pipeline runs:** DEC-12; the evidence for DEC-10 and DEC-11; DEC-24's measurement.
-4. **Two to four weeks of shadow scores:** DEC-13, DEC-20, DEC-21, DEC-25 and DEC-23; then propose DEC-22 and DEC-26.
+4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-21, DEC-25
+   and DEC-23; then propose DEC-22 and DEC-26.
 5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-10, DEC-11, DEC-22 to
    DEC-25 and, last, OD-16.

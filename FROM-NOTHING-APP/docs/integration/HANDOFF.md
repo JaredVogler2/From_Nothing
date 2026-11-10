@@ -17,11 +17,32 @@ behaviour were checked against the code on this date.
 - [`SQL_SCHEMA_LEDGER.md`](../execution/SQL_SCHEMA_LEDGER.md): the tables FOCUS writes and the gaps in them.
 - [`INSTALL_AND_PIPELINE.md`](../execution/INSTALL_AND_PIPELINE.md): install, roles, the pipeline and recovery.
 - [`DECISIONS.md`](../execution/DECISIONS.md): the rules (D-26 above all) and the open decisions.
+- [`SCORING_EXPLAINED.md`](../execution/SCORING_EXPLAINED.md): how a team's shift is scored, in plain terms, with
+  each rule's code and tests.
 - [`10_CALIBRATION.md`](../task-valuation-investigation/10_CALIBRATION.md): re-running the score calibration on real
   data.
 
 **Confidentiality, in one line.** Real server names, object names, query text, mappings, credentials and data rows
 stay in company storage. This public repository keeps the synthetic reference contract only.
+
+## 0. Standing answers (read before asking)
+
+- **Reading needs no approval.**
+  - Read the whole repository, run the test suite and run any read-only command without asking, and without
+    waiting for a reading plan to be approved.
+  - Approval is for changes only: installing SQL, applying grants, publishing or signing plans, enabling dispatch,
+    changing the policy files, and the decisions marked OWNER in the playbook.
+  - If your tooling needs a human click before a read-only step, ask once and say the step is read-only.
+- **The first task is a full read with a scoring check.** Read this guide, then the playbook, then the code. As part
+  of that read, check the code against the scoring rules (`SCORING_EXPLAINED.md` §4). Change nothing. Report three
+  things:
+  - a short summary of how the system works;
+  - every difference between a documented rule and the code, with file and line;
+  - your open questions.
+- **The pre-shift clock runs from the data cut to plan acceptance.** Staging counts toward it (§3).
+- **Scoring** is explained in `SCORING_EXPLAINED.md`. One file computes it: `focus/performance/score.py`.
+- **Decisions.** Before asking the owner, look the question up in `DECISION_PLAYBOOK.md`: it says what to do now,
+  what to decide from data, and what only the owner can decide.
 
 ## 1. What FOCUS does and what is decided
 
@@ -89,6 +110,17 @@ Before each shift, inside a 15–20 minute window (owner, 2026-11-02):
 | `stage_readback`, `sign_accept` | ≤ 2 min | display parts for the executable plan 10 s; stage and sign not measured live |
 | **The plan must be accepted before the shift starts** | | |
 
+- **What counts toward the window.** The clock starts at the data cut (the pipeline's start, which is the loader's
+  `--as-of`) and stops when `sign_accept` finishes.
+  - Everything in between counts, staging included. Work finished after the cut is not in the plan, so every minute
+    of staging, checking, planning and signing widens the gap that is captured after the fact.
+  - `stage_sources` runs alongside the verify jobs. The wall-clock total is therefore the longer of the two paths,
+    not their sum.
+  - A preload that runs before the data cut does not count toward the window (playbook, DEC-08). Its tables are as
+    old as the preload, so use it only for data that does not change within a shift: calendars, control-station
+    windows, the template graph and the certificate and department reference tables. Completions, work in progress,
+    shortages, rosters and attendance must be staged at the cut.
+  - The evaluator-only run after overtime is outside the window.
 - **Total so far.** The plan path measured 3.6–5.2 minutes per shift at 50 aircraft, peaking at 6.6 GB
   (`10_CALIBRATION.md` §7). With the snapshot's display parts (about 2.7 minutes) and the executable plan's parts
   (10 s), that is roughly 6.5–8 minutes before staging, the drift check, stage and sign. The live data pull is the
@@ -158,8 +190,9 @@ $FOCUS_STAGE_COMMAND --part all --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-r
 1. **Publish atomically.** Most SOURCE queries take the table as it stands, with no as-of parameter, and FOCUS's
    `CAPTURE_SKEW` check measures only its own capture times. Load into shadow tables, then swap them in one
    transaction (`ALTER SCHEMA … TRANSFER` or `sp_rename`), or switch a view. Never truncate and insert in place.
-2. **Load everything from one instant.** All SOURCE tables come from `--as-of`. `cs_windows` must come from the
-   same load generation as the task list, or admission rejects it (`CS_GENERATION_MISMATCH`).
+2. **Load everything from one instant.** All SOURCE tables staged at the cut come from `--as-of`. Publish one active
+   load of `cs_windows` per line: when a producer receipt declares the active load, admission rejects rows from
+   another load (`CS_GENERATION_MISMATCH`), and two active loads for a line give `CS_LOAD_CONFLICT`.
 3. **Stamp the row clock on every row.** Set the table's row clock (`LOAD_TIMESTAMP`, `SNAPSHOT_TS` or `LOAD_TS`)
    to the load instant, in UTC.
    - The live reader passes no `loaded_at`, so live freshness comes from these columns.
@@ -292,8 +325,12 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
    - Correct the out-of-date `live_effect` texts (DECISIONS.md lists them). Do this with the next policy revision,
      because it changes the policy hash.
    - The owner must answer the open decisions OD-02 to OD-05 and OD-07 to OD-17.
-8. **Shadow, then calibrate.** Run in shadow mode for at least four weeks, then follow `10_CALIBRATION.md` §8 (w,
-   bands, the classifier's error rates, stale plans).
+8. **Shadow, then pilot, then calibrate.**
+   - Shadow (crews still follow the existing schedule) proves the pipeline, its timing and the plan's realism. Its
+     scores say how closely FOCUS's plan matched what the floor did; they do not measure the teams.
+   - Calibrate only on a pilot, where some teams are dispatched from the accepted plan and scores are computed but
+     used for nothing, for at least four weeks. Then follow `10_CALIBRATION.md` §8 (bands, noise, fairness, w, the
+     classifier's error rates).
 
 ## 7. Owner decisions still open
 
