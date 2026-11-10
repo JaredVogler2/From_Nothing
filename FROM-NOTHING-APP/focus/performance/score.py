@@ -10,11 +10,9 @@ counts, elapsed or actual burn, never dollars, and never multiplied by crew agai
 * D = B - E.
 * Cp = verified planned/amended completion, counted once.
 * U = unapproved offplan verified completion (all of it, for the record).
-* Uc = the part of U that earns credit as extra work (owner decision D-27):
-  - offplan work started out of sequence by choice earns none;
-  - the rest first covers the team-shift's missed planned work that has no reason on record
-    (``NO_REASON_ON_RECORD``: no approved relief and no claim), minute for minute and at no credit;
-  - what is left is Uc. So Uc = max(0, eligible offplan minutes - unexplained missed minutes).
+* Uc = the part of U that earns credit as extra work (owner decision D-27): every verified offplan
+  completion, except work started out of sequence by choice. What the team missed does not reduce it:
+  a missed planned unit costs points on its own, unless approved relief excuses it.
 * O = ``score.oos_rate`` x affected planned effort of evidenced discretionary OOS, counted once
   per unit.
 
@@ -63,7 +61,6 @@ from ..domain import EvaluationStatus, aware_utc, digest_id
 
 
 WINDOW_OPEN = "WINDOW_OPEN: the shift's credit window has not closed; output, offplan work and OOS can still change"
-NO_REASON = "NO_REASON_ON_RECORD"                       # a missed unit with no approved relief and no claim (lifecycle.unit_facts)
 OFFPLAN_OOS_BY_CHOICE = "OUT_OF_SEQUENCE_BY_CHOICE"     # offplan work started out of sequence by choice: no credit as extra work
 OFFPLAN_OOS_UNCLASSIFIED = "OOS_CLASSIFICATION_UNKNOWN" # ... with an unclassified violation: the credit is unknown
 CREDIT_UNKNOWN = "OFFPLAN_CREDIT_UNKNOWN: a member was evaluated before the extra-work credit (D-27); evaluate it again"
@@ -106,11 +103,6 @@ def grade_for(score: Decimal, policy: Any) -> str:
         if score >= Decimal(int(threshold)):
             return str(label)
     return "F"
-
-
-def credited_offplan(eligible: Fraction, unexplained: Fraction) -> Fraction:
-    """Uc of one team-shift (D-27): offplan work first covers missed planned work with no reason on record, at no credit."""
-    return max(Fraction(0), eligible - unexplained)
 
 
 def formula(B: Fraction, E: Fraction, Cp: Fraction, Uc: Fraction, O: Fraction, policy: Any) -> dict[str, Any]:
@@ -160,8 +152,7 @@ def components(facts: Iterable[UnitFact], offplan: Iterable[OffplanFact], oos: I
     if U is not None and not credit_known:
         reasons.append("OFFPLAN_OOS_CLASSIFICATION_UNKNOWN: an out-of-sequence start on unplanned work has no discretionary classification")
     elif U is not None:
-        unexplained = Fraction(sum(f.effort for f in facts if f.status == "MISSED" and not f.relief and NO_REASON in f.reasons))
-        Uc = credited_offplan(eligible, unexplained)
+        Uc = eligible
     rate = Fraction(policy.str("score.oos_rate"))
     O: Fraction | None = rate * sum((Fraction(x.affected_effort) for x in oos if x.charged), Fraction(0))
     if any(x.discretionary is None and x.planned for x in oos):

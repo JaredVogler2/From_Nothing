@@ -11,7 +11,7 @@ import re
 from fractions import Fraction
 from pathlib import Path
 
-from focus.performance.score import credited_offplan, formula
+from focus.performance.score import formula
 
 ROOT = Path(__file__).resolve().parents[2]
 TEXT = (ROOT / "docs" / "execution" / "SCORING_EXPLAINED.md").read_text(encoding="utf-8")
@@ -35,14 +35,15 @@ def test_the_worked_example_is_what_the_formula_returns(policy) -> None:
         r = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(counted), Fraction(O), policy)
         return str(r["score"]), r["grade"]
 
-    assert score(1000, 100, 720, 80) == ("87.1", "B")                    # every missed job has a reason: all 80 extra minutes count
+    assert score(1000, 100, 720, 80) == ("87.1", "B")                    # all 80 extra minutes count
     assert score(1000, 100, 720, 0) == ("80.0", "B")                     # no extra work: done / expected
     assert score(1000, 100, 800, 0) == ("88.9", "B")                     # the same 80 minutes as planned jobs are worth more
-    assert credited_offplan(Fraction(80), Fraction(50)) == 30            # 50 missed minutes with no reason on record are covered first
-    assert score(1000, 100, 720, 30) == ("82.7", "B")
     assert score(1000, 100, 720, 80, O=10) == ("86.0", "B")              # 10% of one 100-minute job
     assert score(1000, 100, 900, 100) == ("100.0", "A")                  # extra work never lowers a score (97.0 before D-27)
-    assert all(shown in TEXT for shown in ("**87.1**", "**80.0**", "**88.9**", "**82.7**", "**86.0**", "**100.0**"))
+    assert all(shown in TEXT for shown in ("**87.1**", "**80.0**", "**88.9**", "**86.0**", "**100.0**"))
+    # the owner's example: 10 one-hour jobs scheduled, 8 done, 4 others not on plan
+    assert score(600, 0, 480, 0) == ("80.0", "B") and score(600, 0, 480, 240) == ("96.0", "A")
+    assert score(600, 120, 480, 240) == ("100.0", "A") and "**96.0**" in TEXT and "| +16 |" in TEXT   # the two misses validly excused
 
 
 def test_the_stated_weights_rate_and_bands_are_the_policys(policy) -> None:
@@ -50,7 +51,7 @@ def test_the_stated_weights_rate_and_bands_are_the_policys(policy) -> None:
     adherence = int(Fraction(policy.str("score.adherence_weight")) * 100)
     rate = int(Fraction(policy.str("score.oos_rate")) * 100)
     assert f"{attainment}% × ((done + extra that counts) ÷ expected, at most 100%) + {adherence}% × (done ÷ expected)" in TEXT
-    assert f"An extra job is worth {attainment}% of the same minutes" in TEXT and f"The last {adherence}% of the score" in TEXT
+    assert f"is worth {attainment}% of the same minutes" in TEXT and f"The last {adherence}% of the score" in TEXT
     assert f"{rate}% of the planned minutes" in TEXT
     bands = {str(label): int(low) for label, low in policy.seq("score.bands")}
     assert f"A is {bands['A']} and up, B {bands['B']}, C {bands['C']}, D {bands['D']}, F below {bands['D']}." in TEXT

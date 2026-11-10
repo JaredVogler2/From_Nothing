@@ -471,8 +471,9 @@ def test_planned_oos_charged_once_offplan_oos_not_double_charged(world) -> None:
     assert "OUT_OF_SEQUENCE_BY_CHOICE" in by_phase[b2].reasons and world.evals[P3]["PROD-A"].Uc == 240   # ... and it earns no extra-work credit
 
 
-def test_a_missed_job_with_no_cause_on_record_absorbs_extra_work_before_any_is_credited(world) -> None:
-    """D-27: extra work earns credit unless the team left planned work undone and nothing on record says why."""
+def test_a_missed_job_with_no_cause_on_record_is_marked_and_extra_work_is_credited_either_way(world) -> None:
+    """D-27: extra work earns credit whatever the team missed. A missed job that no claim names is marked, for the lead
+    and the reports; the mark changes no score."""
     from focus.contracts.evaluation import OffplanFact
     from focus.performance.score import components
 
@@ -482,13 +483,14 @@ def test_a_missed_job_with_no_cause_on_record_absorbs_extra_work_before_any_is_c
     assert sum(f.effort for f in missed) == 168 and not any("NO_REASON_ON_RECORD" in f.reasons for f in missed)
     assert disruption.explained_units(view, record.goal_id) >= {f.unit_id for f in missed}   # the automatic attribution named a cause for each
     extra = [OffplanFact("X", "PROD-B", S1, "J", "J.WORK.0", 200, P1, "E", ())]
-    assert components(list(facts.values()), extra, [], world.services.policy)["Uc"] == 200   # all of it is extra work
+    with_causes = components(list(facts.values()), extra, [], world.services.policy)
     view.claims = [c for c in view.claims if c.goal_id != record.goal_id]                    # the same shift with nothing on record
     bare = view.unit_facts(record)
     assert all(("NO_REASON_ON_RECORD" in f.reasons) == (f.status == "MISSED") for f in bare)
-    assert components(bare, extra, [], world.services.policy)["Uc"] == 200 - 168             # the first 168 minutes cover the misses
+    without = components(bare, extra, [], world.services.policy)
+    assert with_causes["Uc"] == without["Uc"] == 200 and with_causes["E"] == without["E"]     # the same credit and the same misses
     withdrawn = [c for c in ObservationView.build(world.services, P1).claims if c.goal_id == record.goal_id]
-    view.claims = [replace(c, status="WITHDRAWN") for c in withdrawn]                        # a withdrawn claim explains nothing
+    view.claims = [replace(c, status="WITHDRAWN") for c in withdrawn]                        # a withdrawn claim is no reason on record
     assert all("NO_REASON_ON_RECORD" in f.reasons for f in view.unit_facts(record) if f.status == "MISSED")
 
 

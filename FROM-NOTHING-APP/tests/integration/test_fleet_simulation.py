@@ -248,7 +248,7 @@ def test_team_scores_are_the_canonical_formula_over_their_goal_units(sims, app_r
     assert teams
     credited = 0
     for shift_no, team, B0, additions, B, E, Cp, U, Uc, oos_effort, score, grade, status, base, O, final, policy_id, policy_hash, why in teams:
-        units = _all(first, f"SELECT effort, status, relief, oos_charged, origin, claim_cause FROM perf_unit WHERE shift_no = {shift_no} AND team = '{team}'")
+        units = _all(first, f"SELECT effort, status, relief, oos_charged, origin FROM perf_unit WHERE shift_no = {shift_no} AND team = '{team}'")
         assert B0 == sum(u[0] for u in units if u[4] == "ORIGINAL") and additions == sum(u[0] for u in units if u[4] == "AMENDMENT")
         assert B == B0 + additions and Cp == sum(u[0] for u in units if u[1] == "EARNED")
         assert additions == _all(first, f"SELECT COALESCE(SUM(effort), 0) FROM perf_amendment WHERE shift_no = {shift_no} AND team = '{team}'")[0][0]
@@ -257,9 +257,7 @@ def test_team_scores_are_the_canonical_formula_over_their_goal_units(sims, app_r
         assert not any(u[2] for u in units if u[1] == "EARNED")
         assert oos_effort == sum(u[0] for u in units if u[3])
         assert U == (_all(first, f"SELECT COALESCE(SUM(effort), 0) FROM exec_offplan WHERE shift_no = {shift_no} AND team = '{team}'")[0][0])
-        # the offplan output first covers the missed units no claim names (a deviation, or no disruption on record)
-        no_reason = sum(u[0] for u in units if u[1] == "MISSED" and not u[2] and u[5] is None)
-        assert Uc == max(0, U - no_reason) and 0 <= Uc <= U
+        assert Uc == U                                                 # the floor's offplan work is ready work: all of it is credited
         credited += Uc
         assert status in ("DEMONSTRATION", "OFFICIAL", "NEUTRAL")
         result = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(Uc), rate * oos_effort, policy)

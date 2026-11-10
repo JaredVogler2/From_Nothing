@@ -90,7 +90,7 @@ how supplementary recognition is projected from it. The rules are implemented in
   Unit reasons: `VERIFIED_COMPLETE_BEFORE_SHIFT_START`; `COMPLETION_CREDITED_ELSEWHERE_OR_LATE` (a missed
   unit whose phase was completed in another window); `WITHDRAWN_WORK_STAYS_IN_B0` (cancelled or detabbed
   before completion); `NO_REASON_ON_RECORD` (a missed unit with no approved relief that no claim names:
-  `disruption.explained_units`; D-27); plus the phase lifecycle's own reasons.
+  `disruption.explained_units`; information only, it changes no score); plus the phase lifecycle's own reasons.
 - **Offplan reasons** (`lifecycle._offplan`): `LATE_FOR_GOAL:<goal>` (completed after the credit deadline
   of a goal that planned it); `NOT_IN_ANY_GOAL_OF_RECORD` (no goal whose credit window has closed planned
   it, which includes work pulled forward from a later shift's goal); `STANDARD_EFFORT_UNKNOWN` (no sourced
@@ -157,8 +157,8 @@ The score is computed on exact rationals in standard person minutes. `SCORING_EX
 plain terms with a worked example. When D > 0:
 
 - D = B - E
-- Uc = max(0, eligible offplan minutes - missed minutes with `NO_REASON_ON_RECORD`): the extra work that
-  earns credit (D-27). Offplan work started out of sequence by choice is not eligible.
+- Uc = the offplan minutes that earn credit as extra work (D-27): every verified offplan completion, except
+  work started out of sequence by choice. What the team missed does not reduce it.
 - A = min(1, (Cp + Uc)/D): output attainment
 - H = min(1, Cp/D): plan adherence, the planned jobs done
 - base = 100(0.80A + 0.20H)
@@ -193,7 +193,7 @@ else F) apply to that displayed value.
   evaluation of the same members. Credited extra work is summed like every component, so extra minutes beyond one shift's expected
   work count toward the period. The official result is unknown while any member is unscored; a labeled partial covers the scored
   ones. Each score's jobs are kept for good in a compact record that adds up to it (planned minutes to B, done to Cp, excused to E,
-  unplanned to U; a missed job with no cause listed is one the unplanned work covers first); the per-unit evidence goes after
+  unplanned to U; a missed job with no cause listed has no reason on record); the per-unit evidence goes after
   90 days (`focus.performance.details`).
 
 ## Recognition and progression

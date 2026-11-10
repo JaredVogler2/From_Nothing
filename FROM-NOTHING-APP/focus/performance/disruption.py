@@ -319,8 +319,8 @@ def explained_units(view: Any, goal_id: str) -> set[str]:
     The claim may come from the automatic attribution (a late part, an unfinished predecessor, a call-off, rework, an
     overrun, a plan change) or from a person, and it may be proposed, awaiting review, approved or rejected. A claim
     is evidence that the unit could not be done as planned; whether it excuses the unit is the reviewer's separate
-    decision (``approved_units``). A missed unit outside this set has ``NO_REASON_ON_RECORD``: unplanned work the
-    team did instead covers it at no credit (D-27, ``score.components``).
+    decision (``approved_units``). A missed unit outside this set carries ``NO_REASON_ON_RECORD``
+    (``lifecycle.unit_facts``). That is information for the lead and the reports; it changes no score.
     """
     return {u for c in effective_claims(view, goal_id).values() if c.status != "WITHDRAWN" for u in c.units}
 

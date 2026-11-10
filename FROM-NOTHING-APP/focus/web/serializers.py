@@ -1195,9 +1195,8 @@ def performance_jobs(services: Any, ctx: RequestContext, *, level: str, node: st
     reasons = [] if data["team_shifts"] else [reason("NO_JOB_RECORDS", "No team-shift of this group has a job record in this period.")]
     return Projection("ready" if data["team_shifts"] else "empty",
                       {**data, "note": "planned jobs are done, missed (with any claim causes on record), excused, open or done out of "
-                                       "sequence; unplanned jobs are extra work, credited below a planned job and never in adherence; a "
-                                       "missed job with no cause on record is covered first by the team-shift's unplanned work at no "
-                                       "credit; no_plan is work on a team-shift no plan covered, which "
+                                       "sequence; unplanned jobs are extra work, credited below a planned job and never in adherence; "
+                                       "no_plan is work on a team-shift no plan covered, which "
                                        "its neutral score leaves out; sorted by missed, unplanned and out-of-sequence minutes"}, reasons)
 
 

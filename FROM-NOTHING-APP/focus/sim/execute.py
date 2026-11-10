@@ -54,9 +54,9 @@ Nothing is credited twice.
 - the once-only out-of-sequence charge;
 - D = frozen effort - approved relief.
 
-Offplan output earns credit as extra work (D-27). It first covers the team-shift's missed frozen units that have no
-claim (a deviation, or a miss with no disruption on record), minute for minute and at no credit; the rest is credited.
-The floor works only ready tasks off the plan, so no offplan work is out of sequence here.
+Offplan output earns credit as extra work (D-27), whatever else the team missed: a missed frozen unit costs points on
+its own unless approved relief excuses it. The floor works only ready tasks off the plan, so no offplan work is out of
+sequence here and all of it is credited.
 
 Results are labelled with the policy's status (DEMONSTRATION), or NEUTRAL when D = 0.
 
@@ -89,7 +89,7 @@ from fractions import Fraction
 from typing import Any, Mapping
 
 from ..domain import EdgeType, PhaseKind, digest_id, from_minute, to_minute
-from ..performance.score import credited_offplan, status_and_score
+from ..performance.score import status_and_score
 from .state import SourceState
 
 OT_ALLOWANCE = 60
@@ -108,7 +108,7 @@ def scoring_text(policy: Any) -> str:
             f"adherence) − 100 × {rate} × out-of-sequence effort ÷ D, graded {bands}, F below. Each shift is scored against the plan "
             f"accepted before it starts; a shift lead may add emergency rework the plan assigns. Attainment = (planned work earned + "
             f"credited extra work) ÷ D, at most 1. Adherence = planned work earned ÷ D. So work done off the plan earns {wa} of the same "
-            f"planned work and never lowers a score; it first covers missed planned work that has no reason on record, at no credit. "
+            f"planned work and never lowers a score; a missed planned task costs points on its own unless it is excused. "
             f"D = frozen effort + approved emergency additions − approved relief: "
             f"a missed task excused by an approved claim (late part, another team's unfinished predecessor, a call-off after "
             f"publication, rework from another team's defect) does not count against the team. Effort is standard person minutes.")
@@ -791,9 +791,7 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         Cp = sum(u.effort for k, u in by_key.items() if facts[k][0] == "EARNED")
         E = sum(by_key[k].effort for k in relieved) + sum(by_key[k].effort for k, f in facts.items() if f[0] == "DONE_BEFORE_SHIFT")
         U = sum(e for _, e in output.get(team, ()))
-        # missed units with no claim (a deviation, or no disruption on record) are covered first by offplan work, at no credit
-        no_reason = sum(by_key[k].effort for k, f in facts.items() if f[0] == "MISSED" and f[2] is None and k not in relieved)
-        Uc = int(credited_offplan(Fraction(U), Fraction(no_reason)))
+        Uc = U                                                        # every offplan completion here is ready work: all of it is credited (D-27)
         oos_effort = sum(by_key[k].effort for k in charged)
         parts = {"B0": Fraction(B0), "B": Fraction(B0 + additions), "E": Fraction(E), "Cp": Fraction(Cp), "U": Fraction(U), "Uc": Fraction(Uc),
                  "O": rate * oos_effort, "reasons": []}

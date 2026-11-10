@@ -2,7 +2,7 @@
 
 Expected values are the S14 numbers as the owner's extra-work decision (D-27) changed them, written down here, never
 recomputed by the scorer under test. D-27: adherence is the planned jobs done over the expected work, and unplanned work
-earns credit as extra work, below the same planned work, after covering missed planned work that has no reason on record.
+earns credit as extra work, below the same planned work. A missed planned job costs points on its own unless excused.
 """
 from __future__ import annotations
 
@@ -15,9 +15,10 @@ import pytest
 from focus.analytics.points import behind_station, gate_context, unit_values
 from focus.contracts.evaluation import OffplanFact, OOSFact, UnitFact
 from focus.domain import DomainError, EvaluationStatus
-from focus.performance.score import (CREDIT_UNKNOWN, NO_REASON, OFFPLAN_OOS_BY_CHOICE, OFFPLAN_OOS_UNCLASSIFIED, WINDOW_OPEN, build_evaluation,
-                                     components, formula, grade_for, personal_grade_refusal, pooled, round_half_up, score_policy_errors,
-                                     status_and_score)
+from focus.performance.score import (CREDIT_UNKNOWN, OFFPLAN_OOS_BY_CHOICE, OFFPLAN_OOS_UNCLASSIFIED, WINDOW_OPEN, build_evaluation, components,
+                                     formula, grade_for, personal_grade_refusal, pooled, round_half_up, score_policy_errors, status_and_score)
+
+NO_REASON = "NO_REASON_ON_RECORD"                    # information on a missed unit (lifecycle.unit_facts); it changes no score
 
 T = datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc)
 
@@ -30,7 +31,7 @@ def unit(i: int, effort: int, status: str, *, relief: bool = False, origin: str 
 
 def facts(B: int, Cp: int, E: int = 0, *, unit_size: int = 10, goal: str = "G", no_reason: int = 0) -> list[UnitFact]:
     """B minutes of frozen units: Cp earned, E missed-with-relief, the rest missed. ``no_reason`` of the missed minutes
-    have no reason on record (no claim); the others have a claim that was not approved."""
+    carry NO_REASON_ON_RECORD (no claim); the others have a claim that was not approved. The score treats both alike."""
     assert B % unit_size == Cp % unit_size == E % unit_size == no_reason % unit_size == 0 and no_reason <= B - Cp - E
     out, i = [], 0
     for status, relief, minutes, why in (("EARNED", False, Cp, ()), ("MISSED", True, E, ()), ("MISSED", False, no_reason, (NO_REASON,)),
@@ -60,8 +61,8 @@ def score(policy, B, Cp, E=0, U=0, O_affected=0, no_reason=0, **kw):
 @pytest.mark.parametrize("B,E,Cp,U,O_aff,no_reason,expected", [
     (200, 0, 200, 0, 0, 0, "100.0"),
     (200, 0, 100, 0, 0, 0, "50.0"),        # A57 (65 before D-27): half the expected work done is 50, with no free adherence points
-    (200, 0, 100, 100, 0, 100, "50.0"),    # A57: unplanned work done instead of planned work with no reason on record earns nothing
-    (200, 0, 100, 100, 0, 0, "90.0"),      # D-27: the same unplanned work as extra work (the misses have a reason): 0.8 x 1 + 0.2 x 0.5
+    (200, 0, 100, 100, 0, 0, "90.0"),      # A57 (50 before D-27): 100 unplanned minutes are extra work: 0.8 x 1 + 0.2 x 0.5
+    (200, 0, 100, 100, 0, 100, "90.0"),    # ... whether or not the missed work has a reason on record: the miss costs its own points
     (200, 0, 100, 50, 0, 0, "70.0"),       # D-27: 50 extra minutes are worth 0.8 of 50 planned minutes (which would give 75)
     (200, 0, 200, 100, 0, 0, "100.0"),     # D-27: extra work beyond a finished plan never lowers the score (96.7 before)
     (200, 0, 0, 0, 0, 0, "0.0"),           # A57: nothing done is 0
@@ -80,22 +81,24 @@ def test_zero_output_is_zero_and_h_is_zero(policy) -> None:
     assert result["adherence"] == 0 and result["attainment"] == 0 and result["base"] == 0
 
 
-def test_extra_work_covers_unexplained_misses_first_and_is_credited_below_planned_work(policy) -> None:
-    """D-27. Planned 200, done 120; 80 missed, 30 of them with no reason on record; 60 unplanned minutes done."""
-    parts = components(facts(200, 120, no_reason=30), [offplan(60)], [], policy)
-    assert (parts["U"], parts["Uc"]) == (60, 30)                                            # 30 cover the unexplained miss at no credit
-    _, r, _ = status_and_score(parts, policy, [])
-    assert r["attainment"] == Fraction(150, 200) and r["adherence"] == Fraction(120, 200) and str(r["score"]) == "72.0"
-    # the same 30 credited minutes as planned work would be worth more: extra work earns 0.8 of it
-    as_planned = status_and_score(components(facts(200, 150, no_reason=30), [offplan(30)], [], policy), policy, [])[1]
-    assert as_planned["final"] - r["final"] == Fraction(100) * Fraction(2, 10) * Fraction(30, 200)
-    # a swap never pays: doing the unexplained 30 planned minutes instead of 30 of the unplanned ones scores higher
-    instead = status_and_score(components(facts(200, 150), [offplan(30)], [], policy), policy, [])[1]
-    assert instead["final"] > r["final"]
-    # nor does it cost more than leaving the job undone and doing nothing else: one penalty, not two
-    idle = status_and_score(components(facts(200, 120, no_reason=30), [], [], policy), policy, [])[1]
-    swap = status_and_score(components(facts(200, 120, no_reason=30), [offplan(30)], [], policy), policy, [])[1]
-    assert swap["final"] == idle["final"] == 60
+def test_extra_work_is_credited_below_planned_work_and_a_miss_costs_points_on_its_own(policy) -> None:
+    """D-27, in the owner's example (2026-11-10): 10 jobs scheduled, 8 done, 4 others not on plan. Full credit for the 8,
+    some credit for the 4, and points lost for the 2 missed unless their excuse is valid. Jobs are 60 minutes."""
+    def final(rows, extra: int):
+        return status_and_score(components(rows, [offplan(extra)] if extra else [], [], policy), policy, [])[1]
+
+    not_excused = final(facts(600, 480, unit_size=60, no_reason=60), 240)                 # one miss has a rejected claim, one has none
+    assert (not_excused["attainment"], not_excused["adherence"]) == (1, Fraction(480, 600)) and str(not_excused["score"]) == "96.0"
+    assert str(final(facts(600, 480, unit_size=60), 0)["score"]) == "80.0"                   # the same shift with no extra work
+    assert str(final(facts(600, 480, 120, unit_size=60), 240)["score"]) == "100.0"           # both misses validly excused: nothing lost
+    # below the cap an extra minute is worth 0.8 of a planned minute: 60 extra minutes add 8 points, 60 planned ones 10
+    one_extra, one_more_planned = final(facts(600, 480, unit_size=60), 60), final(facts(600, 540, unit_size=60), 0)
+    assert (str(one_extra["score"]), str(one_more_planned["score"])) == ("88.0", "90.0")
+    # a swap never pays: the missed planned hour done instead of one of the extra hours scores higher
+    assert final(facts(600, 540, unit_size=60), 180)["final"] > not_excused["final"]
+    # the credited minutes are all the unplanned minutes, with or without a reason on record for the misses
+    parts = components(facts(600, 480, unit_size=60, no_reason=120), [offplan(240)], [], policy)
+    assert (parts["U"], parts["Uc"]) == (240, 240)
 
 
 def test_extra_work_started_out_of_sequence_by_choice_earns_nothing_and_unclassified_is_unknown(policy) -> None:

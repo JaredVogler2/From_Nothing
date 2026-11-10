@@ -246,10 +246,10 @@
       "tests/integration/test_lifecycle_excusals.py::test_a56_reported_completion_is_a_claim_never_credit",
       "tests/integration/test_lifecycle_excusals.py::test_a56_revisions_voids_and_corrections_append",
       "tests/integration/test_lifecycle_excusals.py::test_a56_terminal_status_and_disappearance_are_unknown_not_credit"]},
-    "A57": {"stage": "P18", "summary": "Demonstration scores as the owner's extra-work decision D-27 amended them: half the expected work done is 50 (65 before), unplanned work done instead of planned work with no reason on record is still 50, nothing done is 0; no free adherence points and no UI formula drift; other unplanned work earns credit below the same planned work", "tests": [
+    "A57": {"stage": "P18", "summary": "Demonstration scores as the owner's extra-work decision D-27 amended them: half the expected work done is 50 (65 before), the same with 100 unplanned minutes is 90 (50 before: unplanned work earns credit below the same planned work), nothing done is 0; no free adherence points and no UI formula drift", "tests": [
       "tests/unit/test_score_facts.py::test_s14_numeric_examples",
       "tests/unit/test_score_facts.py::test_zero_output_is_zero_and_h_is_zero",
-      "tests/unit/test_score_facts.py::test_extra_work_covers_unexplained_misses_first_and_is_credited_below_planned_work",
+      "tests/unit/test_score_facts.py::test_extra_work_is_credited_below_planned_work_and_a_miss_costs_points_on_its_own",
       "tests/integration/test_api_scope.py::test_a57_no_browser_side_formula_or_hardcoded_ready",
       "tests/integration/test_api_scope.py::test_a57_a59_every_surface_reads_the_same_stored_evaluation",
       "tests/ui/test_layout_parity.py::test_ios_and_classic_show_the_same_stored_scores"]},

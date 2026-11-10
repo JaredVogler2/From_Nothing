@@ -115,7 +115,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | Done before the shift | A unit whose phase was verified complete before its shift started is `DONE_BEFORE_SHIFT` and counts in E | `lifecycle.unit_facts`, `score.components` |
 | Amendments during the shift only | The command and the feed refuse `SHIFT_NOT_STARTED` / `SHIFT_ENDED` | `amendments.py`, `actuals.amendment_from_row` |
 | Late events after the fact | Scores come from timestamped events once overtime closes, and are revised when data arrives late | D-26 |
-| Extra work earns credit (D-27) | Unplanned work counts toward the score at 80% of the same planned work and never lowers it. It first covers missed planned work with no reason on record, at no credit. Adherence is the planned jobs done over the expected work | `score.formula`, `score.components`, `docs/execution/SCORING_EXPLAINED.md` |
+| Extra work earns credit (D-27) | Every unplanned job a team gets done counts toward its score at 80% of the same planned work (rate confirmed by the owner) and never lowers it. A missed planned job costs points on its own unless excused. Adherence is the planned jobs done over the expected work | `score.formula`, `score.components`, `docs/execution/SCORING_EXPLAINED.md` |
 | OD-01 crew | `TOTAL_MECHANICS` is the crew needed on the job at once (owner, 2026-10-31) | `duration.total_mechanics_semantics` |
 | OD-06 due date | CS744 planned unload + 2-day grace, as a whole local day (owner, 2026-11-02) | `due.*` |
 | Time | The database holds UTC; the app shows site local time (America/New_York); live `FOCUS_SOURCE_TIMEZONE_MAP_JSON={"*": "UTC"}` | owner, 2026-10-31 |
@@ -144,8 +144,8 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-13 | Freshness limits (load cadences) | DATA | fixture limits 18–240 h | after 2 weeks of loads |
 | OD-02…OD-17 | Data semantics (§5) | DATA, then the owner confirms the relabel | fixture meanings; live withheld | as each source is wired |
 | DEC-19 | Validate the score on real data | DATA, then OWNER | no grade counts until done | after 4 weeks of pilot |
-| DEC-20 | How often the extra-work rule misreads a shift | DATA | the built rule (reason on record) | after 4 weeks of pilot |
-| DEC-21 | The rate for extra work | DATA, then OWNER confirms | 0.8 (built) | after DEC-20 |
+| DEC-20 | Swap watch: unplanned work done in place of planned work | DATA | report it; it changes no score | after 4 weeks of pilot |
+| DEC-21 | The rate for extra work | **decided 2026-11-10: 80%** | keep; revisit only on DEC-20 evidence | now |
 | DEC-22 | Extra-work credit | **decided 2026-11-10 (D-27), built** | port it; do not reopen | now |
 | DEC-23 | Grade bands | OWNER (with data) | demo 90/80/70/60, DEMONSTRATION | after 4 weeks of pilot |
 | DEC-24 | Late-plan protection | OWNER | evidence-only `PLAN_CHURN` claims | after 1 week of runs |
@@ -516,40 +516,34 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   blind sample, outcome and 60/40–80/20 checks are not built yet.
 - **Record:** a D-entry with the measurements (summary only).
 
-### DEC-20 How often the extra-work rule misreads a shift
+### DEC-20 Swap watch: unplanned work done in place of planned work
 
 - **Authority:** DATA.
-- **Why.** The score (D-27) credits unplanned work only beyond the planned work a team left undone with no reason on
-  record: those minutes are "substitutive", the rest "additive" (`score.components`; `classify` in
-  `tools/calibrate_scores.py` splits them the same way from the job record). Two errors are possible: a real swap
-  counted as extra work because a claim names the missed job, and real extra work left uncredited because nothing
-  on record explains a miss.
-- **Measure.**
-  1. Supervisors label `review.csv` (each row `SWAP` or `EXTRA`).
-  2. Run `python tools/calibrate_scores.py store --from <start> --to <end> --labels review.csv`.
-  3. Read q, the miss rate, and the false-alarm rate. Weight by class share for a site-wide rate.
+- **Why.** The owner's rule credits every unplanned job at 80% (D-27). A team could therefore do easier unplanned
+  work in place of planned work. It gives up only the 20% adherence share, so the swap never pays when standard
+  minutes are fair, and can pay when the unplanned job's standard is generous. The owner accepted that risk and needs
+  to see whether it happens.
+- **Measure.** `tools/calibrate_scores.py` reports, in `offplan` and `swap_watch`: the unplanned minutes done beside
+  planned work that was missed with no reason on record ("possible swap" minutes), the team-shifts involved, and the
+  points those team-shifts gave up against doing the missed planned work instead. To check the watch itself:
+  1. supervisors label `review.csv` (each row `SWAP` or `EXTRA`);
+  2. run `python tools/calibrate_scores.py store --from <start> --to <end> --labels review.csv`;
+  3. read the miss rate and the false-alarm rate.
 - **Decision rule:**
-  - q ≤ 15% and false alarms ≤ 20%: keep the rule.
-  - False alarms above 20%: real extra work is losing credit. First check that the evidence feeds behind the
-    automatic attribution are live (parts, attendance, predecessors). Then require claims for unclaimed misses, or
-    build a task-level match (each off-plan job against the dispatched task it displaced).
-  - q above 30%: tell the owner. Options are a lower rate (DEC-21), or counting only claims the system raised or a
-    reviewer did not reject.
-- **Record:** a D-entry with q, the false-alarm rate and the sample size (summary only).
+  - possible-swap minutes under about 5% of unplanned minutes: nothing to do;
+  - above that, and supervisors confirm teams are choosing other work over ready planned work: tell the owner. The
+    options are a lower rate (DEC-21), or crediting no extra work beside a planned job missed with no reason on
+    record. The second was built first and removed on the owner's example, so it needs the owner again.
+- **Record:** a D-entry with the shares and the sample size (summary only).
 
-### DEC-21 The exchange rate w
+### DEC-21 The rate for extra work: decided
 
-- **Authority:** DATA, then OWNER confirms, because it is part of the score policy.
-- **Default:** 0.8.
-- **Measure.** The `swap_gain` section of `calibration.json`, at the measured q.
-- **Built at 0.8** (D-27): `score.attainment_weight` = 0.80 and `score.adherence_weight` = 0.20 in
-  `config/policies/grading-demo-v1.json`. The owner has not confirmed the number.
-- **What the rate does.** It is what an extra minute earns against a planned minute. A swap that the rule reads
-  correctly never pays at any rate. A swap misread as extra work costs the team only the adherence share
-  (1 − rate), so a lower rate makes a misread swap cost more.
-- **Decision rule.** Keep 0.8 while q (DEC-20) is at most 15%. With q unknown or above 15%, recommend 0.7. Move to 0.9
-  only with q at most 5% and the owner's agreement.
-- **Change it in:** the two policy values above, in one policy batch at a period boundary (the policy hash changes).
+- **Decided by the owner on 2026-11-10: 80%.** `score.attainment_weight` = 0.80 and `score.adherence_weight` = 0.20
+  in `config/policies/grading-demo-v1.json`, labeled `owner_decision`.
+- **What the rate does.** It is what an extra minute earns against a planned minute. The rest (20%) is earned only
+  by planned jobs, and is what a team gives up when it does other work in place of a planned job.
+- **Revisit only** on evidence from DEC-20, and only with the owner. A change is one policy batch at a period
+  boundary, because the policy hash changes.
 
 ### DEC-22 Extra-work credit: decided and built (D-27)
 
@@ -557,15 +551,15 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   never make a team prefer idling to working ahead. Do not reopen it.
 - **The rule:** `docs/execution/SCORING_EXPLAINED.md` §1 in plain terms; `docs/execution/DECISIONS.md` D-27 in full.
   - score = 100 × (0.8 × min(1, (Cp + Uc)/D) + 0.2 × min(1, Cp/D)) − 100 × O/D;
-  - Uc, the credited extra minutes, is the unplanned work beyond the missed planned work that has no reason on
-    record; unplanned work started out of sequence by choice earns none.
+  - Uc, the credited extra minutes, is every unplanned job the team got done; unplanned work started out of
+    sequence by choice earns none;
+  - a missed planned job costs points on its own unless it is excused.
 - **What to do in a port.**
   - Take `focus/performance/score.py`, `lifecycle.py` (`unit_facts`, `_offplan`), `disruption.py`
     (`explained_units`) and `rollup.py` as they are. Keep `Uc` in every stored evaluation and team-shift row.
   - Run `tests/unit/test_score_facts.py` and `tests/unit/test_scoring_explained.py` against the port.
   - Never compute a score anywhere else, and never in SQL or the browser.
-- **Still open:** how well the rule reads real shifts (DEC-20), the rate (DEC-21), the bands (DEC-23) and approved
-  additions (DEC-26).
+- **Still open:** the bands (DEC-23) and approved additions (DEC-26). DEC-20 watches for swaps.
 
 ### DEC-23 Grade bands
 
@@ -695,7 +689,7 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
      DEC-28;
    - review the readiness gaps with their owners.
 3. **First week of pipeline runs:** DEC-12; the evidence for DEC-10 and DEC-11; DEC-24's measurement.
-4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-21, DEC-25
-   and DEC-23. Ask the owner about DEC-26 before the pilot starts.
-5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-10, DEC-11, DEC-21,
-   DEC-23 to DEC-26 and, last, OD-16.
+4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-25 and
+   DEC-23. Ask the owner about DEC-26 before the pilot starts.
+5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-10, DEC-11, DEC-23 to
+   DEC-26 and, last, OD-16.

@@ -145,8 +145,8 @@ def job_rows(evidence: Any, view: Any, goal_id: str | None) -> tuple[list[list[A
     from .disruption import effective_claims
 
     graph = None if view is None else view.graph
-    # every cause on record, proposed or submitted (``disruption.explained_units``): a missed job with none has no reason on
-    # record, and the team-shift's unplanned work covers it at no credit (D-27)
+    # every cause on record, proposed or submitted (``disruption.explained_units``): a missed job with none has no reason
+    # on record
     causes: dict[str, set[str]] = defaultdict(set)
     if view is not None and goal_id:
         for claim in effective_claims(view, goal_id).values():
@@ -192,9 +192,9 @@ def record_jobs(services: Any, evaluation: Any, evidence: Any, view: Any, *, tea
                 superintendent: str | None) -> dict[str, Any] | None:
     """The team-shift's per-job outcomes for ``evaluation`` (idempotent).
 
-    The record adds up to the score: planned minutes to B, done to Cp, excused to E, unplanned to U. Missed jobs with no
-    cause are the ones the unplanned work covers before any of it is credited (Uc, kept in the row). A team-shift no plan
-    covered (``no_plan``) records the work it did, which its neutral score leaves out of U. ``superintendent`` is the
+    The record adds up to the score: planned minutes to B, done to Cp, excused to E, unplanned to U. The credited part
+    of the unplanned work (Uc) is kept in the row. A team-shift no plan covered (``no_plan``) records the work it did,
+    which its neutral score leaves out of U. ``superintendent`` is the
     row's (``record``), which fixes the attribution; the job record follows it.
     """
     from ..calendar import parse_shift_id

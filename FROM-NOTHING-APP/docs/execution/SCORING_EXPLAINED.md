@@ -18,7 +18,7 @@ A score is for **one team on one shift**. It is never for a person. It is measur
 | Expected | Planned minus excused | `D` |
 | Done | Planned jobs verified complete in the shift or its authorized overtime | `Cp` |
 | Extra | Verified work that was not in the plan | `U` |
-| Extra that counts | The part of the extra work that earns credit (the rules are below) | `Uc` |
+| Extra that counts | Every extra job, except one the crew chose to start out of sequence | `Uc` |
 | Out-of-sequence charge | 10% of the planned minutes of a job the crew chose to start before its predecessor was done | `O` |
 
 **Score** = 80% × ((done + extra that counts) ÷ expected, at most 100%) + 20% × (done ÷ expected), on a 0–100 scale,
@@ -28,21 +28,31 @@ minus the out-of-sequence charge as a share of expected. The result is clamped t
 
 **What that means for a team:**
 
-- A planned job is worth its full minutes. An extra job is worth 80% of the same minutes.
+- A planned job done is worth its full minutes.
+- Any other job the team gets done is worth 80% of the same minutes, whatever else happened in the shift.
+- A planned job missed costs its points, unless a reviewer accepts the reason. Then it is excused and nothing is
+  lost.
 - Extra work never lowers a score. A team is never better off idle than working ahead.
 - The last 20% of the score comes only from doing the planned jobs. Extra work cannot replace it.
 - Without extra work the score is simply done ÷ expected: 80% of the expected work done scores 80.
 
-**Which extra work counts** (owner decision D-27):
+**The owner's example** (2026-11-10). Ten jobs are scheduled. The team does 8 of them and 4 others that were not on
+the plan. Take every job as one hour.
 
-1. Extra work first makes up for any planned job the team missed with **no reason on record**, minute for minute, at
-   no credit. Only what is left counts. So work done *instead of* a planned job that could have been done earns
-   nothing, and work done *because* a planned job was blocked, or *after* the plan was finished, earns 80%.
-2. A missed job has a reason on record when a claim names it: one the system raised from the data (a late part, an
-   unfinished earlier job, a call-off, rework, an overrun, a plan change) or one a person filed. The claim does not
-   have to be approved. Approval decides whether the miss is excused, which is a separate question.
-3. Extra work the crew chose to start out of sequence earns nothing.
-4. One shift's score stops at 100. Extra minutes beyond that are kept, and they count when shifts are added up for
+| | Score |
+| --- | --- |
+| Full credit for the 8, with nothing else done | 80 |
+| The 4 extra jobs fill the two-hour gap at 80% | +16 |
+| The 2 missed jobs, with no valid excuse | **96.0** |
+| The 2 missed jobs, with a valid excuse (they leave what was expected) | **100.0** |
+
+Two of the four extra hours go beyond what the shift was expected to do. They cannot lift this shift above 100, and
+they count when the shifts of a day or a week are added up.
+
+**Two limits on extra work** (owner decision D-27):
+
+1. Extra work the crew chose to start out of sequence earns nothing.
+2. One shift's score stops at 100. Extra minutes beyond that are kept, and they count when shifts are added up for
    a day, a week or longer.
 
 **Also:**
@@ -50,6 +60,8 @@ minus the out-of-sequence charge as a share of expected. The result is clamped t
 - Only verified completion counts. When in the shift a job was done does not matter.
 - No plan, or everything excused, gives no score (neutral). Missing data gives no score (unknown). Neither is a zero.
 - For a day, a week or a group of teams, add up the minutes first, then apply the same formula once.
+- A missed job that nobody has given a reason for is marked "no reason on record". That is information for the lead
+  and for reports. It does not change the score.
 - The weights and bands are a demonstration policy. An official grade needs the owner's approval, and personal
   grades are switched off.
 
@@ -61,10 +73,9 @@ minus the out-of-sequence charge as a share of expected. The result is clamped t
 | Excused (a late part, approved) | 100 |
 | Expected | 900 |
 | Done | 720 |
-| Missed, each with a reason on record | 180 |
+| Missed, not excused | 180 |
 | Extra | 80 |
 
-- All 80 extra minutes count, because every missed job has a reason on record.
 - (Done + extra that counts) ÷ expected = 800 ÷ 900 = 88.9%.
 - Done ÷ expected = 720 ÷ 900 = 80%.
 - Score = 0.8 × 88.9 + 0.2 × 80 = **87.1**, a **B**.
@@ -75,7 +86,6 @@ Variations on the same shift:
 | --- | --- |
 | No extra work | **80.0** |
 | The 80 minutes were planned jobs instead (done 800) | **88.9** |
-| 50 of the missed minutes have no reason on record, so only 30 extra minutes count | **82.7** |
 | One 100-minute planned job was started out of sequence by choice (charge 10 ÷ 900 = 1.1 points) | **86.0** |
 | All 900 expected minutes done, plus 100 extra | **100.0** |
 
@@ -94,7 +104,7 @@ Before D-27 the last case scored 97.0: extra work lowered the score.
 | 7 | Automatic attribution only proposes claims from evidence (a call-off, a certificate revocation, a defect origin, a blocking predecessor). It never grants relief, and an overrun is never excused automatically. | `focus/performance/disruption.py` (`auto_attribute`) | `tests/integration/test_crew_shortage_attribution.py::test_a_call_off_after_the_cutoff_is_capacity_evidence_for_that_persons_missed_units`; `tests/integration/test_lifecycle_excusals.py::test_a55_no_automatic_overrun_excuse_below_or_above_3x` |
 | 8 | An emergency addition joins the goal only when it is approved, feasible and made during the shift. | `focus/performance/amendments.py` (`amend_goal`); `focus/performance/actuals.py` (`amendment_from_row`) | `tests/integration/test_lifecycle_excusals.py::test_goal_of_record_freezes_b0_and_amendment_adds_without_mutating`, `::test_an_amendment_waits_for_its_shift_to_start`, `::test_a_feed_amendment_follows_the_same_shift_window_rule` |
 | 9 | Verified work outside the plan is extra output. It earns credit as extra work unless the crew chose to start it out of sequence. | `focus/performance/lifecycle.py` (`_offplan`); `focus/performance/score.py` (`components`) | `tests/integration/test_lifecycle_excusals.py::test_canonical_outcomes_at_first_collection`, `::test_planned_oos_charged_once_offplan_oos_not_double_charged`; `tests/unit/test_score_facts.py::test_extra_work_started_out_of_sequence_by_choice_earns_nothing_and_unclassified_is_unknown` |
-| 10 | Extra work first covers missed planned work that has no reason on record, minute for minute and at no credit. A missed job has a reason when a claim that is not withdrawn names it. | `focus/performance/disruption.py` (`explained_units`); `focus/performance/lifecycle.py` (`unit_facts`); `focus/performance/score.py` (`credited_offplan`, `components`) | `tests/unit/test_score_facts.py::test_extra_work_covers_unexplained_misses_first_and_is_credited_below_planned_work`; `tests/integration/test_lifecycle_excusals.py::test_a_missed_job_with_no_cause_on_record_absorbs_extra_work_before_any_is_credited` |
+| 10 | Extra work is credited whatever the team missed. A missed planned job costs points on its own unless it is excused. A missed job that no claim names is marked `NO_REASON_ON_RECORD`, which is information only. | `focus/performance/score.py` (`components`); `focus/performance/disruption.py` (`explained_units`); `focus/performance/lifecycle.py` (`unit_facts`) | `tests/unit/test_score_facts.py::test_extra_work_is_credited_below_planned_work_and_a_miss_costs_points_on_its_own`; `tests/integration/test_lifecycle_excusals.py::test_a_missed_job_with_no_cause_on_record_is_marked_and_extra_work_is_credited_either_way` |
 | 11 | Only a discretionary out-of-sequence start or finish is charged: 10% of the affected planned minutes, once per unit. | `focus/performance/lifecycle.py` (`derive_sequence_violations`, `oos_for`); `focus/performance/score.py` (`components`) | `tests/unit/test_score_facts.py::test_oos_charge_is_separate_and_once`; `tests/integration/test_lifecycle_excusals.py::test_planned_oos_charged_once_offplan_oos_not_double_charged`, `::test_a26_oos_record_survives_predecessor_completion_and_never_legalizes` |
 | 12 | The formula of §1, on exact fractions, rounded once after every sum. The weights and bands come from the grading policy. | `focus/performance/score.py` (`formula`, `grade_for`, `round_half_up`); `config/policies/grading-demo-v1.json` | `tests/unit/test_score_facts.py::test_s14_numeric_examples`, `::test_zero_output_is_zero_and_h_is_zero`, `::test_rounding_only_after_sums_and_bands` |
 | 13 | No plan, or everything excused, is neutral with no score. Missing data, an open window or an invalid policy is unknown with no score. Never a zero. | `focus/performance/score.py` (`status_and_score`); `focus/performance/actuals.py` (`coverage_reasons`) | `tests/unit/test_score_facts.py::test_all_excused_or_no_plan_is_neutral_null`, `::test_missing_evidence_or_policy_is_unknown_null`; `tests/integration/test_lifecycle_excusals.py::test_missing_or_uncertified_feeds_withhold_the_result`, `::test_open_window_and_live_reader_are_honest` |
@@ -128,8 +138,9 @@ A new difference is therefore worth reporting.
 
 ## 5. Open, not built
 
-- **The rate for extra work.** 80% is the calibrated recommendation, not a number the owner has confirmed. It is one
-  policy value (`score.attainment_weight`, with `score.adherence_weight` as the rest).
+- **Swaps.** A team could do easier unplanned work in place of planned work and still earn 80% for it. The 20% it
+  gives up is the only deterrent. `tools/calibrate_scores.py` reports how often unplanned work sits beside planned
+  work that was missed with no reason on record, so the owner can see whether this happens.
 - **Approved additions.** An emergency addition raises what is expected, so an approved extra job can score below
   the same job done unapproved. This needs the owner's decision (`DECISION_PLAYBOOK.md`, DEC-26).
 - **Grade bands from real data**, **protection when a plan is accepted late**, and **who gets credit for work finished

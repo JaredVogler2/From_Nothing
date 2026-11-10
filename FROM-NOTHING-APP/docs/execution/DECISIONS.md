@@ -277,6 +277,12 @@ attendance. A conditional ETA is never physical receipt.
   - **The owner's requirement.** "The teams should get credit because they burned energy getting the work done, but
     it shouldn't be as rewarded as working the right jobs. If they aren't rewarded they would rather sit stagnant than
     work ahead, and that isn't acceptable." Until this decision every unplanned minute lowered a team's score.
+  - **The owner's example** (the same day). "If there are 10 jobs scheduled and they do 8 of them and 4 others not on
+    plan, they should get full credit for the [8] then some credit for the 4. They may lose points for the 2 scheduled
+    they missed", depending on whether the excuse for them is valid. With one-hour jobs this scores 96.0 when the two
+    misses are not excused, 100.0 when they are, and 80.0 without the extra work.
+  - **The rate: 80%, confirmed by the owner.** An extra job earns 80% of the same planned work
+    (`score.attainment_weight` = 0.80, `score.adherence_weight` = 0.20, both labeled `owner_decision`).
   - **The formula** (`performance.score.formula`). With D > 0:
     - A = min(1, (Cp + Uc)/D), output attainment: the planned work done plus the credited extra work;
     - H = min(1, Cp/D), plan adherence: the planned jobs done, with no timing test (the owner's definition, D-26);
@@ -284,50 +290,45 @@ attendance. A conditional ETA is never physical receipt.
 
     Below the cap a planned minute earns 100/D points and a credited extra minute 80/D. Extra work never lowers a
     score, and the 20% adherence share is earned only by planned work. Without extra work the base is 100·Cp/D.
-  - **Which extra work is credited** (`performance.score.components`, `credited_offplan`). Uc = max(0, eligible
-    offplan minutes − missed minutes with no reason on record):
-    - offplan work started out of sequence by choice is not eligible (`OUT_OF_SEQUENCE_BY_CHOICE` on the offplan
-      fact). An unclassified violation makes the credit, and so the score, unknown
-      (`OFFPLAN_OOS_CLASSIFICATION_UNKNOWN`);
-    - a missed unit has a reason on record when a claim that is not withdrawn names it
-      (`disruption.explained_units`): one the automatic attribution raised from evidence, or one a person filed,
-      whatever its review status. A claim says why the unit could not be done; whether it excuses the unit stays the
-      reviewer's separate decision. A missed unit with no relief and no claim carries `NO_REASON_ON_RECORD`;
-    - so unplanned work done instead of planned work that could have been done earns nothing, and costs exactly the
-      planned work it displaced: one penalty, where the old formula charged two. Unplanned work done because planned
-      work was blocked, or after the plan was finished, is credited.
+  - **Which extra work is credited** (`performance.score.components`). Uc is every verified offplan completion of
+    the team-shift, with one exception:
+    - offplan work started out of sequence by choice earns none (`OUT_OF_SEQUENCE_BY_CHOICE` on the offplan fact).
+      An unclassified violation makes the credit, and so the score, unknown
+      (`OFFPLAN_OOS_CLASSIFICATION_UNKNOWN`).
+
+    What the team missed does not reduce the credit. A missed planned unit costs points on its own, unless approved
+    relief excuses it; then it leaves D.
+  - **No reason on record.** A missed unit that no claim names carries `NO_REASON_ON_RECORD`
+    (`disruption.explained_units`, `lifecycle.unit_facts`). It is information for the lead and the reports, and
+    changes no score. The first build of this decision made extra work cover such misses before any of it was
+    credited; the owner's example removed that the same day.
   - **Pooling.** Uc is a stored component like the others (the evaluation, the light row, the simulation's team-shift
     row). A shift's own score stops at 100; in a day, a week or any group the minutes are summed first, so extra
     minutes beyond one shift's expected work count toward the period's output share.
   - **What this supersedes in the manual (S14).** `H = Cp/(Cp+U)` and the 70/30 demonstration split. The manual's
-    examples become: B200/Cp100 scores 50 (65); B200/Cp100/U100 scores 50 when the missed work has no reason on
-    record and 90 when it has (50); the pooled D400/Cp200 with D100/Cp100 scores 60, not the 75 average (72 and 82.5).
-    A57's "no throughput substitute" now reads: unplanned work done instead of planned work with no reason on record
-    earns nothing. The manual itself is unchanged.
-  - **Grades get stricter for a team with a shortfall.** Before, a team with no unplanned work earned the 30
-    adherence points whatever it finished. A team that does 80% of its expected work now scores 80, where the old
-    formula gave 86; 60% scores 60 (D), where it gave 72 (C). The bands (90/80/70/60) are unchanged demonstration
-    values, to be set on pilot data (`docs/integration/DECISION_PLAYBOOK.md`, DEC-23).
-  - **Values that remain the owner's to set.**
-    - The rate. 0.80 is the calibrated recommendation (`docs/task-valuation-investigation/10_CALIBRATION.md`:
-      the rule tracks production best at 0.6 to 0.8); 0.70 is stricter. It is `score.attainment_weight`, with
-      `score.adherence_weight` as the rest.
+    examples become: B200/Cp100 scores 50 (65); B200/Cp100/U100 scores 90 (50); the pooled D400/Cp200 with D100/Cp100
+    scores 60, not the 75 average (72 and 82.5). A57's "no throughput substitute" no longer holds: the owner wants
+    throughput credited, at a discount. The manual itself is unchanged.
+  - **Grades get stricter for a team with a shortfall and no extra work.** Before, a team with no unplanned work
+    earned the 30 adherence points whatever it finished. A team that does 80% of its expected work now scores 80,
+    where the old formula gave 86; 60% scores 60 (D), where it gave 72 (C). The bands (90/80/70/60) are unchanged
+    demonstration values, to be set on pilot data (`docs/integration/DECISION_PLAYBOOK.md`, DEC-23).
+  - **Still the owner's to decide.**
     - Approved additions. An approved emergency addition still raises B, so an approved extra job done by a team
       that is behind can score below the same job done unapproved. Open (DEC-26).
     - Recognition points are unchanged: offplan output earns no XP (S14: no offplan farming).
+  - **The risk the owner accepted.** A team can do unplanned work in place of planned work and still earn 80% for
+    it. The 20% it gives up is the only deterrent, so the swap never pays when the standard minutes are fair, and
+    can pay when the unplanned job's standard is generous. `tools/calibrate_scores.py` reports a swap watch (unplanned
+    minutes beside planned work missed with no reason on record) so the owner can see whether it happens (DEC-20).
   - **Stored records.** Evaluations and rows written before this decision have no Uc. They pool as unknown
     (`OFFPLAN_CREDIT_UNKNOWN`, `COMPONENT_UNKNOWN`) until evaluated again, and the weights changed the policy hash, so
     mixing them with new ones is `MIXED_POLICY`. The job record now lists every cause on record for a job, proposed or
-    submitted, so a missed job with no cause is exactly one the unplanned work covers first. A simulation database
-    made before it is reported as outdated.
+    submitted. A simulation database made before it is reported as outdated.
   - **Evidence.** Reports `09_OFFPLAN_CREDIT.md` and `10_CALIBRATION.md`. On the simulated floor the old formula
     ranked the most productive floor (every idle team pulling work ahead) below the floor that did nothing extra, in
-    both seeds; the credit rule ranks them as production does. Those runs classified off-plan work per team-shift
-    (all or nothing); the rule as built nets it minute for minute, which only moves credit toward real extra work.
-    `tools/calibrate_scores.py` re-runs every figure on real scores.
-  - **Limits.** The credit depends on the reasons on record. Where the attribution evidence is thin (no part,
-    attendance or predecessor data), missed work shows no reason and absorbs the extra work first. DEC-20 measures how
-    often that happens on real data.
+    both seeds; the credit rule ranks them as production does. Those runs gave swapped-in work no credit, which the
+    owner's rule does. `tools/calibrate_scores.py` re-runs every figure on real scores.
 
 ## Semantic gaps (live), each a precise readiness effect
 

@@ -68,7 +68,7 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 
 - **Cp** (verified planned or amended completion, counted once): the effort of goal units credited by verified COMPLETED and PROGRESS facts from `lifecycle_events`, under the credit-window rule above.
 - **U** (offplan output): verified completions from `lifecycle_events` outside every credit window.
-- **Uc** (credited extra work, D-27): the part of U that earns credit. Offplan work with a discretionary sequence violation is left out; the rest first covers missed units that no claim names (`NO_REASON_ON_RECORD`), minute for minute; what remains is Uc. It depends on `disruption_claims` and on the automatic attribution's evidence feeds, as E does.
+- **Uc** (credited extra work, D-27): the part of U that earns credit: every offplan completion, except one with a discretionary sequence violation. It needs the same feeds as U and O.
 - **O** (OOS charge): `score.oos_rate` (demo 0.10) times the planned effort of discretionary sequence violations, once per unit, charged to the goal whose shift or OT window contains the violation. Violations come from actual starts and finishes in `lifecycle_events` and from `actual_intervals`.
 - **B = B0 + approved emergency additions**, from `goal_amendments`.
 - **E** (excused effort): the effort of units approved by `excusal_decisions` on submitted claims (from `disruption_claims` or automatic attribution) that are still missed at the cutoff, plus units whose phase was verified COMPLETED before their shift started (`DONE_BEFORE_SHIFT`, reason `VERIFIED_COMPLETE_BEFORE_SHIFT_START`, D-26).

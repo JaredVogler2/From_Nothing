@@ -56,9 +56,8 @@ def test_store_records_match_the_rows_and_the_stored_scores(world):
             assert rec["Uc"] == pytest.approx(float(evaluation.Uc))            # the row keeps the credited extra minutes
         assert rec["completions"] is not None                       # the evidence is still kept
         assert rec["missed_unclaimed"] >= 0 and rec["D"] == pytest.approx(float(evaluation.B - evaluation.E))
-    # the tool splits off-plan work from the job record as the score does; it differs only where unplanned work was
-    # started out of sequence by choice, which the job record does not carry (PROD-A's B2 in this scenario)
-    assert meta["notes"].get("tool_differs_from_canonical", 0) <= 1
+    # the tool scores from the row's own credited minutes, so it reproduces every stored score
+    assert "tool_differs_from_canonical" not in meta["notes"]
     res = C.analyze(records, lead=20, bands=C.BAND_SETS)
     assert res["coverage"]["team_shifts"] == len(rows)
     json.dumps(res, default=str)                                    # the report serializes

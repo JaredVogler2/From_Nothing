@@ -76,8 +76,8 @@ stay in company storage. This public repository keeps the synthetic reference co
 - **The score.** The canonical score formula still uses the demonstration policy (A ≥ 90, B ≥ 80, C ≥ 70,
   D ≥ 60). An OFFICIAL grade needs the owner's approval receipt (OD-16).
 - **Extra work earns credit (owner, 2026-11-10, D-27).** Work a team does outside its plan counts toward its score
-  at 80% of the same planned work and never lowers it. It first covers missed planned work that has no reason on
-  record, at no credit. `docs/execution/SCORING_EXPLAINED.md` gives the rule and a worked example.
+  at 80% of the same planned work and never lowers it. A planned job the team missed costs points on its own, unless
+  it is excused. `docs/execution/SCORING_EXPLAINED.md` gives the rule, the owner's example and a worked example.
 - **Where things run.** The GitLab pipeline runs the scheduler and every other step. Posit Connect only displays:
   the web app reads a small display package the pipeline publishes, never a snapshot or a plan.
 - **Time.** The database holds UTC; the app shows the site's local time (America/New_York). Live runs set

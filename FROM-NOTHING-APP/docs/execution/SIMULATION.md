@@ -158,8 +158,8 @@ same function production uses (S14):
   earlier plan had put in a later shift counts as offplan output in the shift that did it. A unit already finished
   before its shift started (only when an earlier plan stands in) is `DONE_BEFORE_SHIFT`: out of D with the relief.
 - **Offplan.** U is finished work that is no unit of this shift's goal: pulled ahead, or a deviation. Uc is the part
-  that earns credit as extra work (D-27): U less the missed units that have no claim (a deviation, or a miss with no
-  disruption on record), never below zero. The floor only works ready tasks off the plan, so none is out of sequence.
+  that earns credit as extra work (D-27). The floor only works ready tasks off the plan, so none is out of sequence
+  and Uc = U.
 - **Formula.** attainment A = min(1, (Cp + Uc)/D); adherence H = min(1, Cp/D), the planned work done; score =
   100 × (0.80 A + 0.20 H) − 100 × O/D, where O is the once-only out-of-sequence charge. Offplan work earns 80% of the
   same planned work and never lowers a score. Grades are A 90+, B 80+, C 70+, D 60+ and F below.

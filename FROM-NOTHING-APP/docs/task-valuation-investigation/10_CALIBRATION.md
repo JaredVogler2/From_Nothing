@@ -5,8 +5,9 @@ and bands for off-plan completions? The owner said "Go ahead", and will re-run t
 
 **Status (updated 2026-11-10).** The owner has since decided that extra work earns credit, and the rule is built at
 w = 0.8 (D-27 in `docs/execution/DECISIONS.md`; in plain terms, `docs/execution/SCORING_EXPLAINED.md`).
-- The built rule nets off-plan work against unclaimed missed work minute for minute. The runs in this report
-  classified a whole team-shift at once ("P2"), which is stricter; they were not re-run.
+- The built rule credits every counted off-plan minute, on the owner's example of the same day. The runs in this
+  report gave swapped-in work no credit ("P2"), which is stricter; they were not re-run. Their swap findings (§5)
+  therefore describe a rule that was not built: under the built rule a swap costs the team the 20% adherence share.
 - "R0" below is the score before D-27, and "today's score" in the text means R0.
 - Every number here comes from the synthetic fleet. §8 explains how to re-run the analysis on real data.
 
@@ -268,7 +269,7 @@ be measured on real team-shifts once FOCUS scores them.
   | Agreement | Do supervisors see the same thing? | A blind sample of about 30 of the highest- and 30 of the lowest-scoring team-shifts, labeled good, normal or bad | No (the review sample covers off-plan work only) |
   | Outcomes | Do higher-scoring team-weeks have better flow? | Rank correlation with blocked successors, rework and stations finished on time, per team-week | No |
   | Sensitivity | Do rankings change with the weights? | Recompute at w = 0.7, 0.8 and 0.9 (the split is w) | Yes |
-  | Classifier | How often is a swap misread? | Step 2 below | Yes |
+  | Swap watch | How much unplanned work is done in place of planned work? | `offplan` and `swap_watch`; step 2 below | Yes |
 
 - **Rules of thumb for reading them** (judgment calls, for the owner to confirm):
   - rankings nearly identical across the weights (rank correlation 0.95 or more): keep the defaults;
@@ -314,33 +315,33 @@ evidence window, each completion's time. It writes nothing to the store. The JSO
 | `scores`, `output_index` | The canonical score as stored, the score before D-27 (R0), R5(w) for w = 0.5 … 1.0, and the output index. |
 | `grades` | Grades under each band set (`--bands 98,95,90,80` adds your own), flips between consecutive shifts, and R0 → R5 grade changes. |
 | `daily_pooled_R5_w0.8` | Pooled daily grades per team. |
-| `offplan` | How often teams work off plan, how much, and the split into additive (credited) and substitutive minutes. |
-| `swap_gain` | On the real distributions: could a misread swap pay, at each w and q? |
+| `offplan` | How often teams work off plan, how much, how much was credited, and the "possible swap" minutes (unplanned work beside planned work missed with no reason on record). |
+| `swap_watch` | The team-shifts with possible-swap minutes, and the points they gave up against doing the missed planned work instead, at each w. It changes no score. |
 | `relief` | Excused minutes by cause, and `DONE_BEFORE_SHIFT` minutes. |
 | `boundary` | The share of completions in the last `--lead` minutes and in overtime. |
 | `stale_plans` | The share of shifts scored against the previous shift's plan. |
 | `fairness` | Planned minutes against the grade gain and against the output index. |
 
-**Step 2. Estimate the classifier's error rates.**
+**Step 2. Check the swap watch.**
 
 1. Supervisors label each row of `review.csv` as `SWAP` (the team dropped planned work for it) or `EXTRA` (the work
-   was additional). Half the rows are team-shifts with substitutive minutes and half are without.
+   was additional). Half the rows are team-shifts the watch flagged and half are not.
 2. Then run:
 
    ```bash
    python tools/calibrate_scores.py store --from 2027-01-04 --to 2027-01-31 --labels review.csv
    ```
 
-   This reports q, the share of true swaps the rule calls additive, and the false-alarm rate, the share of extra
-   work it calls substitutive. Because the sample is stratified, weight each class by its population share before quoting
+   This reports the miss rate, the share of real swaps the watch did not flag, and the false-alarm rate, the share
+   of flags that were real extra work. Because the sample is stratified, weight each class by its population share before quoting
    a site-wide rate.
 
 **Step 3. Decide.**
 
 | Decision | Rule |
 | --- | --- |
-| w | Keep 0.8 while q is at most 15%. With q unknown or above 15%, recommend 0.7; move to 0.9 only with q at most 5%. A swap the rule reads correctly never pays at any w, and one misread as extra work costs the team the (1 − w) adherence share, so a lower w makes a misread swap cost more. If q is above 30%, improve the classifier before crediting off-plan work: match each off-plan job to the dispatched task it displaced. |
-| False alarms | A high false-alarm rate means teams lose credit for real extra work. Check that missed work with a real cause gets a claim. |
+| w | Decided by the owner: 0.8. A swap costs the team the (1 − w) adherence share of the planned work it displaced, so it never pays when standard minutes are fair. If the swap watch shows material swapping that supervisors confirm, the owner can lower w or stop crediting work beside an unexplained miss. If q is above 30%, improve the classifier before crediting off-plan work: match each off-plan job to the dispatched task it displaced. |
+| False alarms | A high false-alarm rate means the watch flags real extra work. No score is affected; check that missed work with a real cause gets a claim, so the watch reads true. |
 | Bands | Pick tolerances on unexcused shortfall per grade, convert them (band = 100 × (1 − tolerance)), and check the grade counts and flip rates. Prefer bands whose flip rate between a team's consecutive shifts stays low, under about 5%, and grade recognition on pooled days or weeks. |
 | Pipeline timing | `stale_plans.share` must be about 0 before bands are set. Otherwise late plans are mixed into the shortfall. |
 | Cutoff | If more than about 10% of completions land in the last `--lead` minutes, the next plan misses them. Consider a shorter pipeline or a later cutoff. |
@@ -356,7 +357,7 @@ correctly read swap never pays), and the `swap_gain` section re-checks them on t
 
 **Owner decisions this feeds.**
 
-- w (built at 0.8; the owner confirms or changes it);
+- w (decided: 0.8);
 - the band tolerances;
 - approved additions (`docs/integration/DECISION_PLAYBOOK.md`, DEC-26);
 - signing: automatic or manual promotion before each shift;

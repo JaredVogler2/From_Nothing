@@ -2,7 +2,7 @@
 
 **Owner question (2026-11-02).** "I don't want work done that wasn't on plan to be worth zero. They should not count toward adherence however (open to a rebuttal about this, however). But I'm not sure how to quantitatively determine how much more a scheduled 5-hour task is worth vs a non-scheduled 5-hour task toward scoring."
 
-**Update (2026-11-10).** The owner decided that extra work earns credit, below the same planned work, and it is built (D-27 in `docs/execution/DECISIONS.md`; in plain terms, `docs/execution/SCORING_EXPLAINED.md`). The built rule is R5 at w = 0.80, with one change from §6: off-plan work is netted against unexplained missed work minute for minute, where P2 classified a whole team-shift at once. "Today" and "current" below mean the score before that decision.
+**Update (2026-11-10).** The owner decided that extra work earns credit, below the same planned work, and it is built (D-27 in `docs/execution/DECISIONS.md`; in plain terms, `docs/execution/SCORING_EXPLAINED.md`). The built rule is R5 at w = 0.80, with one change from §6 and §8: the owner wants every extra job credited, so there is no classification and swapped-in work earns the rate too. The swap is deterred only by the 20% it gives up, and `tools/calibrate_scores.py` watches for it. "Today" and "current" below mean the score before that decision.
 
 **Scope.** Investigation only, on synthetic data (`FleetSpec`), the production engine and the production simulation floor (`focus/sim`). No application code, policy, test or schema was changed. Weights and bands are the demonstration policy (`config/policies/grading-demo-v1.json`: attainment 0.70, adherence 0.30, OOS rate 0.10, bands A 90 / B 80 / C 70 / D 60). That policy is not owner-approved (OD-16).
 

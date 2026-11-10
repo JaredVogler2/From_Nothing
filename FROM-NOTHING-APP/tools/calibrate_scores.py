@@ -19,21 +19,21 @@ period of scored team-shifts, what other rates would do, and what the rule befor
 **What it measures** (docs/task-valuation-investigation/10_CALIBRATION.md explains each one and what to decide from it):
 
 * today's canonical score, the rule before D-27 (R0: attainment 0.70, plus 0.30 for the share of output that was
-  planned) and R5(w) for w = 0.5 ... 1.0, the canonical rule at other rates. Off-plan work is classified as the score
-  does: it first covers planned work left undone with no claim on record, minute for minute (substitutive); the rest
-  is additive and credited;
+  planned) and R5(w) for w = 0.5 ... 1.0, the canonical rule at other rates. The score credits every off-plan minute
+  the evaluation counted (Uc);
 * the unexcused shortfall s = 1 - Cp/D. Without off-plan work, R5 = 100 (1 - s) minus the out-of-sequence charge
   for every w, so bands are tolerances on s;
 * grades under candidate band sets, grade flips between a team's consecutive shifts, and pooled daily grades;
-* whether a swap could pay: for each team-shift with substitutive minutes, R5 against the same team-shift had it done
-  its missed planned work instead, with a share q of the substitutive minutes misread as additive;
+* a swap watch, which changes no score: off-plan minutes done beside planned work that was left undone with no claim
+  on record ("possible swap" minutes), how often that happens, and the points those team-shifts gave up against
+  doing the missed planned work instead;
 * relief by cause, DONE_BEFORE_SHIFT work, completions in the last ``--lead`` minutes of the shift and in overtime, and
   shifts whose plan of record is the previous shift's plan (the run before the shift was not accepted in time);
 * fairness: planned minutes against the grade gain from off-plan credit and against the output index.
 
-**Estimating q.** ``--review-sample N --review-csv FILE`` writes N team-shifts with off-plan work (half from each P2
-class) for supervisors to label ``SWAP`` or ``EXTRA`` in the ``label`` column. ``--labels FILE`` reads that file back
-and reports P2's miss rate (swaps it called additive) and false-alarm rate (extras it called substitutive).
+**Checking the watch.** ``--review-sample N --review-csv FILE`` writes N team-shifts with off-plan work (half flagged
+as a possible swap, half not) for supervisors to label ``SWAP`` or ``EXTRA`` in the ``label`` column. ``--labels FILE``
+reads that file back and reports how many real swaps the watch missed and how many flags were real extra work.
 """
 from __future__ import annotations
 
@@ -54,7 +54,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 WS = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0)
-QS = (0.0, 0.05, 0.15, 0.30)
 BAND_SETS = {"demo 90/80/70/60": (90, 80, 70, 60), "strict 95/90/85/80": (95, 90, 85, 80),
              "today's effective 85.7/71.4/57.1/42.9": (85.7, 71.4, 57.1, 42.9), "wide 92/85/75/65": (92, 85, 75, 65)}
 PERCENTILES = (1, 5, 10, 25, 50, 75, 90, 95, 99)
@@ -212,11 +211,17 @@ def clamp(x: float) -> float:
 
 
 def classify(r: dict[str, Any]) -> tuple[float, float]:
-    """(additive, substitutive) off-plan minutes, as the canonical score splits them (D-27, ``score.credited_offplan``):
-    off-plan work first covers planned work left undone with no claim on record, minute for minute."""
+    """(clear extra, possible swap) off-plan minutes, for the swap watch only. Possible-swap minutes are the off-plan
+    minutes done beside planned work left undone with no claim on record, minute for minute. The score credits both
+    (D-27): a missed planned job costs points on its own."""
     u = r["U"] or 0.0
-    sub = min(u, max(0.0, r["missed_unclaimed"]))
-    return u - sub, sub
+    swap = min(u, max(0.0, r["missed_unclaimed"]))
+    return u - swap, swap
+
+
+def credited(r: dict[str, Any]) -> float:
+    """The off-plan minutes the score credits: the evaluation's Uc where it was kept, else all of U."""
+    return r["Uc"] if r.get("Uc") is not None else (r["U"] or 0.0)
 
 
 def before_d27(r: dict[str, Any]) -> float | None:
@@ -227,13 +232,11 @@ def before_d27(r: dict[str, Any]) -> float | None:
     return clamp(100 * (0.7 * min(1, r["Cp"] / r["D"]) + 0.3 * (r["Cp"] / out if out > 0 else 0.0)) - 100 * (r["O"] or 0.0) / r["D"])
 
 
-def r5(r: dict[str, Any], w: float, q: float = 0.0, *, add: float | None = None, sub: float | None = None) -> float | None:
-    """grade = 100 (w min(1, (Cp + additive)/D) + (1 - w) min(1, Cp/D)) - 100 O/D, with a share q of substitutive misread."""
+def r5(r: dict[str, Any], w: float) -> float | None:
+    """The canonical rule at the rate w: 100 (w min(1, (Cp + credited)/D) + (1 - w) min(1, Cp/D)) - 100 O/D."""
     if r["D"] <= 0:
         return None
-    a, s = classify(r) if add is None else (add, sub or 0.0)
-    a += q * s
-    return clamp(100 * (w * min(1, (r["Cp"] + a) / r["D"]) + (1 - w) * min(1, r["Cp"] / r["D"])) - 100 * (r["O"] or 0.0) / r["D"])
+    return clamp(100 * (w * min(1, (r["Cp"] + credited(r)) / r["D"]) + (1 - w) * min(1, r["Cp"] / r["D"])) - 100 * (r["O"] or 0.0) / r["D"])
 
 
 def grade(score: float, bands: tuple[float, ...]) -> str:
@@ -275,16 +278,13 @@ def spearman(a: list[float], b: list[float]) -> float | None:
 
 
 def pooled(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Components summed first, then the rule once (the rollup rule, D-25); off-plan work classified per team-shift before summing."""
+    """Components summed first, then the rule once (the rollup rule, D-25)."""
     tot = Counter()
     for r in rows:
-        a, s = classify(r)
-        for k in ("D", "Cp", "O"):
+        for k in ("D", "Cp", "O", "U"):
             tot[k] += r[k] or 0.0
-        tot["add"] += a
-        tot["sub"] += s
-    return {"D": tot["D"], "Cp": tot["Cp"], "O": tot["O"], "U": tot["add"] + tot["sub"], "missed_unclaimed": 0.0, "add": tot["add"],
-            "sub": tot["sub"]}
+        tot["Uc"] += credited(r)
+    return {"D": tot["D"], "Cp": tot["Cp"], "O": tot["O"], "U": tot["U"], "Uc": tot["Uc"], "missed_unclaimed": 0.0}
 
 
 # ---------------------------------------------------------------------- the analysis
@@ -310,7 +310,7 @@ def analyze(records: list[dict[str, Any]], *, lead: int, bands: dict[str, tuple[
                      "R0_before_D27": percentiles([r["r0"] for r in scored])}
     for w in WS:
         res["scores"][f"R5_w{w}"] = percentiles([r5(r, w) for r in scored])
-    res["output_index"] = percentiles([(r["Cp"] + classify(r)[0]) / r["D"] for r in scored])
+    res["output_index"] = percentiles([(r["Cp"] + credited(r)) / r["D"] for r in scored])
 
     # grades, flips, daily pooled
     grades: dict[str, Any] = {}
@@ -342,34 +342,30 @@ def analyze(records: list[dict[str, Any]], *, lead: int, bands: dict[str, tuple[
     for rows in daily.values():
         p = pooled(rows)
         if p["D"] > 0:
-            dsc.append(r5(p, 0.8, add=p["add"], sub=p["sub"]))
+            dsc.append(r5(p, 0.8))
     res["daily_pooled_R5_w0.8"] = {"team_days": len(dsc), "percentiles": percentiles(dsc)}
 
-    # off-plan work and P2
+    # off-plan work, and the swap watch (information only: the score credits every counted off-plan minute)
     with_u = [r for r in scored if (r["U"] or 0) > 0]
-    add_min = sum(classify(r)[0] for r in scored)
-    sub_min = sum(classify(r)[1] for r in scored)
+    total_u = sum(r["U"] or 0.0 for r in scored)
+    swap_min = sum(classify(r)[1] for r in scored)
+    swaps = [r for r in scored if classify(r)[1] > 0]
     res["offplan"] = {"team_shifts_with_offplan": len(with_u), "share": round(len(with_u) / len(scored), 4),
                       "U_over_D_when_present": percentiles([r["U"] / r["D"] for r in with_u]),
-                      "P2_additive_minutes": add_min, "P2_substitutive_minutes": sub_min,
-                      "P2_substitutive_share": round(sub_min / (add_min + sub_min), 4) if add_min + sub_min else None,
-                      "team_shifts_P2_substitutive": sum(classify(r)[1] > 0 for r in scored)}
-
-    # can a swap pay? each team-shift with substitutive minutes against doing its missed planned work instead
-    swaps = [r for r in scored if classify(r)[1] > 0]
-    gain: dict[str, Any] = {}
+                      "offplan_minutes": total_u, "credited_minutes": sum(credited(r) for r in scored),
+                      "possible_swap_minutes": swap_min,
+                      "possible_swap_share_of_offplan": round(swap_min / total_u, 4) if total_u else None,
+                      "team_shifts_with_possible_swap": len(swaps)}
+    watch: dict[str, Any] = {"definition": "off-plan minutes done beside planned work left undone with no claim on record",
+                             "team_shifts": len(swaps), "share_of_scored": round(len(swaps) / len(scored), 4)}
     for w in WS:
-        for q in QS:
-            g = []
-            for r in swaps:
-                add, displaced = classify(r)
-                actual = r5(r, w, q)
-                instead = r5({**r, "Cp": r["Cp"] + displaced}, w, 0.0, add=add, sub=0.0)
-                g.append(actual - instead)
-            if g:
-                gain[f"w{w}_q{q}"] = {"team_shifts": len(g), "share_that_pays": round(sum(x > 1e-9 for x in g) / len(g), 4),
-                                      "mean_gain": round(mean(g), 3), "max_gain": round(max(g), 3)}
-    res["swap_gain"] = gain or {"note": "no team-shift has substitutive off-plan minutes"}
+        # what each of those team-shifts gave up against doing the missed planned minutes instead of the same off-plan minutes
+        cost = [r5({**r, "Cp": r["Cp"] + classify(r)[1], "U": (r["U"] or 0.0) - classify(r)[1], "Uc": max(0.0, credited(r) - classify(r)[1])}, w)
+                - r5(r, w) for r in swaps]
+        if cost:
+            watch[f"points_given_up_w{w}"] = {"mean": round(mean(cost), 3), "max": round(max(cost), 3),
+                                              "share_where_the_swap_paid": round(sum(x < -1e-9 for x in cost) / len(cost), 4)}
+    res["swap_watch"] = watch
 
     # relief and the shift boundary
     B = sum(r["B"] for r in records)
@@ -402,7 +398,7 @@ def analyze(records: list[dict[str, Any]], *, lead: int, bands: dict[str, tuple[
     planned = [r["D"] for r in scored]
     gain08 = [r5(r, 0.8) - clamp(100 * min(1, r["Cp"] / r["D"]) - 100 * (r["O"] or 0) / r["D"]) for r in scored]
     res["fairness"] = {"spearman_planned_minutes_vs_R5_gain": spearman(planned, gain08),
-                       "spearman_planned_minutes_vs_output_index": spearman(planned, [(r["Cp"] + classify(r)[0]) / r["D"] for r in scored]),
+                       "spearman_planned_minutes_vs_output_index": spearman(planned, [(r["Cp"] + credited(r)) / r["D"] for r in scored]),
                        "note": "planned minutes stand in for load; join available hours from attendance for the load itself"}
     return res
 
@@ -417,24 +413,24 @@ def review_sample(records: list[dict[str, Any]], n: int, seed: int) -> list[dict
     pick = rng.sample(sub, min(len(sub), n // 2)) + rng.sample(add, min(len(add), n - min(len(sub), n // 2)))
     return [{"team_shift": r["key"], "team": r["team"], "day": r["day"], "shift_number": r["number"], "planned_minutes": r["D"],
              "done_planned_minutes": r["Cp"], "missed_unclaimed_minutes": r["missed_unclaimed"], "offplan_minutes": r["U"],
-             "offplan_jobs": " ".join(r["unplanned"][:20]), "P2": "SUBSTITUTIVE" if classify(r)[1] > 0 else "ADDITIVE", "label": ""}
+             "offplan_jobs": " ".join(r["unplanned"][:20]), "watch": "POSSIBLE_SWAP" if classify(r)[1] > 0 else "EXTRA_ONLY", "label": ""}
             for r in sorted(pick, key=lambda r: r["key"])]
 
 
 def label_rates(path: Path) -> dict[str, Any]:
     rows = list(csv.DictReader(path.open(encoding="utf-8")))
     labeled = [r for r in rows if r.get("label", "").strip().upper() in ("SWAP", "EXTRA")]
-    called_add = [r for r in labeled if r["P2"] == "ADDITIVE"]
-    called_sub = [r for r in labeled if r["P2"] == "SUBSTITUTIVE"]
+    called_add = [r for r in labeled if r["watch"] == "EXTRA_ONLY"]
+    called_sub = [r for r in labeled if r["watch"] == "POSSIBLE_SWAP"]
     misses = sum(r["label"].strip().upper() == "SWAP" for r in called_add)
     alarms = sum(r["label"].strip().upper() == "EXTRA" for r in called_sub)
     swaps = sum(r["label"].strip().upper() == "SWAP" for r in labeled)
     return {"labeled": len(labeled), "unlabeled": len(rows) - len(labeled),
-            "miss_rate_q": round(misses / swaps, 4) if swaps else None,
-            "swaps_called_additive": misses, "swaps_labeled": swaps,
+            "miss_rate": round(misses / swaps, 4) if swaps else None,
+            "swaps_not_flagged": misses, "swaps_labeled": swaps,
             "false_alarm_rate": round(alarms / len(called_sub), 4) if called_sub else None,
-            "note": "q is the share of true swaps P2 calls additive; with a stratified sample, weight by each class's population "
-                    "share before quoting a site-wide rate"}
+            "note": "the miss rate is the share of real swaps the watch did not flag; with a stratified sample, weight by each "
+                    "class's population share before quoting a site-wide rate"}
 
 
 # ---------------------------------------------------------------------- command line

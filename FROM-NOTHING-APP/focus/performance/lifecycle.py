@@ -888,7 +888,7 @@ class ObservationView:
                 if cycle is not None and cycle.disposition in ("CANCELLED", "DETABBED"):
                     reasons.append("WITHDRAWN_WORK_STAYS_IN_B0")
                 if u.id not in relief and u.id not in explained:
-                    # nothing on record says why it was not done: unplanned work done instead covers it at no credit (D-27)
+                    # nothing on record says why it was not done. Information for the lead and the reports: it changes no score
                     reasons.append("NO_REASON_ON_RECORD")
             out.append(UnitFact(u.id, record.goal_id, u.job, u.phase, u.segment, u.team, u.standard_person_minutes, origin[u.id], status,
                                 credit.at if credit else None, credit.event_id if credit else None, status == "MISSED" and u.id in relief,

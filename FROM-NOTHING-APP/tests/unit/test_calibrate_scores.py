@@ -1,13 +1,12 @@
-"""The calibration tool's arithmetic (tools/calibrate_scores.py): the rules, the swap check and the review loop.
+"""The calibration tool's arithmetic (tools/calibrate_scores.py): the rules, the swap watch and the review loop.
 
-* R5 (the canonical rule since D-27) adds additive off-plan minutes at the rate w and never more than 100; substitutive
-  minutes earn nothing;
-* off-plan work is substitutive up to the planned work left undone with no claim on record, minute for minute, and
-  additive beyond that, exactly as the canonical score splits it;
+* R5 (the canonical rule since D-27) credits every counted off-plan minute at the rate w and never more than 100;
+* the swap watch flags off-plan minutes done beside planned work left undone with no claim on record. It changes no
+  score: a missed planned job costs points on its own;
 * without off-plan work R5 is 100 (1 - unexcused shortfall) minus the out-of-sequence charge, for every w;
-* a swap never pays at any w, even when it is misread as extra work; the rule before D-27 lowered a score for extra work;
+* a swap never pays for w below 1; the rule before D-27 lowered a score for extra work;
 * pooled scores add components first;
-* the review sample and the labels give the classifier's miss and false-alarm rates.
+* the review sample and the labels say how well the watch finds real swaps.
 """
 from __future__ import annotations
 
@@ -35,14 +34,17 @@ def test_additive_work_counts_at_w_and_never_above_100():
     assert C.r5(ts(D=100, Cp=100, U=50), 1.0) == 100.0
 
 
-def test_offplan_work_is_substitutive_up_to_the_unclaimed_missed_work_and_additive_beyond_it():
+def test_the_swap_watch_flags_minutes_beside_unclaimed_misses_and_the_score_credits_them_anyway():
     swap = ts(D=100, Cp=80, U=20, missed=20)
-    assert C.classify(swap) == (0, 20)
-    assert C.r5(swap, 0.8) == pytest.approx(80.0)    # substitutive minutes earn nothing
+    assert C.classify(swap) == (0, 20)               # all 20 off-plan minutes sit beside 20 unclaimed missed minutes
+    assert C.r5(swap, 0.8) == pytest.approx(96.0)    # credited: 0.8 x 100% + 0.2 x 80%
     assert C.classify(ts(D=100, Cp=80, U=0, missed=20)) == (0, 0)
-    both = ts(D=100, Cp=70, U=25, missed=10)         # 10 minutes cover the unclaimed miss, 15 are extra
+    both = ts(D=100, Cp=70, U=25, missed=10)         # 10 minutes beside the unclaimed miss, 15 clear extra
     assert C.classify(both) == (15, 10)
-    assert C.r5(both, 0.8) == pytest.approx(100 * (0.8 * 0.85 + 0.2 * 0.70))
+    assert C.r5(both, 0.8) == pytest.approx(100 * (0.8 * 0.95 + 0.2 * 0.70))
+    counted = ts(D=100, Cp=70, U=25)                 # the evaluation left 5 minutes out (started out of sequence by choice)
+    counted["Uc"] = 20.0
+    assert C.credited(counted) == 20.0 and C.r5(counted, 0.8) == pytest.approx(100 * (0.8 * 0.90 + 0.2 * 0.70))
 
 
 def test_the_rule_before_d27_lowered_a_score_for_extra_work():
@@ -60,27 +62,32 @@ def test_without_offplan_work_the_grade_is_one_minus_the_shortfall(w):
 
 
 @pytest.mark.parametrize("w", C.WS)
-def test_a_correctly_classified_swap_never_pays(w):
+def test_a_swap_never_pays_and_costs_the_adherence_share(w):
     records = [ts(f"T{i}|1", D=100, Cp=100 - m, U=m, missed=m, team=f"T{i}") for i, m in enumerate((5, 20, 60))]
-    gain = C.analyze(records, lead=20, bands=C.BAND_SETS)["swap_gain"]
-    assert gain[f"w{w}_q0.0"]["share_that_pays"] == 0
-    assert gain[f"w{w}_q0.0"]["max_gain"] < 0
+    watch = C.analyze(records, lead=20, bands=C.BAND_SETS)["swap_watch"]
+    assert watch["team_shifts"] == 3 and watch["share_of_scored"] == 1.0
+    cost = watch[f"points_given_up_w{w}"]
+    # doing the m missed planned minutes instead of the m off-plan ones scores 100: the swap gave up (1 - w) x m points
+    assert cost["share_where_the_swap_paid"] == 0
+    assert cost["mean"] == pytest.approx((1 - w) * (5 + 20 + 60) / 3, abs=1e-3) and cost["max"] == pytest.approx((1 - w) * 60, abs=1e-3)
 
 
-def test_a_swap_never_pays_even_when_part_of_it_is_misread_as_extra_work():
-    r = ts(D=100, Cp=50, U=30, missed=20)                # 20 planned minutes dropped for 20 of the 30 off-plan minutes; 10 are extra
-    gain = C.analyze([r], lead=20, bands=C.BAND_SETS)["swap_gain"]
-    # instead of the swap: Cp 70 with the same 10 extra minutes scores 0.8 x 80 + 0.2 x 70 = 78
-    assert gain["w0.8_q0.0"]["max_gain"] == pytest.approx((0.8 * 60 + 0.2 * 50) - 78)        # -20: the planned work it displaced
-    assert gain["w0.8_q0.3"]["max_gain"] == pytest.approx((0.8 * 66 + 0.2 * 50) - 78)        # 30% of the 20 misread as extra: still a loss
-    assert gain["w1.0_q0.3"]["max_gain"] == pytest.approx(66 - 80)
-    assert all(v["share_that_pays"] == 0 for v in gain.values())
+def test_the_owners_example_ten_jobs_eight_done_four_others():
+    """Owner, 2026-11-10: 10 jobs scheduled, 8 done, 4 others not on plan: full credit for the 8, some credit for the 4,
+    and points lost for the 2 missed unless their excuse is valid."""
+    r = ts(D=600, Cp=480, U=240, missed=120)             # ten 60-minute jobs; the two misses are not excused
+    assert C.r5(r, 0.8) == pytest.approx(96.0)           # 80 for the 8, 16 for the extra work, 4 lost for the 2 missed
+    assert C.r5(ts(D=600, Cp=480, U=0, missed=120), 0.8) == pytest.approx(80.0)
+    assert C.r5(ts(D=480, Cp=480, U=240), 0.8) == 100.0  # the two misses validly excused: nothing lost
+    assert C.before_d27(r) == pytest.approx(100 * (0.7 * 0.8 + 0.3 * 480 / 720))   # 76: the old rule took points for the extra work
 
 
 def test_pooled_scores_add_components_first():
     a, b = ts("T1|1", D=400, Cp=200), ts("T1|2", D=100, Cp=100, number=2)
     p = C.pooled([a, b])
-    assert C.r5(p, 0.8, add=p["add"], sub=p["sub"]) == pytest.approx(100 * 300 / 500)
+    assert C.r5(p, 0.8) == pytest.approx(100 * 300 / 500)
+    ahead = C.pooled([ts("T1|1", D=200, Cp=200, U=50), ts("T1|2", D=200, Cp=150, number=2)])
+    assert C.r5(ahead, 0.8) == pytest.approx(97.5)       # extra work beyond one shift's expected amount counts in the pool
 
 
 def test_the_analysis_reports_shortfall_grades_flips_and_coverage():
@@ -99,18 +106,18 @@ def test_the_analysis_reports_shortfall_grades_flips_and_coverage():
 def test_the_review_sample_and_labels_give_the_miss_and_false_alarm_rates(tmp_path):
     records = [ts(f"T{i}|1", D=100, Cp=90, U=10, missed=10 if i < 4 else 0, team=f"T{i}") for i in range(8)]
     sample = C.review_sample(records, 8, seed=1)
-    assert {s["P2"] for s in sample} == {"ADDITIVE", "SUBSTITUTIVE"} and len(sample) == 8
+    assert {s["watch"] for s in sample} == {"EXTRA_ONLY", "POSSIBLE_SWAP"} and len(sample) == 8
     path = tmp_path / "labels.csv"
     with path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=list(sample[0]))
         writer.writeheader()
         for s in sample:
-            # supervisors: every substitutive call is right; one additive call was really a swap
-            s["label"] = "SWAP" if s["P2"] == "SUBSTITUTIVE" or s["team_shift"] == "T4|1" else "EXTRA"
+            # supervisors: every flag is right; one team-shift the watch did not flag was really a swap
+            s["label"] = "SWAP" if s["watch"] == "POSSIBLE_SWAP" or s["team_shift"] == "T4|1" else "EXTRA"
             writer.writerow(s)
     rates = C.label_rates(path)
-    assert rates["swaps_labeled"] == 5 and rates["swaps_called_additive"] == 1
-    assert rates["miss_rate_q"] == 0.2 and rates["false_alarm_rate"] == 0.0
+    assert rates["swaps_labeled"] == 5 and rates["swaps_not_flagged"] == 1
+    assert rates["miss_rate"] == 0.2 and rates["false_alarm_rate"] == 0.0
 
 
 def test_spearman_and_percentiles():

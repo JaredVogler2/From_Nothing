@@ -28,7 +28,7 @@ class UnitFact:
     credit_event: str | None
     relief: bool                        # approved relief applies (MISSED units only, never earned ones)
     oos_charged: bool
-    reasons: tuple[str, ...]            # e.g. NO_REASON_ON_RECORD on a missed unit with no approved relief and no claim
+    reasons: tuple[str, ...]            # e.g. NO_REASON_ON_RECORD on a missed unit with no approved relief and no claim (information only)
 
 
 @dataclass(frozen=True, slots=True)

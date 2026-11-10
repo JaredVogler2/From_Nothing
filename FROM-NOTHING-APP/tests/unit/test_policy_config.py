@@ -35,7 +35,10 @@ def test_policy_loads_with_user_constants_and_authorities(policy) -> None:
     assert policy.authority_of("duration.total_mechanics_semantics") == "owner_decision"     # OD-01, decided 2026-10-31
     assert {policy.authority_of(k) for k in ("due.basis", "due.proxy_station", "due.proxy_date_basis", "due.instant")} == {"owner_decision"}  # OD-06
     assert policy.authority_of("cs.date_mode") == "open_decision"
-    assert policy.authority_of("score.attainment_weight") == "demo_default"
+    # the owner confirmed the 80/20 split on 2026-11-10 (D-27); the out-of-sequence rate and the bands are still demo values
+    assert {policy.authority_of(k) for k in ("score.attainment_weight", "score.adherence_weight")} == {"owner_decision"}
+    assert (policy.str("score.attainment_weight"), policy.str("score.adherence_weight")) == ("0.80", "0.20")
+    assert {policy.authority_of(k) for k in ("score.oos_rate", "score.bands", "score.policy_status")} == {"demo_default"}
     assert {d["id"] for d in policy.open_decisions} >= {f"OD-{i:02d}" for i in range(2, 13)} - {"OD-06"}
     assert {"OD-01", "OD-06"}.isdisjoint(d["id"] for d in policy.open_decisions)          # decided by the owner
 
