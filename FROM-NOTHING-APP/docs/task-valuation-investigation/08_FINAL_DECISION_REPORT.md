@@ -22,7 +22,7 @@ Modeled money is the airline-revenue proxy: a planning assumption, never a contr
 
 Under the decision rule set in advance, **the recommendation falls back to (1): effort attainment only (status quo).** No classifier should be built on this evidence. Classes stay a hypothesis, to be re-tested (T8) on real executed plans (OD-15). The original reasoning below is kept as written; the bullets marked *Updated* supersede it.
 
-The separate owner question on unscheduled work is answered in `09`: fix how the effort score treats off-plan work. It applies under either choice.
+The separate owner question on unscheduled work is answered in `09`: fix how the effort score treats off-plan work. It applies under either choice. *That fix was decided and built on 2026-11-10 (D-27).*
 
 **Should task importance be scheduler-derived?**
 - **Yes, as a classification**: CRITICAL, AT_RISK, FLOAT or UNKNOWN, with a reason.

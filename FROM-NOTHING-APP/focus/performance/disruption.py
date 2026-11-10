@@ -313,6 +313,18 @@ def approved_units(view: Any, goal_id: str) -> set[str]:
     return out
 
 
+def explained_units(view: Any, goal_id: str) -> set[str]:
+    """Units with a reason on record for not being done: every unit a claim that is not withdrawn names.
+
+    The claim may come from the automatic attribution (a late part, an unfinished predecessor, a call-off, rework, an
+    overrun, a plan change) or from a person, and it may be proposed, awaiting review, approved or rejected. A claim
+    is evidence that the unit could not be done as planned; whether it excuses the unit is the reviewer's separate
+    decision (``approved_units``). A missed unit outside this set has ``NO_REASON_ON_RECORD``: unplanned work the
+    team did instead covers it at no credit (D-27, ``score.components``).
+    """
+    return {u for c in effective_claims(view, goal_id).values() if c.status != "WITHDRAWN" for u in c.units}
+
+
 def relief_summary(view: Any, record: Any, facts: list[Any]) -> dict[str, Any]:
     """Claimed effort (sum over claims) versus relief (union of approved missed units), for display and audit."""
     effort = {f.unit_id: f.effort for f in facts}

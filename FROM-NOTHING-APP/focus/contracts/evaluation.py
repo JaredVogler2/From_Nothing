@@ -28,12 +28,14 @@ class UnitFact:
     credit_event: str | None
     relief: bool                        # approved relief applies (MISSED units only, never earned ones)
     oos_charged: bool
-    reasons: tuple[str, ...]
+    reasons: tuple[str, ...]            # e.g. NO_REASON_ON_RECORD on a missed unit with no approved relief and no claim
 
 
 @dataclass(frozen=True, slots=True)
 class OffplanFact:
-    """Verified completion credited to no goal-of-record unit: unapproved offplan output (U) of the team-shift where it happened."""
+    """Verified completion credited to no goal-of-record unit: unapproved offplan output (U) of the team-shift where it happened.
+
+    It earns credit as extra work (Uc) unless its reasons say it was started out of sequence by choice (D-27)."""
 
     id: str
     team: str
@@ -92,10 +94,10 @@ class Evaluation:
     E: Fraction
     D: Fraction
     Cp: Fraction
-    U: Fraction | None
+    U: Fraction | None                  # all verified offplan output
     O: Fraction | None
-    attainment: Fraction | None
-    adherence: Fraction | None
+    attainment: Fraction | None         # output attainment min(1, (Cp + Uc)/D)
+    adherence: Fraction | None          # plan adherence min(1, Cp/D): the planned jobs done
     base: Fraction | None
     final: Fraction | None              # unrounded clamp(base - 100*O/D, 0, 100)
     score: Decimal | None               # final rounded to the policy decimals
@@ -106,6 +108,7 @@ class Evaluation:
     revision: int
     supersedes: str | None
     created_at: datetime
+    Uc: Fraction | None = None          # the part of U that earns credit as extra work (D-27); None on records written before it
 
 
 @dataclass(frozen=True, slots=True)

@@ -11,7 +11,7 @@ import re
 from fractions import Fraction
 from pathlib import Path
 
-from focus.performance.score import formula
+from focus.performance.score import credited_offplan, formula
 
 ROOT = Path(__file__).resolve().parents[2]
 TEXT = (ROOT / "docs" / "execution" / "SCORING_EXPLAINED.md").read_text(encoding="utf-8")
@@ -31,21 +31,26 @@ def _rules() -> list[tuple[str, str, str, str]]:
 
 
 def test_the_worked_example_is_what_the_formula_returns(policy) -> None:
-    def score(B: int, E: int, Cp: int, U: int, O: int = 0) -> tuple[str, str]:
-        r = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(U), Fraction(O), policy)
+    def score(B: int, E: int, Cp: int, counted: int, O: int = 0) -> tuple[str, str]:
+        r = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(counted), Fraction(O), policy)
         return str(r["score"]), r["grade"]
 
-    assert score(1000, 100, 720, 80) == ("83.0", "B")
-    assert score(1000, 100, 720, 80, O=10) == ("81.9", "B")              # 10% of one 100-minute job
-    assert score(1000, 100, 900, 100) == ("97.0", "A")                   # extra work lowers today's score
-    assert all(shown in TEXT for shown in ("**83.0**", "**81.9**", "**97.0**"))
+    assert score(1000, 100, 720, 80) == ("87.1", "B")                    # every missed job has a reason: all 80 extra minutes count
+    assert score(1000, 100, 720, 0) == ("80.0", "B")                     # no extra work: done / expected
+    assert score(1000, 100, 800, 0) == ("88.9", "B")                     # the same 80 minutes as planned jobs are worth more
+    assert credited_offplan(Fraction(80), Fraction(50)) == 30            # 50 missed minutes with no reason on record are covered first
+    assert score(1000, 100, 720, 30) == ("82.7", "B")
+    assert score(1000, 100, 720, 80, O=10) == ("86.0", "B")              # 10% of one 100-minute job
+    assert score(1000, 100, 900, 100) == ("100.0", "A")                  # extra work never lowers a score (97.0 before D-27)
+    assert all(shown in TEXT for shown in ("**87.1**", "**80.0**", "**88.9**", "**82.7**", "**86.0**", "**100.0**"))
 
 
 def test_the_stated_weights_rate_and_bands_are_the_policys(policy) -> None:
     attainment = int(Fraction(policy.str("score.attainment_weight")) * 100)
     adherence = int(Fraction(policy.str("score.adherence_weight")) * 100)
     rate = int(Fraction(policy.str("score.oos_rate")) * 100)
-    assert f"{attainment}% × (done ÷ expected) + {adherence}% × (done ÷ (done + extra))" in TEXT
+    assert f"{attainment}% × ((done + extra that counts) ÷ expected, at most 100%) + {adherence}% × (done ÷ expected)" in TEXT
+    assert f"An extra job is worth {attainment}% of the same minutes" in TEXT and f"The last {adherence}% of the score" in TEXT
     assert f"{rate}% of the planned minutes" in TEXT
     bands = {str(label): int(low) for label, low in policy.seq("score.bands")}
     assert f"A is {bands['A']} and up, B {bands['B']}, C {bands['C']}, D {bands['D']}, F below {bands['D']}." in TEXT
@@ -54,7 +59,7 @@ def test_the_stated_weights_rate_and_bands_are_the_policys(policy) -> None:
 
 def test_every_rule_names_code_and_tests_that_exist() -> None:
     rules = _rules()
-    assert [r[0] for r in rules] == [str(i) for i in range(1, len(rules) + 1)] and len(rules) >= 16
+    assert [r[0] for r in rules] == [str(i) for i in range(1, len(rules) + 1)] and len(rules) >= 17
     for number, _, code, tests in rules:
         source: str | None = None
         for token in TOKEN.findall(code):

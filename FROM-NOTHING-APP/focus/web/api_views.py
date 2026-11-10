@@ -330,7 +330,7 @@ TARGET = {"type": "number", "minimum": 0, "maximum": 100, "description": "Score 
 @REGISTRY.operation(
     "get_performance_rollup", "GET", "/api/v1/performance/rollup",
     summary="Canonical performance of a team, a superintendent or the business unit over any period",
-    description="Sums the six canonical components (B0/B/E/Cp/U/O) of every team-shift of the group in the period, then applies the one "
+    description="Sums the seven canonical components (B0/B/E/Cp/U/Uc/O) of every team-shift of the group in the period, then applies the one "
                 "formula: a shift, day, ISO week, rolling 30 days, month, quarter, year or custom dates. The official score is unknown while "
                 "any team-shift has no score; a labeled partial score covers the scored ones. Superintendents come from the org chart as of "
                 "each shift. A superintendent or the business unit also shows each team's score, how many are on target, the lowest and "
@@ -378,7 +378,7 @@ JOB_LIMIT = {"type": "integer", "minimum": 1, "maximum": 500, "description": "Ro
     summary="The jobs behind a team's, a superintendent's or the business unit's score, and their patterns across aircraft",
     description="For any group and period (as /performance/rollup): every planned job by shop order id with how often, on how many "
                 "aircraft and for how many minutes it was done as planned, missed, excused (with the claim causes), still open or done out "
-                "of sequence, and every unplanned job done instead (it earns nothing and lowers adherence). Answers 'adherence was 60%: "
+                "of sequence, and every unplanned job done (extra work: credited below a planned job, never in adherence). Answers 'adherence was 60%: "
                 "which jobs were done as planned and which were not' (level=team, period=shift, group=job_aircraft) and 'which jobs miss "
                 "aircraft after aircraft'. Every team of the group must be in your scope.",
     grants=PERFORMANCE_READERS, read_only=True,

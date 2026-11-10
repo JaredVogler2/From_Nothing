@@ -116,12 +116,14 @@ def test_canonical_outcomes_at_first_collection(world) -> None:
     a, b, q = ev["PROD-A"], ev["PROD-B"], ev["QA"]
     # PROD-A: planned A1 240 earned; offplan B1 240 + B2 180 in U; offplan OOS (B2) is not charged again
     assert (a.B, a.E, a.Cp, a.U, a.O) == (240, 0, 240, 420, 0)
-    assert a.base == Fraction(100) * (Fraction(7, 10) + Fraction(3, 10) * Fraction(240, 660)) and str(a.score) == "80.9"
+    # D-27: the plan was finished, so the extra work never lowers the score (80.9 before). B1 is credited as extra work;
+    # B2 was started out of sequence by choice and earns none
+    assert a.Uc == 240 and (a.attainment, a.adherence, a.base) == (1, 1, 100) and str(a.score) == "100.0"
     # PROD-B: B = 408 + 104 approved addition; Cp = NC3 + PU3 + ROOT3 seg0 + NC3B; O = 10% of the 80 planned ROOT3 WORK0 minutes
-    assert (b.B0, b.B, b.E, b.Cp, b.U, b.O) == (408, 512, 0, 344, 0, 8)
-    assert b.final == Fraction(100) * (Fraction(7, 10) * Fraction(344, 512) + Fraction(3, 10)) - Fraction(800, 512) and str(b.score) == "75.5"
+    assert (b.B0, b.B, b.E, b.Cp, b.U, b.Uc, b.O) == (408, 512, 0, 344, 0, 0, 8)
+    assert b.final == Fraction(100) * Fraction(344, 512) - Fraction(800, 512) and str(b.score) == "65.6"
     # QA: NC3 final QA kept after the administrative cancel; PU3 final QA reopened (not earned); ODA buyoff cancelled (stays in B0)
-    assert (q.B, q.E, q.Cp, q.U, q.O) == (200, 0, 45, 0, 0) and str(q.score) == "45.8"
+    assert (q.B, q.E, q.Cp, q.U, q.O) == (200, 0, 45, 0, 0) and str(q.score) == "22.5"
     assert {e.status for e in ev.values()} == {EvaluationStatus.DEMONSTRATION}
 
 
@@ -465,6 +467,29 @@ def test_planned_oos_charged_once_offplan_oos_not_double_charged(world) -> None:
     b2 = phase(world.snap, 1302, "B2")
     assert any(v.phase == b2 for v in view.violations) and view.offplan_oos("PROD-A", S1)    # recorded as compliance evidence
     assert world.evals[P3]["PROD-A"].O == 0 and world.evals[P3]["PROD-A"].U == 420           # its effort is in U once, no numeric O
+    by_phase = {o.phase: o for o in view.offplan_for("PROD-A", S1)}
+    assert "OUT_OF_SEQUENCE_BY_CHOICE" in by_phase[b2].reasons and world.evals[P3]["PROD-A"].Uc == 240   # ... and it earns no extra-work credit
+
+
+def test_a_missed_job_with_no_cause_on_record_absorbs_extra_work_before_any_is_credited(world) -> None:
+    """D-27: extra work earns credit unless the team left planned work undone and nothing on record says why."""
+    from focus.contracts.evaluation import OffplanFact
+    from focus.performance.score import components
+
+    view = ObservationView.build(world.services, P1)
+    record, facts = facts_by(view, "PROD-B")
+    missed = [f for f in facts.values() if f.status == "MISSED"]
+    assert sum(f.effort for f in missed) == 168 and not any("NO_REASON_ON_RECORD" in f.reasons for f in missed)
+    assert disruption.explained_units(view, record.goal_id) >= {f.unit_id for f in missed}   # the automatic attribution named a cause for each
+    extra = [OffplanFact("X", "PROD-B", S1, "J", "J.WORK.0", 200, P1, "E", ())]
+    assert components(list(facts.values()), extra, [], world.services.policy)["Uc"] == 200   # all of it is extra work
+    view.claims = [c for c in view.claims if c.goal_id != record.goal_id]                    # the same shift with nothing on record
+    bare = view.unit_facts(record)
+    assert all(("NO_REASON_ON_RECORD" in f.reasons) == (f.status == "MISSED") for f in bare)
+    assert components(bare, extra, [], world.services.policy)["Uc"] == 200 - 168             # the first 168 minutes cover the misses
+    withdrawn = [c for c in ObservationView.build(world.services, P1).claims if c.goal_id == record.goal_id]
+    view.claims = [replace(c, status="WITHDRAWN") for c in withdrawn]                        # a withdrawn claim explains nothing
+    assert all("NO_REASON_ON_RECORD" in f.reasons for f in view.unit_facts(record) if f.status == "MISSED")
 
 
 # ---------------------------------------------------------------------- coverage, freshness and unknown semantics

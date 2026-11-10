@@ -61,7 +61,7 @@ def derive(con: sqlite3.Connection, policy: Any) -> dict[str, Any]:
     for r in con.execute("SELECT shift_no, team, assignment_id, unlocked_job FROM perf_unlock") if has_unlocks else ():
         released[(r["shift_no"], r["team"], r["assignment_id"])].add(r["unlocked_job"])
     goals = {(r["shift_no"], r["team"]): r for r in con.execute(
-        "SELECT shift_no, production_day, shift_number, week, team, B, E, Cp, U, oos_effort, score, status FROM perf_team_shift")}
+        "SELECT shift_no, production_day, shift_number, week, team, B, E, Cp, U, Uc, oos_effort, score, status FROM perf_team_shift")}
     frozen = {(r["production_day"], r["team"], r["shift_number"]): r["frozen_shift_no"] for r in con.execute(
         "SELECT frozen_shift_no, production_day, team, shift_number FROM perf_goal_day")}
     gates: dict[int, dict[str, str]] = {}
@@ -162,8 +162,8 @@ def derive(con: sqlite3.Connection, policy: Any) -> dict[str, Any]:
             continue
         ranked = []
         for team, members in sorted(teams.items()):
-            total = {k: sum(int(m[k] or 0) for m in members) for k in ("B", "E", "Cp", "U", "oos_effort")}
-            result = formula(Fraction(total["B"]), Fraction(total["E"]), Fraction(total["Cp"]), Fraction(total["U"]), rate * total["oos_effort"], policy)
+            total = {k: sum(int(m[k] or 0) for m in members) for k in ("B", "E", "Cp", "Uc", "oos_effort")}
+            result = formula(Fraction(total["B"]), Fraction(total["E"]), Fraction(total["Cp"]), Fraction(total["Uc"]), rate * total["oos_effort"], policy)
             if result["score"] is not None:
                 ranked.append((-Fraction(str(result["score"])), team, len(members)))
         if ranked:

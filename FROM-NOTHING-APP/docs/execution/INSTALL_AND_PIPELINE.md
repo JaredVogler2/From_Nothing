@@ -377,7 +377,7 @@ python -m focus.cli performance-details [--keep-days 90] [--apply]
 python -m focus.cli performance-ledger                              # rebuild the light rows and job records
 ```
 
-Each team-shift keeps its score forever: the evaluation with its six components, its light row and its compact job
+Each team-shift keeps its score forever: the evaluation with its seven components, its light row and its compact job
 record (each job's shop order id, aircraft, phase, minutes and outcome, about 50 bytes a job). The bulky per-unit
 evidence behind the score (`evaluation_evidence`, about 58 KB per team-shift at 50 aircraft) is kept for the owner's
 period of 90 days, then deleted.

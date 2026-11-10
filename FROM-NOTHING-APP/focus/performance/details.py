@@ -1,6 +1,6 @@
 """Per-job details kept for the owner's period (D-25): the evidence behind each team-shift's score.
 
-A team-shift keeps its score forever: the evaluation record (about 1.2 KB, with the six components) and its light row
+A team-shift keeps its score forever: the evaluation record (about 1.2 KB, with the seven components) and its light row
 in ``team_shift_performance``. It also keeps its jobs for good, compactly, in ``job_outcomes``: each job's shop order id,
 aircraft, phase, minutes and outcome (done, missed, excused with its causes, open, out of sequence, unplanned). That
 answers which jobs made a score and which jobs miss across aircraft (``rollup.job_patterns``).
@@ -74,7 +74,7 @@ def run_detail_retention(services: Any, *, keep_days: int = DEFAULT_KEEP_DAYS, a
     report: dict[str, Any] = {"status": "ok", "applied": apply, "keep_days": keep_days, "first_day_kept": first_kept.isoformat(),
                               "days": len(days), "from": days[0] if days else None, "through": days[-1] if days else through,
                               "team_shifts": shifts, "details_to_delete": len(stored), "kept_without_job_record": kept,
-                              "note": "per-job evidence only; every evaluation, its six components and the light rows stay"}
+                              "note": "per-job evidence only; every evaluation, its seven components and the light rows stay"}
     if kept:
         report["note"] += f"; {kept} team-shift(s) keep their evidence until a compact job record carries their score (performance-ledger)"
     if not apply or not days:

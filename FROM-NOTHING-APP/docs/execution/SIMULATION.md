@@ -157,10 +157,12 @@ same function production uses (S14):
 - **Earned.** Cp is the planned or added effort finished, once, in its own shift. Nothing is credited early: work an
   earlier plan had put in a later shift counts as offplan output in the shift that did it. A unit already finished
   before its shift started (only when an earlier plan stands in) is `DONE_BEFORE_SHIFT`: out of D with the relief.
-- **Offplan.** U is finished work that is no unit of this shift's goal: pulled ahead, or a deviation.
-- **Formula.** attainment A = min(1, Cp/D); adherence H = Cp/(Cp + U), so offplan work is discounted; score =
-  100 × (0.70 A + 0.30 H) − 100 × O/D, where O is the once-only out-of-sequence charge. Grades are A 90+, B 80+, C 70+,
-  D 60+ and F below.
+- **Offplan.** U is finished work that is no unit of this shift's goal: pulled ahead, or a deviation. Uc is the part
+  that earns credit as extra work (D-27): U less the missed units that have no claim (a deviation, or a miss with no
+  disruption on record), never below zero. The floor only works ready tasks off the plan, so none is out of sequence.
+- **Formula.** attainment A = min(1, (Cp + Uc)/D); adherence H = min(1, Cp/D), the planned work done; score =
+  100 × (0.80 A + 0.20 H) − 100 × O/D, where O is the once-only out-of-sequence charge. Offplan work earns 80% of the
+  same planned work and never lowers a score. Grades are A 90+, B 80+, C 70+, D 60+ and F below.
 - **Labels.** Results carry the policy's status (DEMONSTRATION). A goal with D = 0 is NEUTRAL, never 100 or F.
 
 Fleet, day and week figures pool the components of every team-shift before dividing, so they are never an average of

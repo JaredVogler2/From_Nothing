@@ -9,6 +9,7 @@ behaviour were checked against the code on this date.
 
 **Read with:**
 
+- [`AGENTS.md`](../../../AGENTS.md), at the repository root: the one-page brief for a coding agent. Read it first.
 - [DECISION_PLAYBOOK.md](DECISION_PLAYBOOK.md): every open decision, with a recommendation, the rule for deciding
   once real data is wired, the files and tests to change and where to record it. Work through it after this guide.
 - [WORKPLACE_PORTING_GUIDE.md](WORKPLACE_PORTING_GUIDE.md): confidentiality and the rollout gates A–F.
@@ -17,6 +18,8 @@ behaviour were checked against the code on this date.
 - [`SQL_SCHEMA_LEDGER.md`](../execution/SQL_SCHEMA_LEDGER.md): the tables FOCUS writes and the gaps in them.
 - [`INSTALL_AND_PIPELINE.md`](../execution/INSTALL_AND_PIPELINE.md): install, roles, the pipeline and recovery.
 - [`DECISIONS.md`](../execution/DECISIONS.md): the rules (D-26 above all) and the open decisions.
+- [`OBJECTIVE_EXPLAINED.md`](../execution/OBJECTIVE_EXPLAINED.md): what the scheduler minimizes, how late-delivery
+  cost is worked out, and how to tell whether the cost objective is working on live data.
 - [`SCORING_EXPLAINED.md`](../execution/SCORING_EXPLAINED.md): how a team's shift is scored, in plain terms, with
   each rule's code and tests.
 - [`10_CALIBRATION.md`](../task-valuation-investigation/10_CALIBRATION.md): re-running the score calibration on real
@@ -40,7 +43,17 @@ stay in company storage. This public repository keeps the synthetic reference co
   - every difference between a documented rule and the code, with file and line;
   - your open questions.
 - **The pre-shift clock runs from the data cut to plan acceptance.** Staging counts toward it (§3).
-- **Scoring** is explained in `SCORING_EXPLAINED.md`. One file computes it: `focus/performance/score.py`.
+- **Scoring** is explained in `SCORING_EXPLAINED.md`. One file computes it: `focus/performance/score.py`. Scoring
+  is part of the application, not an extra: verified completions earn credit for the team-shift whose plan held
+  the job, and the record behind every score is kept. Do not design a second completions store.
+- **The objective** is explained in `OBJECTIVE_EXPLAINED.md`. Two schedules are compared in a fixed order, and
+  late-delivery dollars are one level of it.
+  - An aircraft's cost is unknown while any open job on it cannot be planned, or its rate or due date is missing.
+  - With every aircraft unknown, the run still publishes a plan but has compared no dollars.
+  - Report the aircraft with an unknown cost and the unplanned jobs by reason with every live run, and work those
+    before speed (`DECISION_PLAYBOOK.md`, DEC-29).
+- **Unknown stays unknown.** Never fill a missing rate, duration, date or calendar day with an average, a median or
+  a default.
 - **Decisions.** Before asking the owner, look the question up in `DECISION_PLAYBOOK.md`: it says what to do now,
   what to decide from data, and what only the owner can decide.
 
@@ -61,8 +74,10 @@ stay in company storage. This public repository keeps the synthetic reference co
   - Late completions and constraints are captured after the fact. A shift is scored once its overtime window
     closes.
 - **The score.** The canonical score formula still uses the demonstration policy (A ≥ 90, B ≥ 80, C ≥ 70,
-  D ≥ 60). An OFFICIAL grade needs the owner's approval receipt (OD-16). The proposed off-plan credit rule (R5,
-  w = 0.8) is not implemented.
+  D ≥ 60). An OFFICIAL grade needs the owner's approval receipt (OD-16).
+- **Extra work earns credit (owner, 2026-11-10, D-27).** Work a team does outside its plan counts toward its score
+  at 80% of the same planned work and never lowers it. It first covers missed planned work that has no reason on
+  record, at no credit. `docs/execution/SCORING_EXPLAINED.md` gives the rule and a worked example.
 - **Where things run.** The GitLab pipeline runs the scheduler and every other step. Posit Connect only displays:
   the web app reads a small display package the pipeline publishes, never a snapshot or a plan.
 - **Time.** The database holds UTC; the app shows the site's local time (America/New_York). Live runs set
@@ -345,7 +360,8 @@ rule.
   the next plan also holds it. The next shift's window contains the completion, and shift windows are checked before
   overtime windows. The finishing shift's unit is then missed (`COMPLETION_CREDITED_ELSEWHERE_OR_LATE`). The
   alternative is to credit the crew that finished it; completion records carry the person.
-- **R5 off-plan credit, w and the bands:** after the real-data calibration.
+- **The rate for extra work (0.8 today) and the grade bands:** after the real-data calibration. Whether an approved
+  addition should raise what is expected is also open (`DECISION_PLAYBOOK.md`, DEC-26).
 - **Live load cadences:** the freshness limits are fixture defaults.
 - **The open decisions OD-02 to OD-05 and OD-07 to OD-17**, and the score policy approval (OD-16).
 

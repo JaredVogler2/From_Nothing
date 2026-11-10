@@ -14,11 +14,17 @@ needed. Make the data-dependent decisions once real data is wired, using the rul
 - No SQL is installed, no pipeline is active, and no company data has been read.
 - Full non-UI test suite: 906 passed, 3 skipped (10.5 minutes).
 
+**Changed on 2026-11-10.** The owner decided that extra work earns credit (D-27, DEC-22). First live wiring by a
+coding agent showed every aircraft with an unknown late-delivery cost, which added DEC-28 to DEC-30.
+
 **Read first, in this order:**
 
 1. `docs/integration/HANDOFF.md`: architecture, staging contract, GitLab, work items.
-2. This playbook.
-3. `docs/execution/DECISIONS.md`, for history; each decision below names the entries it touches.
+2. `docs/execution/OBJECTIVE_EXPLAINED.md`: what the scheduler minimizes, and how to tell whether the cost
+   objective is working on live data.
+3. `docs/execution/SCORING_EXPLAINED.md`: how a team's shift is scored.
+4. This playbook.
+5. `docs/execution/DECISIONS.md`, for history; each decision below names the entries it touches.
 
 ## 0. Guardrails (apply to every decision)
 
@@ -36,6 +42,11 @@ needed. Make the data-dependent decisions once real data is wired, using the rul
   - Never install migrations, apply grants, publish plans or enable dispatch without the authorized installer and
     owner approvals described in `INSTALL_AND_PIPELINE.md`.
   - Read-only discovery is always allowed.
+- **Unknown stays unknown.**
+  - Never fill a missing rate, duration, crew size, date or calendar day with an average, a median, a neighbor's
+    value or a default. A known number built on a guess is wrong and looks right.
+  - Record how many rows are affected, by reason, and work the cause (`OBJECTIVE_EXPLAINED.md` §4). A fallback is an
+    owner decision, recorded with its label.
 - **Never self-approve the OFFICIAL score policy.**
   - `score.policy_status` stays `DEMONSTRATION` until the owner's approval receipt exists
     (`score.policy_approval_ref`, OD-16).
@@ -104,6 +115,7 @@ needed. Make the data-dependent decisions once real data is wired, using the rul
 | Done before the shift | A unit whose phase was verified complete before its shift started is `DONE_BEFORE_SHIFT` and counts in E | `lifecycle.unit_facts`, `score.components` |
 | Amendments during the shift only | The command and the feed refuse `SHIFT_NOT_STARTED` / `SHIFT_ENDED` | `amendments.py`, `actuals.amendment_from_row` |
 | Late events after the fact | Scores come from timestamped events once overtime closes, and are revised when data arrives late | D-26 |
+| Extra work earns credit (D-27) | Unplanned work counts toward the score at 80% of the same planned work and never lowers it. It first covers missed planned work with no reason on record, at no credit. Adherence is the planned jobs done over the expected work | `score.formula`, `score.components`, `docs/execution/SCORING_EXPLAINED.md` |
 | OD-01 crew | `TOTAL_MECHANICS` is the crew needed on the job at once (owner, 2026-10-31) | `duration.total_mechanics_semantics` |
 | OD-06 due date | CS744 planned unload + 2-day grace, as a whole local day (owner, 2026-11-02) | `due.*` |
 | Time | The database holds UTC; the app shows site local time (America/New_York); live `FOCUS_SOURCE_TIMEZONE_MAP_JSON={"*": "UTC"}` | owner, 2026-10-31 |
@@ -132,14 +144,17 @@ needed. Make the data-dependent decisions once real data is wired, using the rul
 | DEC-13 | Freshness limits (load cadences) | DATA | fixture limits 18–240 h | after 2 weeks of loads |
 | OD-02…OD-17 | Data semantics (§5) | DATA, then the owner confirms the relabel | fixture meanings; live withheld | as each source is wired |
 | DEC-19 | Validate the score on real data | DATA, then OWNER | no grade counts until done | after 4 weeks of pilot |
-| DEC-20 | Off-plan classifier error rates | DATA | P2 team-shift rule | after 4 weeks of pilot |
-| DEC-21 | Exchange rate w | DATA, then OWNER confirms | 0.8 | after DEC-20 |
-| DEC-22 | Turn on R5 off-plan credit | OWNER | off (R0 stays) | after DEC-21 |
+| DEC-20 | How often the extra-work rule misreads a shift | DATA | the built rule (reason on record) | after 4 weeks of pilot |
+| DEC-21 | The rate for extra work | DATA, then OWNER confirms | 0.8 (built) | after DEC-20 |
+| DEC-22 | Extra-work credit | **decided 2026-11-10 (D-27), built** | port it; do not reopen | now |
 | DEC-23 | Grade bands | OWNER (with data) | demo 90/80/70/60, DEMONSTRATION | after 4 weeks of pilot |
 | DEC-24 | Late-plan protection | OWNER | evidence-only `PLAN_CHURN` claims | after 1 week of runs |
 | DEC-25 | Overtime credit | OWNER (with data) | today's rule | after 4 weeks of pilot |
-| DEC-26 | Approved additions under R5 | with DEC-22 | obligations | with DEC-22 |
+| DEC-26 | Approved additions and extra-work credit | OWNER | obligations (today) | before the pilot |
 | DEC-27 | Policy `live_effect` text corrections | ENGINEERING | with the first policy batch | first policy batch |
+| DEC-28 | Calendar days after the last control station | DATA, then OWNER | the producer sends the site's working days through the horizon | with the first live plans |
+| DEC-29 | Make the cost objective steer on live data | ENGINEERING and DATA | count the unknowns every run; work them before speed | with the first live plans |
+| DEC-30 | Completed jobs in the planning snapshot | ENGINEERING | keep them; fix the writes first | with the first live plans |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
@@ -414,6 +429,54 @@ first owner-confirmed OD, because any edit changes the policy hash.
 - **Implement in:** `config/policies/rebuild-v1.json`, as one policy batch, with the evidence in `ref`.
 - **Verify:** `tests/integration/test_source_freshness.py`.
 
+### DEC-28 Calendar days after the last control station
+
+- **Authority:** DATA for what the sources hold; OWNER for which calendar applies after roll-out.
+- **Why.** FOCUS takes each line's working days only from `cday_op_plan` and never adds a day
+  (`calendar.admit_line_calendars`). If a line's calendar stops at its last control station, work that is still
+  open after that date cannot be placed. The aircraft then has no finish date and no cost
+  (`OBJECTIVE_EXPLAINED.md` §4), and these are the aircraft that are already late.
+- **Measure.** For each line: the calendar's last date, the CS744 planned unload date, and the open work minutes
+  after the calendar's last date.
+- **Recommendation.** The calendar producer sends working days for every line through the planning horizon, using
+  the site's working-day calendar after the line's last control-station date. It marks those rows so they can be
+  told apart, and keeps one active load per line.
+- **Ask the owner:** which calendar applies to an aircraft after roll-out (the line's, the site's or the delivery
+  center's), and how far the horizon runs.
+- **Do not:** extend the calendar inside FOCUS, or let late work finish "on the last day".
+
+### DEC-29 Make the cost objective steer on live data
+
+- **Authority:** ENGINEERING and DATA.
+- **Why.** The scheduler compares late-delivery cost only over aircraft whose finish date it can work out. With
+  every aircraft unknown, every candidate ties on cost and the plan is chosen on travel, waiting and overtime. The
+  run still finishes and publishes, so nothing fails loudly.
+- **Do, on every run:**
+  1. record the aircraft with an unknown cost and the unreleased jobs by reason (`OBJECTIVE_EXPLAINED.md` §4);
+  2. work the largest reason first: rates (OD-12), due dates, durations (OD-02), control-station windows (OD-05),
+     dependency loops, crew sizes (OD-01) and calendar coverage (DEC-28);
+  3. report the two counts beside the run time.
+- **Decision rule.** The forecast plan is ready for the owner when no aircraft in scope has an unknown cost, or each
+  remaining one is listed with an accepted reason. Speed work does not come before this.
+- **Do not** substitute a rate or a duration to make a cost known (guardrail "Unknown stays unknown").
+
+### DEC-30 Completed jobs in the planning snapshot
+
+- **Authority:** ENGINEERING.
+- **Why.** A live run can carry far more completed jobs than open ones, and trimming them looks like the quickest
+  way to a faster pipeline.
+- **What reads them.** The plan uses completed jobs to know which predecessors are already satisfied. The
+  performance side uses the same graph to find out-of-sequence starts and to trace a missed job to the job that
+  blocked it. Scores themselves read the observation feeds, not the snapshot.
+- **Recommendation: keep them, and fix the writes first.** On the synthetic 50-aircraft fleet, which carries its
+  completed jobs, one simulated shift (load, plan and store, on a local database) takes 3.6 to 5.2 minutes. Time
+  beyond that in a live run is usually row-by-row database writes and work that does not belong in the window:
+  - write display parts, snapshots and statistics in batches (DEC-01);
+  - run the test suite and the native build on merge, not before each shift (DEC-10);
+  - start staging at the data cut, beside the verify jobs (DEC-08).
+- **Decision rule.** Reconsider trimming only if the window is still missed after those three, and only with a test
+  that a reopened or voided completion still yields the same out-of-sequence findings.
+
 ## 7. Scoring decisions (after at least 4 weeks of pilot scores)
 
 **Prerequisites:**
@@ -453,20 +516,25 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   blind sample, outcome and 60/40–80/20 checks are not built yet.
 - **Record:** a D-entry with the measurements (summary only).
 
-### DEC-20 Off-plan classifier error rates
+### DEC-20 How often the extra-work rule misreads a shift
 
 - **Authority:** DATA.
-- **Why.** R5 credits off-plan work only when it was additive. P2 calls a team-shift's off-plan work substitutive when
-  planned work was left undone with no claim on record (`classify` in `tools/calibrate_scores.py`).
+- **Why.** The score (D-27) credits unplanned work only beyond the planned work a team left undone with no reason on
+  record: those minutes are "substitutive", the rest "additive" (`score.components`; `classify` in
+  `tools/calibrate_scores.py` splits them the same way from the job record). Two errors are possible: a real swap
+  counted as extra work because a claim names the missed job, and real extra work left uncredited because nothing
+  on record explains a miss.
 - **Measure.**
   1. Supervisors label `review.csv` (each row `SWAP` or `EXTRA`).
   2. Run `python tools/calibrate_scores.py store --from <start> --to <end> --labels review.csv`.
   3. Read q, the miss rate, and the false-alarm rate. Weight by class share for a site-wide rate.
 - **Decision rule:**
-  - q ≤ 15% and false alarms ≤ 20%: keep P2.
-  - False alarms above 20%: real extra work is losing credit. Require claims for unclaimed misses, or build a
-    task-level match (each off-plan job against the dispatched task it displaced).
-  - q above 30%: do not enable R5 (DEC-22) until the classifier improves.
+  - q ≤ 15% and false alarms ≤ 20%: keep the rule.
+  - False alarms above 20%: real extra work is losing credit. First check that the evidence feeds behind the
+    automatic attribution are live (parts, attendance, predecessors). Then require claims for unclaimed misses, or
+    build a task-level match (each off-plan job against the dispatched task it displaced).
+  - q above 30%: tell the owner. Options are a lower rate (DEC-21), or counting only claims the system raised or a
+    reviewer did not reject.
 - **Record:** a D-entry with q, the false-alarm rate and the sample size (summary only).
 
 ### DEC-21 The exchange rate w
@@ -474,35 +542,38 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 - **Authority:** DATA, then OWNER confirms, because it is part of the score policy.
 - **Default:** 0.8.
 - **Measure.** The `swap_gain` section of `calibration.json`, at the measured q.
-- **Decision rule.** Take the largest w in {0.7, 0.8, 0.9} at which `share_that_pays` is 0 at the measured q, or at
-  most 0.1% with `max_gain` at most 0.1 points if the owner accepts that tolerance. With q unknown or above 15%, use
-  0.7. On the synthetic floor, q ≤ 5% allowed 0.9, q ≤ 15% gave 0.8, and zero tolerance gave 0.7.
-- **Implement in:** a new grading policy key (for example `score.offplan_rate`), together with DEC-22.
+- **Built at 0.8** (D-27): `score.attainment_weight` = 0.80 and `score.adherence_weight` = 0.20 in
+  `config/policies/grading-demo-v1.json`. The owner has not confirmed the number.
+- **What the rate does.** It is what an extra minute earns against a planned minute. A swap that the rule reads
+  correctly never pays at any rate. A swap misread as extra work costs the team only the adherence share
+  (1 − rate), so a lower rate makes a misread swap cost more.
+- **Decision rule.** Keep 0.8 while q (DEC-20) is at most 15%. With q unknown or above 15%, recommend 0.7. Move to 0.9
+  only with q at most 5% and the owner's agreement.
+- **Change it in:** the two policy values above, in one policy batch at a period boundary (the policy hash changes).
 
-### DEC-22 Turn on R5 off-plan credit
+### DEC-22 Extra-work credit: decided and built (D-27)
 
-- **Authority:** OWNER.
-- **Why.** Today's score, R0, taxes every helpful off-plan minute through adherence H. On the synthetic floor it got
-  the direction of the production change wrong in 14 of 16 paired runs.
-- **R5:**
-  - grade = 100 × (w × min(1, (Cp + additive)/D) + (1 − w) × min(1, Cp/D)) − 100 × O/D;
-  - additive minutes come from P2;
-  - substitutive minutes earn nothing;
-  - the output index (Cp + additive)/D is reported but never used to rank teams.
-- **Build now.**
-  - Add a grading key (for example `score.formula = R0 | R5`, default `R0`).
-  - Implement R5 in `score.formula` and `score.components`, using P2 over the evaluation evidence: missed planned
-    units with no submitted claim.
-  - Mirror it in the simulation and the reference views; add tests.
-  - Show R5 beside R0 as an unofficial second score for at least two weeks.
-- **Ask the owner** with DEC-20, DEC-21 and the R0-versus-R5 grade changes (`grades.R0_to_R5_w0.8_grade_change`).
-- **Record:** a D-entry and `PERFORMANCE_POLICY.md`.
+- **Decided by the owner on 2026-11-10.** Unplanned work must earn credit, below the same planned work, and must
+  never make a team prefer idling to working ahead. Do not reopen it.
+- **The rule:** `docs/execution/SCORING_EXPLAINED.md` §1 in plain terms; `docs/execution/DECISIONS.md` D-27 in full.
+  - score = 100 × (0.8 × min(1, (Cp + Uc)/D) + 0.2 × min(1, Cp/D)) − 100 × O/D;
+  - Uc, the credited extra minutes, is the unplanned work beyond the missed planned work that has no reason on
+    record; unplanned work started out of sequence by choice earns none.
+- **What to do in a port.**
+  - Take `focus/performance/score.py`, `lifecycle.py` (`unit_facts`, `_offplan`), `disruption.py`
+    (`explained_units`) and `rollup.py` as they are. Keep `Uc` in every stored evaluation and team-shift row.
+  - Run `tests/unit/test_score_facts.py` and `tests/unit/test_scoring_explained.py` against the port.
+  - Never compute a score anywhere else, and never in SQL or the browser.
+- **Still open:** how well the rule reads real shifts (DEC-20), the rate (DEC-21), the bands (DEC-23) and approved
+  additions (DEC-26).
 
 ### DEC-23 Grade bands
 
 - **Authority:** OWNER (with data).
-- **Why.** Without off-plan work, R5 = 100 × (1 − unexcused shortfall) − the out-of-sequence charge, so a band is a
-  tolerance on planned work left undone without an excuse. The synthetic floor is too forgiving to set them.
+- **Why.** Without extra work, the score is 100 × (1 − unexcused shortfall) − the out-of-sequence charge, so a band
+  is a tolerance on planned work left undone without an excuse. The synthetic floor is too forgiving to set them.
+  Since D-27 no team gets points for adherence alone, so the demo bands are stricter than they were: 80% of the
+  expected work done scores 80, where the old formula gave 86.
 - **Default:** the demo bands 90/80/70/60 under DEMONSTRATION. Starting proposal: A ≤ 2% undone, B ≤ 5%, C ≤ 10%,
   D ≤ 20%, which gives bands 98/95/90/80.
 - **Measure:** `shortfall.percentiles`, `grades` (with `--bands 98,95,90,80` and other candidate sets), the flip
@@ -552,13 +623,23 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 - **Implement (b) in:** `select_goal` and `unit_facts`, plus the simulation and reference views, with tests mirroring
   the `DONE_BEFORE_SHIFT` ones.
 
-### DEC-26 Approved additions under R5
+### DEC-26 Approved additions and extra-work credit
 
-- **Authority:** taken with DEC-22.
-- **Why.** Under R5, an approved pull-ahead addition (in B and in Cp) can score below the same work done unapproved
-  and classified additive. Approval must never score worse than not asking (report 09 §8).
-- **Recommendation.** Count approved pull-ahead additions as additive output; keep true emergency additions as
-  obligations. The amendment's reason or basis tells them apart.
+- **Authority:** OWNER.
+- **Why.** An approved emergency addition raises what is expected (B). Since D-27, a team that is behind can score
+  lower for an approved extra job than for the same job done unapproved. Example: expected 2,100, done 1,800, one
+  300-minute extra job. Approved: 2,100 ÷ 2,400 = 87.5. Unapproved and credited: 0.8 × 100% + 0.2 × 85.7% = 97.1.
+  Approval must never score worse than not asking (report `09` §8).
+- **Options:**
+  - (a) keep additions as obligations (today): right for emergency work the team must absorb, wrong as a route to
+    credit for extra work;
+  - (b) an approved addition that gets done counts as planned work done without raising what is expected, and one
+    that is not done counts as a miss;
+  - (c) two kinds of addition, told apart by the amendment's basis: emergency obligations as (a), approved
+    pull-ahead as (b).
+- **Recommendation:** (b). It keeps one kind of addition, rewards asking first, and never scores below unapproved
+  work.
+- **Until decided:** additions stay obligations. No live amendment feed exists yet (OD-15), so nothing is affected.
 
 ### OD-16 The OFFICIAL score policy (last)
 
@@ -605,14 +686,16 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
 
 ## 9. Suggested order
 
-1. **Now (no data):** DEC-00 first, then DEC-01 to DEC-09; build DEC-10, DEC-11, DEC-22 and DEC-24 behind switches that are off.
+1. **Now (no data):** DEC-00 first, then DEC-01 to DEC-09; build DEC-10, DEC-11 and DEC-24 behind switches that are
+   off. DEC-22 is decided and built: port it.
 2. **Data wired, read-only:**
    - staging (DEC-08) and the OD profiling (§5), with OD-05 first, then OD-10, OD-13, OD-03, OD-07, OD-08, OD-09 and
      OD-04;
-   - a FORECAST plan for the complete scope;
+   - a FORECAST plan for the complete scope, with the unknown-cost counts of DEC-29 and the calendar check of
+     DEC-28;
    - review the readiness gaps with their owners.
 3. **First week of pipeline runs:** DEC-12; the evidence for DEC-10 and DEC-11; DEC-24's measurement.
 4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-21, DEC-25
-   and DEC-23; then propose DEC-22 and DEC-26.
-5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-10, DEC-11, DEC-22 to
-   DEC-25 and, last, OD-16.
+   and DEC-23. Ask the owner about DEC-26 before the pilot starts.
+5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-10, DEC-11, DEC-21,
+   DEC-23 to DEC-26 and, last, OD-16.

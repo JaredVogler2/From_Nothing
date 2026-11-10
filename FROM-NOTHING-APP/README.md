@@ -12,9 +12,12 @@ This application was built from an empty folder using only
 
 ## Start here
 
-- **Coding agents and new readers:** [docs/integration/HANDOFF.md](docs/integration/HANDOFF.md). Its section 0 answers
-  the common questions. Reading needs no approval.
+- **Coding agents:** [../AGENTS.md](../AGENTS.md) first: what to read, and what a port to real data must keep.
+- **New readers:** [docs/integration/HANDOFF.md](docs/integration/HANDOFF.md). Its section 0 answers the common
+  questions. Reading needs no approval.
 - **Open decisions:** [docs/integration/DECISION_PLAYBOOK.md](docs/integration/DECISION_PLAYBOOK.md).
+- **What the scheduler minimizes:** [docs/execution/OBJECTIVE_EXPLAINED.md](docs/execution/OBJECTIVE_EXPLAINED.md):
+  the order of comparison, late-delivery cost, and how to tell whether it is working on live data.
 - **Performance scoring and grading:** [docs/execution/SCORING_EXPLAINED.md](docs/execution/SCORING_EXPLAINED.md), in
   plain terms with a worked example; the full rules are in
   [docs/execution/PERFORMANCE_POLICY.md](docs/execution/PERFORMANCE_POLICY.md).

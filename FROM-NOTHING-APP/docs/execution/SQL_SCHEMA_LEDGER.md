@@ -170,6 +170,8 @@ Partial fits:
   need a new migration, not only the adapter.
 - **Error numbers.** `TR_FN_Outbox_AppendOnly` (002) and `TR_FN_Event_Immutable` (008) both throw error 51700.
 - **Comments.** The comments in 009 ("EARNED/MISSED/UNKNOWN/PENDING units") and 010 (job causes) predate D-26
-  (`DONE_BEFORE_SHIFT`); no constraint rejects the new status, which lives in the evidence payload. Editing a
+  (`DONE_BEFORE_SHIFT`); no constraint rejects the new status, which lives in the evidence payload. They also predate
+  D-27: 010 speaks of six components, and `ComponentsPayload` and the evaluation payload now carry a seventh, `Uc`
+  (the credited extra work). No column changes: the components are in the payloads. Editing a
   comment changes the file's checksum, so fix them with the next migration change, before any install.
 

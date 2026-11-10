@@ -14,7 +14,7 @@ SHIFTS = {0: ("2026-10-31", 1), 1: ("2026-10-31", 2), 2: ("2026-10-31", 3), 3: (
 
 def _team_shift(shift_no: int, team: str, B: int, Cp: int, score: float | None, status: str) -> tuple:
     day, number = SHIFTS[shift_no]
-    return (shift_no, day, number, 1, team, 1, 1, 1, 0, 0, 0, 0, 0, 1.0, 1.0, 1, 1.0, B, 0, B, 0, Cp, 0, 0, 0, 0, 0, 0,
+    return (shift_no, day, number, 1, team, 1, 1, 1, 0, 0, 0, 0, 0, 1.0, 1.0, 1, 1.0, B, 0, B, 0, Cp, 0, 0, 0, 0, 0, 0, 0,   # U, Uc, ...
             None, None, None, score, None, status, score, 0.0, score, "rebuild-v1", "h", None if B else "NO_PLAN: no frozen obligation (B = 0)")
 
 

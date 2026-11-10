@@ -89,11 +89,14 @@ how supplementary recognition is projected from it. The rules are implemented in
 
   Unit reasons: `VERIFIED_COMPLETE_BEFORE_SHIFT_START`; `COMPLETION_CREDITED_ELSEWHERE_OR_LATE` (a missed
   unit whose phase was completed in another window); `WITHDRAWN_WORK_STAYS_IN_B0` (cancelled or detabbed
-  before completion); plus the phase lifecycle's own reasons.
+  before completion); `NO_REASON_ON_RECORD` (a missed unit with no approved relief that no claim names:
+  `disruption.explained_units`; D-27); plus the phase lifecycle's own reasons.
 - **Offplan reasons** (`lifecycle._offplan`): `LATE_FOR_GOAL:<goal>` (completed after the credit deadline
   of a goal that planned it); `NOT_IN_ANY_GOAL_OF_RECORD` (no goal whose credit window has closed planned
   it, which includes work pulled forward from a later shift's goal); `STANDARD_EFFORT_UNKNOWN` (no sourced
-  standard, so U is unknown); `TEAM_UNKNOWN`.
+  standard, so U is unknown); `TEAM_UNKNOWN`; `OUT_OF_SEQUENCE_BY_CHOICE` (a discretionary sequence
+  violation on the work: it earns no credit as extra work); `OOS_CLASSIFICATION_UNKNOWN` (an unclassified
+  violation on the work: the credit is unknown).
 
 ## Sequence violations (OOS)
 
@@ -150,12 +153,15 @@ how supplementary recognition is projected from it. The rules are implemented in
 
 ## Canonical score (demonstration policy)
 
-The score is computed on exact rationals in standard person minutes. When D > 0:
+The score is computed on exact rationals in standard person minutes. `SCORING_EXPLAINED.md` gives it in
+plain terms with a worked example. When D > 0:
 
 - D = B - E
-- A = min(1, Cp/D)
-- H = Cp/(Cp+U) when output > 0, otherwise 0
-- base = 100(0.70A + 0.30H)
+- Uc = max(0, eligible offplan minutes - missed minutes with `NO_REASON_ON_RECORD`): the extra work that
+  earns credit (D-27). Offplan work started out of sequence by choice is not eligible.
+- A = min(1, (Cp + Uc)/D): output attainment
+- H = min(1, Cp/D): plan adherence, the planned jobs done
+- base = 100(0.80A + 0.20H)
 - O = 0.10 × affected planned effort of evidenced discretionary OOS, once per unit, charged to the goal
   whose shift or OT window contains the violation
 - final = clamp(base - 100·O/D, 0, 100)
@@ -163,23 +169,32 @@ The score is computed on exact rationals in standard person minutes. When D > 0:
 Rounding to one decimal happens once, after every sum. Bands (A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60,
 else F) apply to that displayed value.
 
+- **Extra work (D-27).** Below the cap a planned minute earns 100/D points and a credited extra minute
+  earns 80/D, so extra work is worth 80% of the same planned work and never lowers a score. The 20%
+  adherence share is earned only by planned work. Without extra work the base is 100·Cp/D.
+- **Before D-27** the adherence term was H = Cp/(Cp+U) with weights 0.70 and 0.30: every extra minute
+  lowered the score, and a team with no extra work got 30 points whatever it finished.
+
 - **Neutral.** B = 0 (`NO_PLAN`; with `NO_OBLIGATION_PLAN` when no accepted executable plan covers the
   day) or D = 0 (`ALL_EXCUSED`: approved relief, or work finished before the shift, covers every
   obligation) is NEUTRAL with no score.
-- **Unknown.** Missing coverage, unknown disposition (`UNKNOWN_DISPOSITION`), unknown U or O
-  (`OFFPLAN_EFFORT_UNKNOWN`, `OOS_CLASSIFICATION_UNKNOWN`), an open window (`WINDOW_OPEN`) or an invalid or
-  unapproved policy (`SCORE_POLICY_INVALID`, `SCORE_POLICY_UNAPPROVED`) is UNKNOWN with no score. Pooled
-  results add `MEMBER_UNKNOWN` and `MIXED_POLICY`; period rollups add `SHIFTS_NOT_SCORED` and
-  `COMPONENT_UNKNOWN` (`rollup.summarize`).
+- **Unknown.** Missing coverage, unknown disposition (`UNKNOWN_DISPOSITION`), unknown U, Uc or O
+  (`OFFPLAN_EFFORT_UNKNOWN`, `OFFPLAN_OOS_CLASSIFICATION_UNKNOWN`, `OOS_CLASSIFICATION_UNKNOWN`), an open
+  window (`WINDOW_OPEN`) or an invalid or unapproved policy (`SCORE_POLICY_INVALID`,
+  `SCORE_POLICY_UNAPPROVED`) is UNKNOWN with no score. Pooled results add `MEMBER_UNKNOWN`, `MIXED_POLICY`
+  and `OFFPLAN_CREDIT_UNKNOWN` (a member evaluated before D-27 has no Uc until it is evaluated again);
+  period rollups add `SHIFTS_NOT_SCORED` and `COMPONENT_UNKNOWN` (`rollup.summarize`).
 - **Status.** DEMONSTRATION unless the applicable policy carries an approval receipt
   (`score.policy_approval_ref`) for OFFICIAL. Personal grades are disabled.
 - **History.** Evaluations append revisions only when evidence changes, and every surface reads
   the persisted revision. Aggregates pool exact components before division.
 - **Any group over any period (D-25).** A team, a superintendent (as of each shift, from the org chart) or the business unit, over any
   period, sums the light rows' components and applies the formula once (`focus.performance.rollup`), which equals the pooled
-  evaluation of the same members. The official result is unknown while any member is unscored; a labeled partial covers the scored
+  evaluation of the same members. Credited extra work is summed like every component, so extra minutes beyond one shift's expected
+  work count toward the period. The official result is unknown while any member is unscored; a labeled partial covers the scored
   ones. Each score's jobs are kept for good in a compact record that adds up to it (planned minutes to B, done to Cp, excused to E,
-  unplanned to U); the per-unit evidence goes after 90 days (`focus.performance.details`).
+  unplanned to U; a missed job with no cause listed is one the unplanned work covers first); the per-unit evidence goes after
+  90 days (`focus.performance.details`).
 
 ## Recognition and progression
 
@@ -190,7 +205,8 @@ else F) apply to that displayed value.
     proxy is unchanged;
   - a missing gate is unavailable; a future gate has factor 0; completion stops aging.
 - **XP** is the frozen value of verified planned or approved-amendment units, earned once. Later
-  display dates never raise it. Offplan output earns nothing.
+  display dates never raise it. Offplan output earns no XP (S14: no offplan farming); D-27 changed the
+  score only.
 - **OOS and XP.** OOS lives once in O. Planned OOS work keeps its frozen XP: there is no second
   charge in bonus or XP (S14, A60).
 - **Corrections** append reversing `correction_applied` events. Badges are revoked by appended

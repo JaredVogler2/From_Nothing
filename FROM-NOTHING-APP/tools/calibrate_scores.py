@@ -1,4 +1,7 @@
-"""Calibrate the off-plan credit rate and the grade bands on scored team-shifts (the owner's re-run on real data).
+"""Calibrate the extra-work credit rate and the grade bands on scored team-shifts (the owner's re-run on real data).
+
+The extra-work credit is the canonical rule since D-27 (``focus.performance.score``). This tool shows what it does on a
+period of scored team-shifts, what other rates would do, and what the rule before D-27 gave ("R0").
 
     python tools/calibrate_scores.py store --from 2027-01-04 --to 2027-03-28 [--app-root PATH] [--out calibration.json]
     python tools/calibrate_scores.py sim runtime/sim/fleet.db [--out calibration.json]
@@ -6,7 +9,7 @@
 
 **What it reads.** Read-only; nothing is written to the store.
 
-* ``store``: what FOCUS keeps for every scored team-shift (D-25): the light performance row (B0, B, E, Cp, U, O, status)
+* ``store``: what FOCUS keeps for every scored team-shift (D-25): the light performance row (B0, B, E, Cp, U, Uc, O, status)
   and the compact job record (each planned job's minutes and outcome with its claim causes; each unplanned completion).
   While the per-unit evidence is still kept (the owner's 90 days), it also reads each verified completion's time. The
   plans of record come from the accepted plans (D-26).
@@ -15,13 +18,15 @@
 
 **What it measures** (docs/task-valuation-investigation/10_CALIBRATION.md explains each one and what to decide from it):
 
-* today's score (R0) and the proposed R5(w) for w = 0.5 ... 1.0, with off-plan work classified by P2: substitutive
-  when the team-shift left planned work undone with no claim on record, additive otherwise;
+* today's canonical score, the rule before D-27 (R0: attainment 0.70, plus 0.30 for the share of output that was
+  planned) and R5(w) for w = 0.5 ... 1.0, the canonical rule at other rates. Off-plan work is classified as the score
+  does: it first covers planned work left undone with no claim on record, minute for minute (substitutive); the rest
+  is additive and credited;
 * the unexcused shortfall s = 1 - Cp/D. Without off-plan work, R5 = 100 (1 - s) minus the out-of-sequence charge
   for every w, so bands are tolerances on s;
 * grades under candidate band sets, grade flips between a team's consecutive shifts, and pooled daily grades;
-* whether a swap could pay: for each team-shift P2 calls substitutive, R5 against the same team-shift had it done its
-  missed planned work instead, with a share q of the off-plan minutes misread as additive;
+* whether a swap could pay: for each team-shift with substitutive minutes, R5 against the same team-shift had it done
+  its missed planned work instead, with a share q of the substitutive minutes misread as additive;
 * relief by cause, DONE_BEFORE_SHIFT work, completions in the last ``--lead`` minutes of the shift and in overtime, and
   shifts whose plan of record is the previous shift's plan (the run before the shift was not accepted in time);
 * fairness: planned minutes against the grade gain from off-plan credit and against the output index.
@@ -58,11 +63,13 @@ PERCENTILES = (1, 5, 10, 25, 50, 75, 90, 95, 99)
 # ---------------------------------------------------------------------- one record per team-shift
 
 def team_shift(*, key: str, team: str, day: str, number: int, superintendent: str | None, B0: float, B: float, E: float, Cp: float,
-               U: float | None, O: float | None, status: str, no_plan: bool, r0: float | None, missed_unclaimed: float,
+               U: float | None, O: float | None, status: str, no_plan: bool, today: float | None, missed_unclaimed: float,
                excused: dict[str, float], done_before: float, unplanned: list[str], window: tuple[datetime, datetime, datetime] | None,
-               completions: list[datetime] | None) -> dict[str, Any]:
+               completions: list[datetime] | None, Uc: float | None = None) -> dict[str, Any]:
+    """``today`` is the canonical score as stored; ``Uc`` the credited extra minutes the canonical evaluation kept."""
     return {"key": key, "team": team, "day": day, "number": number, "superintendent": superintendent, "B0": B0, "B": B, "E": E,
-            "D": B - E, "Cp": Cp, "U": U, "O": O, "status": status, "no_plan": no_plan, "r0": r0, "missed_unclaimed": missed_unclaimed,
+            "D": B - E, "Cp": Cp, "U": U, "Uc": Uc, "O": O, "status": status, "no_plan": no_plan, "today": today,
+            "missed_unclaimed": missed_unclaimed,
             "excused": excused, "done_before": done_before, "unplanned": unplanned, "window": window, "completions": completions}
 
 
@@ -97,11 +104,13 @@ def from_store(services: Any, start: date, end: date, *, with_evidence: bool = T
                     if "DONE_BEFORE_SHIFT" in causes:
                         done_before += j["minutes"]
             unplanned = [str(dict(zip(R.UNPLANNED_COLUMNS, u))["soi"] or dict(zip(R.UNPLANNED_COLUMNS, u))["job"]) for u in job["unplanned"]]
-        r0 = None
-        if row["U"] is not None and row["O"] is not None and row["status"] != "unknown":
-            parts = {k: Fraction(row[k]) for k in ("B", "E", "Cp", "U", "O")}
-            result = formula(parts["B"], parts["E"], parts["Cp"], parts["U"], parts["O"], policy)   # today's rule under today's policy
-            r0 = None if result["score"] is None else float(result["score"])
+        today = None
+        if row.get("Uc") is not None and row["O"] is not None and row["status"] != "unknown":
+            parts = {k: Fraction(row[k]) for k in ("B", "E", "Cp", "Uc", "O")}
+            result = formula(parts["B"], parts["E"], parts["Cp"], parts["Uc"], parts["O"], policy)   # today's rule under today's policy
+            today = None if result["score"] is None else float(result["score"])
+        elif row["status"] != "unknown" and "Uc" not in row:
+            notes["evaluated_before_the_extra_work_credit"] += 1
         if row["policy_hash"] != policy.hash:
             notes["evaluated_under_another_policy"] += 1
         win = shift_window(policy, row["shift_id"])
@@ -117,8 +126,12 @@ def from_store(services: Any, start: date, end: date, *, with_evidence: bool = T
                               B0=float(Fraction(row["B0"])), B=float(Fraction(row["B"])), E=float(Fraction(row["E"])),
                               Cp=float(Fraction(row["Cp"])), U=None if row["U"] is None else float(Fraction(row["U"])),
                               O=None if row["O"] is None else float(Fraction(row["O"])), status=row["status"],
-                              no_plan=R.NO_PLAN in row["reasons"], r0=r0, missed_unclaimed=missed_unclaimed, excused=dict(excused),
-                              done_before=done_before, unplanned=unplanned, window=(win.start, win.end, win.credit_deadline), completions=completions))
+                              no_plan=R.NO_PLAN in row["reasons"], today=today, missed_unclaimed=missed_unclaimed, excused=dict(excused),
+                              done_before=done_before, unplanned=unplanned, window=(win.start, win.end, win.credit_deadline), completions=completions,
+                              Uc=None if row.get("Uc") is None else float(Fraction(row["Uc"]))))
+        rec = out[-1]
+        if today is not None and rec["D"] > 0 and abs(r5(rec, float(Fraction(policy.str("score.attainment_weight")))) - today) > 0.051:
+            notes["tool_differs_from_canonical"] += 1   # e.g. unplanned work started out of sequence by choice, which earns no credit
     return out, {"source": "store", "from": start.isoformat(), "to": end.isoformat(), "notes": dict(notes),
                  "stale_plans": stale_plans(services, sorted({r["shift_id"] for r in rows}))}
 
@@ -170,8 +183,9 @@ def from_sim(path: Path, *, lead: int) -> tuple[list[dict[str, Any]], dict[str, 
     for s, t, end in q("SELECT shift_no, team, actual_end FROM exec_assignment WHERE outcome = 'completed'"):
         done[(s, t)].append(datetime.fromisoformat(end))
     out = []
-    for s, team, B0, B, E, Cp, U, O, status, score in q(
-            "SELECT shift_no, team, B0, B, E, Cp, U, O, status, score FROM perf_team_shift ORDER BY shift_no, team"):
+    has_uc = any(c[1] == "Uc" for c in q("PRAGMA table_info(perf_team_shift)"))    # absent in a database made before D-27
+    for s, team, B0, B, E, Cp, U, O, status, score, Uc in q(
+            f"SELECT shift_no, team, B0, B, E, Cp, U, O, status, score, {'Uc' if has_uc else 'NULL'} FROM perf_team_shift ORDER BY shift_no, team"):
         missed_unclaimed, excused, done_before = 0.0, Counter(), 0.0
         for effort, st, relief, cause, claim_status in units[(s, team)]:
             if st == "MISSED" and not relief and not cause:
@@ -183,9 +197,9 @@ def from_sim(path: Path, *, lead: int) -> tuple[list[dict[str, Any]], dict[str, 
                 done_before += effort
         day, number, start, end = shifts[s]
         out.append(team_shift(key=f"{team}|{s}", team=team, day=day, number=number, superintendent=None, B0=B0, B=B, E=E, Cp=Cp, U=U,
-                              O=O or 0.0, status=status or "", no_plan=False, r0=score, missed_unclaimed=missed_unclaimed,
+                              O=O or 0.0, status=status or "", no_plan=False, today=score, missed_unclaimed=missed_unclaimed,
                               excused=dict(excused), done_before=done_before, unplanned=offplan[(s, team)],
-                              window=(start, end, end), completions=done[(s, team)]))
+                              window=(start, end, end), completions=done[(s, team)], Uc=Uc))
     late_plans = q("SELECT COUNT(*) FROM exec_event WHERE kind = 'plan_accepted_late'")[0][0] if q(
         "SELECT name FROM sqlite_master WHERE name = 'exec_event'") else None
     return out, {"source": "sim", "path": str(path), "lead": lead, "notes": {}, "stale_plans": {"status": "sim", "late_plans": late_plans}}
@@ -198,9 +212,19 @@ def clamp(x: float) -> float:
 
 
 def classify(r: dict[str, Any]) -> tuple[float, float]:
-    """P2: off-plan minutes are substitutive when planned work was left undone with no claim on record."""
+    """(additive, substitutive) off-plan minutes, as the canonical score splits them (D-27, ``score.credited_offplan``):
+    off-plan work first covers planned work left undone with no claim on record, minute for minute."""
     u = r["U"] or 0.0
-    return (0.0, u) if r["missed_unclaimed"] > 0 and u > 0 else (u, 0.0)
+    sub = min(u, max(0.0, r["missed_unclaimed"]))
+    return u - sub, sub
+
+
+def before_d27(r: dict[str, Any]) -> float | None:
+    """R0, the rule before D-27: 100 (0.7 min(1, Cp/D) + 0.3 Cp/(Cp + U)) - 100 O/D. Off-plan work lowered it."""
+    if r["D"] <= 0:
+        return None
+    out = r["Cp"] + (r["U"] or 0.0)
+    return clamp(100 * (0.7 * min(1, r["Cp"] / r["D"]) + 0.3 * (r["Cp"] / out if out > 0 else 0.0)) - 100 * (r["O"] or 0.0) / r["D"])
 
 
 def r5(r: dict[str, Any], w: float, q: float = 0.0, *, add: float | None = None, sub: float | None = None) -> float | None:
@@ -251,7 +275,7 @@ def spearman(a: list[float], b: list[float]) -> float | None:
 
 
 def pooled(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Components summed first, then the rule once (the rollup rule, D-25); P2 per team-shift before summing."""
+    """Components summed first, then the rule once (the rollup rule, D-25); off-plan work classified per team-shift before summing."""
     tot = Counter()
     for r in rows:
         a, s = classify(r)
@@ -280,8 +304,10 @@ def analyze(records: list[dict[str, Any]], *, lead: int, bands: dict[str, tuple[
     shortfall = [1 - r["Cp"] / r["D"] for r in scored]
     res["shortfall"] = {"definition": "s = 1 - Cp/D, unexcused planned work not done", "percentiles": percentiles(shortfall),
                         "mean": round(mean(shortfall), 4), "share_zero": round(sum(s <= 1e-9 for s in shortfall) / len(shortfall), 4)}
-    r0s = [r["r0"] for r in scored if r["r0"] is not None]
-    res["scores"] = {"R0_today": percentiles(r0s)}
+    for r in scored:
+        r["r0"] = before_d27(r)
+    res["scores"] = {"canonical_today": percentiles([r["today"] for r in scored if r["today"] is not None]),
+                     "R0_before_D27": percentiles([r["r0"] for r in scored])}
     for w in WS:
         res["scores"][f"R5_w{w}"] = percentiles([r5(r, w) for r in scored])
     res["output_index"] = percentiles([(r["Cp"] + classify(r)[0]) / r["D"] for r in scored])
@@ -294,7 +320,7 @@ def analyze(records: list[dict[str, Any]], *, lead: int, bands: dict[str, tuple[
     for seq in by_team.values():
         seq.sort(key=lambda r: (r["day"], r["number"]))
     for label, b in bands.items():
-        g0 = Counter(grade(r["r0"], b) for r in scored if r["r0"] is not None)
+        g0 = Counter(grade(r["r0"], b) for r in scored)
         g5 = Counter(grade(r5(r, 0.8), b) for r in scored)
         flips = n = 0
         for seq in by_team.values():
@@ -303,8 +329,6 @@ def analyze(records: list[dict[str, Any]], *, lead: int, bands: dict[str, tuple[
                 n += 1
         changed = Counter()
         for r in scored:
-            if r["r0"] is None:
-                continue
             a, c = grade(r["r0"], b), grade(r5(r, 0.8), b)
             changed["up" if c < a else "down" if c > a else "same"] += 1
         grades[label] = {"R0": dict(sorted(g0.items())), "R5_w0.8": dict(sorted(g5.items())),
@@ -331,21 +355,21 @@ def analyze(records: list[dict[str, Any]], *, lead: int, bands: dict[str, tuple[
                       "P2_substitutive_share": round(sub_min / (add_min + sub_min), 4) if add_min + sub_min else None,
                       "team_shifts_P2_substitutive": sum(classify(r)[1] > 0 for r in scored)}
 
-    # can a swap pay? each P2-substitutive team-shift against doing its missed planned work instead
+    # can a swap pay? each team-shift with substitutive minutes against doing its missed planned work instead
     swaps = [r for r in scored if classify(r)[1] > 0]
     gain: dict[str, Any] = {}
     for w in WS:
         for q in QS:
             g = []
             for r in swaps:
-                displaced = min(r["missed_unclaimed"], r["U"])
+                add, displaced = classify(r)
                 actual = r5(r, w, q)
-                instead = r5({**r, "Cp": r["Cp"] + displaced}, w, 0.0, add=0.0, sub=0.0)
+                instead = r5({**r, "Cp": r["Cp"] + displaced}, w, 0.0, add=add, sub=0.0)
                 g.append(actual - instead)
             if g:
                 gain[f"w{w}_q{q}"] = {"team_shifts": len(g), "share_that_pays": round(sum(x > 1e-9 for x in g) / len(g), 4),
                                       "mean_gain": round(mean(g), 3), "max_gain": round(max(g), 3)}
-    res["swap_gain"] = gain or {"note": "no team-shift P2 calls substitutive"}
+    res["swap_gain"] = gain or {"note": "no team-shift has substitutive off-plan minutes"}
 
     # relief and the shift boundary
     B = sum(r["B"] for r in records)

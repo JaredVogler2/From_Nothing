@@ -68,10 +68,11 @@ Five feeds are required (`FeedSpec.required`): `lifecycle_events`, `actual_inter
 
 - **Cp** (verified planned or amended completion, counted once): the effort of goal units credited by verified COMPLETED and PROGRESS facts from `lifecycle_events`, under the credit-window rule above.
 - **U** (offplan output): verified completions from `lifecycle_events` outside every credit window.
+- **Uc** (credited extra work, D-27): the part of U that earns credit. Offplan work with a discretionary sequence violation is left out; the rest first covers missed units that no claim names (`NO_REASON_ON_RECORD`), minute for minute; what remains is Uc. It depends on `disruption_claims` and on the automatic attribution's evidence feeds, as E does.
 - **O** (OOS charge): `score.oos_rate` (demo 0.10) times the planned effort of discretionary sequence violations, once per unit, charged to the goal whose shift or OT window contains the violation. Violations come from actual starts and finishes in `lifecycle_events` and from `actual_intervals`.
 - **B = B0 + approved emergency additions**, from `goal_amendments`.
 - **E** (excused effort): the effort of units approved by `excusal_decisions` on submitted claims (from `disruption_claims` or automatic attribution) that are still missed at the cutoff, plus units whose phase was verified COMPLETED before their shift started (`DONE_BEFORE_SHIFT`, reason `VERIFIED_COMPLETE_BEFORE_SHIFT_START`, D-26).
-- **D = B − E.** When D > 0: A = min(1, Cp/D); H = Cp/(Cp+U), or 0 when Cp+U = 0; final = clamp(100·(wA·A + wH·H) − 100·O/D, 0, 100), with demo weights 0.70 and 0.30. D = 0 is NEUTRAL. Missing coverage, an UNKNOWN unit, unknown U or O, or an open window makes the evaluation UNKNOWN.
+- **D = B − E.** When D > 0: A = min(1, (Cp+Uc)/D); H = min(1, Cp/D); final = clamp(100·(wA·A + wH·H) − 100·O/D, 0, 100), with demo weights 0.80 and 0.20. D = 0 is NEUTRAL. Missing coverage, an UNKNOWN unit, unknown U, Uc or O, or an open window makes the evaluation UNKNOWN.
 
 ## `lifecycle_events`
 

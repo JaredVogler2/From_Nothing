@@ -35,17 +35,20 @@ def services(tmp_path_factory, app_root):
                           clock=clock)
 
 
-def row(services, team, day, number, *, B, Cp, E=0, U=0, O=0, status="demonstration", supt="S1", policy_hash=None) -> dict:
+def row(services, team, day, number, *, B, Cp, E=0, U=0, Uc=None, O=0, status="demonstration", supt="S1", policy_hash=None) -> dict:
+    """``Uc`` is the credited part of the unplanned minutes ``U`` (all of it unless given)."""
+    Uc = U if Uc is None else Uc
     return {"team": team, "shift_id": f"DEMO:{day}:S{number}", "day": day, "shift_number": number, "superintendent": supt,
             "superintendent_note": None, "business_unit": services.settings.scope_key, "B0": str(B), "B": str(B), "E": str(E), "Cp": str(Cp),
-            "U": None if U is None else str(U), "O": None if O is None else str(O), "status": status, "reasons": [], "evaluation_id": f"EVL-{team}-{day}-{number}",
+            "U": None if U is None else str(U), "Uc": None if Uc is None else str(Uc), "O": None if O is None else str(O), "status": status,
+            "reasons": [], "evaluation_id": f"EVL-{team}-{day}-{number}",
             "revision": 1, "goal_id": None, "policy_hash": policy_hash or services.policy.hash, "evaluated_at": f"{day}T12:00:00+00:00"}
 
 
 def expected(services, rows) -> str:
     B, E, Cp = (sum(Fraction(r[k]) for r in rows) for k in ("B", "E", "Cp"))
-    U, O = (sum(Fraction(r[k]) for r in rows) for k in ("U", "O"))
-    return str(formula(B, E, Cp, U, O, services.policy)["score"])
+    Uc, O = (sum(Fraction(r[k]) for r in rows) for k in ("Uc", "O"))
+    return str(formula(B, E, Cp, Uc, O, services.policy)["score"])
 
 
 # ---------------------------------------------------------------------- arithmetic
@@ -53,9 +56,9 @@ def expected(services, rows) -> str:
 def test_a_group_sums_components_before_the_one_formula(services) -> None:
     rows = [row(services, "A", "2026-10-26", 1, B=400, Cp=200), row(services, "B", "2026-10-26", 1, B=100, Cp=100)]
     result = R.summarize(rows, services.policy)
-    assert result["official"]["score"] == expected(services, rows) == "72.0"                 # not the 82.5 average of 65 and 100
+    assert result["official"]["score"] == expected(services, rows) == "60.0"                 # not the 75 average of 50 and 100
     one, two = (R.summarize([r], services.policy)["official"]["score"] for r in rows)
-    assert (one, two) == ("65.0", "100.0")
+    assert (one, two) == ("50.0", "100.0")
     assert (result["official"]["B"], result["official"]["Cp"], result["official"]["D"]) == ("500", "300", "500")
 
 
@@ -69,7 +72,8 @@ def test_any_group_equals_the_formula_on_its_sums(services, seed) -> None:
         B = rng.randint(1, 900)
         E = rng.randint(0, B // 3)
         Cp = rng.randint(0, B - E)
-        rows.append(row(services, f"T{i % 4}", f"2026-10-{20 + i % 7:02d}", 1 + i % 3, B=B, E=E, Cp=Cp, U=rng.choice([0, 0, rng.randint(1, 300)]),
+        U = rng.choice([0, 0, rng.randint(1, 300)])
+        rows.append(row(services, f"T{i % 4}", f"2026-10-{20 + i % 7:02d}", 1 + i % 3, B=B, E=E, Cp=Cp, U=U, Uc=rng.randint(0, U),
                         O=rng.choice([0, Fraction(rng.randint(1, 40), 10)])))
     assert R.summarize(rows, services.policy)["official"]["score"] == expected(services, rows)
 
@@ -80,7 +84,7 @@ def test_an_unscored_shift_makes_the_official_result_unknown_beside_a_labeled_pa
     result = R.summarize(rows, services.policy)
     assert result["official"]["status"] == "unknown" and result["official"]["score"] is None
     assert any(r.startswith("SHIFTS_NOT_SCORED: 1 of 3") for r in result["official"]["reasons"])
-    assert result["partial"]["score"] == "72.0" and "2 of 3 team-shifts scored; 1 missing" in result["partial"]["label"]
+    assert result["partial"]["score"] == "60.0" and "2 of 3 team-shifts scored; 1 missing" in result["partial"]["label"]
     assert R.summarize([rows[2]], services.policy)["partial"] is None                         # nothing scored: no partial either
 
 
@@ -97,8 +101,8 @@ def test_the_spread_shows_each_team_on_its_own(services) -> None:
             row(services, "C", "2026-10-26", 1, B=100, Cp=90), row(services, "D", "2026-10-26", 1, B=100, Cp=0, U=None, status="unknown")]
     s = R.spread(rows, services.policy, Decimal(80))
     assert (s["team_count"], s["scored"], s["not_scored"], s["on_target"]) == (4, 3, 1, 2)
-    assert s["lowest"] == {"team": "A", "score": "65.0"} and s["highest"] == {"team": "B", "score": "100.0"} and s["range"] == "35.0"
-    assert s["grades"] == {"A": 2, "D": 1}
+    assert s["lowest"] == {"team": "A", "score": "50.0"} and s["highest"] == {"team": "B", "score": "100.0"} and s["range"] == "50.0"
+    assert s["grades"] == {"A": 2, "F": 1}
 
 
 # ---------------------------------------------------------------------- periods and breakdowns
@@ -143,7 +147,7 @@ def test_levels_children_and_the_unassigned_superintendent(services) -> None:
     assert [(c["node"], c["teams"]) for c in bu["children"]] == [("S1", ["A", "B"]), ("S2", ["C"]), (R.UNASSIGNED, ["D"])]
     assert [s["bucket"] for s in bu["series"]] == ["2026-10-26", "2026-10-27"]
     s1 = R.rollup(services, level="superintendent", node="S1", **window)
-    assert s1["teams"] == ["A", "B"] and s1["official"]["score"] == "72.0" and [c["node"] for c in s1["children"]] == ["A", "B"]
+    assert s1["teams"] == ["A", "B"] and s1["official"]["score"] == "60.0" and [c["node"] for c in s1["children"]] == ["A", "B"]
     team = R.rollup(services, level="team", node="C", **window)
     assert team["spread"] is None and [c["node"] for c in team["children"]] == ["DEMO:2026-10-27:S2"]
     assert R.rollup(services, level="team", node="C", shift_number=1, **window)["team_shifts"] == 0
@@ -200,8 +204,9 @@ def test_job_patterns_add_a_shop_order_across_aircraft(services) -> None:
     assert first["causes"] == {"LATE_PART": 2, "PLAN_CHURN": 1}
     by_soi = {j["soi"] or j["job"]: j for j in out["jobs"]}
     assert by_soi["X2"]["count"]["out_of_sequence"] == 1 and by_soi["Y9"]["count"]["unplanned"] == 1 and by_soi["Jabc"]["soi"] is None
-    done, unplanned = out["totals"]["minutes"]["done"], out["totals"]["minutes"]["unplanned"]
-    assert out["totals"]["adherence_from_jobs"] == str(Fraction(done, done + unplanned)) == "17/20"
+    done, missed = out["totals"]["minutes"]["done"], out["totals"]["minutes"]["missed"]
+    assert (done, missed, out["totals"]["minutes"]["unplanned"]) == (170, 240, 30)
+    assert out["totals"]["adherence_from_jobs"] == str(Fraction(done, done + missed)) == "17/41"    # excused and unplanned work stay out
     per_aircraft = R.job_patterns(services, level="team", node="A", start=date(2026, 10, 26), end=date(2026, 10, 27), group="job_aircraft",
                                   records_names=(records, names))
     assert sorted((j["soi"], j["line"]) for j in per_aircraft["jobs"]) == [("X1", 1301), ("X1", 1302), ("X2", 1301), ("X2", 1302), ("Y9", 1301)]
@@ -218,14 +223,16 @@ def test_work_with_no_plan_and_unknown_minutes_follow_the_canonical_score(servic
     planned = job_record("A", "2026-10-26", "S1", [("X1", 1301, "WORK", 0, 60, "done", 0, None, "planned", None)], [("Y9", 1301, "WORK", 0, 20, None)])
     idle = job_record("B", "2026-10-27", "S1", [], [("Y9", 1302, "WORK", 0, 40, None)], no_plan=True)
     out = R.job_patterns(services, **span, records_names=([planned, idle], {}))
-    # a team-shift no plan covered scores neutral and its work counts in no U: listed as no_plan, outside adherence
+    # a team-shift no plan covered scores neutral and its work counts in no U: listed as no_plan; unplanned work is never in adherence
     assert out["totals"]["minutes"]["no_plan"] == 40 and out["totals"]["minutes"]["unplanned"] == 20
-    assert out["totals"]["adherence_from_jobs"] == "3/4"
+    assert out["totals"]["adherence_from_jobs"] == "1"
     y9 = next(j for j in out["jobs"] if j["soi"] == "Y9")
     assert y9["count"]["no_plan"] == 1 and y9["unplanned_on"] == [1301]
     unknown = job_record("C", "2026-10-27", "S1", [("X1", 1303, "WORK", 0, 60, "done", 0, None, "planned", None)], [("Y8", 1303, "WORK", 0, None, None)])
     out = R.job_patterns(services, **span, records_names=([planned, unknown], {}))
-    assert out["totals"]["adherence_from_jobs"] is None and out["totals"]["unplanned_minutes_unknown"] == 1   # U unknown: adherence unknown
+    assert out["totals"]["adherence_from_jobs"] == "1" and out["totals"]["unplanned_minutes_unknown"] == 1   # only the extra-work credit is unknown
+    still_open = job_record("D", "2026-10-27", "S1", [("X1", 1304, "WORK", 0, 60, "open", 0, None, "planned", None)])
+    assert R.job_patterns(services, **span, records_names=([planned, still_open], {}))["totals"]["adherence_from_jobs"] is None
 
 
 def test_job_rows_name_jobs_by_shop_order_and_keep_unknown_ones_by_id() -> None:
@@ -233,7 +240,9 @@ def test_job_rows_name_jobs_by_shop_order_and_keep_unknown_ones_by_id() -> None:
 
     phase = SimpleNamespace(kind=SimpleNamespace(value="WORK"), ordinal=0, line=1301)
     graph = SimpleNamespace(phases={"J1.WORK.0": phase}, job_names={"J1": ("X1", 1301, "Install galley")})
-    claims = [SimpleNamespace(status="SUBMITTED", units=("U2",), cause="LATE_PART"), SimpleNamespace(status="PROPOSED", units=("U2",), cause="X")]
+    # every cause on record names the job, proposed or submitted; a withdrawn claim does not
+    claims = [SimpleNamespace(status="SUBMITTED", units=("U2",), cause="LATE_PART"), SimpleNamespace(status="PROPOSED", units=("U2",), cause="X"),
+              SimpleNamespace(status="WITHDRAWN", units=("U2",), cause="GONE")]
     view = SimpleNamespace(graph=graph)
     facts = (UnitFact("U1", "G", "J1", "J1.WORK.0", 0, "A", 60, "ORIGINAL", "EARNED", at(26), "EV", False, True, ()),
              UnitFact("U2", "G", "J1", "J1.WORK.0", 1, "A", 40, "ORIGINAL", "MISSED", None, None, True, False, ()),
@@ -249,6 +258,6 @@ def test_job_rows_name_jobs_by_shop_order_and_keep_unknown_ones_by_id() -> None:
     finally:
         disruption.effective_claims = original
     assert jobs == [["X1", 1301, "WORK", 0, 60, "done", 1, None, "planned", None],
-                    ["X1", 1301, "WORK", 0, 40, "excused", 0, "LATE_PART", "planned", None],
+                    ["X1", 1301, "WORK", 0, 40, "excused", 0, "LATE_PART|X", "planned", None],
                     [None, None, "FINAL_QA", 0, 45, "open", 0, None, "added", "J9"]]
     assert unplanned == [["X1", 1301, "WORK", 0, 30, None]] and names == {"X1": "Install galley"}
