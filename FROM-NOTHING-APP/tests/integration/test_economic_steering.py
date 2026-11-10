@@ -66,6 +66,9 @@ def test_a44_cli_schedule_reports_weights_complete_dispositions_and_costs(servic
     baseline = from_jsonable(Fraction, comparison["baseline_known_cents"])
     assert final < baseline and comparison["complete_fleet_cost"] is False                                # unknown lines kept visible
     assert result["costs"]["unknown_lines"] and result["global_optimality_proven"] is False
+    objective = result["objective_status"]                                                               # the same facts, counted
+    assert objective["cost_steering"] == "partial" and objective["aircraft"] - objective["cost_known"] == len(result["costs"]["unknown_lines"])
+    assert objective["unplanned_open_jobs"] == sum(objective["unplanned_open_jobs_by_reason"].values()) > 0
     assert {s["stage"] for s in result["algorithm"]["stages"]} == {"neutral_seed", "economic_redispatch", "delay_repair", "neighborhoods"}
     bad = cli_schedule(services, argparse.Namespace(source_run=outcome.run_id, policy="other-policy", budget_seconds=1.0, purpose="EXECUTABLE"))
     assert bad["status"] == "invalid" and bad["error"]["code"] == "POLICY_MISMATCH"

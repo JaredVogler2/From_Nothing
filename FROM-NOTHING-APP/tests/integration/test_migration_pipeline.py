@@ -363,6 +363,33 @@ def test_the_window_report_measures_the_data_cut_to_the_accepted_plan_against_th
     assert over["minutes"] > 20 and over["within_budget"] is False
 
 
+def test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan(pipeline_services) -> None:
+    """A plan is returned whether or not its dollars compared anything, so each run says how many aircraft had a known
+    rate, due date and finish date, and why open jobs were not planned (OBJECTIVE_EXPLAINED.md, section 4)."""
+    services = pipeline_services
+    pid = _pid(services, "objective")
+    assert O.status(services, pid)["objective"] == {}                                   # nothing scheduled yet
+    O.run_role(services, pid, "source")
+    O.run_role(services, pid, "app")
+    executable = O.status(services, pid)["objective"]
+    assert set(executable) == {"EXECUTABLE"}                                            # the forecast waits for acceptance
+    e = executable["EXECUTABLE"]
+    assert (e["aircraft"], e["cost_known"], e["rate_known"], e["due_date_known"]) == (6, 4, 5, 6) and e["cost_steering"] == "partial"
+    assert e["aircraft_without_rate"] == [1306] and e["aircraft_without_due_date"] == []   # the demo's one aircraft with no term
+    assert e["aircraft_without_finish"] == [1305, 1306] and e["finish_unknown"] == 2
+    assert e["cost_unknown_by_reason"] == {"AIRCRAFT_NOT_MAPPED": 1, "COMPLETION_UNKNOWN": 1}   # the first cause on each aircraft
+    assert e["unplanned_open_jobs"] == sum(e["unplanned_open_jobs_by_reason"].values()) == 7
+    assert e["unplanned_open_jobs_by_reason"]["PART_NOT_RECEIVED"] == 2                 # confirmed facts only: no part, no plan
+    for role in ("stager", "signer", "app", "stager", "signer"):
+        O.run_role(services, pid, role)
+    both = O.status(services, pid)["objective"]
+    assert both["EXECUTABLE"] == e
+    f = both["FORECAST"]
+    assert (f["cost_known"], f["finish_conditional"], f["finish_unknown"]) == (5, 1, 1)  # an expected part gives a conditional finish
+    assert f["aircraft_without_finish"] == [1306] and f["unplanned_open_jobs_by_reason"] == {"FLOW_CREW_INVALID": 1}
+    assert f["aircraft_without_rate"] == [1306] and "5 of 6 aircraft" in f["message"]
+
+
 def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> None:
     """``auto`` at the fixture cutoff (06:00 local, shift 1) is the daily full solve and measures the repair it replaced;
     a ``repair`` pipeline then repairs both plans the first one accepted."""

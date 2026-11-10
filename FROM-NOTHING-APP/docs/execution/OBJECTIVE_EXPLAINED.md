@@ -93,22 +93,33 @@ the end of 14 March.
 
 ## 4. Is the cost objective working on your data?
 
-On live data it is easy to have a run that finishes, publishes a plan and still never compared a dollar. Check
-every run:
+On live data it is easy to have a run that finishes, publishes a plan and still never compared a dollar. Every
+run now says so itself. Read `objective_status` in the schedule receipt (`python -m focus.cli schedule ...`), or
+`objective` in the pipeline's status (`python -m focus.cli pipeline --key K --status`, one entry for the executable
+plan and one for the forecast). The code is `objective_status` in `focus/economics/evaluator.py`; the tests are
+`tests/unit/test_objective_status.py` and
+`test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan`.
 
-1. Read `costs` in the schedule step's receipt (`python -m focus.cli schedule ...`, or the pipeline's schedule
-   receipt): `unknown_lines`, `complete`, `known_cents`, `conditional_cents`, `controllable_known_cents`.
-2. Read it this way:
+| Field | Meaning |
+| --- | --- |
+| `cost_steering` | `full`: every aircraft has a cost. `partial`: some do, and only those are compared. `none`: no aircraft has a cost, so every candidate ties at orders 2 and 3 and the plan is chosen on travel, waiting and overtime. Only the search order still follows the rates. |
+| `message` | The same in one sentence. |
+| `aircraft`, `cost_known` | Aircraft in the plan, and how many have a known or conditional cost. |
+| `rate_known`, `aircraft_without_rate` | Aircraft with a usable rate, and the line numbers with none. No rate is ever filled in. |
+| `due_date_known`, `aircraft_without_due_date` | Aircraft with a due date (CS744 planned unload plus the grace days), and the line numbers with none. Every aircraft in work should have one. |
+| `past_due_when_planned` | Aircraft whose due date had already passed when the plan was made. |
+| `finish_known`, `finish_conditional`, `finish_unknown`, `aircraft_without_finish` | Aircraft by projected finish. Unknown means at least one required job could not be planned. |
+| `cost_unknown_by_reason` | For each aircraft with no cost, its first cause, counted. `COMPLETION_UNKNOWN` means the rate and the due date are fine and the finish is not. |
+| `unplanned_open_jobs`, `unplanned_open_jobs_by_reason` | The required jobs that could not be planned, counted by first reason, largest first. |
 
-   | You see | It means |
-   | --- | --- |
-   | `unknown_lines` lists every aircraft | The cost objective is **not steering**. Every candidate ties at orders 2 and 3, and plans are chosen on travel, waiting and overtime. Only the search order still follows the rates. |
-   | `unknown_lines` lists some aircraft | Cost is compared over the others only. The total is not a fleet total. |
-   | `unknown_lines` is empty and `complete` is true | Every aircraft is priced. This is the target for the forecast plan. |
+How to use it:
 
-3. For each unknown aircraft, find why. The candidate's `aircraft_completion` entry lists the unreleased jobs and
-   their reasons; the candidate's `costs.lines` entry gives the reason when the rate or the due date is missing.
-4. Count the unreleased jobs by reason over the fleet, and work the largest group first.
+1. `cost_steering` should be `full` for the forecast plan. Until it is, the totals are not fleet totals.
+2. `aircraft_without_rate` and `aircraft_without_due_date` should be empty. If they are not, fix the data; do not
+   fill the gap.
+3. Work `unplanned_open_jobs_by_reason` from the top. Each reason is one of the causes below.
+4. The executable plan uses confirmed facts only, so it can have more aircraft with an unknown finish than the
+   forecast (a job waiting for a part with no confirmed receipt). Judge delivery dates and costs on the forecast.
 
 **What makes a cost unknown, and what to do about it:**
 
@@ -128,8 +139,8 @@ every run:
 - Do not make a cost known by inventing an input. An unknown cost that is reported is correct; a known cost built
   on a guess is wrong and looks right.
 - Do not move the cost objective down the order, and do not add a weighted sum.
-- Report the number of unknown aircraft and the unreleased jobs by reason with every run, until both are zero for
-  the forecast plan.
+- Report `objective_status` with every run (the counts of aircraft with a rate, a due date and a finish date, and
+  the unplanned jobs by reason), until the forecast plan shows `cost_steering` `full`.
 - Speed work does not come before this. A fast pipeline whose objective compares nothing is not doing its job.
 
 ## 5. Open, not built

@@ -267,7 +267,18 @@ def status(services: Any, pid: str) -> dict[str, Any]:
     failed = [s["name"] for s in steps if s["status"] == "failed"]
     return {"status": "ok", "pipeline_id": pid, "scope": doc["scope"], "key": doc["key"], "version": version,
             "state": "completed" if done else ("failed" if failed else "in_progress"), "failed": failed, "steps": steps,
-            "window": window(services, doc), "outbox": outbox_events(services, pid)}
+            "window": window(services, doc), "objective": objective(doc), "outbox": outbox_events(services, pid)}
+
+
+def objective(doc: Mapping[str, Any]) -> dict[str, Any]:
+    """Each scheduled plan's objective status, as its schedule step recorded it (``economics.evaluator.objective_status``):
+    whether the cost objective steered the plan, and what kept aircraft out of the dollars."""
+    out: dict[str, Any] = {}
+    for step, purpose in (("schedule", "EXECUTABLE"), ("forecast", "FORECAST")):
+        state = doc["steps"][step]
+        if state["status"] == "completed":
+            out[purpose] = (state["output"].get(purpose) or {}).get("objective")
+    return out
 
 
 WINDOW_STEPS = ("acquire", "admit", "schedule", "validate", "stage_readback", "sign_accept")   # the executable plan's path
@@ -357,11 +368,14 @@ def _schedule_one(services: Any, doc: dict[str, Any], inputs: dict[str, Any], pu
     from .domain import Purpose
     from .engine.max.optimizer.orchestrator import schedule
 
+    from .economics.evaluator import objective_status
+
     request = doc["request"]
     plan, run = schedule(services, source_run=inputs["admit"]["source_run_id"], purpose=Purpose(purpose),
                          budget_seconds=request["budget_seconds"], max_moves=request["max_moves"], mode=request.get("planning", "full"))
     return {"candidate_id": plan.id, "valid": run.validation.valid, "violations": len(run.validation.violations),
-            "solver": run.solver.get("status"), "planning": run.planning or None}
+            "solver": run.solver.get("status"), "planning": run.planning or None,
+            "objective": objective_status(plan.costs, plan.aircraft_completion, plan.job_dispositions, plan.created_at)}
 
 
 def _validate_one(services: Any, inputs: dict[str, Any], purpose: str, item: Mapping[str, Any]) -> dict[str, Any]:
@@ -440,7 +454,7 @@ def step_forecast(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) ->
     """The full-horizon forecast on the same admitted snapshot, after the executable plan is out: scheduled and validated."""
     scheduled = _schedule_one(services, doc, inputs, "FORECAST")
     return {"FORECAST": {**_validate_one(services, inputs, "FORECAST", scheduled), "solver": scheduled["solver"],
-                         "planning": scheduled["planning"]}}
+                         "planning": scheduled["planning"], "objective": scheduled["objective"]}}
 
 
 def step_forecast_stage_readback(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:

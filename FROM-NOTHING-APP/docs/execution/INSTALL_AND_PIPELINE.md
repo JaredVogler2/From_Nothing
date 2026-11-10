@@ -282,6 +282,10 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 - **The window.** `python -m focus.cli pipeline --key K --status` reports, under `window`, the minutes from the data
   cut to the accepted executable plan against the owner's 20-minute budget, the seconds per step, and whether the plan
   was accepted after its shift started.
+- **The objective.** The same status reports, under `objective`, whether the cost objective compared any dollars for
+  the executable plan and for the forecast: the aircraft with a rate, a due date and a finish date, and the open jobs
+  that could not be planned, by reason (`OBJECTIVE_EXPLAINED.md` §4). A plan is published either way; this is how a
+  run that compared nothing is seen.
 - **Staging** (`stage_sources`, then `verify_staged_sources`) loads the official sources into the SQL Server tables the
   reference queries read, through the company loader named by `FOCUS_STAGE_COMMAND`, and checks the staged schema
   against the S04 contract before acquisition. It runs while the verify jobs run. The loader's contract is

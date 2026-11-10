@@ -111,9 +111,15 @@ def test_the_reason_codes_and_decisions_it_names_exist() -> None:
     for code in ("NO_EFFECTIVE_TERM", "AIRCRAFT_NOT_MAPPED", "DUE_UNKNOWN"):
         assert code in TEXT and code in repository
     assert "ECONOMICS_MISSING" in TEXT and "ECONOMICS_MISSING" in registry
+    # the report the page tells readers to check: every field it describes is returned, and every returned field is described
+    from focus.economics.evaluator import objective_status, summarize
+
+    described = {token for row in _table("| Field | Meaning |") for token in TOKEN.findall(row[0])}
+    assert described == set(objective_status(summarize({}), (), (), datetime(2027, 1, 1, tzinfo=UTC)))
     receipt = (ROOT / "focus" / "engine" / "max" / "optimizer" / "orchestrator.py").read_text(encoding="utf-8")
-    for field in ("unknown_lines", "complete", "known_cents", "conditional_cents", "controllable_known_cents"):
-        assert f"`{field}`" in TEXT and f'"{field}"' in receipt                              # the receipt fields the page tells readers to check
+    pipeline = (ROOT / "focus" / "orchestration.py").read_text(encoding="utf-8")
+    assert "`objective_status`" in TEXT and '"objective_status"' in receipt                  # in the schedule receipt
+    assert "`objective`" in TEXT and '"objective": objective(doc)' in pipeline                # and in the pipeline status
     playbook = (ROOT / "docs" / "integration" / "DECISION_PLAYBOOK.md").read_text(encoding="utf-8")
     for decision in ("OD-02", "OD-05", "OD-12", "DEC-28"):
         assert decision in TEXT and decision in playbook

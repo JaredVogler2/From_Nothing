@@ -45,8 +45,10 @@ Then read the code those pages name. The two explainer pages list each rule with
   second module.
 - **Unknown stays unknown.** Never fill a missing rate, duration, crew size, date or calendar day with an average, a
   median or a default. Report how many rows are affected, by reason, and work the cause.
-- **Report two numbers with every live run:** the aircraft with an unknown cost, and the open jobs that could not be
-  planned, by reason. A run that publishes a plan while every cost is unknown has not optimized cost.
+- **Report two things with every live run**, both from `python -m focus.cli pipeline --key K --status`:
+  - `objective`: how many aircraft have a rate, a due date and a finish date, and the open jobs that could not be
+    planned, by reason. A run that publishes a plan while every cost is unknown has not optimized cost.
+  - `window`: the minutes from the data cut to the accepted plan and its dashboard data, against the owner's 20.
 - **Keep what the scoring needs.** Verified completions, claims, decisions and the accepted plans are the record
   every score is built from. Do not trim or overwrite them to save time.
 - **Work in the order the owner cares about:** correct first (constraints, objective, scores), then complete (every

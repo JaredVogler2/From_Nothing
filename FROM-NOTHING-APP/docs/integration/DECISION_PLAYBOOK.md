@@ -451,10 +451,11 @@ first owner-confirmed OD, because any edit changes the policy hash.
   every aircraft unknown, every candidate ties on cost and the plan is chosen on travel, waiting and overtime. The
   run still finishes and publishes, so nothing fails loudly.
 - **Do, on every run:**
-  1. record the aircraft with an unknown cost and the unreleased jobs by reason (`OBJECTIVE_EXPLAINED.md` §4);
+  1. record `objective` from the pipeline status, for the executable plan and the forecast: aircraft with a rate, a
+     due date and a finish date, and the unplanned jobs by reason (`OBJECTIVE_EXPLAINED.md` §4);
   2. work the largest reason first: rates (OD-12), due dates, durations (OD-02), control-station windows (OD-05),
      dependency loops, crew sizes (OD-01) and calendar coverage (DEC-28);
-  3. report the two counts beside the run time.
+  3. report it beside the run time (`window` in the same status).
 - **Decision rule.** The forecast plan is ready for the owner when no aircraft in scope has an unknown cost, or each
   remaining one is listed with an accepted reason. Speed work does not come before this.
 - **Do not** substitute a rate or a duration to make a cost known (guardrail "Unknown stays unknown").

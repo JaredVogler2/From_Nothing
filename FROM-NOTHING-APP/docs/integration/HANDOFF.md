@@ -51,8 +51,9 @@ stay in company storage. This public repository keeps the synthetic reference co
   late-delivery dollars are one level of it.
   - An aircraft's cost is unknown while any open job on it cannot be planned, or its rate or due date is missing.
   - With every aircraft unknown, the run still publishes a plan but has compared no dollars.
-  - Report the aircraft with an unknown cost and the unplanned jobs by reason with every live run, and work those
-    before speed (`DECISION_PLAYBOOK.md`, DEC-29).
+  - Every run reports this itself: `objective` in the pipeline status counts the aircraft with a rate, a due date
+    and a finish date, and the unplanned jobs by reason (`OBJECTIVE_EXPLAINED.md` §4). Report it with every live
+    run, and work it before speed (`DECISION_PLAYBOOK.md`, DEC-29).
 - **Unknown stays unknown.** Never fill a missing rate, duration, date or calendar day with an average, a median or
   a default.
 - **Decisions.** Before asking the owner, look the question up in `DECISION_PLAYBOOK.md`: it says what to do now,
