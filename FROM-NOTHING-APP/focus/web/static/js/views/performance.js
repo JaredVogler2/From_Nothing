@@ -51,6 +51,7 @@ export function componentsTable(summary) {
     ["D", "D = B - E", summary.D],
     ["Cp", "verified planned completion", summary.Cp],
     ["U", "unapproved offplan output", summary.U],
+    ["Uc", "the part of U credited as extra work", summary.Uc === undefined ? null : summary.Uc],
     ["O", "once-only OOS penalty", summary.O],
   ].map(([k, meaning, v]) => ({ k, meaning, v }));
   return table([
@@ -119,7 +120,7 @@ function explanation() {
   return h("details", { class: "card explain" },
     h("summary", {}, "How the canonical score is formed"),
     h("p", {}, "The server computes one evaluation per frozen team-shift goal on exact rationals and stores it. D is the obligation B minus approved relief E. ",
-      "Attainment A is verified planned completion over D, capped at one; adherence H is planned completion over all verified output. ",
+      "Attainment A is verified planned completion plus credited extra work over D, capped at one; adherence H is planned completion over D. ",
       "The base blends A and H with the policy weights; the once-only OOS penalty O is charged against D; the result is clamped, rounded once and banded."),
     h("p", { class: "muted" }, "Pooled team and factory views sum the exact components before dividing, so they are never an average of percentages."));
 }

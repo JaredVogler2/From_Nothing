@@ -6,9 +6,11 @@ The program's stated shape (October 2026), every assumption an explicit field of
   ``stay_days``. Aircraft i sits at station i % 5 and entered it 0-6 days before the cutoff. Work can be planned any
   distance ahead, but no task may start before its own station's window opens on its own aircraft (the window start is
   a start floor; the planner applies it and the independent validator re-checks it).
-* **Customers and minor models.** The open-order mix of ``fixtures/economics/penalty_proxy.csv`` (firm 787 orders,
-  30 September 2026), split over the fleet by largest remainder. Lateness is priced per customer and minor model with
-  the proxy's daily penalty (ticket revenue a day; see that folder's README).
+* **Customers and minor models.** The open-order mix of ``fixtures/economics/ticket_revenue_proxy.csv`` (firm 787
+  orders, 30 September 2026), split over the fleet by largest remainder. Lateness is priced per customer and minor
+  model with the owner's airline economic proxy (``fixtures/economics/airline_economic_proxy.csv``; decided on
+  2026-11-11, DECISIONS.md D-31; see that folder's README). A customer and minor model with open orders and no rate
+  in that table gets no aircraft, so every aircraft of the synthetic fleet is priced; ``unpriced_pairs`` lists them.
 * **Tasks.** ``baseline`` tasks per minor-model network with ``edges`` model-level dependencies (predecessors always
   earlier: 60 % from a 150-task window of the same station, 25 % from anywhere earlier in it, 15 % from the previous
   station; 98 % finish to start). Rework: ``rework_total`` per aircraft found over the build in proportion to progress,
@@ -37,11 +39,15 @@ import math
 import random
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from . import fixture_builder as fb
 
-PENALTY_PROXY = Path(__file__).resolve().parents[2] / "fixtures" / "economics" / "penalty_proxy.csv"
+ECONOMICS = Path(__file__).resolve().parents[2] / "fixtures" / "economics"
+OPEN_ORDERS = ECONOMICS / "ticket_revenue_proxy.csv"            # the customers, their codes and the open-order mix
+DAILY_RATES = ECONOMICS / "airline_economic_proxy.csv"          # the owner's daily rate per operator and minor model (D-31)
+RATE_COLUMN = "daily_airline_economic_proxy_usd"
 ICAO = {"UA": "UAL", "AA": "AAL", "QR": "QTR", "BA": "BAW", "AC": "ACA", "NH": "ANA", "JL": "JAL", "EY": "ETD", "SQ": "SIA",
         "BR": "EVA", "KE": "KAL", "TK": "THY"}
 SHIFT_REGULAR_MINUTES = {1: 430, 2: 430, 3: 340}          # shift_fixture.json regular minutes
@@ -68,23 +74,44 @@ class FleetSpec:
     cutoff_day: date = date(2026, 10, 26)
     horizon_days: int = 120
     seed: int = fb.SEED
-    customer_models: tuple[tuple[str, str, int, int, int], ...] | None = None   # (code, name, minor model, open orders, daily USD)
+    customer_models: tuple[tuple[str, str, int, int, Decimal | int | None], ...] | None = None  # (code, name, minor model, open orders, daily USD)
     model_networks: tuple[str, ...] = field(default=("8", "9", "10"))
 
 
-def penalty_terms(path: Path = PENALTY_PROXY) -> list[tuple[str, str, int, int, int]]:
-    """(ICAO code, customer, minor model, open orders, daily penalty USD) for every row of the proxy table."""
-    out = []
+def daily_rates(path: Path = DAILY_RATES) -> dict[tuple[str, int], Decimal]:
+    """(operator, minor model) -> the owner's daily rate in USD, exactly as the table gives it."""
+    out: dict[tuple[str, int], Decimal] = {}
     with path.open(encoding="utf-8", newline="") as fh:
         for row in csv.DictReader(fh):
-            out.append((ICAO[row["customer_code"]], row["customer"], int(row["minor_model"]), int(row["open_orders"]),
-                        int(row["daily_penalty_usd"])))
+            key = (row["operator"], int(row["minor_model"].rpartition("-")[2]))
+            if key in out:
+                raise ValueError(f"{path.name}: {key[0]} 787-{key[1]} is given twice")
+            out[key] = Decimal(row[RATE_COLUMN])
     return out
 
 
-def fleet_mix(n: int, terms: list[tuple[str, str, int, int, int]]) -> list[tuple[str, str, int, int]]:
-    """n aircraft split over the customer-model pairs with open orders, by largest remainder (ties by code, model)."""
-    ordered = sorted((t for t in terms if t[3] > 0), key=lambda t: (t[0], t[2]))
+def penalty_terms(orders_path: Path = OPEN_ORDERS, rates_path: Path = DAILY_RATES) -> list[tuple[str, str, int, int, Decimal | None]]:
+    """(ICAO code, customer, minor model, open orders, daily rate USD) for every customer and minor model of the
+    open-order table. The rate is None where the owner's table has no row for that customer and minor model: it is
+    never filled in from another customer, another model or an average."""
+    rates = daily_rates(rates_path)
+    out = []
+    with orders_path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            model = int(row["minor_model"])
+            out.append((ICAO[row["customer_code"]], row["customer"], model, int(row["open_orders"]), rates.get((row["customer"], model))))
+    return out
+
+
+def unpriced_pairs(terms: list[tuple] | None = None) -> list[tuple[str, str, int, int]]:
+    """(ICAO code, customer, minor model, open orders) of the pairs with open orders and no daily rate."""
+    return [(t[0], t[1], t[2], t[3]) for t in (penalty_terms() if terms is None else terms) if t[3] > 0 and t[4] is None]
+
+
+def fleet_mix(n: int, terms: list[tuple]) -> list[tuple[str, str, int, Decimal | int]]:
+    """n aircraft split over the customer-model pairs that have open orders and a daily rate, by largest remainder
+    (ties by code, model). A pair without a rate gets no aircraft."""
+    ordered = sorted((t for t in terms if t[3] > 0 and t[4] is not None), key=lambda t: (t[0], t[2]))
     total = sum(t[3] for t in ordered)
     shares = [(n * t[3] / total, t) for t in ordered]
     counts = {(t[0], t[2]): int(s) for s, t in shares}
@@ -336,7 +363,7 @@ def build_fullscale_fixture(spec: FleetSpec = FleetSpec()) -> dict:
                                         "QuerySha256": "0" * 64, "ContentSha256": "1" * 64, "RowCount": len(lines),
                                         "ImportedAtUtc": "2026-10-20T12:00:00.000", "CoverageJson": json.dumps({"lines": len(lines)}), "IsCurrent": True})
     ds["econ_scenario"].append({"ScenarioRevisionId": scenario_id, "ScenarioKey": "SYNTH-PENALTY-PROXY", "ScenarioRevision": 1, "Provenance": "ASSUMED",
-                                "Methodology": "Ticket-revenue proxy per customer and minor model (fixtures/economics/README.md)",
+                                "Methodology": "Airline economic proxy per customer and minor model (fixtures/economics/README.md)",
                                 "OwnerSubject": "fixture-economics", "EffectiveFromUtc": "2026-01-01T00:00:00.000", "EffectiveToUtc": None,
                                 "Currency": "USD", "CapFraction": "0.0000", "PriorityWeight": "1.00000", "CreatedAtUtc": "2026-10-20T12:00:00.000",
                                 "IsActive": True})
@@ -348,9 +375,10 @@ def build_fullscale_fixture(spec: FleetSpec = FleetSpec()) -> dict:
     for code, customer, model, _, rate in sorted({(m[0], m[1], m[2], 0, m[3]) for m in mix}):
         ds["econ_term"].append({"TermId": fb._uuid(f"fullscale-term-{code}-{model}"), "ScenarioRevisionId": scenario_id, "SelectorType": "CUSTOMER_MODEL",
                                 "SelectorLength": len(code), "CustomerCode": code, "MinorModel": model, "LineNumber": None, "ContractKey": None,
-                                "OriginalSalePrice": "0.0000", "DailyRate": f"{rate}.0000", "Currency": "USD",
+                                "OriginalSalePrice": "0.0000", "DailyRate": f"{Decimal(rate):.4f}", "Currency": "USD",
                                 "EffectiveFromUtc": "2026-01-01T00:00:00.000", "EffectiveToUtc": None, "Provenance": "ASSUMED",
-                                "Methodology": f"Ticket-revenue proxy: {customer} 787-{model}", "SourceReference": "fixtures/economics/penalty_proxy.csv",
+                                "Methodology": f"Airline economic proxy: {customer} 787-{model}",
+                                "SourceReference": "fixtures/economics/airline_economic_proxy.csv",
                                 "OwnerSubject": "fixture-economics", "ApprovedBy": None, "TermVersion": 1, "CreatedAtUtc": "2026-10-20T12:00:00.000"})
     certified = {"mech_team_inferred", "cert_eligibility_matrix", "econ_original_sale_basis", "econ_liability_checkpoint", "team_inference", "clock_observations",
                  "requirement_census", "requirement_alternatives", "holding_events", "inspection_holds", "work_progress", "part_events", "carry_in",

@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS perf_team_shift (
   shift_no INTEGER, production_day TEXT, shift_number INTEGER, week INTEGER, team TEXT, units INTEGER, earned INTEGER, on_time INTEGER,
   missed_part INTEGER, missed_absence INTEGER, missed_predecessor INTEGER, missed_overrun INTEGER, missed_deviation INTEGER,
   planned_hours REAL, actual_hours REAL, present INTEGER, available_hours REAL, B0 INTEGER, additions INTEGER, B INTEGER, E INTEGER,
-  Cp INTEGER, U INTEGER, oos_effort INTEGER, relieved_units INTEGER, added_units INTEGER, offplan_units INTEGER, oos_units INTEGER,
+  Cp INTEGER, U INTEGER, Uc INTEGER, oos_effort INTEGER, relieved_units INTEGER, added_units INTEGER, offplan_units INTEGER, oos_units INTEGER,
   attainment REAL, adherence REAL, utilization REAL, score REAL, grade TEXT, status TEXT, base REAL, O REAL, final REAL,
   policy_id TEXT, policy_hash TEXT, status_reason TEXT);
 CREATE TABLE IF NOT EXISTS perf_unit (
@@ -81,6 +81,10 @@ CREATE TABLE IF NOT EXISTS perf_goal_day (
   frozen_shift_no INTEGER, production_day TEXT, plan_id TEXT, team TEXT, shift_number INTEGER, units INTEGER, B0 INTEGER);
 CREATE TABLE IF NOT EXISTS exec_offplan (
   shift_no INTEGER, team TEXT, job_id TEXT, phase TEXT, line INTEGER, soi TEXT, effort INTEGER, start_utc TEXT, end_utc TEXT, kind TEXT);
+CREATE TABLE IF NOT EXISTS exec_priority (
+  shift_no INTEGER, team TEXT, assignment_id TEXT, phase TEXT, line INTEGER, effort INTEGER, crew_size INTEGER, tier TEXT,
+  dependents INTEGER, gated_jobs INTEGER, gated_minutes INTEGER, gated_other_team_minutes INTEGER, tail_minutes INTEGER,
+  left_by_choice INTEGER);
 CREATE TABLE IF NOT EXISTS exec_oos (
   shift_no INTEGER, team TEXT, assignment_id TEXT, phase TEXT, blocked_by TEXT, discretionary INTEGER, charged INTEGER, affected_effort INTEGER,
   effective_utc TEXT, evidence TEXT);

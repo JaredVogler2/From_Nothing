@@ -1,0 +1,58 @@
+{
+ "totals": {
+  "planned": 6481135.0,
+  "done": 6159930.0,
+  "excused": 270835.0,
+  "unexcused": 50370.0
+ },
+ "loss_by_cause": {
+  "CAPACITY_SHORTAGE": 124785.0,
+  "unexcused:SAME_TEAM_PREDECESSOR": 32930.0,
+  "LATE_PART": 32520.0,
+  "CROSS_TEAM_PREDECESSOR": 67480.0,
+  "unexcused:DURATION_OVERRUN": 5425.0,
+  "unexcused:deviation": 4455.0,
+  "REWORK_INJECTION": 46050.0,
+  "unexcused:REWORK_INJECTION": 5985.0,
+  "unexcused:replanned": 765.0,
+  "unexcused:CROSS_TEAM_PREDECESSOR": 810.0
+ },
+ "excused_caused_on_the_floor": 113530.0,
+ "groups": {
+  "S1": {
+   "pooled_team_excusals": 99.32,
+   "internal_causes_charged": 98.87,
+   "no_excusals": 94.86
+  },
+  "S2": {
+   "pooled_team_excusals": 99.22,
+   "internal_causes_charged": 98.99,
+   "no_excusals": 95.3
+  },
+  "S3": {
+   "pooled_team_excusals": 99.16,
+   "internal_causes_charged": 98.82,
+   "no_excusals": 94.67
+  },
+  "S4": {
+   "pooled_team_excusals": 99.09,
+   "internal_causes_charged": 98.86,
+   "no_excusals": 95.19
+  },
+  "S5": {
+   "pooled_team_excusals": 99.17,
+   "internal_causes_charged": 98.82,
+   "no_excusals": 95.19
+  },
+  "S6": {
+   "pooled_team_excusals": 99.17,
+   "internal_causes_charged": 98.99,
+   "no_excusals": 95.01
+  }
+ },
+ "site": {
+  "pooled_team_excusals": 99.19,
+  "internal_causes_charged": 97.41,
+  "no_excusals": 95.04
+ }
+}

@@ -38,7 +38,7 @@ _SAFE_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 # The only collections a record may ever be deleted from (D-24): display parts are a cache, each rebuilt byte for byte from
 # records kept forever and checked against its kept manifest. Everything else is history and is never deleted (D-21).
 DERIVED_COLLECTIONS = frozenset({"display_parts"})
-# Per-job evidence behind each team-shift score, kept for the owner's period (D-25). The evaluation and its six components
+# Per-job evidence behind each team-shift score, kept for the owner's period (D-25). The evaluation and its seven components
 # stay forever; only the drill-down detail goes (``performance.details``).
 RETAINED_DETAIL_COLLECTIONS = frozenset({"evaluation_evidence"})
 DELETABLE_COLLECTIONS = DERIVED_COLLECTIONS | RETAINED_DETAIL_COLLECTIONS

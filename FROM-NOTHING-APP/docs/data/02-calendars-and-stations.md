@@ -45,6 +45,15 @@ next date on the same line is `WORKING`. There is no weekday fallback and no ext
 **Rules and pitfalls.**
 - Send a dense run of dates for every census line, covering the whole planning horizon. FOCUS never adds days, so work
   that does not fit before a line's last date cannot be placed.
+- **The calendar must run past the line's due date.** Admission checks every line with open work
+  (`calendar.coverage_gaps`) and records:
+  - `CALENDAR_NO_DAYS_LEFT` (effect `BLOCKS_ALL`): no working shift ends after the data cut. None of the line's open
+    work can be planned, so the aircraft's finish date and cost stay unknown.
+  - `CALENDAR_ENDS_BEFORE_DUE` (information): the last working shift ends at or before the due instant. A late finish
+    cannot be planned on this line. Work that does not fit shows as an unknown finish, never as a late one, so no
+    late-delivery cost can ever be counted for the aircraft.
+  A calendar that stops at the planned roll-out date has this problem on every line, and worst on the aircraft that
+  are already late.
 - Keep exactly one active `LOAD_ID` per line. Switch loads by changing `IS_ACTIVE` in one step: two active loads block
   the whole line.
 - Use only `WORKING`, `WEEKEND` and `NONWORKING`. Any other text, or null, silently makes the date unusable.

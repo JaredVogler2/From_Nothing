@@ -1,0 +1,222 @@
+{
+ "runs": {
+  "KT_s6": {
+   "truth": {
+    "seed": 20261026,
+    "shifts": 18,
+    "slow": 1.4,
+    "fast": 0.75,
+    "swap": 0.6
+   },
+   "groups": {
+    "slow": {
+     "score": 94.132,
+     "att_excused": 92.104,
+     "att_raw": 89.774,
+     "ppc_count": 92.922,
+     "output_index": 94.641,
+     "throughput": 25553.6,
+     "per_available_hour": 0.578,
+     "efficiency": 0.687,
+     "load": 0.627,
+     "extra_share": 2.537
+    },
+    "fast": {
+     "score": 99.993,
+     "att_excused": 99.964,
+     "att_raw": 97.345,
+     "ppc_count": 99.915,
+     "output_index": 103.542,
+     "throughput": 33017.0,
+     "per_available_hour": 0.6,
+     "efficiency": 1.311,
+     "load": 0.595,
+     "extra_share": 3.578
+    },
+    "swaps": {
+     "score": 99.207,
+     "att_excused": 96.065,
+     "att_raw": 93.547,
+     "ppc_count": 95.775,
+     "output_index": 103.681,
+     "throughput": 38021.4,
+     "per_available_hour": 0.618,
+     "efficiency": 0.991,
+     "load": 0.612,
+     "extra_share": 7.617
+    },
+    "works_ahead": {
+     "score": 99.881,
+     "att_excused": 99.407,
+     "att_raw": 98.097,
+     "ppc_count": 99.36,
+     "output_index": 111.231,
+     "throughput": 38310.8,
+     "per_available_hour": 0.636,
+     "efficiency": 0.984,
+     "load": 0.581,
+     "extra_share": 11.824
+    },
+    "never_ahead": {
+     "score": 99.765,
+     "att_excused": 99.765,
+     "att_raw": 97.19,
+     "ppc_count": 99.829,
+     "output_index": 99.765,
+     "throughput": 29946.2,
+     "per_available_hour": 0.609,
+     "efficiency": 0.992,
+     "load": 0.626,
+     "extra_share": 0.0
+    },
+    "baseline": {
+     "score": 99.905,
+     "att_excused": 99.541,
+     "att_raw": 95.393,
+     "ppc_count": 99.601,
+     "output_index": 105.188,
+     "throughput": 34095.4,
+     "per_available_hour": 0.606,
+     "efficiency": 0.992,
+     "load": 0.601,
+     "extra_share": 5.647
+    }
+   }
+  },
+  "KT_s7": {
+   "truth": {
+    "seed": 20261027,
+    "shifts": 18,
+    "slow": 1.4,
+    "fast": 0.75,
+    "swap": 0.6
+   },
+   "groups": {
+    "slow": {
+     "score": 93.377,
+     "att_excused": 91.497,
+     "att_raw": 89.5,
+     "ppc_count": 92.28,
+     "output_index": 93.847,
+     "throughput": 24528.4,
+     "per_available_hour": 0.572,
+     "efficiency": 0.683,
+     "load": 0.624,
+     "extra_share": 2.35
+    },
+    "fast": {
+     "score": 99.976,
+     "att_excused": 99.881,
+     "att_raw": 98.776,
+     "ppc_count": 99.791,
+     "output_index": 103.521,
+     "throughput": 31383.0,
+     "per_available_hour": 0.591,
+     "efficiency": 1.323,
+     "load": 0.578,
+     "extra_share": 3.64
+    },
+    "swaps": {
+     "score": 99.194,
+     "att_excused": 95.969,
+     "att_raw": 93.189,
+     "ppc_count": 95.373,
+     "output_index": 104.166,
+     "throughput": 33192.6,
+     "per_available_hour": 0.613,
+     "efficiency": 0.985,
+     "load": 0.606,
+     "extra_share": 8.197
+    },
+    "works_ahead": {
+     "score": 99.935,
+     "att_excused": 99.676,
+     "att_raw": 96.96,
+     "ppc_count": 99.718,
+     "output_index": 113.283,
+     "throughput": 38287.2,
+     "per_available_hour": 0.657,
+     "efficiency": 0.977,
+     "load": 0.597,
+     "extra_share": 13.607
+    },
+    "never_ahead": {
+     "score": 99.714,
+     "att_excused": 99.714,
+     "att_raw": 98.873,
+     "ppc_count": 99.686,
+     "output_index": 99.714,
+     "throughput": 35895.0,
+     "per_available_hour": 0.621,
+     "efficiency": 0.985,
+     "load": 0.628,
+     "extra_share": 0.0
+    },
+    "baseline": {
+     "score": 99.916,
+     "att_excused": 99.581,
+     "att_raw": 97.239,
+     "ppc_count": 99.694,
+     "output_index": 103.63,
+     "throughput": 37681.2,
+     "per_available_hour": 0.634,
+     "efficiency": 0.989,
+     "load": 0.627,
+     "extra_share": 4.049
+    }
+   }
+  }
+ },
+ "auc_vs_baseline": {
+  "slow": {
+   "score": 0.0,
+   "att_excused": 0.0,
+   "att_raw": 0.05,
+   "ppc_count": 0.0,
+   "output_index": 0.0,
+   "throughput": 0.14,
+   "per_available_hour": 0.23,
+   "efficiency": 0.0
+  },
+  "fast": {
+   "score": 0.69,
+   "att_excused": 0.69,
+   "att_raw": 0.64,
+   "ppc_count": 0.64,
+   "output_index": 0.43,
+   "throughput": 0.42,
+   "per_available_hour": 0.32,
+   "efficiency": 1.0
+  },
+  "swaps": {
+   "score": 0.0,
+   "att_excused": 0.0,
+   "att_raw": 0.28,
+   "ppc_count": 0.0,
+   "output_index": 0.44,
+   "throughput": 0.47,
+   "per_available_hour": 0.41,
+   "efficiency": 0.39
+  },
+  "works_ahead": {
+   "score": 0.49,
+   "att_excused": 0.49,
+   "att_raw": 0.58,
+   "ppc_count": 0.44,
+   "output_index": 0.99,
+   "throughput": 0.57,
+   "per_available_hour": 0.72,
+   "efficiency": 0.22
+  },
+  "never_ahead": {
+   "score": 0.41,
+   "att_excused": 0.56,
+   "att_raw": 0.64,
+   "ppc_count": 0.57,
+   "output_index": 0.0,
+   "throughput": 0.41,
+   "per_available_hour": 0.42,
+   "efficiency": 0.37
+  }
+ }
+}

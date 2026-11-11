@@ -1,0 +1,67 @@
+{
+ "database": "fleet.db",
+ "units": 102052,
+ "team_shifts": 1302,
+ "aircraft_shift_states": {
+  "LATE": 2061,
+  "FINISH_UNKNOWN": 39
+ },
+ "team_shifts_at_100_in_minutes": 909,
+ "all_team_shifts": {
+  "a1": {
+   "mean_abs_points": 0.05,
+   "p95_abs_points": 0.278,
+   "max_abs_points": 2.84,
+   "share_moved_1_point": 0.0046,
+   "share_moved_5_points": 0.0,
+   "spearman_with_minutes": 0.9996
+  },
+  "a3": {
+   "mean_abs_points": 0.08,
+   "p95_abs_points": 0.448,
+   "max_abs_points": 4.72,
+   "share_moved_1_point": 0.0092,
+   "share_moved_5_points": 0.0,
+   "spearman_with_minutes": 0.9987
+  },
+  "pure": {
+   "mean_abs_points": 0.115,
+   "p95_abs_points": 0.645,
+   "max_abs_points": 7.07,
+   "share_moved_1_point": 0.02,
+   "share_moved_5_points": 0.0008,
+   "spearman_with_minutes": 0.9858
+  }
+ },
+ "team_shifts_below_100": {
+  "count": 393,
+  "a1": {
+   "mean_abs_points": 0.166,
+   "p95_abs_points": 0.513,
+   "max_abs_points": 2.84,
+   "share_moved_1_point": 0.0153,
+   "share_moved_5_points": 0.0,
+   "spearman_with_minutes": 0.9898
+  },
+  "a3": {
+   "mean_abs_points": 0.266,
+   "p95_abs_points": 0.818,
+   "max_abs_points": 4.72,
+   "share_moved_1_point": 0.0305,
+   "share_moved_5_points": 0.0,
+   "spearman_with_minutes": 0.9678
+  },
+  "pure": {
+   "mean_abs_points": 0.381,
+   "p95_abs_points": 1.166,
+   "max_abs_points": 7.07,
+   "share_moved_1_point": 0.0662,
+   "share_moved_5_points": 0.0025,
+   "spearman_with_minutes": 0.9231
+  }
+ },
+ "criticality_spread_inside_a_team_shift": {
+  "median_sd": 0.153,
+  "p90_sd": 0.176
+ }
+}

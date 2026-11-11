@@ -3,9 +3,13 @@
 **Owner question (2026-11-02).** With each shift now scored against its own plan (D-26), what tests can set the factors
 and bands for off-plan completions? The owner said "Go ahead", and will re-run the tests on real data.
 
-**Status.** This is an investigation; the score has not changed. R5, the off-plan credit rule, is still a proposal
-(`09` §8) and is not implemented. Every number here comes from the synthetic fleet. §8 explains how to re-run the
-analysis on real data.
+**Status (updated 2026-11-10).** The owner has since decided that extra work earns credit, and the rule is built at
+w = 0.8 (D-27 in `docs/execution/DECISIONS.md`; in plain terms, `docs/execution/SCORING_EXPLAINED.md`).
+- The built rule credits every counted off-plan minute, on the owner's example of the same day. The runs in this
+  report gave swapped-in work no credit ("P2"), which is stricter; they were not re-run. Their swap findings (§5)
+  therefore describe a rule that was not built: under the built rule a swap costs the team the 20% adherence share.
+- "R0" below is the score before D-27, and "today's score" in the text means R0.
+- Every number here comes from the synthetic fleet. §8 explains how to re-run the analysis on real data.
 
 ## 1. Answer
 
@@ -240,10 +244,59 @@ cause.
 The incentive tests (§3 to §5) need counterfactual floors, which only the simulation can produce. Everything else can
 be measured on real team-shifts once FOCUS scores them.
 
+**What real data can and cannot decide.**
+
+- **It is a poor way to pick the weights.** The 80/20 split (which is the rate w for extra work) and the 10%
+  out-of-sequence rate state what the owner wants to reward.
+  - Fitting them needs a target, such as supervisor judgments or flow outcomes. With tens of teams, the fitted
+    value would be mostly noise.
+  - Past behavior was not shaped by this score, so history cannot show how crews respond to it. Only the simulated
+    floors test that.
+  - The split matters little. Moving it by 10 points changes a team's score by a tenth of the gap between its two
+    percentages ((done + extra that counts) ÷ expected, and done ÷ expected): one point for a team at 90% and 80%,
+    and nothing for a team with no extra work.
+
+  Data can show whether the choice matters; it should not make the choice.
+- **It must set the bands.** A band is a tolerance on unexcused shortfall, and only real shifts show how large that
+  shortfall normally is.
+- **It should show the score behaves sensibly before any grade counts.** These are the checks:
+
+  | Check | Question | How | In `tools/calibrate_scores.py` today |
+  | --- | --- | --- | --- |
+  | Spread | Where do normal shifts land? | Shortfall percentiles; grades under each band set | Yes |
+  | Noise | Does a team's weekly score hold from one week to the next, and do weekly scores tell teams apart? | Each team's pooled weekly score: the change between consecutive weeks, and the share of the spread that lies between teams (`weekly`); grade flips between shifts | Yes |
+  | Fairness | Do shift number, team size or work mix move the score for reasons the team does not control? | Scores, shortfall and excused share by shift number (`by_shift_number`); planned minutes against the gain | Shift number and load: yes. Team size and work mix: no |
+  | Agreement | Do supervisors see the same thing? | A sample spread over the grades, without scores or grades; a supervisor writes the grade they would give (`--grade-sample`, `--grade-labels`) | Yes |
+  | Outcomes | Do higher-scoring team-weeks have better flow? | Rank correlation with blocked successors, rework and stations finished on time, per team-week | No |
+  | Sensitivity | Do rankings change with the weights? | Recompute at w = 0.7, 0.8 and 0.9 (the split is w) | Yes |
+  | Swap watch | How much unplanned work is done in place of planned work? | `offplan` and `swap_watch`; step 2 below | Yes |
+
+- **Rules of thumb for reading them** (judgment calls, for the owner to confirm):
+  - rankings nearly identical across the weights (rank correlation 0.95 or more): keep the defaults;
+  - `between_team_share_of_variance` below about 0.3: weekly scores move as much within a team as they differ
+    between teams, so they cannot rank teams. Use them to coach, and pool a month before comparing;
+  - one shift number's mean more than a few points under the others, with a higher excused share: look at that
+    shift's conditions (support, parts, staffing) before reading its teams' scores;
+  - supervisors disagree on more than about a quarter of the sample: find the cause before touching the weights.
+    It is usually the plan, the standard minutes or missing excusals. `grade_agreement` shows, per band set, whether
+    the formula is the stricter or the more lenient side.
+- **Pilot data, not shadow data.** A score only measures a team that was dispatched from the plan it is scored
+  against. In pure shadow mode, where crews follow another schedule, the numbers say how closely FOCUS's plan matched
+  what the floor did. That validates the plan, not the teams.
+- **A backtest on old history is optional.** It needs two records for past shifts: what each team was assigned, and
+  when each job was verified complete.
+  - With both, the same arithmetic gives base rates: how much assigned work normally gets done, and how much
+    completed work was not assigned.
+  - Without the assignment record, replaying FOCUS's own plans over history has the shadow problem above.
+  - History has no claims and no reviews, so excused work can only be approximated from shortage and attendance
+    records.
+  - Treat the result as a rough prior for the bands, never as the answer.
+
 **Prerequisites.**
 
-- FOCUS runs the pipeline before every shift against the company's data. Shadow mode is enough: plans accepted
-  and goals frozen, whether or not crews are dispatched on them.
+- FOCUS runs the pipeline before every shift against the company's data, and the teams being measured are
+  dispatched from its accepted plan (a pilot). Shadow mode is enough only for the pipeline measures: timing, stale
+  plans and the shift boundary.
 - The observation feeds are installed (OD-15). At minimum: `lifecycle_events`, `actual_intervals`,
   `disruption_claims` and `excusal_decisions` (`docs/data/09-observation-feeds.md`).
 - The evaluator runs after every shift's overtime window (`docs/execution/INSTALL_AND_PIPELINE.md` §4).
@@ -263,44 +316,70 @@ evidence window, each completion's time. It writes nothing to the store. The JSO
 | --- | --- |
 | `coverage` | Scored, unknown, neutral and no-plan team-shifts. Unknown ones are excluded. |
 | `shortfall` | The unexcused shortfall percentiles: the basis of the bands. |
-| `scores`, `output_index` | R0 and R5(w) for w = 0.5 … 1.0, and the output index. |
+| `scores`, `output_index` | The canonical score as stored, the score before D-27 (R0), R5(w) for w = 0.5 … 1.0, and the output index. |
 | `grades` | Grades under each band set (`--bands 98,95,90,80` adds your own), flips between consecutive shifts, and R0 → R5 grade changes. |
 | `daily_pooled_R5_w0.8` | Pooled daily grades per team. |
-| `offplan` | How often teams work off plan, how much, and P2's split into additive and substitutive. |
-| `swap_gain` | On the real distributions: could a misread swap pay, at each w and q? |
+| `offplan` | How often teams work off plan, how much, how much was credited, and the "possible swap" minutes (unplanned work beside planned work missed with no reason on record). |
+| `swap_watch` | The team-shifts with possible-swap minutes, and the points they gave up against doing the missed planned work instead, at each w. It changes no score. |
 | `relief` | Excused minutes by cause, and `DONE_BEFORE_SHIFT` minutes. |
 | `boundary` | The share of completions in the last `--lead` minutes and in overtime. |
 | `stale_plans` | The share of shifts scored against the previous shift's plan. |
 | `fairness` | Planned minutes against the grade gain and against the output index. |
+| `by_shift_number` | Mean and median score, mean shortfall and excused share for each shift number, and the spread between the shift means. |
+| `weekly` | Each team's pooled score per week: its percentiles, the change between a team's consecutive weeks, and the share of the spread that lies between teams. |
 
-**Step 2. Estimate the classifier's error rates.**
+**Step 2. Check the swap watch.**
 
 1. Supervisors label each row of `review.csv` as `SWAP` (the team dropped planned work for it) or `EXTRA` (the work
-   was additional). The rows are half P2-substitutive and half P2-additive.
+   was additional). Half the rows are team-shifts the watch flagged and half are not.
 2. Then run:
 
    ```bash
    python tools/calibrate_scores.py store --from 2027-01-04 --to 2027-01-31 --labels review.csv
    ```
 
-   This reports q, the share of true swaps that P2 calls additive, and the false-alarm rate, the share of extra work
-   P2 calls substitutive. Because the sample is stratified, weight each class by its population share before quoting
+   This reports the miss rate, the share of real swaps the watch did not flag, and the false-alarm rate, the share
+   of flags that were real extra work. Because the sample is stratified, weight each class by its population share before quoting
    a site-wide rate.
+
+**Step 2b. Check the grades against supervisors.**
+
+1. Write a sample spread over the grades, without scores or grades:
+
+   ```bash
+   python tools/calibrate_scores.py store --from 2027-01-04 --to 2027-01-31 --grade-sample 100 --grade-csv grades.csv
+   ```
+
+2. A supervisor who knows each shift writes A, B, C, D or F in the `supervisor_grade` column. The sheet shows the
+   expected minutes, the planned minutes done, the planned minutes missed and not excused, the excused minutes with
+   their causes, the extra minutes and the out-of-sequence minutes.
+3. Read it back:
+
+   ```bash
+   python tools/calibrate_scores.py store --from 2027-01-04 --to 2027-01-31 --grade-labels grades.csv --bands 92,85,75,65
+   ```
+
+   `grade_agreement` gives, for every band set, the share with the same grade, the share within one grade, and how
+   often the formula was the stricter or the more lenient side. Label at least 20 shifts per grade before changing
+   the bands.
 
 **Step 3. Decide.**
 
 | Decision | Rule |
 | --- | --- |
-| w | Take the largest w at which `swap_gain` shows no paying swap at the measured q, or a share and size within the owner's tolerance. On the synthetic floor: q ≤ 5% allows w = 0.9; q ≤ 15% gives w = 0.8; zero tolerance gives w = 0.7. If q is above 30%, improve the classifier before crediting off-plan work: match each off-plan job to the dispatched task it displaced. |
-| False alarms | A high false-alarm rate means teams lose credit for real extra work. Check that missed work with a real cause gets a claim. |
+| w | Decided by the owner: 0.8. A swap costs the team the (1 − w) adherence share of the planned work it displaced, so it never pays when standard minutes are fair. If the swap watch shows material swapping that supervisors confirm, the owner can lower w or stop crediting work beside an unexplained miss. If q is above 30%, improve the classifier before crediting off-plan work: match each off-plan job to the dispatched task it displaced. |
+| False alarms | A high false-alarm rate means the watch flags real extra work. No score is affected; check that missed work with a real cause gets a claim, so the watch reads true. |
 | Bands | Pick tolerances on unexcused shortfall per grade, convert them (band = 100 × (1 − tolerance)), and check the grade counts and flip rates. Prefer bands whose flip rate between a team's consecutive shifts stays low, under about 5%, and grade recognition on pooled days or weeks. |
+| Bands, with supervisors | Among band sets with acceptable grade counts, prefer the one `grade_agreement` shows closest to the supervisors' grades. If none is within one grade for at least nine shifts in ten, the cause is in the plan, the standard minutes or the excusals, not in the bands. |
+| What to grade | If `weekly.between_team_share_of_variance` is low (under about 0.3), do not rank teams on weekly scores. Coach on them and compare teams over a month. |
+| Shift conditions | If one shift number sits more than a few points under the others in `by_shift_number` with a higher excused share, fix that shift's conditions before its teams' scores are compared with the others'. |
 | Pipeline timing | `stale_plans.share` must be about 0 before bands are set. Otherwise late plans are mixed into the shortfall. |
 | Cutoff | If more than about 10% of completions land in the last `--lead` minutes, the next plan misses them. Consider a shorter pipeline or a later cutoff. |
 
 **Step 4. Recalibrate the simulation to re-run the incentive tests.**
 
 1. Set the simulated floor's rates to the measured ones: the share of team-shifts with off-plan work
-   (`--pull-ahead`), P2's substitutive share (`--deviation`), and the late-part share.
+   (`--pull-ahead`), the substitutive share (`--deviation`), and the late-part share.
 2. Re-run `evidence/scripts/calib_run.sh` and `calibrate.py`.
 
 The fleet stays synthetic: the simulation does not read a real snapshot. The incentive conclusions are structural (a
@@ -308,9 +387,9 @@ correctly read swap never pays), and the `swap_gain` section re-checks them on t
 
 **Owner decisions this feeds.**
 
-- w;
+- w (decided: 0.8);
 - the band tolerances;
-- implementing R5 (`09` §8);
+- approved additions (`docs/integration/DECISION_PLAYBOOK.md`, DEC-26);
 - signing: automatic or manual promotion before each shift;
 - protection for teams when a plan is late.
 

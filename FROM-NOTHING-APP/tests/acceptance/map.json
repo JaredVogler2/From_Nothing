@@ -246,9 +246,10 @@
       "tests/integration/test_lifecycle_excusals.py::test_a56_reported_completion_is_a_claim_never_credit",
       "tests/integration/test_lifecycle_excusals.py::test_a56_revisions_voids_and_corrections_append",
       "tests/integration/test_lifecycle_excusals.py::test_a56_terminal_status_and_disappearance_are_unknown_not_credit"]},
-    "A57": {"stage": "P18", "summary": "Demonstration scores 65, 50 and 0; no free 30 points, throughput substitute or UI formula drift", "tests": [
+    "A57": {"stage": "P18", "summary": "Demonstration scores as the owner's extra-work decision D-27 amended them: half the expected work done is 50 (65 before), the same with 100 unplanned minutes is 90 (50 before: unplanned work earns credit below the same planned work), nothing done is 0; no free adherence points and no UI formula drift", "tests": [
       "tests/unit/test_score_facts.py::test_s14_numeric_examples",
-      "tests/unit/test_score_facts.py::test_zero_output_is_zero_not_thirty_and_h_is_zero",
+      "tests/unit/test_score_facts.py::test_zero_output_is_zero_and_h_is_zero",
+      "tests/unit/test_score_facts.py::test_extra_work_is_credited_below_planned_work_and_a_miss_costs_points_on_its_own",
       "tests/integration/test_api_scope.py::test_a57_no_browser_side_formula_or_hardcoded_ready",
       "tests/integration/test_api_scope.py::test_a57_a59_every_surface_reads_the_same_stored_evaluation",
       "tests/ui/test_layout_parity.py::test_ios_and_classic_show_the_same_stored_scores"]},
@@ -256,8 +257,9 @@
       "tests/unit/test_score_facts.py::test_all_excused_or_no_plan_is_neutral_null",
       "tests/unit/test_score_facts.py::test_missing_evidence_or_policy_is_unknown_null",
       "tests/unit/test_score_facts.py::test_s14_numeric_examples"]},
-    "A59": {"stage": "P18", "summary": "Pooled D400/Cp200 with D100/Cp100 scores 72, not the 82.5 average; team, factory and history surfaces agree", "tests": [
-      "tests/unit/test_score_facts.py::test_a59_pooled_aggregate_is_72_not_average_82_5",
+    "A59": {"stage": "P18", "summary": "Pooled D400/Cp200 with D100/Cp100 scores 60, not the 75 average (72 and 82.5 before D-27); team, factory and history surfaces agree", "tests": [
+      "tests/unit/test_score_facts.py::test_a59_pooled_aggregate_is_60_not_the_average_75",
+      "tests/unit/test_score_facts.py::test_extra_work_beyond_one_shifts_expected_amount_counts_in_the_pooled_period",
       "tests/unit/test_score_facts.py::test_rounding_only_after_sums_and_bands",
       "tests/integration/test_progression.py::test_a59_team_factory_history_surfaces_pool_the_same_units",
       "tests/integration/test_views_api.py::test_a59_arena_history_and_factory_pool_the_same_stored_evaluations",

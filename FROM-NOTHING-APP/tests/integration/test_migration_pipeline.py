@@ -326,6 +326,81 @@ def test_executable_plan_is_accepted_before_the_forecast_is_scheduled(pipeline_s
     assert forecast.published.source_run_id == executable.published.source_run_id                   # the same admitted snapshot
 
 
+def test_the_window_report_measures_the_data_cut_to_the_accepted_plan_against_the_owners_budget(pipeline_services) -> None:
+    """D-28: data gathering, scheduling and the dashboard ready within 20 minutes. The clock runs from the data cut to the
+    acceptance of the executable plan, which writes the dashboard's data; the forecast that follows is outside it."""
+    from focus.clock import FIXTURE_CUTOFF
+    from focus.display.store import has_plan_display
+
+    services = pipeline_services
+    assert services.policy.int("pipeline.pre_shift_budget_minutes") == 20
+    assert services.policy.authority_of("pipeline.pre_shift_budget_minutes") == "owner_decision"
+    pid = _pid(services, "window")
+    before = O.status(services, pid)["window"]
+    assert (before["budget_minutes"], before["data_cut"], before["minutes"], before["within_budget"]) == (20, None, None, None)
+    for role, minutes in (("source", 6), ("app", 3), ("stager", 2)):
+        O.run_role(services, pid, role)
+        services.clock.advance(minutes=minutes)
+    waiting = O.status(services, pid)["window"]
+    assert waiting["data_cut"] == FIXTURE_CUTOFF and waiting["plan_and_dashboard_ready_at"] is None and waiting["within_budget"] is None
+    O.run_role(services, pid, "signer")
+    w = O.status(services, pid)["window"]
+    plan_id = O.load(services, pid)[0]["steps"]["sign_accept"]["output"]["EXECUTABLE"]["plan_id"]
+    assert has_plan_display(services.repositories, plan_id)                             # acceptance wrote the dashboard's data
+    assert (w["minutes"], w["within_budget"]) == (11.0, True)                            # 6 + 3 + 2 minutes after the cut
+    assert w["plans_shift"] == "DEMO:2026-10-26:S1" and w["late"] is True                # the fixture cuts at the shift's start
+    assert set(w["step_seconds"]) == set(O.WINDOW_STEPS) and all(v == 0.0 for v in w["step_seconds"].values())
+    services.clock.advance(minutes=30)
+    for role in ("app", "stager", "signer"):                                             # the forecast follows acceptance
+        O.run_role(services, pid, role)
+    assert O.status(services, pid)["window"]["minutes"] == 11.0                          # ... and is outside the window
+    slow = _pid(services, "window-slow")
+    O.run_role(services, slow, "source")
+    services.clock.advance(minutes=25)
+    for role in ("app", "stager", "signer"):
+        O.run_role(services, slow, role)
+    over = O.status(services, slow)["window"]
+    assert over["minutes"] > 20 and over["within_budget"] is False
+
+
+def test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan(pipeline_services) -> None:
+    """A plan is returned whether or not its dollars compared anything, so each run says how many aircraft had a known
+    rate, due date and finish date, and why open jobs were not planned (OBJECTIVE_EXPLAINED.md, section 4)."""
+    services = pipeline_services
+    pid = _pid(services, "objective")
+    assert O.status(services, pid)["objective"] == {}                                   # nothing scheduled yet
+    assert O.status(services, pid)["readiness_gaps"] is None                            # nothing admitted yet
+    O.run_role(services, pid, "source")
+    # the admitted data's gaps by code: the demo has two, and no calendar that stops short of a due date (DEC-28)
+    assert O.status(services, pid)["readiness_gaps"] == {"IN_PROGRESS_CONTINUATION_HOLD": 1, "SEQUENCE_VIOLATION": 1}
+    O.run_role(services, pid, "app")
+    executable = O.status(services, pid)["objective"]
+    assert set(executable) == {"EXECUTABLE"}                                            # the forecast waits for acceptance
+    e = executable["EXECUTABLE"]
+    assert (e["aircraft"], e["cost_known"], e["rate_known"], e["due_date_known"]) == (6, 4, 5, 6) and e["cost_steering"] == "partial"
+    assert e["aircraft_without_rate"] == [1306] and e["aircraft_without_due_date"] == []   # the demo's one aircraft with no term
+    assert e["aircraft_without_finish"] == [1305, 1306] and e["finish_unknown"] == 2
+    assert e["cost_unknown_by_reason"] == {"AIRCRAFT_NOT_MAPPED": 1, "COMPLETION_UNKNOWN": 1}   # the first cause on each aircraft
+    assert e["unplanned_open_jobs"] == sum(e["unplanned_open_jobs_by_reason"].values()) == 7
+    assert e["unplanned_open_jobs_by_reason"]["PART_NOT_RECEIVED"] == 2                 # confirmed facts only: no part, no plan
+    for role in ("stager", "signer", "app", "stager", "signer"):
+        O.run_role(services, pid, role)
+    both = O.status(services, pid)["objective"]
+    assert both["EXECUTABLE"] == e
+    f = both["FORECAST"]
+    assert (f["cost_known"], f["finish_conditional"], f["finish_unknown"]) == (5, 1, 1)  # an expected part gives a conditional finish
+    assert f["aircraft_without_finish"] == [1306] and f["unplanned_open_jobs_by_reason"] == {"FLOW_CREW_INVALID": 1}
+    assert f["aircraft_without_rate"] == [1306] and "5 of 6 aircraft" in f["message"]
+    # D-29: the same status reports each aircraft's criticality (the cost of one more day late). Nothing is scored with it.
+    crit = O.status(services, pid)["criticality"]
+    assert set(crit) == {"EXECUTABLE", "FORECAST"}
+    fc = crit["FORECAST"]
+    assert (fc["aircraft"], fc["known"], fc["unknown"]) == (6, 5, 1) and fc["states"] == {"ON_TIME": 5, "NO_RATE_OR_DUE_DATE": 1}
+    assert fc["highest_cost_per_day_usd"] == 0                                           # the demo fleet finishes ahead of its due dates
+    assert {x["line"]: x["weight"] for x in fc["lines"]}[1306] is None                   # no rate: unknown, never zero
+    assert crit["EXECUTABLE"]["states"] == {"ON_TIME": 4, "FINISH_UNKNOWN": 1, "NO_RATE_OR_DUE_DATE": 1}
+
+
 def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> None:
     """``auto`` at the fixture cutoff (06:00 local, shift 1) is the daily full solve and measures the repair it replaced;
     a ``repair`` pipeline then repairs both plans the first one accepted."""
@@ -528,11 +603,31 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
             assert f"needs: [{previous}]" in jobs[job] or f"needs: [{previous}," in jobs[job], job   # each role needs the one before it
     assert "--role evaluator" in jobs["observe_evaluate"] and "needs: [sign_accept]" in jobs["observe_evaluate"]
     # P23: every verification precedes acquisition, and the scheduler runs the native wheel built from the same commit
+    needs = jobs["acquire_admit"].split("needs:")[1].splitlines()[0]
     for verify in ("import_and_lint", "unit_and_integration", "ui", "fixture_pipeline_rehearsal", "native_wheel"):
-        assert verify in jobs["acquire_admit"].split("needs:")[1].splitlines()[0], verify
+        assert verify in needs, verify
+    # D-28: the 20-minute window. The long suites run on merge; a live run needs them only when they are in its pipeline
+    # (FOCUS_LIVE_VERIFY=full), and otherwise refuses any ref that is not protected
+    for long in ("unit_and_integration", "ui", "fixture_pipeline_rehearsal"):
+        assert "extends: .merge_verify" in jobs[long] and f"{{ job: {long}, optional: true }}" in needs, long
+    assert "import_and_lint," in needs and "{ job: import_and_lint" not in needs and "{ job: native_wheel" not in needs   # always in the run
+    skip, always = jobs[".merge_verify"].split("when: never")[0], jobs[".merge_verify"].split("when: never")[1]
+    assert '$FOCUS_MODE == "live"' in skip and '$FOCUS_LIVE_VERIFY != "full"' in skip and "when: on_success" in always
+    assert 'FOCUS_LIVE_VERIFY: "merged"' in jobs["variables"]
+    guard = 'test "$FOCUS_LIVE_VERIFY" = "full" -o "$CI_COMMIT_REF_PROTECTED" = "true"'
+    assert jobs["acquire_admit"].index(guard) < jobs["acquire_admit"].index("--role source")
     assert "{ job: native_wheel, artifacts: true }" in jobs["schedule_validate"] and "dist/focus_native-" in jobs["schedule_validate"]
     assert "focus-native==" not in jobs["schedule_validate"]                     # never an index wheel from another commit
     assert "when: manual" in jobs["sign_accept"] and "focus-signer" in jobs["sign_accept"]
+    # DEC-11 is the owner's decision and is not made: the switch for automatic acceptance exists and is off. Turned on, it
+    # applies only to a scheduled run on a protected ref; every other run still waits for an operator
+    assert 'FOCUS_AUTO_SIGN: "false"' in jobs["variables"]
+    auto, manual = jobs["sign_accept"].split("when: on_success")[0], jobs["sign_accept"].split("when: on_success")[1]
+    rule = [line for line in auto.splitlines() if line.strip()][-1]              # the condition of the automatic rule
+    for condition in ('$FOCUS_AUTO_SIGN == "true"', '$CI_PIPELINE_SOURCE == "schedule"', '$CI_COMMIT_REF_PROTECTED == "true"', '$FOCUS_MODE == "live"'):
+        assert condition in rule and " || " not in rule, condition                # every condition must hold: no alternative
+    assert "when: manual" in manual and "FOCUS_AUTO_SIGN" not in manual
+    assert "FOCUS_AUTO_SIGN" not in jobs["forecast_sign_accept"]                 # the forecast is always promoted by an operator
     assert "when: manual" in jobs["forecast_sign_accept"] and "focus-signer" in jobs["forecast_sign_accept"]
     assert "dist/focus_native-" in jobs["forecast_schedule_validate"] and "FOCUS_SIGN_KEY_REF" not in jobs["forecast_stage_readback"]
     assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[".live"]

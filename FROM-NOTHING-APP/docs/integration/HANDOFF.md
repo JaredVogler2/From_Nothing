@@ -9,6 +9,7 @@ behaviour were checked against the code on this date.
 
 **Read with:**
 
+- [`AGENTS.md`](../../../AGENTS.md), at the repository root: the one-page brief for a coding agent. Read it first.
 - [DECISION_PLAYBOOK.md](DECISION_PLAYBOOK.md): every open decision, with a recommendation, the rule for deciding
   once real data is wired, the files and tests to change and where to record it. Work through it after this guide.
 - [WORKPLACE_PORTING_GUIDE.md](WORKPLACE_PORTING_GUIDE.md): confidentiality and the rollout gates A–F.
@@ -17,11 +18,57 @@ behaviour were checked against the code on this date.
 - [`SQL_SCHEMA_LEDGER.md`](../execution/SQL_SCHEMA_LEDGER.md): the tables FOCUS writes and the gaps in them.
 - [`INSTALL_AND_PIPELINE.md`](../execution/INSTALL_AND_PIPELINE.md): install, roles, the pipeline and recovery.
 - [`DECISIONS.md`](../execution/DECISIONS.md): the rules (D-26 above all) and the open decisions.
+- [`OBJECTIVE_EXPLAINED.md`](../execution/OBJECTIVE_EXPLAINED.md): what the scheduler minimizes, how late-delivery
+  cost is worked out, and how to tell whether the cost objective is working on live data.
+- [`SCORING_EXPLAINED.md`](../execution/SCORING_EXPLAINED.md): how a team's shift is scored, in plain terms, with
+  each rule's code and tests.
 - [`10_CALIBRATION.md`](../task-valuation-investigation/10_CALIBRATION.md): re-running the score calibration on real
   data.
 
 **Confidentiality, in one line.** Real server names, object names, query text, mappings, credentials and data rows
 stay in company storage. This public repository keeps the synthetic reference contract only.
+
+## 0. Standing answers (read before asking)
+
+- **Reading needs no approval.**
+  - Read the whole repository, run the test suite and run any read-only command without asking, and without
+    waiting for a reading plan to be approved.
+  - Approval is for changes only: installing SQL, applying grants, publishing or signing plans, enabling dispatch,
+    changing the policy files, and the decisions marked OWNER in the playbook.
+  - If your tooling needs a human click before a read-only step, ask once and say the step is read-only.
+- **The first task is a full read with a scoring check.** Read this guide, then the playbook, then the code. As part
+  of that read, check the code against the scoring rules (`SCORING_EXPLAINED.md` §4). Change nothing. Report three
+  things:
+  - a short summary of how the system works;
+  - every difference between a documented rule and the code, with file and line;
+  - your open questions.
+- **The pre-shift run has 20 minutes** (owner, D-28): from the data cut to the accepted plan and its dashboard data.
+  Staging counts toward it (§3). The pipeline status reports the minutes used on every run.
+- **Scoring** is explained in `SCORING_EXPLAINED.md`. One file computes it: `focus/performance/score.py`. Scoring
+  is part of the application, not an extra: verified completions earn credit for the team-shift whose plan held
+  the job, and the record behind every score is kept. Do not design a second completions store.
+- **The objective** is explained in `OBJECTIVE_EXPLAINED.md`. Two schedules are compared in a fixed order, and
+  late-delivery dollars are one level of it.
+  - An aircraft's cost is unknown while any open job on it cannot be planned, or its rate or due date is missing.
+  - With every aircraft unknown, the run still publishes a plan but has compared no dollars.
+  - Every run reports this itself: `objective` in the pipeline status counts the aircraft with a rate, a due date
+    and a finish date, and the unplanned jobs by reason (`OBJECTIVE_EXPLAINED.md` §4). Report it with every live
+    run, and work it before speed (`DECISION_PLAYBOOK.md`, DEC-29).
+- **Unknown stays unknown.** Never fill a missing rate, duration, date or calendar day with an average, a median or
+  a default.
+  - Rates from a file: `python tools/build_economics_rows.py` builds the economics rows and lists the aircraft it
+    cannot price. It never fills one in.
+  - Which rates (owner, 2026-11-11, D-31): the airline economic proxy per customer airline and minor model, column
+    `daily_airline_economic_proxy_usd` of the owner's rate table (`fixtures/economics/airline_economic_proxy.csv`).
+    Lateness begins at 744 unload plus 2 days; there is no other grace period and no cap. The table names airlines,
+    so the tool needs a list joining each customer code to the airline's name exactly as the table writes it.
+  - Which aircraft (owner, 2026-11-11, D-32): whichever have open tasks at the data cut. Never fix a list of
+    aircraft or of customers, and never tune to one fleet.
+  - Calendars: a line whose calendar ends at or before its due date can never be planned late, so its lateness is
+    never costed (`readiness_gaps` in the pipeline status: `CALENDAR_ENDS_BEFORE_DUE`, `CALENDAR_NO_DAYS_LEFT`). The
+    calendar producer fixes that; FOCUS never adds a day.
+- **Decisions.** Before asking the owner, look the question up in `DECISION_PLAYBOOK.md`: it says what to do now,
+  what to decide from data, and what only the owner can decide.
 
 ## 1. What FOCUS does and what is decided
 
@@ -40,8 +87,10 @@ stay in company storage. This public repository keeps the synthetic reference co
   - Late completions and constraints are captured after the fact. A shift is scored once its overtime window
     closes.
 - **The score.** The canonical score formula still uses the demonstration policy (A ≥ 90, B ≥ 80, C ≥ 70,
-  D ≥ 60). An OFFICIAL grade needs the owner's approval receipt (OD-16). The proposed off-plan credit rule (R5,
-  w = 0.8) is not implemented.
+  D ≥ 60). An OFFICIAL grade needs the owner's approval receipt (OD-16).
+- **Extra work earns credit (owner, 2026-11-10, D-27).** Work a team does outside its plan counts toward its score
+  at 80% of the same planned work and never lowers it. A planned job the team missed costs points on its own, unless
+  it is excused. `docs/execution/SCORING_EXPLAINED.md` gives the rule, the owner's example and a worked example.
 - **Where things run.** The GitLab pipeline runs the scheduler and every other step. Posit Connect only displays:
   the web app reads a small display package the pipeline publishes, never a snapshot or a plan.
 - **Time.** The database holds UTC; the app shows the site's local time (America/New_York). Live runs set
@@ -78,7 +127,8 @@ Shift times come from the site policy (`config/policies/shift_fixture.json`, Ame
 | 2 | 14:30 | 23:00 | 00:00 |
 | 3 | 23:00 | 06:00 | 07:00 |
 
-Before each shift, inside a 15–20 minute window (owner, 2026-11-02):
+Before each shift, within 20 minutes (owner, 2026-11-10, D-28: "the data gathering and scheduling and dashboard should
+be ready to go within 20 minutes"):
 
 | Step | Budget | Measured |
 | --- | --- | --- |
@@ -89,6 +139,22 @@ Before each shift, inside a 15–20 minute window (owner, 2026-11-02):
 | `stage_readback`, `sign_accept` | ≤ 2 min | display parts for the executable plan 10 s; stage and sign not measured live |
 | **The plan must be accepted before the shift starts** | | |
 
+- **What counts toward the window.** The clock starts at the data cut (the pipeline's start, which is the loader's
+  `--as-of`) and stops when `sign_accept` finishes. Acceptance writes the plan's dashboard data, so the plan and the
+  dashboard are ready together.
+  - `python -m focus.cli pipeline --key "$PIPELINE_KEY" --status` reports it under `window`: the minutes used against
+    the 20-minute budget, the seconds per step, and whether the plan was accepted after its shift started. Keep that
+    report with every run.
+  - The forecast (delivery dates and costs) follows acceptance and is outside the window.
+  - Everything in between counts, staging included. Work finished after the cut is not in the plan, so every minute
+    of staging, checking, planning and signing widens the gap that is captured after the fact.
+  - `stage_sources` runs alongside the verify jobs. The wall-clock total is therefore the longer of the two paths,
+    not their sum.
+  - A preload that runs before the data cut does not count toward the window (playbook, DEC-08). Its tables are as
+    old as the preload, so use it only for data that does not change within a shift: calendars, control-station
+    windows, the template graph and the certificate and department reference tables. Completions, work in progress,
+    shortages, rosters and attendance must be staged at the cut.
+  - The evaluator-only run after overtime is outside the window.
 - **Total so far.** The plan path measured 3.6–5.2 minutes per shift at 50 aircraft, peaking at 6.6 GB
   (`10_CALIBRATION.md` §7). With the snapshot's display parts (about 2.7 minutes) and the executable plan's parts
   (10 s), that is roughly 6.5–8 minutes before staging, the drift check, stage and sign. The live data pull is the
@@ -158,8 +224,9 @@ $FOCUS_STAGE_COMMAND --part all --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-r
 1. **Publish atomically.** Most SOURCE queries take the table as it stands, with no as-of parameter, and FOCUS's
    `CAPTURE_SKEW` check measures only its own capture times. Load into shadow tables, then swap them in one
    transaction (`ALTER SCHEMA … TRANSFER` or `sp_rename`), or switch a view. Never truncate and insert in place.
-2. **Load everything from one instant.** All SOURCE tables come from `--as-of`. `cs_windows` must come from the
-   same load generation as the task list, or admission rejects it (`CS_GENERATION_MISMATCH`).
+2. **Load everything from one instant.** All SOURCE tables staged at the cut come from `--as-of`. Publish one active
+   load of `cs_windows` per line: when a producer receipt declares the active load, admission rejects rows from
+   another load (`CS_GENERATION_MISMATCH`), and two active loads for a line give `CS_LOAD_CONFLICT`.
 3. **Stamp the row clock on every row.** Set the table's row clock (`LOAD_TIMESTAMP`, `SNAPSHOT_TS` or `LOAD_TS`)
    to the load instant, in UTC.
    - The live reader passes no `loaded_at`, so live freshness comes from these columns.
@@ -248,19 +315,22 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
 
 ### 5.3 Two timing risks to settle before go-live
 
-- **Verification inside the live window.**
-  - The draft makes acquisition wait for every verify job (P23), including the whole test suite. The full non-UI suite
-    alone took 10.5 minutes here (906 tests). With the installs, the UI suite and the rehearsal, verification would
-    use most of the 15–20 minute window before acquisition could start.
-  - Recommendation: run the live schedules from a protected branch or tag whose merge pipeline already passed. Keep
-    `import_and_lint` and the preflights in the live path, and drop the suite from it. This changes a recorded
-    decision (P23), so it needs the owner.
+- **Verification inside the live window: settled by the 20-minute requirement (D-28).**
+  - The full non-UI suite alone takes about 10 minutes. With the installs, the UI suite and the rehearsal,
+    verification would use most of the window before acquisition could start.
+  - The draft therefore runs the suites on merge requests and on the default branch. A live run uses only code from
+    a protected ref, and `acquire_admit` refuses any other. `import_and_lint`, the preflights and the staged-schema
+    check stay in every run.
+  - `FOCUS_LIVE_VERIFY=full` puts the suites back into every live run.
+  - Protect the default branch and require a passed pipeline to merge, or the rule protects nothing.
 - **Manual signing.**
-  - `sign_accept` is `when: manual`. With about five minutes between the end of planning and the shift start, a
+  - `sign_accept` waits for an operator. With about five minutes between the end of planning and the shift start, a
     missed promotion makes a late plan.
   - Options: automatic promotion inside the protected signer environment (signing only a plan whose FINAL and
     readback validations are clean), or a staffed promotion with an alert at T−5 minutes. This is an owner
-    decision.
+    decision (DEC-11).
+  - The automatic path is built and switched off: `FOCUS_AUTO_SIGN: "false"` in the pipeline draft. Do not turn it
+    on without the owner's decision on record.
 
 ## 6. Engineering work before going live (in order)
 
@@ -292,8 +362,12 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
    - Correct the out-of-date `live_effect` texts (DECISIONS.md lists them). Do this with the next policy revision,
      because it changes the policy hash.
    - The owner must answer the open decisions OD-02 to OD-05 and OD-07 to OD-17.
-8. **Shadow, then calibrate.** Run in shadow mode for at least four weeks, then follow `10_CALIBRATION.md` §8 (w,
-   bands, the classifier's error rates, stale plans).
+8. **Shadow, then pilot, then calibrate.**
+   - Shadow (crews still follow the existing schedule) proves the pipeline, its timing and the plan's realism. Its
+     scores say how closely FOCUS's plan matched what the floor did; they do not measure the teams.
+   - Calibrate only on a pilot, where some teams are dispatched from the accepted plan and scores are computed but
+     used for nothing, for at least four weeks. Then follow `10_CALIBRATION.md` §8 (bands, noise, fairness, w, the
+     classifier's error rates).
 
 ## 7. Owner decisions still open
 
@@ -308,7 +382,8 @@ rule.
   the next plan also holds it. The next shift's window contains the completion, and shift windows are checked before
   overtime windows. The finishing shift's unit is then missed (`COMPLETION_CREDITED_ELSEWHERE_OR_LATE`). The
   alternative is to credit the crew that finished it; completion records carry the person.
-- **R5 off-plan credit, w and the bands:** after the real-data calibration.
+- **The rate for extra work (0.8 today) and the grade bands:** after the real-data calibration. Whether an approved
+  addition should raise what is expected is also open (`DECISION_PLAYBOOK.md`, DEC-26).
 - **Live load cadences:** the freshness limits are fixture defaults.
 - **The open decisions OD-02 to OD-05 and OD-07 to OD-17**, and the score policy approval (OD-16).
 
@@ -338,6 +413,9 @@ rule.
 | Pipeline steps and roles | `focus/orchestration.py`; `docs/execution/INSTALL_AND_PIPELINE.md` §4 |
 | Migrations and grants | `sql/migrations/`, `sql/grants/focus_fn_roles.sql`, `focus/migrations.py` |
 | Live store (pending) | `focus/data/sql_store.py` |
+| Objective, cost and criticality reports | `focus/economics/evaluator.py` (`objective_status`), `focus/valuation/criticality.py`; `docs/execution/OBJECTIVE_EXPLAINED.md` §4 and §5 |
+| Calendar coverage check | `focus/calendar.py` (`coverage_gaps`); `docs/data/02-calendars-and-stations.md` |
+| Economics rows from a rate file | `tools/build_economics_rows.py`, `focus/economics/rate_file.py`; `docs/data/08-economics.md` |
 | Score calibration on real data | `tools/calibrate_scores.py`; `docs/task-valuation-investigation/10_CALIBRATION.md` |
 | Evaluator-only run | `tools/evaluate_closed_shifts.py` |
 | Simulation (synthetic) | `focus/sim/`; `docs/execution/SIMULATION.md` |

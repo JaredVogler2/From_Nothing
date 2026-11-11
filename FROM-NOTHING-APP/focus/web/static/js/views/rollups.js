@@ -1,5 +1,5 @@
 // Performance Over Time (supplementary panel): the canonical score of a team, a superintendent or the business unit over
-// any period, from GET /api/v1/performance/rollup. The server sums the six components of every team-shift and applies the
+// any period, from GET /api/v1/performance/rollup. The server sums the seven components of every team-shift and applies the
 // one formula; this module only arranges the result (no formula and no grading in the browser).
 import { api, bindings, describeStatus, fmtRational, h, metric, mount, pill, stateCard, table, viewTitle } from "../core.js";
 import { card, dateControl, hashParams, query, selectControl, setHashParams, toolbar } from "./common.js";
@@ -36,8 +36,8 @@ function resultBlock(d) {
     h("div", { class: "metric-grid" },
       metric("Score", o.score === null ? "—" : o.score, o.status === "unknown" ? "official score unknown" : `${o.status} policy`, "metric-score"),
       metric("Grade", o.grade || "—"),
-      metric("Attainment A", o.attainment === null ? "—" : fmtRational(o.attainment, 3), "earned planned work ÷ planned work"),
-      metric("Adherence H", o.adherence === null ? "—" : fmtRational(o.adherence, 3), "planned work ÷ all work done"),
+      metric("Attainment A", o.attainment === null ? "—" : fmtRational(o.attainment, 3), "(planned work done + credited extra work) ÷ expected work"),
+      metric("Adherence H", o.adherence === null ? "—" : fmtRational(o.adherence, 3), "planned work done ÷ expected work"),
       metric("Team-shifts", d.team_shifts, d.unscored ? `${d.unscored} not scored yet` : "all scored")),
     d.partial ? stateCard("unknown", `Partial score ${d.partial.score ?? "—"} (${d.partial.label}). Leaving out the missing shifts can `
       + "flatter a group, so this is not the official score.", []) : null,
@@ -104,14 +104,15 @@ function jobsBlock(env, d) {
   const adherence = j.totals.adherence_from_jobs === null ? "—" : `${fmtRational(j.totals.adherence_from_jobs, 3)}`;
   return card(perAircraft ? "Jobs behind the score" : "Jobs behind the score, across aircraft",
     h("p", { class: "muted" }, perAircraft
-      ? "Each planned job of the selection and what happened to it; unplanned work earns nothing and lowers adherence."
+      ? "Each planned job of the selection and what happened to it; unplanned work is extra work, credited below a planned job."
       : "The same job (shop order id) on every aircraft of the selection, worst first: missed, unplanned and out-of-sequence minutes."),
     h("div", { class: "metric-grid" },
       metric("Done as planned", j.totals.count.done, `${fmtRational(String(j.totals.minutes.done), 0)} min`),
       metric("Missed", j.totals.count.missed, `${fmtRational(String(j.totals.minutes.missed), 0)} min, plus ${j.totals.count.excused} excused`),
       metric("Unplanned", j.totals.count.unplanned, `${fmtRational(String(j.totals.minutes.unplanned), 0)} min`),
       metric("Adherence from jobs", adherence, j.totals.unplanned_minutes_unknown
-        ? `unknown: ${j.totals.unplanned_minutes_unknown} unplanned job(s) have no standard minutes` : "planned done ÷ all done")),
+        ? `${j.totals.unplanned_minutes_unknown} unplanned job(s) have no standard minutes, so the extra-work credit is unknown`
+        : "planned done ÷ (planned done + missed)")),
     table([
       { key: "soi", label: "Job", render: jobName },
       { key: "kind", label: "Phase", render: (r) => (r.kind || "—").toLowerCase().replace("_", " ") },
@@ -121,7 +122,7 @@ function jobsBlock(env, d) {
       { key: "excused", label: "Excused", render: n("excused") },
       { key: "oos", label: "Out of sequence", render: n("out_of_sequence") },
       { key: "unplanned", label: "Unplanned", render: n("unplanned") },
-      // work on a team-shift no plan covered: its score is neutral, so this work lowers no adherence
+      // work on a team-shift no plan covered: its score is neutral, so this work earns no extra-work credit
       j.totals.count.no_plan ? { key: "no_plan", label: "No plan", render: n("no_plan") } : null,
       { key: "causes", label: "Causes", render: causes },
     ].filter(Boolean), j.jobs, { caption: "Jobs", empty: "No job record for this selection." }),

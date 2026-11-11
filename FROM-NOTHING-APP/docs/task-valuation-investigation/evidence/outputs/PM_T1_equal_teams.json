@@ -1,0 +1,118 @@
+{
+ "database": "fleet.db",
+ "teams": 30,
+ "team_shifts": 1260,
+ "shifts": 42,
+ "measures": {
+  "score": {
+   "label": "canonical score (excuse-adjusted, extra at 80%)",
+   "mean": 99.331,
+   "team_low": 98.997,
+   "team_high": 99.617,
+   "between_team_share_of_variance": 0.0161,
+   "split_half_r": -0.08,
+   "reliability_full_period": -0.175,
+   "r_with_team_size": -0.055,
+   "r_with_plan_load": -0.08
+  },
+  "att_excused": {
+   "label": "plan attainment, excuse-adjusted (minutes)",
+   "mean": 99.208,
+   "team_low": 98.87,
+   "team_high": 99.573,
+   "between_team_share_of_variance": 0.0143,
+   "split_half_r": -0.158,
+   "reliability_full_period": -0.375,
+   "r_with_team_size": -0.096,
+   "r_with_plan_load": -0.166
+  },
+  "att_raw": {
+   "label": "plan attainment, no excusals",
+   "mean": 95.058,
+   "team_low": 92.951,
+   "team_high": 96.443,
+   "between_team_share_of_variance": 0.0168,
+   "split_half_r": -0.2,
+   "reliability_full_period": -0.5,
+   "r_with_team_size": -0.026,
+   "r_with_plan_load": -0.302
+  },
+  "ppc_count": {
+   "label": "planned jobs done, excuse-adjusted (count)",
+   "mean": 99.373,
+   "team_low": 99.111,
+   "team_high": 99.615,
+   "between_team_share_of_variance": 0.0124,
+   "split_half_r": -0.263,
+   "reliability_full_period": -0.713,
+   "r_with_team_size": -0.04,
+   "r_with_plan_load": -0.092
+  },
+  "throughput": {
+   "label": "throughput: standard minutes completed",
+   "mean": 4911.913,
+   "team_low": 2767.143,
+   "team_high": 6673.095,
+   "between_team_share_of_variance": 0.7344,
+   "split_half_r": 0.994,
+   "reliability_full_period": 0.997,
+   "r_with_team_size": 0.997,
+   "r_with_plan_load": 0.682
+  },
+  "per_available_hour": {
+   "label": "throughput per available labor hour (capacity)",
+   "mean": 0.567,
+   "team_low": 0.514,
+   "team_high": 0.591,
+   "between_team_share_of_variance": 0.1134,
+   "split_half_r": 0.836,
+   "reliability_full_period": 0.91,
+   "r_with_team_size": 0.61,
+   "r_with_plan_load": 0.971
+  },
+  "efficiency": {
+   "label": "earned standard minutes per minute worked",
+   "mean": 0.986,
+   "team_low": 0.972,
+   "team_high": 0.994,
+   "between_team_share_of_variance": 0.0267,
+   "split_half_r": 0.173,
+   "reliability_full_period": 0.295,
+   "r_with_team_size": -0.101,
+   "r_with_plan_load": 0.127
+  },
+  "points_sum": {
+   "label": "sum of job points (minutes x criticality)",
+   "mean": 8759.173,
+   "team_low": 4911.433,
+   "team_high": 11900.175,
+   "between_team_share_of_variance": 0.7174,
+   "split_half_r": 0.994,
+   "reliability_full_period": 0.997,
+   "r_with_team_size": 0.997,
+   "r_with_plan_load": 0.682
+  },
+  "points_per_available_hour": {
+   "label": "job points per available labor hour",
+   "mean": 1.01,
+   "team_low": 0.911,
+   "team_high": 1.049,
+   "between_team_share_of_variance": 0.0985,
+   "split_half_r": 0.838,
+   "reliability_full_period": 0.912,
+   "r_with_team_size": 0.625,
+   "r_with_plan_load": 0.975
+  },
+  "crit_attainment": {
+   "label": "criticality-weighted attainment",
+   "mean": 99.208,
+   "team_low": 98.849,
+   "team_high": 99.588,
+   "between_team_share_of_variance": 0.0143,
+   "split_half_r": -0.184,
+   "reliability_full_period": -0.45,
+   "r_with_team_size": -0.098,
+   "r_with_plan_load": -0.129
+  }
+ }
+}

@@ -91,7 +91,8 @@ def _sha(value: Any) -> str:
 
 def _blank_step(defn: StepDef, ordinal: int) -> dict[str, Any]:
     return {"name": defn.name, "ordinal": ordinal, "role": defn.role, "needs": list(defn.needs), "status": "pending", "input_sha": None,
-            "output": None, "output_sha": None, "owner": None, "lease_until": None, "attempts": 0, "error": None, "updated_at": None}
+            "output": None, "output_sha": None, "owner": None, "lease_until": None, "attempts": 0, "error": None, "updated_at": None,
+            "started_at": None}
 
 
 # ---------------------------------------------------------------------- state
@@ -171,7 +172,7 @@ def claim(services: Any, pid: str, step: str, *, owner: str, role: str, lease_se
         return Claim("EXHAUSTED", f"{state['attempts']} attempts; a new pipeline key is needed", version)
     inputs = {n: s["output"] for n, s in needs.items()}
     new = dict(state, status="running", owner=owner, lease_until=now + timedelta(seconds=lease_seconds), attempts=state["attempts"] + 1,
-               input_sha=_sha({n: s["output_sha"] for n, s in needs.items()}), error=None, updated_at=now)
+               input_sha=_sha({n: s["output_sha"] for n, s in needs.items()}), error=None, updated_at=now, started_at=now)
     doc = dict(doc, steps=dict(doc["steps"], **{step: new}))
     try:
         new_version = services.repositories.put_state(PIPELINES, pid, doc, version)
@@ -266,7 +267,80 @@ def status(services: Any, pid: str) -> dict[str, Any]:
     failed = [s["name"] for s in steps if s["status"] == "failed"]
     return {"status": "ok", "pipeline_id": pid, "scope": doc["scope"], "key": doc["key"], "version": version,
             "state": "completed" if done else ("failed" if failed else "in_progress"), "failed": failed, "steps": steps,
+            "window": window(services, doc), "readiness_gaps": readiness_gaps(doc), "objective": objective(doc),
+            "criticality": criticality(doc),
             "outbox": outbox_events(services, pid)}
+
+
+def _recorded(doc: Mapping[str, Any], name: str) -> dict[str, Any]:
+    """What each scheduled plan's schedule step recorded under ``name``, by purpose."""
+    out: dict[str, Any] = {}
+    for step, purpose in (("schedule", "EXECUTABLE"), ("forecast", "FORECAST")):
+        state = doc["steps"][step]
+        if state["status"] == "completed":
+            out[purpose] = (state["output"].get(purpose) or {}).get(name)
+    return out
+
+
+def readiness_gaps(doc: Mapping[str, Any]) -> dict[str, int] | None:
+    """The admitted data's readiness gaps by code, largest first (None before admission). The codes that keep a cost
+    unknown are named in docs/execution/OBJECTIVE_EXPLAINED.md, section 4."""
+    state = doc["steps"]["admit"]
+    return state["output"].get("readiness_gaps") if state["status"] == "completed" else None
+
+
+def objective(doc: Mapping[str, Any]) -> dict[str, Any]:
+    """Each scheduled plan's objective status (``economics.evaluator.objective_status``): whether the cost objective
+    steered the plan, and what kept aircraft out of the dollars."""
+    return _recorded(doc, "objective")
+
+
+def criticality(doc: Mapping[str, Any]) -> dict[str, Any]:
+    """Each scheduled plan's criticality by aircraft (``valuation.criticality``): the modeled cost of one more day late,
+    which the jobs of that aircraft share. The forecast's is the one to read; nothing is scored with it (D-29)."""
+    return _recorded(doc, "criticality")
+
+
+WINDOW_STEPS = ("acquire", "admit", "schedule", "validate", "stage_readback", "sign_accept")   # the executable plan's path
+
+
+def window(services: Any, doc: Mapping[str, Any]) -> dict[str, Any]:
+    """The pre-shift window of one pipeline run, against the owner's budget (D-28: data gathering, scheduling and the
+    dashboard ready within 20 minutes).
+
+    The clock runs from the data cut (the source run's cutoff) to the end of ``sign_accept``: acceptance writes the
+    executable plan's display package, which is what the dashboard reads. Work finished after the cut is not in the
+    plan, so every minute here widens the gap that is captured after the fact. The forecast steps follow acceptance and
+    are outside the window. ``late`` says the plan was accepted at or after the start of the shift it plans: that
+    shift is then scored against the previous plan (D-26).
+    """
+    from .data.acquisition import get_run
+    from .performance.lifecycle import containing_shift_id, shift_window
+
+    policy = services.policy
+    budget = int(policy.optional("pipeline.pre_shift_budget_minutes", 20))
+    steps = doc["steps"]
+    cut = None
+    if steps["acquire"]["status"] == "completed":
+        found = get_run(services.repositories, steps["acquire"]["output"]["source_run_id"])
+        cut = None if found is None else found[0].cutoff
+    ready = _parse(steps["sign_accept"]["updated_at"]) if steps["sign_accept"]["status"] == "completed" else None
+    seconds: dict[str, float | None] = {}
+    for name in WINDOW_STEPS:
+        began, ended = _parse(steps[name].get("started_at")), _parse(steps[name]["updated_at"])
+        done = steps[name]["status"] == "completed" and began is not None and ended is not None
+        seconds[name] = round((ended - began).total_seconds(), 1) if done else None          # type: ignore[operator]
+    minutes = None if cut is None or ready is None else round((ready - cut).total_seconds() / 60, 1)
+    planned_for, late = None, None
+    if cut is not None:
+        planned_for = containing_shift_id(policy, cut + timedelta(minutes=policy.int("planning.cutoff_lead_minutes")), services.settings.site)
+        if planned_for is not None and ready is not None:
+            late = ready >= shift_window(policy, planned_for).start
+    return {"budget_minutes": budget, "data_cut": cut, "plan_and_dashboard_ready_at": ready, "minutes": minutes,
+            "within_budget": None if minutes is None else minutes <= budget, "plans_shift": planned_for, "late": late,
+            "step_seconds": seconds,
+            "note": "from the data cut to the accepted executable plan and its dashboard data; staging before the cut and the "
+                    "forecast after acceptance are outside it"}
 
 
 def outbox_events(services: Any, pid: str) -> list[dict[str, Any]]:
@@ -307,18 +381,27 @@ def step_admit(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> di
     if snapshot is None:
         raise StepFailed("SNAPSHOT_MISSING", f"no admitted snapshot for {run_id}")
     snapshot.verify()
-    return {"source_run_id": run_id, "snapshot_id": snapshot.id, "snapshot_hash": snapshot.hash, "head_version": head.version}
+    gaps: dict[str, int] = {}
+    for gap in snapshot.gaps:                      # the admitted data's readiness gaps, counted by code (their detail is in the snapshot)
+        gaps[gap.code] = gaps.get(gap.code, 0) + 1
+    return {"source_run_id": run_id, "snapshot_id": snapshot.id, "snapshot_hash": snapshot.hash, "head_version": head.version,
+            "readiness_gaps": dict(sorted(gaps.items(), key=lambda kv: (-kv[1], kv[0])))}
 
 
 def _schedule_one(services: Any, doc: dict[str, Any], inputs: dict[str, Any], purpose: str) -> dict[str, Any]:
     from .domain import Purpose
     from .engine.max.optimizer.orchestrator import schedule
 
+    from .economics.evaluator import objective_status
+    from .valuation.criticality import aircraft_criticality, report
+
     request = doc["request"]
     plan, run = schedule(services, source_run=inputs["admit"]["source_run_id"], purpose=Purpose(purpose),
                          budget_seconds=request["budget_seconds"], max_moves=request["max_moves"], mode=request.get("planning", "full"))
     return {"candidate_id": plan.id, "valid": run.validation.valid, "violations": len(run.validation.violations),
-            "solver": run.solver.get("status"), "planning": run.planning or None}
+            "solver": run.solver.get("status"), "planning": run.planning or None,
+            "objective": objective_status(plan.costs, plan.aircraft_completion, plan.job_dispositions, plan.created_at),
+            "criticality": report(aircraft_criticality(plan.costs, plan.created_at))}
 
 
 def _validate_one(services: Any, inputs: dict[str, Any], purpose: str, item: Mapping[str, Any]) -> dict[str, Any]:
@@ -397,7 +480,8 @@ def step_forecast(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) ->
     """The full-horizon forecast on the same admitted snapshot, after the executable plan is out: scheduled and validated."""
     scheduled = _schedule_one(services, doc, inputs, "FORECAST")
     return {"FORECAST": {**_validate_one(services, inputs, "FORECAST", scheduled), "solver": scheduled["solver"],
-                         "planning": scheduled["planning"]}}
+                         "planning": scheduled["planning"], "objective": scheduled["objective"],
+                         "criticality": scheduled["criticality"]}}
 
 
 def step_forecast_stage_readback(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> dict[str, Any]:

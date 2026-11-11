@@ -1,6 +1,8 @@
 """P18: canonical effort score over unit facts and frozen gate recognition (A57, A58, A59, A60, A61; S14 numeric examples).
 
-Expected values are the S14 numbers, written down here, never recomputed by the scorer under test.
+Expected values are the S14 numbers as the owner's extra-work decision (D-27) changed them, written down here, never
+recomputed by the scorer under test. D-27: adherence is the planned jobs done over the expected work, and unplanned work
+earns credit as extra work, below the same planned work. A missed planned job costs points on its own unless excused.
 """
 from __future__ import annotations
 
@@ -13,71 +15,115 @@ import pytest
 from focus.analytics.points import behind_station, gate_context, unit_values
 from focus.contracts.evaluation import OffplanFact, OOSFact, UnitFact
 from focus.domain import DomainError, EvaluationStatus
-from focus.performance.score import (WINDOW_OPEN, build_evaluation, components, formula, grade_for, personal_grade_refusal, pooled,
-                                     round_half_up, score_policy_errors, status_and_score)
+from focus.performance.score import (CREDIT_UNKNOWN, OFFPLAN_OOS_BY_CHOICE, OFFPLAN_OOS_UNCLASSIFIED, WINDOW_OPEN, build_evaluation, components,
+                                     formula, grade_for, personal_grade_refusal, pooled, round_half_up, score_policy_errors, status_and_score)
+
+NO_REASON = "NO_REASON_ON_RECORD"                    # information on a missed unit (lifecycle.unit_facts); it changes no score
 
 T = datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc)
 
 
-def unit(i: int, effort: int, status: str, *, relief: bool = False, origin: str = "ORIGINAL", goal: str = "G") -> UnitFact:
+def unit(i: int, effort: int, status: str, *, relief: bool = False, origin: str = "ORIGINAL", goal: str = "G",
+         reasons: tuple[str, ...] = ()) -> UnitFact:
     return UnitFact(f"U{goal}{i}", goal, "J", f"J.WORK.{i}", 0, "PROD-A", effort, origin, status, T if status == "EARNED" else None,
-                    "EVT" if status == "EARNED" else None, relief, False, ())
+                    "EVT" if status == "EARNED" else None, relief, False, reasons)
 
 
-def facts(B: int, Cp: int, E: int = 0, *, unit_size: int = 10, goal: str = "G") -> list[UnitFact]:
-    """B minutes of frozen units: Cp earned, E missed-with-relief, the rest missed."""
-    assert B % unit_size == Cp % unit_size == E % unit_size == 0
+def facts(B: int, Cp: int, E: int = 0, *, unit_size: int = 10, goal: str = "G", no_reason: int = 0) -> list[UnitFact]:
+    """B minutes of frozen units: Cp earned, E missed-with-relief, the rest missed. ``no_reason`` of the missed minutes
+    carry NO_REASON_ON_RECORD (no claim); the others have a claim that was not approved. The score treats both alike."""
+    assert B % unit_size == Cp % unit_size == E % unit_size == no_reason % unit_size == 0 and no_reason <= B - Cp - E
     out, i = [], 0
-    for status, relief, minutes in (("EARNED", False, Cp), ("MISSED", True, E), ("MISSED", False, B - Cp - E)):
+    for status, relief, minutes, why in (("EARNED", False, Cp, ()), ("MISSED", True, E, ()), ("MISSED", False, no_reason, (NO_REASON,)),
+                                         ("MISSED", False, B - Cp - E - no_reason, ())):
         for _ in range(minutes // unit_size):
-            out.append(unit(i, unit_size, status, relief=relief, goal=goal))
+            out.append(unit(i, unit_size, status, relief=relief, goal=goal, reasons=why))
             i += 1
     return out
 
 
-def offplan(effort: int | None) -> OffplanFact:
-    return OffplanFact("OFP1", "PROD-A", "DEMO:2026-10-26:S1", "J2", "J2.WORK.0", effort, T, "EVT2", ())
+def offplan(effort: int | None, *, reasons: tuple[str, ...] = ()) -> OffplanFact:
+    return OffplanFact("OFP1", "PROD-A", "DEMO:2026-10-26:S1", "J2", "J2.WORK.0", effort, T, "EVT2", reasons)
 
 
 def oos(affected: int, *, discretionary: bool | None = True, planned: bool = True) -> OOSFact:
     return OOSFact("OOS1", "J.WORK.0", ("U1",), affected, discretionary, planned, discretionary is True and planned, "x")
 
 
-def score(policy, B, Cp, E=0, U=0, O_affected=0, **kw):
-    parts = components(facts(B, Cp, E), [offplan(U)] if U else [], [oos(O_affected)] if O_affected else [], policy)
+def score(policy, B, Cp, E=0, U=0, O_affected=0, no_reason=0, **kw):
+    parts = components(facts(B, Cp, E, no_reason=no_reason), [offplan(U)] if U else [], [oos(O_affected)] if O_affected else [], policy)
     status, result, reasons = status_and_score(parts, policy, [])
     return status, result, parts, reasons
 
 
 # ---------------------------------------------------------------------- the S14 examples (A57, A58, A60)
 
-@pytest.mark.parametrize("B,E,Cp,U,O_aff,expected", [
-    (200, 0, 200, 0, 0, "100.0"),
-    (200, 0, 100, 0, 0, "65.0"),          # A57
-    (200, 0, 100, 100, 0, "50.0"),        # A57
-    (200, 0, 0, 0, 0, "0.0"),             # A57: no free 30 adherence points without output
-    (200, 100, 100, 0, 0, "100.0"),       # A58: reviewed relief, B0 preserved
-    (200, 0, 200, 0, 200, "90.0"),        # A60: base 100, separate 10-point charge
+@pytest.mark.parametrize("B,E,Cp,U,O_aff,no_reason,expected", [
+    (200, 0, 200, 0, 0, 0, "100.0"),
+    (200, 0, 100, 0, 0, 0, "50.0"),        # A57 (65 before D-27): half the expected work done is 50, with no free adherence points
+    (200, 0, 100, 100, 0, 0, "90.0"),      # A57 (50 before D-27): 100 unplanned minutes are extra work: 0.8 x 1 + 0.2 x 0.5
+    (200, 0, 100, 100, 0, 100, "90.0"),    # ... whether or not the missed work has a reason on record: the miss costs its own points
+    (200, 0, 100, 50, 0, 0, "70.0"),       # D-27: 50 extra minutes are worth 0.8 of 50 planned minutes (which would give 75)
+    (200, 0, 200, 100, 0, 0, "100.0"),     # D-27: extra work beyond a finished plan never lowers the score (96.7 before)
+    (200, 0, 0, 0, 0, 0, "0.0"),           # A57: nothing done is 0
+    (200, 0, 0, 400, 0, 0, "80.0"),        # D-27: extra work alone never earns the adherence share
+    (200, 100, 100, 0, 0, 0, "100.0"),     # A58: reviewed relief, B0 preserved
+    (200, 0, 200, 0, 200, 0, "90.0"),      # A60: base 100, separate 10-point charge
 ])
-def test_s14_numeric_examples(policy, B, E, Cp, U, O_aff, expected) -> None:
-    status, result, parts, _ = score(policy, B, Cp, E, U, O_aff)
+def test_s14_numeric_examples(policy, B, E, Cp, U, O_aff, no_reason, expected) -> None:
+    status, result, parts, _ = score(policy, B, Cp, E, U, O_aff, no_reason)
     assert status is EvaluationStatus.DEMONSTRATION and str(result["score"]) == expected
-    assert parts["B0"] == B and parts["Cp"] == Cp                                           # Cp never reduced by O; B0 never shrinks
+    assert parts["B0"] == B and parts["Cp"] == Cp and parts["U"] == U                       # Cp never reduced by O; B0 never shrinks
 
 
-def test_zero_output_is_zero_not_thirty_and_h_is_zero(policy) -> None:
+def test_zero_output_is_zero_and_h_is_zero(policy) -> None:
     _, result, _, _ = score(policy, 200, 0)
     assert result["adherence"] == 0 and result["attainment"] == 0 and result["base"] == 0
+
+
+def test_extra_work_is_credited_below_planned_work_and_a_miss_costs_points_on_its_own(policy) -> None:
+    """D-27, in the owner's example (2026-11-10): 10 jobs scheduled, 8 done, 4 others not on plan. Full credit for the 8,
+    some credit for the 4, and points lost for the 2 missed unless their excuse is valid. Jobs are 60 minutes."""
+    def final(rows, extra: int):
+        return status_and_score(components(rows, [offplan(extra)] if extra else [], [], policy), policy, [])[1]
+
+    not_excused = final(facts(600, 480, unit_size=60, no_reason=60), 240)                 # one miss has a rejected claim, one has none
+    assert (not_excused["attainment"], not_excused["adherence"]) == (1, Fraction(480, 600)) and str(not_excused["score"]) == "96.0"
+    assert str(final(facts(600, 480, unit_size=60), 0)["score"]) == "80.0"                   # the same shift with no extra work
+    assert str(final(facts(600, 480, 120, unit_size=60), 240)["score"]) == "100.0"           # both misses validly excused: nothing lost
+    # below the cap an extra minute is worth 0.8 of a planned minute: 60 extra minutes add 8 points, 60 planned ones 10
+    one_extra, one_more_planned = final(facts(600, 480, unit_size=60), 60), final(facts(600, 540, unit_size=60), 0)
+    assert (str(one_extra["score"]), str(one_more_planned["score"])) == ("88.0", "90.0")
+    # a swap never pays: the missed planned hour done instead of one of the extra hours scores higher
+    assert final(facts(600, 540, unit_size=60), 180)["final"] > not_excused["final"]
+    # the credited minutes are all the unplanned minutes, with or without a reason on record for the misses
+    parts = components(facts(600, 480, unit_size=60, no_reason=120), [offplan(240)], [], policy)
+    assert (parts["U"], parts["Uc"]) == (240, 240)
+
+
+def test_extra_work_started_out_of_sequence_by_choice_earns_nothing_and_unclassified_is_unknown(policy) -> None:
+    by_choice = components(facts(200, 100), [offplan(100, reasons=(OFFPLAN_OOS_BY_CHOICE,))], [], policy)
+    assert (by_choice["U"], by_choice["Uc"]) == (100, 0) and str(status_and_score(by_choice, policy, [])[1]["score"]) == "50.0"
+    unclassified = components(facts(200, 100), [offplan(100, reasons=(OFFPLAN_OOS_UNCLASSIFIED,))], [], policy)
+    status, result, reasons = status_and_score(unclassified, policy, [])
+    assert unclassified["Uc"] is None and status is EvaluationStatus.UNKNOWN and result["score"] is None
+    assert any(r.startswith("OFFPLAN_OOS_CLASSIFICATION_UNKNOWN") for r in reasons)
+
+
+def test_a_member_scored_before_the_extra_work_credit_makes_the_pool_unknown(policy) -> None:
+    old = {**components(facts(200, 100), [], [], policy), "Uc": None}                       # a record written before D-27
+    status, result, reasons = status_and_score(pooled([old, components(facts(100, 100, goal="B"), [], [], policy)]), policy, [])
+    assert status is EvaluationStatus.UNKNOWN and result["score"] is None and reasons == [CREDIT_UNKNOWN]
 
 
 def test_oos_charge_is_separate_and_once(policy) -> None:
     status, result, parts, _ = score(policy, 200, 200, O_affected=200)
     assert parts["O"] == 20 and result["base"] == 100 and result["final"] == 90 and parts["Cp"] == 200
-    # unapproved offplan OOS is already in U: adherence falls, but there is no second numeric O
-    parts = components(facts(200, 200), [offplan(100)], [oos(200), oos(100, planned=False)], policy)
+    # unapproved offplan OOS is in U and earns no extra-work credit, but there is no second numeric O
+    parts = components(facts(200, 200), [offplan(100, reasons=(OFFPLAN_OOS_BY_CHOICE,))], [oos(200), oos(100, planned=False)], policy)
     _, result, _ = status_and_score(parts, policy, [])
-    assert parts["O"] == 20 and parts["U"] == 100
-    assert result["base"] == Fraction(100) * (Fraction(7, 10) + Fraction(3, 10) * Fraction(200, 300)) and result["final"] == result["base"] - 10
+    assert parts["O"] == 20 and parts["U"] == 100 and parts["Uc"] == 0
+    assert result["base"] == 100 and result["final"] == 90
     # XP is the frozen recognition value: never reduced by O
     assert sum(unit_values(None, f.effort, policy)[0] for f in facts(200, 200) if f.status == "EARNED") == 40
 
@@ -107,16 +153,27 @@ def test_missing_evidence_or_policy_is_unknown_null(policy) -> None:
 
 # ---------------------------------------------------------------------- A59: pooled aggregation
 
-def test_a59_pooled_aggregate_is_72_not_average_82_5(policy) -> None:
+def test_a59_pooled_aggregate_is_60_not_the_average_75(policy) -> None:
+    """A59: sums before division. The S14 numbers were 72 and 82.5; without the free adherence points (D-27) they are 60 and 75."""
     a = components(facts(400, 200, goal="A"), [], [], policy)
     b = components(facts(100, 100, goal="B"), [], [], policy)
-    each = [formula(p["B"], p["E"], p["Cp"], p["U"], p["O"], policy)["final"] for p in (a, b)]
-    assert each == [65, 100] and (each[0] + each[1]) / 2 == Fraction(165, 2)                # the wrong answer, 82.5
+    each = [formula(p["B"], p["E"], p["Cp"], p["Uc"], p["O"], policy)["final"] for p in (a, b)]
+    assert each == [50, 100] and (each[0] + each[1]) / 2 == 75                               # the wrong answer, 75
     whole = pooled([a, b])
     status, result, _ = status_and_score(whole, policy, [])
-    assert (whole["B"], whole["Cp"]) == (500, 300) and str(result["score"]) == "72.0"
+    assert (whole["B"], whole["Cp"]) == (500, 300) and str(result["score"]) == "60.0"
     unit_level = components(facts(400, 200, goal="A") + facts(100, 100, goal="B"), [], [], policy)
     assert status_and_score(unit_level, policy, [])[1]["final"] == result["final"]             # units pooled == components pooled
+
+
+def test_extra_work_beyond_one_shifts_expected_amount_counts_in_the_pooled_period(policy) -> None:
+    """D-27: a team that finished its plan and worked ahead scores 100 that shift, and the extra minutes count toward the
+    period: they fill the output share of another shift's shortfall, never its adherence share."""
+    ahead = components(facts(200, 200, goal="A"), [offplan(50)], [], policy)                 # 100 on its own, with 50 credited
+    short = components(facts(200, 150, goal="B"), [], [], policy)                            # 75 on its own
+    assert [str(status_and_score(p, policy, [])[1]["score"]) for p in (ahead, short)] == ["100.0", "75.0"]
+    both = status_and_score(pooled([ahead, short]), policy, [])[1]
+    assert both["attainment"] == 1 and both["adherence"] == Fraction(350, 400) and str(both["score"]) == "97.5"   # 87.5 without it
 
 
 def test_rounding_only_after_sums_and_bands(policy) -> None:
@@ -125,7 +182,7 @@ def test_rounding_only_after_sums_and_bands(policy) -> None:
     assert [grade_for(Decimal(x), policy) for x in ("90.0", "89.9", "80.0", "70.0", "60.0", "59.9")] == ["A", "B", "B", "C", "D", "F"]
     thirds = [components(facts(30, 10, unit_size=10, goal=g), [], [], policy) for g in "XYZ"]
     r = status_and_score(pooled(thirds), policy, [])[1]
-    assert r["final"] == Fraction(100) * (Fraction(7, 10) * Fraction(1, 3) + Fraction(3, 10)) and str(r["score"]) == "53.3"
+    assert r["final"] == Fraction(100, 3) and str(r["score"]) == "33.3"
 
 
 # ---------------------------------------------------------------------- official status and personal grades
@@ -138,7 +195,7 @@ def test_official_status_needs_an_applicable_policy_receipt(policy) -> None:
     assert score_policy_errors(approved) == []
     parts = components(facts(200, 100), [], [], approved)
     assert status_and_score(parts, approved, [])[0] is EvaluationStatus.OFFICIAL
-    bad = policy.with_overrides({"score.attainment_weight": "0.80"}, new_id="bad-weights")
+    bad = policy.with_overrides({"score.attainment_weight": "0.70"}, new_id="bad-weights")
     assert any(e.startswith("SCORE_POLICY_INVALID") for e in score_policy_errors(bad))
     e = build_evaluation(scope="S", kind="GOAL", label="x", goal_ids=["G"], cutoff=T, policy=bad, parts=parts, extra_reasons=score_policy_errors(bad),
                          evidence_hash="h")

@@ -9,18 +9,25 @@ counts, elapsed or actual burn, never dollars, and never multiplied by crew agai
   (``DONE_BEFORE_SHIFT``: the previous shift finished them after the shift's plan was made; D-26).
 * D = B - E.
 * Cp = verified planned/amended completion, counted once.
-* U = unapproved offplan verified completion.
+* U = unapproved offplan verified completion (all of it, for the record).
+* Uc = the part of U that earns credit as extra work (owner decision D-27): every verified offplan
+  completion, except work started out of sequence by choice. What the team missed does not reduce it:
+  a missed planned unit costs points on its own, unless approved relief excuses it.
 * O = ``score.oos_rate`` x affected planned effort of evidenced discretionary OOS, counted once
   per unit.
 
 When D > 0:
 
-* A = min(1, Cp/D);
-* H = Cp/(Cp+U) if output > 0, else 0;
+* A = min(1, (Cp + Uc)/D): output attainment, the expected amount of work delivered;
+* H = min(1, Cp/D): plan adherence, the planned jobs done (job identity, never clock times);
 * base = 100 * (wA*A + wH*H);
 * final = clamp(base - 100*O/D, 0, 100), rounded only at the very end.
 
-Offplan OOS is already in U and receives no second numeric charge. Cp stays unchanged by O.
+Below the cap a planned minute earns 100/D points and a credited extra minute earns 100*wA/D, so extra
+work is worth wA (demonstration: 0.80) of the same planned work, and it never lowers a score. Without
+extra work the base is 100*Cp/D for any weights.
+
+Offplan OOS is in U, never in Uc, and receives no second numeric charge. Cp stays unchanged by O.
 
 **Null semantics.**
 
@@ -33,8 +40,10 @@ The status (DEMONSTRATION or OFFICIAL) comes from the applicable policy receipt,
 hardcoded approval. Personal grades stay disabled unless their own policy exists.
 
 **Aggregation.** Team, aircraft, factory and history totals pool the exact components before
-dividing. D400/Cp200 plus D100/Cp100 is 72, not the 82.5 average of percentages. Every surface
-reads the same persisted evaluations (``history``), so all views agree by construction.
+dividing. D400/Cp200 plus D100/Cp100 is 60, not the 75 average of percentages. Credited extra work
+is pooled too: extra work beyond one shift's expected amount counts toward the period it is pooled
+in. Every surface reads the same persisted evaluations (``history``), so all views agree by
+construction.
 """
 from __future__ import annotations
 
@@ -52,6 +61,9 @@ from ..domain import EvaluationStatus, aware_utc, digest_id
 
 
 WINDOW_OPEN = "WINDOW_OPEN: the shift's credit window has not closed; output, offplan work and OOS can still change"
+OFFPLAN_OOS_BY_CHOICE = "OUT_OF_SEQUENCE_BY_CHOICE"     # offplan work started out of sequence by choice: no credit as extra work
+OFFPLAN_OOS_UNCLASSIFIED = "OOS_CLASSIFICATION_UNKNOWN" # ... with an unclassified violation: the credit is unknown
+CREDIT_UNKNOWN = "OFFPLAN_CREDIT_UNKNOWN: a member was evaluated before the extra-work credit (D-27); evaluate it again"
 
 
 # ---------------------------------------------------------------------- pure arithmetic (the one formula authority)
@@ -93,16 +105,17 @@ def grade_for(score: Decimal, policy: Any) -> str:
     return "F"
 
 
-def formula(B: Fraction, E: Fraction, Cp: Fraction, U: Fraction, O: Fraction, policy: Any) -> dict[str, Any]:
-    """S14 arithmetic on exact components. D == 0 -> neutral (all None)."""
+def formula(B: Fraction, E: Fraction, Cp: Fraction, Uc: Fraction, O: Fraction, policy: Any) -> dict[str, Any]:
+    """S14 arithmetic on exact components, with the extra-work credit of D-27. D == 0 -> neutral (all None).
+
+    ``Uc`` is the *credited* extra work (``components``), never the whole offplan output U."""
     D = B - E
     if D <= 0:
         return {"D": D, "attainment": None, "adherence": None, "base": None, "final": None, "score": None, "grade": None}
     wa, wh = Fraction(policy.str("score.attainment_weight")), Fraction(policy.str("score.adherence_weight"))
     rate_charge = Fraction(100) * O / D
-    A = min(Fraction(1), Cp / D)
-    output = Cp + U
-    H = Cp / output if output > 0 else Fraction(0)
+    A = min(Fraction(1), (Cp + Uc) / D)            # output attainment: planned work done plus credited extra work
+    H = min(Fraction(1), Cp / D)                   # plan adherence: the planned jobs done
     base = Fraction(100) * (wa * A + wh * H)
     final = min(Fraction(100), max(Fraction(0), base - rate_charge))
     score = round_half_up(final, policy.int("score.round_decimals"))
@@ -124,27 +137,38 @@ def components(facts: Iterable[UnitFact], offplan: Iterable[OffplanFact], oos: I
     if any(f.status == "UNKNOWN" for f in unknown_units):
         reasons.append(f"UNKNOWN_DISPOSITION: {sum(1 for f in unknown_units if f.status == 'UNKNOWN')} unit(s) have unknown completion/disposition")
     U: Fraction | None = Fraction(0)
+    eligible, credit_known = Fraction(0), True
     for o in offplan:
         if o.effort is None:
             U = None
             reasons.append(f"OFFPLAN_EFFORT_UNKNOWN: {o.phase} has no sourced standard")
             break
         U += o.effort  # type: ignore[operator]
+        if OFFPLAN_OOS_UNCLASSIFIED in o.reasons:
+            credit_known = False
+        elif OFFPLAN_OOS_BY_CHOICE not in o.reasons:
+            eligible += o.effort
+    Uc: Fraction | None = None
+    if U is not None and not credit_known:
+        reasons.append("OFFPLAN_OOS_CLASSIFICATION_UNKNOWN: an out-of-sequence start on unplanned work has no discretionary classification")
+    elif U is not None:
+        Uc = eligible
     rate = Fraction(policy.str("score.oos_rate"))
     O: Fraction | None = rate * sum((Fraction(x.affected_effort) for x in oos if x.charged), Fraction(0))
     if any(x.discretionary is None and x.planned for x in oos):
         O = None
         reasons.append("OOS_CLASSIFICATION_UNKNOWN: an evidenced planned violation has no discretionary classification")
-    return {"B0": B0, "B": B0 + additions, "E": E, "Cp": Cp, "U": U, "O": O, "reasons": reasons}
+    return {"B0": B0, "B": B0 + additions, "E": E, "Cp": Cp, "U": U, "Uc": Uc, "O": O, "reasons": reasons}
 
 
 def pooled(parts: Iterable[dict[str, Any]]) -> dict[str, Any]:
     """Sum exact components across goals before any division (team/aircraft/factory/history)."""
-    out: dict[str, Any] = {"B0": Fraction(0), "B": Fraction(0), "E": Fraction(0), "Cp": Fraction(0), "U": Fraction(0), "O": Fraction(0), "reasons": []}
+    out: dict[str, Any] = {"B0": Fraction(0), "B": Fraction(0), "E": Fraction(0), "Cp": Fraction(0), "U": Fraction(0), "Uc": Fraction(0),
+                           "O": Fraction(0), "reasons": []}
     for p in parts:
         for k in ("B0", "B", "E", "Cp"):
             out[k] += p[k]
-        for k in ("U", "O"):
+        for k in ("U", "Uc", "O"):
             out[k] = None if (out[k] is None or p[k] is None) else out[k] + p[k]
         out["reasons"] += list(p["reasons"])
     return out
@@ -153,12 +177,14 @@ def pooled(parts: Iterable[dict[str, Any]]) -> dict[str, Any]:
 def status_and_score(parts: dict[str, Any], policy: Any, extra_reasons: list[str]) -> tuple[EvaluationStatus, dict[str, Any], list[str]]:
     reasons = list(extra_reasons) + list(parts["reasons"])
     blank = {"D": parts["B"] - parts["E"], "attainment": None, "adherence": None, "base": None, "final": None, "score": None, "grade": None}
+    if not reasons and parts["B"] - parts["E"] > 0 and parts.get("Uc") is None:
+        reasons.append(CREDIT_UNKNOWN)
     if reasons:
         return EvaluationStatus.UNKNOWN, blank, reasons
     if parts["B"] - parts["E"] <= 0:
         why = "NO_PLAN: no frozen obligation (B = 0)" if parts["B"] == 0 else "ALL_EXCUSED: approved relief, or work finished before the shift, covers every obligation (D = 0)"
         return EvaluationStatus.NEUTRAL, blank, [why]
-    result = formula(parts["B"], parts["E"], parts["Cp"], parts["U"], parts["O"], policy)
+    result = formula(parts["B"], parts["E"], parts["Cp"], parts["Uc"], parts["O"], policy)
     status = EvaluationStatus.OFFICIAL if policy.str("score.policy_status") == "OFFICIAL" else EvaluationStatus.DEMONSTRATION
     return status, result, []
 
@@ -175,7 +201,7 @@ def build_evaluation(*, scope: str, kind: str, label: str, goal_ids: Iterable[st
         id=digest_id("EVL", scope, cutoff, policy.hash, goal_set_hash, evidence_hash), scope=scope, kind=kind, label=label, series_key=key,
         goal_ids=goal_ids, goal_set_hash=goal_set_hash, cutoff=cutoff, policy_id=policy.id, policy_hash=policy.hash,
         policy_status=policy.str("score.policy_status"), B0=parts["B0"], B=parts["B"], E=parts["E"], D=r["D"], Cp=parts["Cp"], U=parts["U"],
-        O=parts["O"], attainment=r["attainment"], adherence=r["adherence"], base=r["base"], final=r["final"], score=r["score"], grade=r["grade"],
+        Uc=parts["Uc"], O=parts["O"], attainment=r["attainment"], adherence=r["adherence"], base=r["base"], final=r["final"], score=r["score"], grade=r["grade"],
         status=status, reasons=tuple(dict.fromkeys(reasons)), evidence_hash=evidence_hash, revision=0, supersedes=None, created_at=cutoff)
 
 
@@ -214,7 +240,8 @@ def evaluate_shift(services: Any, team: str, shift_id: str, *, as_of: datetime |
     record = view.record(team, shift_id)
     scope = services.settings.scope_key
     if record is None:
-        parts = {"B0": Fraction(0), "B": Fraction(0), "E": Fraction(0), "Cp": Fraction(0), "U": Fraction(0), "O": Fraction(0), "reasons": []}
+        parts = {"B0": Fraction(0), "B": Fraction(0), "E": Fraction(0), "Cp": Fraction(0), "U": Fraction(0), "Uc": Fraction(0),
+                 "O": Fraction(0), "reasons": []}
         evidence = EvaluationEvidence(content_hash({"no_obligation_plan": [team, shift_id]}), (), (), (), (), {}, (), None)
         draft = build_evaluation(scope=scope, kind="GOAL", label=f"{team} {shift_id}", goal_ids=(digest_id("GOAL", "NO-PLAN", team, shift_id),),
                                  cutoff=as_of, policy=policy, parts=parts, extra_reasons=score_policy_errors(policy), evidence_hash=evidence.id)
@@ -274,7 +301,7 @@ def aggregate(services: Any, members: list[Evaluation], *, label: str, as_of: da
 
     policy = services.policy
     scope = services.settings.scope_key
-    parts = pooled({"B0": m.B0, "B": m.B, "E": m.E, "Cp": m.Cp, "U": m.U, "O": m.O, "reasons": []} for m in members)
+    parts = pooled({"B0": m.B0, "B": m.B, "E": m.E, "Cp": m.Cp, "U": m.U, "Uc": m.Uc, "O": m.O, "reasons": []} for m in members)
     reasons = [f"MEMBER_UNKNOWN: {m.label}" for m in members if m.status is EvaluationStatus.UNKNOWN]
     if any(m.policy_hash != policy.hash for m in members):
         reasons.append("MIXED_POLICY: members were evaluated under another policy")
@@ -313,7 +340,7 @@ def summary(e: Evaluation) -> dict[str, Any]:
 
     return {"evaluation_id": e.id, "kind": e.kind, "label": e.label, "status": e.status.value, "policy_id": e.policy_id,
             "policy_status": e.policy_status, "revision": e.revision, "supersedes": e.supersedes, "cutoff": e.cutoff.isoformat(),
-            "B0": num(e.B0), "B": num(e.B), "E": num(e.E), "D": num(e.D), "Cp": num(e.Cp), "U": num(e.U), "O": num(e.O),
+            "B0": num(e.B0), "B": num(e.B), "E": num(e.E), "D": num(e.D), "Cp": num(e.Cp), "U": num(e.U), "Uc": num(e.Uc), "O": num(e.O),
             "attainment": num(e.attainment), "adherence": num(e.adherence), "base": num(e.base), "final": num(e.final),
             "score": None if e.score is None else str(e.score), "grade": e.grade, "reasons": list(e.reasons), "evidence_hash": e.evidence_hash,
             "goal_ids": list(e.goal_ids)}

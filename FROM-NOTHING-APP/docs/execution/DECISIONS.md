@@ -187,7 +187,7 @@ attendance. A conditional ETA is never physical receipt.
     run by the retention role.
 - **D-25 Performance over any period, and the jobs behind each score (owner direction, November 2, 2026).**
   - **One light row per team-shift** (`team_shift_performance`, `focus.performance.rollup`). Each evaluation revision
-    writes its team-shift's six canonical components, status, evaluation id, policy hash, the team and the
+    writes its team-shift's canonical components (seven since D-27, with the credited extra work Uc), status, evaluation id, policy hash, the team and the
     superintendent. About 200 bytes; no snapshot, plan or per-unit evidence is needed to read it.
   - **Superintendent as of the shift.** FOCUS_PERSON_TEAM_MAP's `SUPERINTENDENT` is admitted with each source run as an
     org chart (`focus.data.org`): each team's members name a superintendent over time, and the team reports to the
@@ -273,6 +273,209 @@ attendance. A conditional ETA is never physical receipt.
       so the offplan credit rule in `docs/task-valuation-investigation/09_OFFPLAN_CREDIT.md` matters more under
       per-shift goals.
 
+- **D-27 Extra work earns credit, below the same planned work (owner decision, November 10, 2026).**
+  - **The owner's requirement.** "The teams should get credit because they burned energy getting the work done, but
+    it shouldn't be as rewarded as working the right jobs. If they aren't rewarded they would rather sit stagnant than
+    work ahead, and that isn't acceptable." Until this decision every unplanned minute lowered a team's score.
+  - **The owner's example** (the same day). "If there are 10 jobs scheduled and they do 8 of them and 4 others not on
+    plan, they should get full credit for the [8] then some credit for the 4. They may lose points for the 2 scheduled
+    they missed", depending on whether the excuse for them is valid. With one-hour jobs this scores 96.0 when the two
+    misses are not excused, 100.0 when they are, and 80.0 without the extra work.
+  - **The rate: 80%, confirmed by the owner.** An extra job earns 80% of the same planned work
+    (`score.attainment_weight` = 0.80, `score.adherence_weight` = 0.20, both labeled `owner_decision`).
+  - **The formula** (`performance.score.formula`). With D > 0:
+    - A = min(1, (Cp + Uc)/D), output attainment: the planned work done plus the credited extra work;
+    - H = min(1, Cp/D), plan adherence: the planned jobs done, with no timing test (the owner's definition, D-26);
+    - base = 100(0.80A + 0.20H); the out-of-sequence charge and the clamp are unchanged.
+
+    Below the cap a planned minute earns 100/D points and a credited extra minute 80/D. Extra work never lowers a
+    score, and the 20% adherence share is earned only by planned work. Without extra work the base is 100·Cp/D.
+  - **Which extra work is credited** (`performance.score.components`). Uc is every verified offplan completion of
+    the team-shift, with one exception:
+    - offplan work started out of sequence by choice earns none (`OUT_OF_SEQUENCE_BY_CHOICE` on the offplan fact).
+      An unclassified violation makes the credit, and so the score, unknown
+      (`OFFPLAN_OOS_CLASSIFICATION_UNKNOWN`).
+
+    What the team missed does not reduce the credit. A missed planned unit costs points on its own, unless approved
+    relief excuses it; then it leaves D.
+  - **No reason on record.** A missed unit that no claim names carries `NO_REASON_ON_RECORD`
+    (`disruption.explained_units`, `lifecycle.unit_facts`). It is information for the lead and the reports, and
+    changes no score. The first build of this decision made extra work cover such misses before any of it was
+    credited; the owner's example removed that the same day.
+  - **Pooling.** Uc is a stored component like the others (the evaluation, the light row, the simulation's team-shift
+    row). A shift's own score stops at 100; in a day, a week or any group the minutes are summed first, so extra
+    minutes beyond one shift's expected work count toward the period's output share.
+  - **What this supersedes in the manual (S14).** `H = Cp/(Cp+U)` and the 70/30 demonstration split. The manual's
+    examples become: B200/Cp100 scores 50 (65); B200/Cp100/U100 scores 90 (50); the pooled D400/Cp200 with D100/Cp100
+    scores 60, not the 75 average (72 and 82.5). A57's "no throughput substitute" no longer holds: the owner wants
+    throughput credited, at a discount. The manual itself is unchanged.
+  - **Grades get stricter for a team with a shortfall and no extra work.** Before, a team with no unplanned work
+    earned the 30 adherence points whatever it finished. A team that does 80% of its expected work now scores 80,
+    where the old formula gave 86; 60% scores 60 (D), where it gave 72 (C). The bands (90/80/70/60) are unchanged
+    demonstration values, to be set on pilot data (`docs/integration/DECISION_PLAYBOOK.md`, DEC-23).
+  - **Still the owner's to decide.**
+    - Approved additions. An approved emergency addition still raises B, so an approved extra job done by a team
+      that is behind can score below the same job done unapproved. Open (DEC-26).
+    - Recognition points are unchanged: offplan output earns no XP (S14: no offplan farming).
+  - **The risk the owner accepted.** A team can do unplanned work in place of planned work and still earn 80% for
+    it. The 20% it gives up is the only deterrent, so the swap never pays when the standard minutes are fair, and
+    can pay when the unplanned job's standard is generous. `tools/calibrate_scores.py` reports a swap watch (unplanned
+    minutes beside planned work missed with no reason on record) so the owner can see whether it happens (DEC-20).
+  - **Stored records.** Evaluations and rows written before this decision have no Uc. They pool as unknown
+    (`OFFPLAN_CREDIT_UNKNOWN`, `COMPONENT_UNKNOWN`) until evaluated again, and the weights changed the policy hash, so
+    mixing them with new ones is `MIXED_POLICY`. The job record now lists every cause on record for a job, proposed or
+    submitted. A simulation database made before it is reported as outdated.
+  - **Evidence.** Reports `09_OFFPLAN_CREDIT.md` and `10_CALIBRATION.md`. On the simulated floor the old formula
+    ranked the most productive floor (every idle team pulling work ahead) below the floor that did nothing extra, in
+    both seeds; the credit rule ranks them as production does. Those runs gave swapped-in work no credit, which the
+    owner's rule does. `tools/calibrate_scores.py` re-runs every figure on real scores.
+
+- **D-28 The pre-shift run takes 20 minutes at most (owner requirement, November 10, 2026).**
+  - **The owner's words.** "The scheduling is for production prior to each shift to set the plan. The data gathering
+    and scheduling and dashboard should be ready to go within 20 minutes."
+  - **What is measured** (`orchestration.window`, shown by `python -m focus.cli pipeline --key K --status`). The
+    clock runs from the data cut, which is the source run's cutoff, to the end of `sign_accept`. Acceptance writes the
+    executable plan's display package, which is what the dashboard reads, so the plan and its dashboard are ready at
+    the same moment. The budget is policy `pipeline.pre_shift_budget_minutes` = 20 (`owner_decision`).
+    - Staging at the cut counts. A preload before the cut does not, and suits only data that does not change within
+      a shift.
+    - The forecast (delivery dates and costs for every aircraft) follows acceptance in the same pipeline and is
+      outside the window. Its dashboard views update when it is accepted.
+    - The report gives the minutes used, whether they are within the budget, the seconds per step, and whether the
+      plan was accepted after its shift had started (`late`; D-26 then scores that shift against the previous plan).
+  - **Tests run on merge, not before every shift.** The full suites take about half of the budget. The pipeline
+    draft therefore runs them on merge requests and on the default branch, and a live run uses only code from a
+    protected ref (`acquire_admit` refuses any other). `FOCUS_LIVE_VERIFY=full` puts them back in every live run. The
+    import check, the migration dry run, the preflights and the staged-schema check stay in every run. This changes
+    P23's "every verification first" from "in this run" to "on the merge that put this code on the protected ref".
+  - **Still open:** who accepts the plan (DEC-11). The draft's `sign_accept` waits for a person, three times a day,
+    inside these 20 minutes.
+
+- **D-29 A job's criticality comes from the cost objective (owner direction, November 10, 2026).**
+  - **The owner's words.** "Criticality should be a function of how critical that job is toward the objective
+    function of global minimization of penalty costs."
+  - **Decision.** FOCUS has one definition of criticality and it is derived from the objective, never assigned by
+    hand, by job type or by a list: a job's criticality is **the modeled cost of one more day late for its aircraft,
+    in the accepted forecast plan, as a share of the highest such cost in the fleet** (0 to 1). It is the measure the
+    scheduler's own search orders work by (`EconomicsRegistry.derive_priority_weights`), read here from the
+    accepted plan's cost lines, so it needs no second model.
+    - `LATE`: the plan finishes the aircraft after its due date. One more day costs its daily rate.
+    - `ON_TIME`: the plan finishes it before the due date. One more day costs only what would fall past the due
+      date, which is nothing when there is more than a day of margin.
+    - `PAST_DUE`: the due date has passed and the finish date is unknown. Every further day costs the rate
+      whatever the finish turns out to be, so the criticality is known although the cost is not.
+    - `FINISH_UNKNOWN`, `NO_RATE_OR_DUE_DATE`: unknown. Never read as zero, never filled in.
+  - **Built** (`focus/valuation/criticality.py`; `tests/unit/test_criticality.py`). Every pipeline run reports it
+    under `criticality` in its status, for the executable plan and the forecast; the forecast's is the one to read.
+    **It is reported only: no plan, goal or score reads it.**
+  - **Why it is the aircraft's and not one job's.** The measurements in `docs/task-valuation-investigation`:
+    - Slipping a single job by one shift moved no delivery: 378 of 378 first-shift jobs at 5 aircraft and 60 of 60
+      sampled at 10, each re-planned exactly; 3,189 of 3,189 at 50 aircraft, all late, by the schedule graph. One job
+      can be re-sequenced. What moves a delivery is how much of the aircraft's work gets done, which the score
+      already counts in standard minutes.
+    - Where single jobs did have a cost, the costs did not add up: two jobs on one late aircraft each carried the
+      whole delay (2.2 to 6.2 times over when summed). A dollar value per job cannot be a points currency.
+    - The scheduler's per-job urgency (`urgency.cost_of_delay`) is the aircraft's cost reduced by the job's slack. It
+      was positive for 99% of jobs where the exact re-plan found a cost for 39%. It stays a search aid.
+    - Which job of an aircraft comes first is the plan's sequence. The plan is the objective's own statement of what
+      matters this shift, and D-27 already scores it that way: planned work counts in full, other work at 80%.
+  - **What it would do to scores** (`evidence/scripts/aircraft_weighted.py`, output `AW50.json`: the stored
+    50-aircraft, 14-day simulation, 1,302 team-shifts, every aircraft late). Counting a job on the most critical
+    aircraft double moves a team's attainment by 0.05 points on average and by at most 2.8; 0.5% of team-shifts
+    move a point or more; the order of teams is unchanged (rank agreement 0.9996). Counting it four times: 0.08 on
+    average, at most 4.7, 0.9% move a point or more. A team's shift mixes aircraft, and most planned work gets done,
+    so the weights largely cancel. On a fleet where some aircraft are late and others have weeks of margin the
+    weights differ more inside one shift, so the effect can be larger; that has to be measured on real plans.
+  - **Still the owner's to decide** (`docs/integration/DECISION_PLAYBOOK.md`, DEC-31): whether criticality stays
+    information for leads and managers, or also weights a team's score. Until then scores stay in standard minutes.
+  - **Depends on the cost objective working** (DEC-29). With every aircraft's finish date unknown, criticality is
+    known only for the aircraft already past due.
+
+- **D-30 A run says what kept it from optimizing cost (engineering, November 10, 2026).**
+  - **Why.** On live data a run can finish, publish a plan and never compare a dollar: an aircraft's cost is known
+    only when its rate, its due date and its finish date are all known. Nothing failed, so nothing showed it.
+  - **Decision.** Every run reports the facts itself, in `python -m focus.cli pipeline --key K --status`:
+    - `objective` (`economics.evaluator.objective_status`), for the executable plan and the forecast: the aircraft
+      with a known cost, a usable rate, a due date and a finish date; the aircraft already past due; the first cause
+      on each aircraft with no cost; the open jobs that could not be planned, by reason;
+    - `readiness_gaps`: the admitted data's gaps by code, largest first;
+    - `criticality` (D-29) and `window` (D-28).
+  - **Calendars.** Admission now checks every line with open work (`calendar.coverage_gaps`):
+    `CALENDAR_NO_DAYS_LEFT` when no working shift is left after the data cut, and `CALENDAR_ENDS_BEFORE_DUE` when the
+    last working shift ends at or before the due instant. The second matters most: such a line can be planned on
+    time or not at all, never late, so its lateness is never costed. FOCUS still never adds a day (DEC-28).
+  - **Rates.** `tools/build_economics_rows.py` (`focus/economics/rate_file.py`) builds the four economics tables'
+    rows from a rate file and the list of aircraft, marks them `ASSUMED`, lists every aircraft it cannot price and
+    exits with code 2 while one is unpriced. It never fills a rate in.
+  - **Calibration.** `tools/calibrate_scores.py` gained scores by shift number, week-to-week stability and a
+    supervisor grade check on a sample without scores (`10_CALIBRATION.md` §8).
+  - **Unchanged.** No plan, validation, goal or score changes. Unknown stays unknown: none of these estimates a
+    missing value.
+  - **Tests.** `tests/unit/test_objective_status.py`, `tests/unit/test_calendar_coverage.py`,
+    `tests/integration/test_calendar_coverage.py`, `tests/unit/test_rate_file.py`, the new cases in
+    `tests/unit/test_calibrate_scores.py`, and `test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan`.
+
+- **D-31 The daily late-delivery rate is the airline economic proxy (owner, November 11, 2026).**
+  - **The owner's words**, on a rate table the owner supplied: "Column should be
+    'daily_airline_economic_proxy_usd' for daily lateness penalty cost." "Assume deliveries are 744 unload + 2 days."
+    "No cap on penalty costs." Later the same day: "14 day grace period is not real. Lateness begins at 744 unload
+    plus 2 days", and on keeping the table here: "yes can [put] penalties in repository, they are derived from public
+    data".
+  - **Decision.**
+    - A late aircraft's daily rate is the owner's airline economic proxy for its customer airline and minor model:
+      column `daily_airline_economic_proxy_usd` of the owner's rate table, $39,010 to $84,372 a day. No other column
+      of that table is used.
+    - Lateness begins at the planned unload at control station 744 plus 2 days, as decided on 2026-11-02 (OD-06).
+      There is no other grace period.
+    - No cap. `economics.cap_policy` stays `EXPLICIT_ONLY` and no cap is supplied.
+  - **The table is kept in `fixtures/economics/airline_economic_proxy.csv`** with the owner's approval: 94 rows, 63
+    airlines, the columns FOCUS uses and those that say where the rate comes from. The table's liquidated-damages
+    estimates and hypothetical caps are not used and not kept.
+  - **What changed.**
+    - The synthetic fleet is priced with these rates (`focus/data/fullscale_fixture.py`). Until now it used the
+      ticket revenue an aircraft would have earned in a day, which was 2.7 to 5.2 times higher (median 3.5; weighted
+      by open orders, $293,780 a day against $69,084).
+    - The order of customers changed as well as the level: rank agreement between the two sets is 0.70, the highest
+      rate is British Airways 787-10 where it was United 787-9, and the highest rate is 1.8 times the lowest where it
+      was 2.8 times.
+    - `tools/build_economics_rows.py` (`focus/economics/rate_file.py`) reads the table as it is: named columns,
+      minor models written as `787-9`, and an explicit list that joins each customer code to the airline name the
+      table uses, matched exactly.
+    - The superseded figures stay in `fixtures/economics/ticket_revenue_proxy.csv`, which still gives the synthetic
+      fleet its customers and its open-order mix.
+  - **Not covered by the table.**
+    - Qatar Airways 787-10 (75 open orders) and Turkish Airlines 787-10 (15) have no row: 18% of the open orders.
+      No rate is made up. The synthetic fleet gives them no aircraft. On real data such an aircraft is listed as
+      unpriced and its cost stays unknown until the owner supplies a row or a rule (`DECISION_PLAYBOOK.md`, DEC-35).
+    - The table is keyed by the airline that flies the aircraft, which may differ from the contractual buyer (the
+      table's own caveat). An aircraft whose customer is a lessor or another buyer has no row under that name.
+  - **Unchanged.** Cost = daily rate × minutes late ÷ 1,440; the order in which two schedules are compared; every
+    plan, validation, goal and score rule. The rates are `ASSUMED` planning values, never contract liability. OD-12
+    stays open for approved contract terms and booked liability.
+  - **Rates steer the plan, not only its price.** The scheduler's first pass orders work by each aircraft's daily
+    rate. On one 10-aircraft fleet the first pass alone cost 30% more at these rates than a first pass made with one
+    rate for every aircraft, and the improvement search then took a quarter off. The shipped time budget leaves that
+    search no time (`DECISION_PLAYBOOK.md`, DEC-34).
+  - **Earlier figures.** Dollar amounts in reports and evidence written before this decision used the ticket-revenue
+    figures and a synthetic fleet split over two more customer and minor-model pairs. They were not re-run.
+  - **Tests.** `tests/unit/test_fleet_rates.py` and the new cases in `tests/unit/test_rate_file.py`.
+
+- **D-32 The fleet is whichever aircraft have open tasks (owner, November 11, 2026).**
+  - **The owner's words**, asked about measuring on "the 50-aircraft fleet": "a dynamic 50 aircraft only depending
+    on what tasks are open because these tasks state which aircraft they belong on so a schedule derived a year from
+    now will be different from the 50 aircraft of a schedule made today."
+  - **Decision.** The aircraft in a run are those with open tasks in the data at the cut. No list of aircraft, no
+    list of customers and no count is fixed. Fifty is a planning size, not a limit and not a set.
+  - **Already so in the code.** The census takes every line with any work that is not complete; there is no line cap
+    and no top-50 (`focus/data/scope.py`; policy `scope.default_basis` = `ALL_WIP`, a user requirement). A narrower
+    scope needs an explicit scope receipt.
+  - **What follows.**
+    - Rates: any airline and minor model can come up, so the owner's whole table is kept (D-31), and an aircraft the
+      table does not cover is listed every run, never filled in.
+    - Nothing is tuned to one fleet. The search budget (DEC-34) is measured on several different fleets, and the
+      synthetic fleet is one example among many.
+    - Evidence from one synthetic fleet says how FOCUS behaved on that fleet, not what next year's will look like.
+
 ## Semantic gaps (live), each a precise readiness effect
 
 These are the policy file's `open_decisions` (OD-18 is tracked here only). None of them blocks local
@@ -299,7 +502,9 @@ quarantined), what each one withholds comes from the data its answer unlocks:
 - OD-09 affirmative no-cert census
 - OD-10 assignment/attendance feeds (currently empty)
 - OD-11 shift-start travel origin
-- OD-12 economics terms/caps/checkpoints
+- OD-12 economics terms/caps/checkpoints. The owner decided the planning rate (the airline economic proxy) and that
+  there is no cap on 2026-11-11 (D-31). Approved contract terms, sale bases and booked-liability checkpoints stay
+  open, so the gap stays in live snapshots.
 - OD-13 master shop-order status meanings
 - OD-14 which accepted plan purpose drives delivery commitments (fixture: FORECAST)
 - OD-15 live observation producers: no S04 table carries lifecycle facts, raw actual intervals, claims, decisions,

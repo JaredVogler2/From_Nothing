@@ -95,8 +95,12 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
 Station windows are start floors. A task may be planned any distance ahead, but never before its own station's window
 opens on its own aircraft. The planner applies the floor and validator check V4 re-checks it.
 
-Customers and minor models follow the open-order mix of `fixtures/economics/penalty_proxy.csv`. Lateness is priced per
-customer and minor model with that table's daily ticket-revenue proxy (`fixtures/economics/README.md`).
+Customers and minor models follow the open-order mix of `fixtures/economics/ticket_revenue_proxy.csv`. Lateness is
+priced per customer and minor model with the owner's airline economic proxy
+(`fixtures/economics/airline_economic_proxy.csv`; owner decision D-31 of 2026-11-11, `fixtures/economics/README.md`).
+A customer and minor model with open orders and no rate in that table gets no aircraft, so every simulated aircraft is
+priced. Runs made before that date used the ticket-revenue figures, about 3.5 times higher. The simulated fleet is one
+example: the real fleet is whichever aircraft have open tasks (D-32).
 
 An aircraft's lateness is set by its worst late parts, the maximum over hundreds of draws. The 8-14 day tail of
 `late_delays` therefore decides how late the fleet runs. It is the first knob to review.
@@ -125,6 +129,26 @@ order:
   out, and the work it performed is kept (see the write-back).
 
 Afterwards, a team with at least two idle hours pulls ready work forward with `pull_ahead` = 35 %.
+
+**Teams that differ (`TeamTraits`, experiments only).** Every team follows the same `FloorSpec`, so no team is better
+than another: a measure that still ranks teams is ranking their size, their load or their work. For a test with a
+known truth, `run(spec, path, traits=TeamTraits(...))` gives named teams their own pace (a multiplier on every actual
+duration), `deviation` and `pull_ahead`. With traits a person starts a task only after finishing the previous one, so
+a slow team runs out of shift and its late tasks are missed as overruns, which are never excused. Without traits a
+run is unchanged. Report `docs/task-valuation-investigation/11_PERFORMANCE_MEASURES.md` uses it.
+
+`skip` models a floor that chooses its own work, as a crew chasing job counts does. Each shift a team leaves that
+share of its dispatched effort undone by choice (a deviation: no claim, never excused) and, with `fill` = `easy`,
+works the shortest ready tasks of the coming hours instead. `skip_pick` says which planned tasks it leaves: the
+`hardest`, `random` ones, first the ones other planned work waits on (`gating`) or first the ones nothing planned
+waits on (`non_gating`); a team with too few of its kind leaves some of the other kind to reach its share. Report
+`12_RIGHT_WORK_SCORE.md` uses it.
+
+**What waits on each task (`exec_priority`).** Every shift records, for each dispatched task, the plan's priority
+facts from `focus/valuation/priority.py`: how many other jobs planned for this shift or the next wait on it, their
+standard minutes (in total and for other teams), its tier (`MUST`: planned work waits on it; `FILL`: nothing depends
+on it; `PLAN`: the rest) and whether the team left it by choice. There is one row for each goal unit of record. No
+score reads it.
 
 **Write-back.** Finished work, and work an overrun cut short, is written back per job before the next cutoff. So each
 shift plans only the work the earlier shifts left open, and nothing is credited twice:
@@ -157,10 +181,12 @@ same function production uses (S14):
 - **Earned.** Cp is the planned or added effort finished, once, in its own shift. Nothing is credited early: work an
   earlier plan had put in a later shift counts as offplan output in the shift that did it. A unit already finished
   before its shift started (only when an earlier plan stands in) is `DONE_BEFORE_SHIFT`: out of D with the relief.
-- **Offplan.** U is finished work that is no unit of this shift's goal: pulled ahead, or a deviation.
-- **Formula.** attainment A = min(1, Cp/D); adherence H = Cp/(Cp + U), so offplan work is discounted; score =
-  100 × (0.70 A + 0.30 H) − 100 × O/D, where O is the once-only out-of-sequence charge. Grades are A 90+, B 80+, C 70+,
-  D 60+ and F below.
+- **Offplan.** U is finished work that is no unit of this shift's goal: pulled ahead, or a deviation. Uc is the part
+  that earns credit as extra work (D-27). The floor only works ready tasks off the plan, so none is out of sequence
+  and Uc = U.
+- **Formula.** attainment A = min(1, (Cp + Uc)/D); adherence H = min(1, Cp/D), the planned work done; score =
+  100 × (0.80 A + 0.20 H) − 100 × O/D, where O is the once-only out-of-sequence charge. Offplan work earns 80% of the
+  same planned work and never lowers a score. Grades are A 90+, B 80+, C 70+, D 60+ and F below.
 - **Labels.** Results carry the policy's status (DEMONSTRATION). A goal with D = 0 is NEUTRAL, never 100 or F.
 
 Fleet, day and week figures pool the components of every team-shift before dividing, so they are never an average of
@@ -205,7 +231,7 @@ The dashboard compares:
 | Calculated | `calc_count`, `calc_job`, `calc_aircraft`, `calc_pool` | Each shift's admitted snapshot: inventory counts per item (`calc_count`). Per open job: team, window, duration, crew, earliest start, open shortage and disposition. Per aircraft: customer, model, due date and daily penalty. Per team and shift: pool size and activation cap. |
 | Method | `sim_shift`, `method_stage`, `method_move`, `method_check`, `method_violation`, `method_commitment` | Stage timings and notes, accepted moves, validator check counts and violations, the first 500 violations of each plan (check, code, entity, detail), each incumbent commitment's defense outcome (with the code of each UNSAFE one), stop reason, decision digest, each step's wall time and peak memory. |
 | Results | `plan_assignment`, `plan_duty`, `plan_aircraft`, `plan_exception` | Both purposes' published plans. |
-| Outcomes | `exec_assignment`, `exec_event`, `exec_offplan`, `exec_oos` | The floor's outcome for each dispatched assignment with its cause, source events, offplan work with its kind (`pull_ahead`, `deviation`, `outside_goals`), and out-of-sequence starts with their evidence. `exec_event` kinds: `call_off`, `done_before_shift`, `kit_short_at_point_of_use`, `shortage_found_undated`, `shortage_dated`, `part_slipped`, `part_late_unannounced`, `part_arrived`, `rework_found` and `plan_accepted_late` (only with `SimSpec.late_plan_share` > 0, which has no CLI flag; `docs/task-valuation-investigation/evidence/scripts/offplan_paired.py --late-plans` sets it). |
+| Outcomes | `exec_assignment`, `exec_event`, `exec_offplan`, `exec_oos`, `exec_priority` | The floor's outcome for each dispatched assignment with its cause, source events, offplan work with its kind (`pull_ahead`, `deviation`, `outside_goals`), out-of-sequence starts with their evidence, and what waits on each dispatched task (its tier, the planned work behind it, and whether the team left it by choice). `exec_event` kinds: `call_off`, `done_before_shift`, `kit_short_at_point_of_use`, `shortage_found_undated`, `shortage_dated`, `part_slipped`, `part_late_unannounced`, `part_arrived`, `rework_found` and `plan_accepted_late` (only with `SimSpec.late_plan_share` > 0, which has no CLI flag; `docs/task-valuation-investigation/evidence/scripts/offplan_paired.py --late-plans` sets it). |
 | Performance | `perf_goal_day`, `perf_unit`, `perf_unlock`, `perf_amendment`, `perf_claim`, `perf_team_shift` | Each shift's frozen goals with the simulation shift whose plan froze them, every goal unit (frozen or added) with its status, cause and claim and whether its role needs a certificate group at most two of the frozen membership hold (`scarce`), the other jobs each earned unit's completion released as their last prerequisite (`perf_unlock`), the emergency additions, the claims with their decisions and reasons, and each team-shift's missed units by cause (part, absence, predecessor, overrun, deviation), planned, actual and available hours, utilization, B0, additions, B, E, Cp, U, attainment, adherence, score and grade, scored by `status_and_score` with its parts kept: base before the out-of-sequence charge, the charge O, the clamped final, the policy id and hash, and why a goal is NEUTRAL (NO_PLAN or ALL_EXCUSED). Runs made before this change lack those last columns; the dashboard shows them as —. |
 
 ## Dashboard and API

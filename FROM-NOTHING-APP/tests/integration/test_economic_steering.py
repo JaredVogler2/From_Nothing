@@ -52,6 +52,14 @@ def test_a44_economic_redispatch_improves_exact_fleet_cost(services_factory) -> 
     assert best.costs[1301].total_cents < base.costs[1301].total_cents
     assert best.ot_minutes <= base.ot_minutes and best.travel_minutes <= base.travel_minutes    # no hidden NVA cost bought the gain
     assert plan.global_optimality_proven is False and plan.algorithm_status.proof_status == "HEURISTIC_NO_PROOF"
+    # D-29: a job's criticality is its aircraft's cost of one more day late in the plan, the number the search steered by
+    from focus.valuation.criticality import LATE, aircraft_criticality, job_criticality
+
+    crit = aircraft_criticality(plan.costs, plan.created_at)
+    assert (crit[1301].state, crit[1301].weight) == (LATE, 1) and (crit[1302].state, crit[1302].weight) == (LATE, Fraction(1, 10))
+    assert crit[1301].cost_per_day_cents == 10 * crit[1302].cost_per_day_cents == weights[1301].marginal_cents
+    assert job_criticality(crit, 1301) == weights[1301].normalized and job_criticality(crit, 1302) == weights[1302].normalized
+    assert all(c.weight is None for line, c in crit.items() if line in plan.costs.unknown_lines)     # unknown is never zero
 
 
 def test_a44_cli_schedule_reports_weights_complete_dispositions_and_costs(services_factory) -> None:
@@ -66,6 +74,9 @@ def test_a44_cli_schedule_reports_weights_complete_dispositions_and_costs(servic
     baseline = from_jsonable(Fraction, comparison["baseline_known_cents"])
     assert final < baseline and comparison["complete_fleet_cost"] is False                                # unknown lines kept visible
     assert result["costs"]["unknown_lines"] and result["global_optimality_proven"] is False
+    objective = result["objective_status"]                                                               # the same facts, counted
+    assert objective["cost_steering"] == "partial" and objective["aircraft"] - objective["cost_known"] == len(result["costs"]["unknown_lines"])
+    assert objective["unplanned_open_jobs"] == sum(objective["unplanned_open_jobs_by_reason"].values()) > 0
     assert {s["stage"] for s in result["algorithm"]["stages"]} == {"neutral_seed", "economic_redispatch", "delay_repair", "neighborhoods"}
     bad = cli_schedule(services, argparse.Namespace(source_run=outcome.run_id, policy="other-policy", budget_seconds=1.0, purpose="EXECUTABLE"))
     assert bad["status"] == "invalid" and bad["error"]["code"] == "POLICY_MISMATCH"

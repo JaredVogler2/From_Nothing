@@ -69,10 +69,12 @@ def test_a59_team_factory_history_surfaces_pool_the_same_units(world) -> None:
     assert [g.id for g in goals] == [world.t.evals[at][t].id for t in ("PROD-A", "PROD-B", "QA")]   # surfaces read the persisted revision
     factory = aggregate(services, goals, label="FACTORY 2026-10-26", as_of=at)
     B = sum(g.B for g in goals)
-    E, Cp, U, O = (sum(getattr(g, k) for g in goals) for k in ("E", "Cp", "U", "O"))
+    E, Cp, U, Uc, O = (sum(getattr(g, k) for g in goals) for k in ("E", "Cp", "U", "Uc", "O"))
     D = B - E
-    expected = Fraction(100) * (Fraction(7, 10) * min(Fraction(1), Cp / D) + Fraction(3, 10) * Cp / (Cp + U)) - 100 * O / D
-    assert (factory.B, factory.E, factory.Cp, factory.U, factory.O) == (B, E, Cp, U, O) and factory.final == expected
+    # D-27: output attainment counts the credited extra work, adherence only the planned work done
+    expected = Fraction(100) * (Fraction(8, 10) * min(Fraction(1), (Cp + Uc) / D) + Fraction(2, 10) * Cp / D) - 100 * O / D
+    assert (factory.B, factory.E, factory.Cp, factory.U, factory.Uc, factory.O) == (B, E, Cp, U, Uc, O) and factory.final == expected
+    assert (U, Uc) == (420, 240)                                                             # PROD-A's extra work; B2 was out of sequence by choice
     average = sum(g.final for g in goals) / 3
     assert factory.final != average                                                          # never the average of percentages
     team = aggregate(services, [goals[1]], label="TEAM PROD-B 2026-10", as_of=at)
@@ -220,5 +222,5 @@ def test_steady_shift_needs_three_consecutive_scored_shifts(policy) -> None:
     view = SimpleNamespace(records=lambda: records, credits={})
     desired = progression._steady_shift(services, view, evals)
     scores = [str(evals[r.goal_id].score) for r in records]
-    assert scores == ["100.0", "93.0", "93.0", "65.0", "100.0", "100.0"]
+    assert scores == ["100.0", "90.0", "90.0", "50.0", "100.0", "100.0"]                       # done / expected, with no extra work
     assert [d.period for d in desired] == ["RUN:GOAL0:GOAL2"]                                  # 4-5-6 is only two after the break

@@ -16,6 +16,7 @@ import json
 import os
 import sqlite3
 from collections import defaultdict
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +65,10 @@ def _outdated(con: sqlite3.Connection) -> ApiResult | None:
     missing = [t for t in SCHEMA_TABLES if t not in have]
     if missing:
         return ApiResult("blocked", None, reasons=[reason("SIMULATION_SCHEMA_OUTDATED", f"the simulation database lacks {', '.join(missing)}",
+                                                          f"rebuild it with: {BUILD}")])
+    if "Uc" not in {r[1] for r in con.execute("PRAGMA table_info(perf_team_shift)")}:
+        return ApiResult("blocked", None, reasons=[reason("SIMULATION_SCHEMA_OUTDATED", "the simulation database predates the extra-work "
+                                                          "credit (D-27): its team-shifts have no credited offplan minutes",
                                                           f"rebuild it with: {BUILD}")])
     return None
 
@@ -117,11 +122,11 @@ def _rollup(rows: list[dict[str, Any]]) -> dict[str, Any]:
     from ..performance.score import formula
 
     keys = ("units", "earned", "on_time", "missed_part", "missed_absence", "missed_predecessor", "missed_overrun", "missed_deviation",
-            "planned_hours", "actual_hours", "available_hours", "present", "B0", "additions", "B", "E", "Cp", "U", "oos_effort", "relieved_units",
-            "added_units", "offplan_units", "oos_units")
+            "planned_hours", "actual_hours", "available_hours", "present", "B0", "additions", "B", "E", "Cp", "U", "Uc", "oos_effort",
+            "relieved_units", "added_units", "offplan_units", "oos_units")
     out = {k: round(sum((r.get(k) or 0) for r in rows), 2) for k in keys}
     policy = svc().policy
-    result = formula(Fraction(int(out["B"])), Fraction(int(out["E"])), Fraction(int(out["Cp"])), Fraction(int(out["U"])),
+    result = formula(Fraction(int(out["B"])), Fraction(int(out["E"])), Fraction(int(out["Cp"])), Fraction(int(out["Uc"])),
                      Fraction(policy.str("score.oos_rate")) * int(out["oos_effort"]), policy)
     out["D"] = int(out["B"]) - int(out["E"])
     out["attainment"] = None if result["attainment"] is None else round(float(result["attainment"]), 4)
@@ -134,15 +139,17 @@ def _rollup(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def _pooled(B: int, E: int, Cp: int, U: int, oos_effort: int) -> dict[str, Any]:
-    """The canonical formula over pooled components (an aircraft's goal units across teams)."""
+def _pooled(B: int, E: int, Cp: int, U: int, Uc: Any, oos_effort: int) -> dict[str, Any]:
+    """The canonical formula over pooled components (an aircraft's goal units across teams). ``Uc`` is the aircraft's
+    share of each team-shift's credited extra work, so it may be fractional."""
     from fractions import Fraction
 
     from ..performance.score import formula
 
     policy = svc().policy
-    r = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(U), Fraction(policy.str("score.oos_rate")) * oos_effort, policy)
-    return {"B": B, "E": E, "D": B - E, "Cp": Cp, "U": U, "oos_effort": oos_effort, "score": None if r["score"] is None else float(r["score"]),
+    r = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(Uc), Fraction(policy.str("score.oos_rate")) * oos_effort, policy)
+    return {"B": B, "E": E, "D": B - E, "Cp": Cp, "U": U, "Uc": round(float(Uc), 2), "credited": Uc, "oos_effort": oos_effort,
+            "score": None if r["score"] is None else float(r["score"]),
             "grade": r["grade"], "attainment": None if r["attainment"] is None else round(float(r["attainment"]), 4),
             "adherence": None if r["adherence"] is None else round(float(r["adherence"]), 4), "status": "SCORED" if r["score"] is not None else "NEUTRAL"}
 
@@ -249,8 +256,8 @@ def sim_overview(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     "sim_performance", "GET", "/api/v1/sim/performance",
     summary="Shift, day and week performance: this shift against the prior shift, day against day, week against week",
     description="Canonical team-shift scores of the simulated execution (S14 formula under the active policy) pooled by shift, production "
-                "day and week: planned effort, approved relief, earned planned effort, offplan output, out-of-sequence charge, attainment, "
-                "adherence, score and grade, missed tasks by cause (and, apart, missed work with no disruption on record), labor hours "
+                "day and week: planned effort, approved relief, earned planned effort, offplan output and the part of it credited as extra "
+                "work, out-of-sequence charge, attainment, adherence, score and grade, missed tasks by cause (and, apart, missed work with no disruption on record), labor hours "
                 "and utilization, with the selected period against the one before, per-team detail and one team's history over the run.",
     grants=ALL_READERS, read_only=True, query=TEAM_Q, tags=("simulation",),
 )
@@ -307,7 +314,7 @@ def sim_performance(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     all_teams = sorted({r["team"] for r in rows})
     who = args.get("team") or (all_teams[0] if all_teams else None)
     history = [{"shift_no": r["shift_no"], "label": f"{meta[r['shift_no']]['production_day'][5:]} S{meta[r['shift_no']]['shift_number']}",
-                **{key: r.get(key) for key in ("B0", "additions", "B", "E", "Cp", "U", "oos_effort", "score", "grade", "status", "attainment",
+                **{key: r.get(key) for key in ("B0", "additions", "B", "E", "Cp", "U", "Uc", "oos_effort", "score", "grade", "status", "attainment",
                                                "adherence", "base", "O", "final", "status_reason")}}
                for r in rows if r["team"] == who and r["shift_no"] in meta]
     data = {"shift": k, "day": day, "week": week, "compare": compare, "shifts": shifts, "days": days, "weeks": weeks, "teams": teams,
@@ -488,10 +495,19 @@ def sim_aircraft(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
                            "SUM(CASE WHEN status = 'EARNED' THEN effort ELSE 0 END) AS Cp, SUM(CASE WHEN oos_charged = 1 THEN effort ELSE 0 END) "
                            "AS oos_effort FROM perf_unit WHERE line = ? GROUP BY shift_no ORDER BY shift_no", line)
         offplan = {r["shift_no"]: r["U"] for r in _rows(con, "SELECT shift_no, SUM(effort) AS U FROM exec_offplan WHERE line = ? GROUP BY shift_no", line)}
+        # each offplan job takes its team-shift's credited share (Uc / U): the aircraft's credited extra work is their sum
+        shares: dict[int, Any] = defaultdict(Fraction)
+        for r in _rows(con, "SELECT o.shift_no, SUM(o.effort) AS effort, p.U AS U, p.Uc AS Uc FROM exec_offplan o JOIN perf_team_shift p "
+                            "ON p.shift_no = o.shift_no AND p.team = o.team WHERE o.line = ? GROUP BY o.shift_no, o.team", line):
+            if r["U"]:
+                shares[r["shift_no"]] += Fraction(int(r["effort"] or 0) * int(r["Uc"] or 0), int(r["U"]))
         labels = {r["shift_no"]: f"{r['production_day'][5:]} S{r['shift_number']}" for r in _rows(con, "SELECT shift_no, production_day, shift_number FROM sim_shift")}
     scores = [{"shift_no": u["shift_no"], "label": labels.get(u["shift_no"], str(u["shift_no"])),
-               **_pooled(u["B"] or 0, u["E"] or 0, u["Cp"] or 0, offplan.get(u["shift_no"], 0) or 0, u["oos_effort"] or 0)} for u in units]
-    overall = _pooled(*(sum(x[key] for x in scores) for key in ("B", "E", "Cp", "U", "oos_effort"))) if scores else None
+               **_pooled(u["B"] or 0, u["E"] or 0, u["Cp"] or 0, offplan.get(u["shift_no"], 0) or 0, shares.get(u["shift_no"], Fraction(0)),
+                         u["oos_effort"] or 0)} for u in units]
+    overall = _pooled(*(sum(x[key] for x in scores) for key in ("B", "E", "Cp", "U", "credited", "oos_effort"))) if scores else None
+    for x in [*scores, *([overall] if overall else [])]:
+        x.pop("credited")                                      # the exact fraction served the sum; the payload carries the rounded Uc
     return ApiResult("ready", _label({"shift": k, "line": line, "lines": lines, "facts": facts[0] if facts else None, "history": history,
                             "stations": stations, "shortages": shortages, "execution": execution, "scores": scores, "score_overall": overall}))
 

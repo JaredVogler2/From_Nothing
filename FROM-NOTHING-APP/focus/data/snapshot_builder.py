@@ -16,7 +16,7 @@ from fractions import Fraction
 from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
-from ..calendar import ShiftPolicy, admit_line_calendars, horizon_dates, shifts_between
+from ..calendar import ShiftPolicy, admit_line_calendars, coverage_gaps, horizon_dates, shifts_between
 from ..codec import content_hash
 from ..contracts.planning import (
     AircraftCensus,
@@ -25,7 +25,7 @@ from ..contracts.planning import (
     ReadinessGap,
     seal_snapshot,
 )
-from ..domain import Disposition, RequirementStatus, digest_id, minute_floor
+from ..domain import Disposition, RequirementStatus, digest_id, minute_ceil, minute_floor
 from ..eligibility import Eligibility
 from ..economics.repository import build_economics
 from ..policy import Policy
@@ -207,6 +207,11 @@ def build_snapshot(*, run_id: str, scope_key: str, site: str, program: str, mode
     # ---- economics ----
     cs_by_line = {line: cs_facts.get((line, proxy_station)) for line in lines}
     economics = build_economics(datasets=datasets, lines=lines, cs_facts_by_line=cs_by_line, policy=policy, tz=tz, cutoff=cutoff)
+    # a calendar that ends at or before the due date can never show a late finish: the cost stays unknown (DEC-28)
+    open_lines = {job.line for jid, job in census.jobs.items() if jid not in census.verified_complete}
+    for code, scope_name, detail, effect in coverage_gaps(calendars, {line: e.due_at for line, e in economics.items()}, open_lines,
+                                                          minute_ceil(cutoff), shift_policy, scope.site):
+        gaps.append(ReadinessGap(code, scope_name, detail, effect))
 
     # ---- dispositions and census ----
     dispositions: list[JobDisposition] = []

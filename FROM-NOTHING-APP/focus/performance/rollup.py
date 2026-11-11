@@ -1,13 +1,13 @@
 """Performance over any period for a team, a superintendent or the business unit (D-25).
 
 **One light row per team-shift.** Whenever a team-shift's evaluation gets a revision (``score.evaluate_shift``), its row
-in ``team_shift_performance`` (one versioned document per production day) takes that revision's six canonical
+in ``team_shift_performance`` (one versioned document per production day) takes that revision's seven canonical
 components, in standard person-minutes:
 
 * B0, the frozen obligation, and B, with approved additions;
 * E, approved relief;
 * Cp, verified planned completion;
-* U, unplanned output;
+* U, unplanned output, and Uc, the part of it that earns credit as extra work (D-27);
 * O, the out-of-sequence charge.
 
 It also keeps the status, the evaluation it came from, the team and the superintendent the team reported to at the
@@ -22,7 +22,8 @@ unit (every team), over a shift, a day, a week, rolling 30 days, a month, a quar
 * apply the one canonical formula (``score.status_and_score``) once to the sums.
 
 Sums come before division, so a team counts in proportion to its planned work: 400 planned and 200 earned plus 100 and
-100 scores 72, not the 82.5 average of the two scores. This is exactly the pooled evaluation of the same members
+100 scores 60, not the 75 average of the two scores. Credited extra work is summed too, so extra work beyond one shift's
+expected amount counts toward the period. This is exactly the pooled evaluation of the same members
 (``score.aggregate``).
 
 **Shifts that cannot be scored.** The official result is unknown when any team-shift in the period has no score yet
@@ -125,7 +126,8 @@ def record(services: Any, evaluation: Any, *, team: str, shift_id: str, window_s
         row = {"team": team, "shift_id": shift_id, "day": day.isoformat(), "shift_number": number, "window_start": window_start.isoformat(),
                "window_end": window_end.isoformat(), "superintendent": superintendent, "superintendent_note": note,
                "business_unit": services.settings.scope_key, "B0": _text(evaluation.B0), "B": _text(evaluation.B), "E": _text(evaluation.E),
-               "Cp": _text(evaluation.Cp), "U": _text(evaluation.U), "O": _text(evaluation.O), "status": evaluation.status.value,
+               "Cp": _text(evaluation.Cp), "U": _text(evaluation.U), "Uc": _text(evaluation.Uc), "O": _text(evaluation.O),
+               "status": evaluation.status.value,
                "reasons": [str(r).split(":", 1)[0] for r in evaluation.reasons], "evaluation_id": evaluation.id,
                "revision": evaluation.revision, "goal_id": evaluation.goal_ids[0] if evaluation.goal_ids else None,
                "policy_hash": evaluation.policy_hash, "evaluated_at": evaluation.cutoff.isoformat()}
@@ -143,10 +145,12 @@ def job_rows(evidence: Any, view: Any, goal_id: str | None) -> tuple[list[list[A
     from .disruption import effective_claims
 
     graph = None if view is None else view.graph
+    # every cause on record, proposed or submitted (``disruption.explained_units``): a missed job with none has no reason
+    # on record
     causes: dict[str, set[str]] = defaultdict(set)
     if view is not None and goal_id:
         for claim in effective_claims(view, goal_id).values():
-            if claim.status == "SUBMITTED":
+            if claim.status != "WITHDRAWN":
                 for unit in claim.units:
                     causes[unit].add(claim.cause)
     names: dict[str, str] = {}
@@ -188,8 +192,9 @@ def record_jobs(services: Any, evaluation: Any, evidence: Any, view: Any, *, tea
                 superintendent: str | None) -> dict[str, Any] | None:
     """The team-shift's per-job outcomes for ``evaluation`` (idempotent).
 
-    The record adds up to the score: planned minutes to B, done to Cp, excused to E, unplanned to U. A team-shift no plan
-    covered (``no_plan``) records the work it did, which its neutral score leaves out of U. ``superintendent`` is the
+    The record adds up to the score: planned minutes to B, done to Cp, excused to E, unplanned to U. The credited part
+    of the unplanned work (Uc) is kept in the row. A team-shift no plan covered (``no_plan``) records the work it did,
+    which its neutral score leaves out of U. ``superintendent`` is the
     row's (``record``), which fixes the attribution; the job record follows it.
     """
     from ..calendar import parse_shift_id
@@ -367,8 +372,9 @@ def bucket_of(row: dict[str, Any], by: str) -> str:
 
 
 def _parts(row: dict[str, Any]) -> dict[str, Any]:
+    # a row written before the extra-work credit (D-27) has no Uc: its credit is unknown until it is evaluated again
     return {"B0": Fraction(row["B0"]), "B": Fraction(row["B"]), "E": Fraction(row["E"]), "Cp": Fraction(row["Cp"]), "U": _frac(row["U"]),
-            "O": _frac(row["O"]), "reasons": []}
+            "Uc": _frac(row.get("Uc")), "O": _frac(row["O"]), "reasons": []}
 
 
 def _score(rows: list[dict[str, Any]], policy: Any, reasons: list[str]) -> dict[str, Any]:
@@ -377,7 +383,7 @@ def _score(rows: list[dict[str, Any]], policy: Any, reasons: list[str]) -> dict[
 
     parts = pooled(_parts(r) for r in rows)
     extra = list(reasons) + score_policy_errors(policy)
-    if parts["U"] is None or parts["O"] is None:
+    if parts["U"] is None or parts["Uc"] is None or parts["O"] is None:
         extra.append("COMPONENT_UNKNOWN: an offplan or out-of-sequence component is unknown")
     if any(r["policy_hash"] != policy.hash for r in rows):
         extra.append("MIXED_POLICY: some team-shifts were evaluated under another policy")
@@ -385,7 +391,8 @@ def _score(rows: list[dict[str, Any]], policy: Any, reasons: list[str]) -> dict[
     return {"status": status.value, "score": None if r["score"] is None else str(r["score"]), "grade": r["grade"],
             "attainment": _text(r["attainment"]), "adherence": _text(r["adherence"]), "base": _text(r["base"]), "final": _text(r["final"]),
             "B0": _text(parts["B0"]), "B": _text(parts["B"]), "E": _text(parts["E"]), "D": _text(parts["B"] - parts["E"]),
-            "Cp": _text(parts["Cp"]), "U": _text(parts["U"]), "O": _text(parts["O"]), "reasons": list(dict.fromkeys(why)),
+            "Cp": _text(parts["Cp"]), "U": _text(parts["U"]), "Uc": _text(parts["Uc"]), "O": _text(parts["O"]),
+            "reasons": list(dict.fromkeys(why)),
             "policy_status": policy.str("score.policy_status")}
 
 
@@ -575,9 +582,10 @@ def job_patterns(services: Any, *, level: str, node: str | None, start: date, en
     for e in table.values():
         totals["count"].update(e["count"])
         totals["minutes"].update(e["minutes"])
-    done, unplanned = totals["minutes"]["done"], totals["minutes"]["unplanned"]
-    # an unplanned completion with no sourced standard makes U, so adherence, unknown (as the canonical score says)
-    adherence = None if unknown_minutes or done + unplanned == 0 else _text(Fraction(done, done + unplanned))
+    done, missed = totals["minutes"]["done"], totals["minutes"]["missed"]
+    # plan adherence is the planned jobs done over the planned jobs expected (done + missed; excused work is not expected).
+    # Unplanned work never enters it (D-27); a job still open leaves it unsettled.
+    adherence = None if totals["minutes"]["open"] or done + missed == 0 else _text(Fraction(done, done + missed))
     rows = [e for e in table.values() if outcome == "all" or e["count"][outcome] > 0]
     rows.sort(key=lambda e: (-(e["minutes"]["missed"] + e["minutes"]["unplanned"] + e["minutes"]["out_of_sequence"]), str(e["soi"] or e["job"]),
                              str(e["kind"]), e["line"] or 0))

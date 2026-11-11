@@ -1157,7 +1157,7 @@ def performance_rollup(services: Any, ctx: RequestContext, *, level: str, node: 
     for note in data["attribution_notes"]:
         reasons.append(reason("ORG_CHART_NOTE", f"{note['team']}: {note['note']}", "Fix the superintendent in FOCUS_PERSON_TEAM_MAP."))
     status = "ready" if data["team_shifts"] else "empty"
-    return Projection(status, {**data, "note": "sums the six canonical components of every team-shift before the one formula; teams count in "
+    return Projection(status, {**data, "note": "sums the seven canonical components of every team-shift before the one formula; teams count in "
                                                "proportion to their planned work"}, reasons)
 
 
@@ -1194,8 +1194,9 @@ def performance_jobs(services: Any, ctx: RequestContext, *, level: str, node: st
     data["period"] = {**data["period"], "kind": period, "anchor": anchor.isoformat()}
     reasons = [] if data["team_shifts"] else [reason("NO_JOB_RECORDS", "No team-shift of this group has a job record in this period.")]
     return Projection("ready" if data["team_shifts"] else "empty",
-                      {**data, "note": "planned jobs are done, missed, excused (with claim causes), open or done out of sequence; unplanned "
-                                       "jobs earn nothing and lower adherence; no_plan is work on a team-shift no plan covered, which "
+                      {**data, "note": "planned jobs are done, missed (with any claim causes on record), excused, open or done out of "
+                                       "sequence; unplanned jobs are extra work, credited below a planned job and never in adherence; "
+                                       "no_plan is work on a team-shift no plan covered, which "
                                        "its neutral score leaves out; sorted by missed, unplanned and out-of-sequence minutes"}, reasons)
 
 

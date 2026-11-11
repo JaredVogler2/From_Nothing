@@ -847,6 +847,12 @@ class ObservationView:
         if team is None:
             reasons.append("TEAM_UNKNOWN")
             team = "UNKNOWN"
+        # extra work earns credit only when it was not started out of sequence by choice (D-27; score.components)
+        found = [v for v in self.violations if v.phase == phase and v.trigger_ref not in self.invalid_refs]
+        if any(v.discretionary is True for v in found):
+            reasons.append("OUT_OF_SEQUENCE_BY_CHOICE")
+        elif any(v.discretionary is None for v in found):
+            reasons.append("OOS_CLASSIFICATION_UNKNOWN")
         self.offplan.append(OffplanFact(digest_id("OFP", self.scope, phase, at, event_id), team, shift_id, phase.rsplit(".", 2)[0], phase, effort, at,
                                         event_id, tuple(reasons)))
 
@@ -855,8 +861,11 @@ class ObservationView:
 
     # -- unit facts
     def unit_facts(self, record: GoalRecord) -> list[UnitFact]:
+        from .disruption import explained_units
+
         origin = record.origin_of
         relief = self.relief_units(record)
+        explained = explained_units(self, record.goal_id)
         charged = {u for o in self.oos_for(record) if o.charged for u in o.unit_ids}
         out = []
         for u in record.units:
@@ -878,6 +887,9 @@ class ObservationView:
                     reasons.append("COMPLETION_CREDITED_ELSEWHERE_OR_LATE")
                 if cycle is not None and cycle.disposition in ("CANCELLED", "DETABBED"):
                     reasons.append("WITHDRAWN_WORK_STAYS_IN_B0")
+                if u.id not in relief and u.id not in explained:
+                    # nothing on record says why it was not done. Information for the lead and the reports: it changes no score
+                    reasons.append("NO_REASON_ON_RECORD")
             out.append(UnitFact(u.id, record.goal_id, u.job, u.phase, u.segment, u.team, u.standard_person_minutes, origin[u.id], status,
                                 credit.at if credit else None, credit.event_id if credit else None, status == "MISSED" and u.id in relief,
                                 u.id in charged, tuple(dict.fromkeys(reasons))))

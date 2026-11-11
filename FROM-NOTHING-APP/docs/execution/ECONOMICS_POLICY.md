@@ -123,5 +123,7 @@ unknown, and the heuristic always reports `global_optimality_proven = false`.
 The fixture terms are labelled ASSUMED. Line 1301 is $100/day and 1302 is $10/day
 (A44 steering). Line 1306 has no term and stays unknown.
 
-Live economics needs the owner's terms, approvals, sale bases and checkpoints (OD-12). The due
-policy is decided (OD-06). Until then live costs are unknown or assumed, never invented.
+The owner decided the planning rate on 2026-11-11 (D-31): the airline economic proxy per customer airline and
+minor model, with no cap; `tools/build_economics_rows.py` builds the rows. The due policy is decided (OD-06).
+Approved contract terms, sale bases and checkpoints stay open (OD-12). Until the rates are loaded for the live
+aircraft, live costs are unknown, never invented.

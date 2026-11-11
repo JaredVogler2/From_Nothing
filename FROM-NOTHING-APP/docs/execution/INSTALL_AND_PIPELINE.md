@@ -275,8 +275,19 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 - **Verify** runs the import check, migration lint and bundle, preflight, the full non-UI suite, the UI suite and a
   fixture rehearsal of the whole pipeline. None of it needs secrets.
 - **Live jobs** each run one role in a protected environment, chained with `needs` and serialized per scope with
-  `resource_group`. Acquisition waits for every verify job, the UI suite and the rehearsal included, and for the staged
-  sources. `sign_accept` is `when: manual` and holds the only signing reference.
+  `resource_group`. Acquisition waits for the verify jobs in its pipeline and for the staged sources. In a live run
+  the long suites (non-UI, UI, rehearsal) are not in the pipeline: they ran on the merge that put the code on the
+  protected ref, and acquisition refuses any other ref (D-28; `FOCUS_LIVE_VERIFY=full` runs them every time).
+  `sign_accept` waits for an operator and holds the only signing reference. `FOCUS_AUTO_SIGN=true` lets a scheduled
+  run on a protected ref accept the executable plan itself; it is off, and turning it on is the owner's decision
+  (`DECISION_PLAYBOOK.md`, DEC-11).
+- **The window.** `python -m focus.cli pipeline --key K --status` reports, under `window`, the minutes from the data
+  cut to the accepted executable plan against the owner's 20-minute budget, the seconds per step, and whether the plan
+  was accepted after its shift started.
+- **The objective.** The same status reports, under `objective`, whether the cost objective compared any dollars for
+  the executable plan and for the forecast: the aircraft with a rate, a due date and a finish date, and the open jobs
+  that could not be planned, by reason (`OBJECTIVE_EXPLAINED.md` §4). A plan is published either way; this is how a
+  run that compared nothing is seen.
 - **Staging** (`stage_sources`, then `verify_staged_sources`) loads the official sources into the SQL Server tables the
   reference queries read, through the company loader named by `FOCUS_STAGE_COMMAND`, and checks the staged schema
   against the S04 contract before acquisition. It runs while the verify jobs run. The loader's contract is
@@ -377,7 +388,7 @@ python -m focus.cli performance-details [--keep-days 90] [--apply]
 python -m focus.cli performance-ledger                              # rebuild the light rows and job records
 ```
 
-Each team-shift keeps its score forever: the evaluation with its six components, its light row and its compact job
+Each team-shift keeps its score forever: the evaluation with its seven components, its light row and its compact job
 record (each job's shop order id, aircraft, phase, minutes and outcome, about 50 bytes a job). The bulky per-unit
 evidence behind the score (`evaluation_evidence`, about 58 KB per team-shift at 50 aircraft) is kept for the owner's
 period of 90 days, then deleted.

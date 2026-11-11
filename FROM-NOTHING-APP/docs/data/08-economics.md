@@ -24,6 +24,28 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
   checkpoints). Per-aircraft reasons include `ECONOMICS_MISSING`, `UNSUPPORTED_TERM`, `TERM_OR_DUE_UNKNOWN`,
   `UNSUPPORTED_CURVE`, `DUE_POLICY_UNSUPPORTED:<basis>` and, when required jobs are unreleased in the plan,
   `COMPLETION_UNKNOWN`.
+- **Starting from a rate file.** Before contract terms exist, `python tools/build_economics_rows.py` turns a file of
+  daily rates per customer and minor model, with the list of aircraft, into the rows of `econ_scenario`,
+  `econ_mapping_revision`, `econ_aircraft_mapping` and `econ_term` (`focus/economics/rate_file.py`). Every row is
+  marked `ASSUMED`. An aircraft whose customer and minor model have no rate is listed and gets no term, so FOCUS
+  reports `NO_EFFECTIVE_TERM` and keeps its cost unknown. The tool never fills a rate in from an average, a median or
+  another customer, and it exits with code 2 while any aircraft is unpriced.
+- **Which rates (owner, 2026-11-11; `docs/execution/DECISIONS.md` D-31).** The owner's airline economic proxy per
+  customer airline and minor model: column `daily_airline_economic_proxy_usd` of the owner's rate table, kept in
+  `fixtures/economics/airline_economic_proxy.csv` (94 rows, 63 airlines; `fixtures/economics/README.md`). Lateness
+  begins at 744 unload plus 2 days. There is no cap. The table names airlines (`operator`) and writes models as
+  `787-9`, so the tool takes the column names, the model prefix and a list of `CustomerCode, RateCustomer` pairs:
+
+      python tools/build_economics_rows.py --rates fixtures/economics/airline_economic_proxy.csv \
+          --customer-column operator --model-column minor_model --model-prefix 787- \
+          --rate-column daily_airline_economic_proxy_usd --customer-codes codes.csv --aircraft aircraft.csv --out DIR \
+          --scenario-key AIRLINE-ECONOMIC-PROXY-2026-11 --owner "economics owner" \
+          --source-reference "airline_economic_proxy.csv, owner decision 2026-11-11" --effective-from 2026-01-01T00:00:00.000
+
+  Names are matched exactly as written. A customer code with no row in `codes.csv`, or a customer and minor model the
+  table has no row for, leaves the aircraft unpriced and listed (`DECISION_PLAYBOOK.md`, DEC-35). The table is keyed
+  by the airline that flies the aircraft, which may not be the buyer the build data names. The aircraft in a run are
+  whichever have open tasks (D-32), so any row of the table may be needed.
 - **Freshness.** None of the tables has a source clock (`LOAD_TIMESTAMP`, `SNAPSHOT_TS` or `LOAD_TS`) or a cutoff column, and none is listed in `admission.max_source_age_hours`. So no `SOURCE_STALE` check applies; only the run-wide `CAPTURE_SKEW` check does.
 - **Who reads the result.** Only `focus/economics/repository.py` reads the raw rows, at admission. The engine reads the per-aircraft result (`AircraftEconomics` on the snapshot) through `focus/economics/registry.py`. Users without an economics grant (`manager` or `scenario_planner`) see costs withheld as `ECONOMICS_RESTRICTED`, never as zero.
 

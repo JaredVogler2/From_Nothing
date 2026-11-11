@@ -17,11 +17,14 @@
 """
 from __future__ import annotations
 
+import re
+from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime
 from fractions import Fraction
-from typing import Iterable, Mapping
+from typing import Any, Iterable, Mapping
 
-from ..contracts.planning import AircraftCompletion, CostSummary, Job, JobDisposition, LineCost
+from ..contracts.planning import AircraftCompletion, CostSummary, Job, JobDisposition, JobOutcome, LineCost
 from ..domain import Disposition, from_minute, to_minute
 from .registry import EconomicsRegistry
 
@@ -111,3 +114,74 @@ def summarize(costs: Mapping[int, LineCost], currency: str = "USD") -> CostSumma
             known += c.total_cents
         controllable += c.controllable_cents or Fraction(0)
     return CostSummary(tuple(costs[k] for k in sorted(costs)), known, conditional, controllable, tuple(unknown), not unknown, currency)
+
+
+# Reasons on an aircraft's cost line that concern its due date, and reasons that are information only (the term is usable).
+# Every other reason on a line with no usable term concerns the rate or the term itself.
+DUE_REASONS = frozenset({"DUE_UNKNOWN", "DUE_POLICY_UNSUPPORTED"})
+INFORMATION_REASONS = frozenset({"ASSUMED_PLANNING_TERM", "TERM_AUTHORITY_UNPROVEN", "SALE_BASIS_CONFLICT", "CHECKPOINT_SEQUENCE_CONFLICT",
+                                 "CAP_FIELD_NOT_APPLIED"})
+
+
+_CODE = re.compile(r"[A-Z][A-Z0-9_]+")
+
+
+def reason_codes(reasons: Iterable[str]) -> list[str]:
+    """The reason codes in a line's or a job's reasons, in order: ``"A; B: detail"`` gives ``["A", "B"]``. A part that
+    does not start with a code (free text, or the rest of a detail that holds a semicolon) is not a code."""
+    codes = (part.split(":")[0].strip() for reason in reasons for part in reason.split(";"))
+    return [code for code in codes if _CODE.fullmatch(code)]
+
+
+def objective_status(costs: CostSummary, completions: Iterable[AircraftCompletion], outcomes: Iterable[JobOutcome],
+                     planned_at: datetime) -> dict[str, Any]:
+    """Did the cost objective steer this plan? Counts a person can check (docs/execution/OBJECTIVE_EXPLAINED.md, section 4).
+
+    An aircraft's late-delivery cost is known only when its rate, its due date and its finish date are all known. The
+    optimizer compares dollars only over the aircraft whose cost is known, so with none known every candidate ties on
+    cost: the run still returns a plan, but it compared no dollars. Nothing here is estimated: an aircraft with no rate
+    is listed as having none.
+    """
+    lines = list(costs.lines)
+    completions = list(completions)
+    priced = [c for c in lines if c.status in ("known", "conditional")]
+    no_term: dict[int, list[str]] = {}                       # no usable rate or due date: the term did not resolve
+    for c in lines:
+        codes = reason_codes(c.reasons)
+        if c.status not in ("known", "conditional") and "COMPLETION_UNKNOWN" not in codes:
+            no_term[c.line] = [code for code in codes if code not in INFORMATION_REASONS]
+    no_due = sorted(c.line for c in lines if c.due_at is None)
+    no_rate = sorted(line for line, codes in no_term.items() if not codes or set(codes) - DUE_REASONS)
+    no_cost: Counter[str] = Counter()
+    for c in lines:
+        if c.status not in ("known", "conditional"):
+            no_cost[(no_term[c.line] or ["TERM_UNKNOWN"])[0] if c.line in no_term else "COMPLETION_UNKNOWN"] += 1
+    finish = Counter(c.status for c in completions)
+    unresolved = {job for c in completions for job in c.unresolved_jobs}
+    why: Counter[str] = Counter()
+    seen: set[str] = set()
+    for o in outcomes:
+        if o.job in unresolved:
+            seen.add(o.job)
+            why[(reason_codes(o.reasons) or [o.disposition.value.upper()])[0]] += 1
+    if unresolved - seen:
+        why["NOT_IN_THE_PLAN"] += len(unresolved - seen)
+    n, k = len(lines), len(priced)
+    steering = "full" if n and k == n else ("partial" if k else "none")
+    if steering == "full":
+        message = f"The cost objective compared all {n} aircraft."
+    elif steering == "partial":
+        message = (f"The cost objective compared {k} of {n} aircraft. The cost of the other {n - k} is unknown, so "
+                   f"{'it is' if n - k == 1 else 'they are'} left out of the dollars.")
+    else:
+        message = (f"The cost objective did not steer this plan: the cost of all {n} aircraft is unknown, so every candidate tied on cost "
+                   f"and the plan was chosen on the later levels (travel, waiting, overtime).")
+    by_count = lambda counter: dict(sorted(counter.items(), key=lambda kv: (-kv[1], kv[0])))   # noqa: E731
+    return {"cost_steering": steering, "message": message, "aircraft": n, "cost_known": k,
+            "rate_known": n - len(no_rate), "due_date_known": n - len(no_due),
+            "finish_known": finish["known"], "finish_conditional": finish["conditional"], "finish_unknown": finish["unknown"],
+            "past_due_when_planned": sum(1 for c in lines if c.due_at is not None and c.due_at <= planned_at),
+            "aircraft_without_rate": no_rate, "aircraft_without_due_date": no_due,
+            "aircraft_without_finish": sorted(c.line for c in completions if c.status == "unknown"),
+            "cost_unknown_by_reason": by_count(no_cost),
+            "unplanned_open_jobs": len(unresolved), "unplanned_open_jobs_by_reason": by_count(why)}

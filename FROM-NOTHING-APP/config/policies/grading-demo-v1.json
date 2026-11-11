@@ -6,8 +6,8 @@
   "note": "S14 demonstration grading/recognition policy. These are proposed demo defaults, separate from the user's hard scheduling constants, and never an approved labor grade.",
   "values": {
     "score.policy_status": {"value": "DEMONSTRATION", "authority": "demo_default", "ref": "S14 official grade requires an actual applicable policy receipt"},
-    "score.attainment_weight": {"value": "0.70", "authority": "demo_default", "ref": "S14"},
-    "score.adherence_weight": {"value": "0.30", "authority": "demo_default", "ref": "S14"},
+    "score.attainment_weight": {"value": "0.80", "authority": "owner_decision", "ref": "S14; D-27 (owner, 2026-11-10): an extra job earns 80% of the same planned work. This is the weight of output attainment: planned work done plus credited extra work, over the expected work"},
+    "score.adherence_weight": {"value": "0.20", "authority": "owner_decision", "ref": "S14; D-27 (owner, 2026-11-10): the rest of the score, earned only by planned jobs done (plan adherence: the planned jobs done over the expected work)"},
     "score.oos_rate": {"value": "0.10", "authority": "demo_default", "ref": "S14"},
     "score.bands": {"value": [["A", 90], ["B", 80], ["C", 70], ["D", 60]], "authority": "demo_default", "ref": "S14 else F"},
     "score.round_decimals": {"value": 1, "authority": "demo_default", "ref": "S14 round only after sums"},

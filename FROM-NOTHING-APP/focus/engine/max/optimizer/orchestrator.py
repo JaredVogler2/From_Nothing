@@ -73,7 +73,7 @@ from ....codec import native_codec, to_jsonable
 from ....contracts.planning import (AlgorithmStatus, Assignment, CandidatePlan, CostSummary, CrewRole, Duty, JobOutcome, StageMetric,
                                     seal_candidate)
 from ....domain import Disposition, DutyKind, Interval, PhaseKind, Purpose, digest_id, from_minute
-from ....economics.evaluator import JobRelease, aircraft_completions, line_costs, summarize
+from ....economics.evaluator import JobRelease, aircraft_completions, line_costs, objective_status, summarize
 from ....economics.registry import EconomicsRegistry
 from ...model import EngineContext
 from ...projections import completion_minutes
@@ -608,6 +608,8 @@ def receipt(plan: CandidatePlan) -> dict[str, Any]:
         "costs": {"known_cents": plan.costs.known_total_cents, "conditional_cents": plan.costs.conditional_total_cents,
                   "controllable_known_cents": plan.costs.controllable_known_cents, "unknown_lines": list(plan.costs.unknown_lines),
                   "complete": plan.costs.complete, "currency": plan.costs.currency},
+        # whether the dollars above steered anything, and what kept aircraft out of them (OBJECTIVE_EXPLAINED.md section 4)
+        "objective_status": objective_status(plan.costs, plan.aircraft_completion, plan.job_dispositions, plan.created_at),
         "incumbent": plan.algorithm_status.incumbent,
         "commitments": [{"job": c.job, "day_offset": c.day_offset, "outcome": c.outcome, "attempt1": c.attempt1, "attempt2": c.attempt2,
                          "reason": c.reason} for c in plan.commitment_results],

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from focus.data.fullscale_fixture import FleetSpec
-from focus.sim.execute import FloorSpec
+from focus.sim.execute import FloorSpec, TeamTraits
 from focus.sim.runner import SimSpec, run
 from tests.integration.test_api_scope import client_on
 
@@ -109,17 +109,19 @@ def test_work_finished_after_the_next_cutoff_counts_once_in_its_own_shift(sims) 
     is credited to its own shift after the fact. The next plan may still hold it: there it is DONE_BEFORE_SHIFT, out of D,
     never missed and never earned twice."""
     first, _ = sims
-    late = _all(first, "SELECT shift_no, team, job_id FROM perf_unit WHERE status = 'DONE_BEFORE_SHIFT'")
+    late = _all(first, "SELECT shift_no, team, job_id, assignment_id FROM perf_unit WHERE status = 'DONE_BEFORE_SHIFT'")
     assert late, "the gap between the next cutoff and the shift end is modeled"
     ends = {k: datetime.fromisoformat(e) for k, e in _all(first, "SELECT shift_no, end_utc FROM sim_shift")}
     cutoff = {k: ends[k] - timedelta(minutes=SPEC.cutoff_lead_minutes) for k in ends}
-    for k, team, job in late:
+    for k, team, job, assignment in late:
         done = [datetime.fromisoformat(t) for (t,) in _all(first, "SELECT actual_end FROM exec_assignment WHERE shift_no = "
                                                                   f"{k - 1} AND job_id = '{job}' AND outcome = 'completed'")]
         done += [datetime.fromisoformat(t) for (t,) in _all(first, f"SELECT end_utc FROM exec_offplan WHERE shift_no = {k - 1} "
                                                                    f"AND job_id = '{job}'")]
         assert done and max(done) > cutoff[k - 1], (k, job)                                  # finished after the next plan's cutoff
-        assert not _all(first, f"SELECT 1 FROM exec_assignment WHERE shift_no = {k} AND job_id = '{job}' AND outcome = 'completed'")
+        # that planned task is not worked again in shift k. A later phase of the same job may be: it is another assignment,
+        # so the check is by assignment, not by job
+        assert not _all(first, f"SELECT 1 FROM exec_assignment WHERE shift_no = {k} AND assignment_id = '{assignment}'"), (k, job)
         credited = _all(first, f"SELECT COUNT(*) FROM perf_unit WHERE shift_no = {k - 1} AND job_id = '{job}' AND status = 'EARNED'")[0][0]
         credited += _all(first, f"SELECT COUNT(*) FROM exec_offplan WHERE shift_no = {k - 1} AND job_id = '{job}'")[0][0]
         assert credited, (k, job)                                                             # counted in the shift that did it
@@ -233,8 +235,8 @@ def test_the_redispatch_keeps_the_seeds_commitment_outcomes(tmp_path, monkeypatc
 
 def test_team_scores_are_the_canonical_formula_over_their_goal_units(sims, app_root) -> None:
     """Every team-shift score is focus.performance.score.formula over its own unit facts: B0 the planned effort, E the
-    effort of missed units relieved by approved claims, Cp the earned planned effort, U the offplan output and O the
-    once-only charge on discretionary out-of-sequence work."""
+    effort of missed units relieved by approved claims, Cp the earned planned effort, U the offplan output, Uc the part
+    of it credited as extra work (D-27) and O the once-only charge on discretionary out-of-sequence work."""
     from fractions import Fraction
 
     from focus.performance.score import formula
@@ -243,10 +245,11 @@ def test_team_scores_are_the_canonical_formula_over_their_goal_units(sims, app_r
     first, _ = sims
     policy = load_policy(app_root / "config" / "policies", "rebuild-v1")
     rate = Fraction(policy.str("score.oos_rate"))
-    teams = _all(first, "SELECT shift_no, team, B0, additions, B, E, Cp, U, oos_effort, score, grade, status, base, O, final, policy_id, "
+    teams = _all(first, "SELECT shift_no, team, B0, additions, B, E, Cp, U, Uc, oos_effort, score, grade, status, base, O, final, policy_id, "
                         "policy_hash, status_reason FROM perf_team_shift")
     assert teams
-    for shift_no, team, B0, additions, B, E, Cp, U, oos_effort, score, grade, status, base, O, final, policy_id, policy_hash, why in teams:
+    credited = 0
+    for shift_no, team, B0, additions, B, E, Cp, U, Uc, oos_effort, score, grade, status, base, O, final, policy_id, policy_hash, why in teams:
         units = _all(first, f"SELECT effort, status, relief, oos_charged, origin FROM perf_unit WHERE shift_no = {shift_no} AND team = '{team}'")
         assert B0 == sum(u[0] for u in units if u[4] == "ORIGINAL") and additions == sum(u[0] for u in units if u[4] == "AMENDMENT")
         assert B == B0 + additions and Cp == sum(u[0] for u in units if u[1] == "EARNED")
@@ -256,14 +259,22 @@ def test_team_scores_are_the_canonical_formula_over_their_goal_units(sims, app_r
         assert not any(u[2] for u in units if u[1] == "EARNED")
         assert oos_effort == sum(u[0] for u in units if u[3])
         assert U == (_all(first, f"SELECT COALESCE(SUM(effort), 0) FROM exec_offplan WHERE shift_no = {shift_no} AND team = '{team}'")[0][0])
+        assert Uc == U                                                 # the floor's offplan work is ready work: all of it is credited
+        credited += Uc
         assert status in ("DEMONSTRATION", "OFFICIAL", "NEUTRAL")
-        result = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(U), rate * oos_effort, policy)
+        result = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(Uc), rate * oos_effort, policy)
         assert (None if result["score"] is None else float(result["score"])) == score and result["grade"] == grade
         assert (status == "NEUTRAL") == (score is None)
         # status_and_score's parts are stored: base before the OOS charge, the charge O, the clamped final, the policy and why neutral
         assert O == float(rate * oos_effort) and (policy_id, policy_hash) == (policy.id, policy.hash)
         assert base == (None if result["base"] is None else float(result["base"])) and final == (None if result["final"] is None else float(result["final"]))
         assert (why is not None) == (status == "NEUTRAL") and (why is None or why.startswith(("NO_PLAN", "ALL_EXCUSED")))
+        if score is not None and Uc and Cp < B - E:
+            # extra work raises the score, by less than the same planned work would
+            without = formula(Fraction(B), Fraction(E), Fraction(Cp), Fraction(0), rate * oos_effort, policy)["final"]
+            as_planned = formula(Fraction(B), Fraction(E), Fraction(min(B - E, Cp + Uc)), Fraction(0), rate * oos_effort, policy)["final"]
+            assert without < result["final"] <= as_planned
+    assert credited > 0                                                # the run has extra work that earned credit
 
 
 def test_only_verified_excusable_causes_relieve_a_team(sims, app_root) -> None:
@@ -387,3 +398,129 @@ def test_auto_planning_repairs_the_previous_plan_between_daily_full_solves(tmp_p
     assert "the daily full solve" in rows[0]["planning"]["EXECUTABLE"]["reason"]
     assert all(row["planning"]["EXECUTABLE"]["kept"] > 0 for row in rows[1:])            # the accepted plan is kept where it holds
     assert {s for (s,) in _all(db, "SELECT DISTINCT shift_no FROM exec_assignment")} == {0, 1, 2}
+
+
+@pytest.fixture(scope="module")
+def traits_run(tmp_path_factory):
+    """The same tiny fleet with one team made slow and one that always works ahead (teams that differ, for known-truth tests)."""
+    db = tmp_path_factory.mktemp("traits") / "traits.db"
+    result = run(SPEC, db, log=lambda message: None, traits=TeamTraits(pace={"T01": 3.0}, pull_ahead={"T02": 1.0, "T03": 0.0}))
+    return db, result
+
+
+def test_teams_can_be_made_to_differ_and_a_slow_team_shows_in_efficiency_and_unexcused_overruns(sims, traits_run) -> None:
+    """``TeamTraits`` is for experiments with a known truth (docs/task-valuation-investigation/11). Without it a run is
+    unchanged; with it the slow team works more hours for the same standard minutes, runs out of shift, and is not excused."""
+    first, _ = sims
+    db, result = traits_run
+    base_id, = _all(first, "SELECT sim_id FROM sim_run")[0]
+    assert result["sim_id"] != base_id                                    # the traits are part of the run's identity
+    import json
+
+    facts = json.loads(_all(db, "SELECT facts FROM sim_run")[0][0])
+    assert facts["team_traits"]["pace"] == {"T01": 3.0} and facts["team_traits"]["crew_sequencing"] is True
+    assert "team_traits" not in json.loads(_all(first, "SELECT facts FROM sim_run")[0][0])
+
+    def pace(path, team):                                                 # hours worked per standard hour completed
+        done, hours = _all(path, f"SELECT SUM(Cp + U), SUM(actual_hours) FROM perf_team_shift WHERE team = '{team}'")[0]
+        return hours * 60 / done
+
+    assert pace(db, "T01") > 2 * pace(first, "T01")                       # three times slower on every task
+    assert abs(pace(db, "T04") - pace(first, "T04")) < 0.35 * pace(first, "T04")       # a team without traits keeps its pace
+    slow_overruns = _all(db, "SELECT claim_cause, claim_status, relief FROM perf_unit WHERE team = 'T01' AND cause = 'overrun'")
+    assert slow_overruns and all(row == ("DURATION_OVERRUN", "PROPOSED", 0) for row in slow_overruns)   # its own pace: never excused
+    assert len(slow_overruns) > len(_all(first, "SELECT 1 FROM perf_unit WHERE team = 'T01' AND cause = 'overrun'"))
+    score = lambda path, team: _all(path, f"SELECT SUM(Cp) * 1.0 / SUM(B - E) FROM perf_team_shift WHERE team = '{team}'")[0][0]  # noqa: E731
+    assert score(db, "T01") < score(first, "T01")                         # the plan was not done, and the score says so
+    assert not _all(db, "SELECT 1 FROM exec_offplan WHERE team = 'T03' AND kind = 'pull_ahead'")       # this team never works ahead
+
+
+@pytest.fixture(scope="module")
+def choosing_floors(tmp_path_factory):
+    """The same tiny fleet worked by crews that leave a third of their dispatched effort by choice and do easier work instead."""
+    root = tmp_path_factory.mktemp("choosing")
+    teams = {"T01": 0.34, "T02": 0.34, "T03": 0.34, "T04": 0.34}
+    out = {}
+    for pick in ("gating", "non_gating"):
+        out[pick] = root / f"{pick}.db"
+        run(SPEC, out[pick], log=lambda message: None, traits=TeamTraits(skip=teams, skip_pick=pick))
+    return out
+
+
+def test_every_dispatched_task_records_what_waits_on_it(sims) -> None:
+    """``exec_priority``: the plan's priority facts for each dispatched task (valuation.priority), on every run."""
+    first, _ = sims
+    rows = _all(first, "SELECT tier, dependents, gated_jobs, gated_minutes, gated_other_team_minutes, left_by_choice FROM exec_priority")
+    assert rows and {r[0] for r in rows} <= {"MUST", "PLAN", "FILL"} and {r[0] for r in rows} >= {"MUST", "PLAN"}
+    for tier, dependents, jobs, minutes, other, left in rows:
+        assert (tier == "MUST") == (jobs > 0) == (minutes > 0) and other <= minutes and left == 0      # nobody chooses on this floor
+        assert (tier == "FILL") == (dependents == 0)
+    # one row for each goal unit of record and none besides, keyed as the unit is (a task finished before the shift has a
+    # unit and a row, and no executed assignment)
+    assert not _all(first, "SELECT p.assignment_id FROM exec_priority p LEFT JOIN perf_unit u ON u.shift_no = p.shift_no "
+                           "AND u.assignment_id = p.assignment_id WHERE u.assignment_id IS NULL")
+    assert not _all(first, "SELECT u.assignment_id FROM perf_unit u LEFT JOIN exec_priority p ON p.shift_no = u.shift_no "
+                           "AND p.assignment_id = u.assignment_id WHERE p.assignment_id IS NULL")
+    n, distinct = _all(first, "SELECT COUNT(*), COUNT(DISTINCT shift_no || ':' || assignment_id) FROM exec_priority")[0]
+    assert n == distinct
+
+
+def test_a_floor_that_chooses_its_work_leaves_planned_tasks_without_excuse_and_fills_with_other_work(sims, choosing_floors) -> None:
+    """``TeamTraits.skip`` (report 12): the tasks left are deviations (no claim, never excused); the time goes to other ready
+    tasks; and the two floors differ only in which tasks were left: first the ones planned work waits on, or first the ones
+    nothing planned waits on (a team with too few of its kind leaves some of the other kind to reach its share)."""
+    first, _ = sims
+    left = {}
+    for pick, db in choosing_floors.items():
+        chosen = _all(db, "SELECT COUNT(*), SUM(effort), SUM(gated_minutes) FROM exec_priority WHERE left_by_choice = 1")[0]
+        dispatched = _all(db, "SELECT SUM(p.effort) FROM exec_priority p WHERE p.team != 'QA' AND p.phase LIKE '%WORK%'")[0][0]
+        assert chosen[0] > 0 and 0.2 < chosen[1] / dispatched < 0.6, (pick, chosen, dispatched)
+        misses = _all(db, "SELECT u.claim_cause, u.relief FROM perf_unit u JOIN exec_priority p ON p.shift_no = u.shift_no "
+                          "AND p.assignment_id = u.assignment_id WHERE p.left_by_choice = 1 AND u.cause = 'deviation'")
+        assert misses and all(row == (None, 0) for row in misses)                          # a choice has no claim and no relief
+        assert _all(db, "SELECT COUNT(*) FROM exec_offplan WHERE kind = 'deviation'")[0][0] > _all(
+            first, "SELECT COUNT(*) FROM exec_offplan WHERE kind = 'deviation'")[0][0]     # the time went to other tasks
+        left[pick] = chosen
+    assert left["gating"][2] > 3 * left["non_gating"][2] >= 0                              # what was left: gating work, or little of it
+    score = lambda db: _all(db, "SELECT AVG(score) FROM perf_team_shift WHERE team != 'QA' AND score IS NOT NULL")[0][0]   # noqa: E731
+    assert score(choosing_floors["gating"]) < score(first) and score(choosing_floors["non_gating"]) < score(first)
+
+
+def _right_work_tool():
+    """tools/right_work_score.py, loaded as the other tools' tests load theirs."""
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    if "right_work_score" not in sys.modules:
+        spec = importlib.util.spec_from_file_location("right_work_score", Path(__file__).resolve().parents[2] / "tools" / "right_work_score.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module                # dataclasses look their module up by name
+        spec.loader.exec_module(module)
+    return sys.modules["right_work_score"]
+
+
+def test_the_right_work_tool_is_the_stored_score_at_todays_settings_and_its_tiers_tell_the_two_floors_apart(sims, choosing_floors, policy) -> None:
+    """``tools/right_work_score.py`` (report 12, DEC-33). With no tiers and today's credit the proposal is the stored canonical
+    score of every team-shift, on a floor that works its plan and on floors that choose. With a lower credit both choosing
+    floors lose points; with tiers the floor that left work others wait on loses more than the floor that left other work."""
+    from fractions import Fraction
+
+    tool = _right_work_tool()
+    today = Fraction(policy.str("score.attainment_weight"))
+    first, _ = sims
+    for db in (first, *choosing_floors.values()):
+        same = tool.score_run(db, today, tool.FLAT, today)
+        assert same["team_shifts_scored"] > 0 and same["same_as_the_stored_score_at_todays_settings"] == same["team_shifts_scored"]
+        assert same["all_teams"]["proposed_score"] == same["all_teams"]["todays_score"]
+    credit, tiers = Fraction("0.3"), tool.tiers_of("2,1,0.5")
+    flat = {pick: tool.score_run(db, credit, tool.FLAT, today)["all_teams"] for pick, db in choosing_floors.items()}
+    tiered = {pick: tool.score_run(db, credit, tiers, today)["all_teams"] for pick, db in choosing_floors.items()}
+    numbers = (flat, tiered)
+    for pick in choosing_floors:
+        assert flat[pick]["proposed_score"] < flat[pick]["todays_score"], numbers             # the lower credit costs both floors
+    assert tiered["gating"]["must_do_work_done_percent"] < tiered["non_gating"]["must_do_work_done_percent"], numbers
+    drop = {pick: flat[pick]["proposed_score"] - tiered[pick]["proposed_score"] for pick in choosing_floors}
+    assert drop["gating"] > drop["non_gating"], numbers                                       # the tiers charge the floor that left gating work
+    plan_tiered, plan_flat = (tool.score_run(first, credit, m, today)["all_teams"]["proposed_score"] for m in (tiers, tool.FLAT))
+    assert abs(plan_tiered - plan_flat) < 1.5, (plan_tiered, plan_flat)                       # where nobody chooses, the tiers change little

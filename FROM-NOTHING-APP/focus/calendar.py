@@ -447,6 +447,43 @@ class CalendarService:
         return out
 
 
+def coverage_gaps(calendars: Mapping[int, LineCalendar], due_at: Mapping[int, datetime | None], open_lines: Iterable[int],
+                  cutoff_minute: int, shift_policy: ShiftPolicy, site: str) -> list[tuple[str, str, str, str]]:
+    """Where a line's admitted calendar cannot show what its open work costs: ``(code, scope, detail, effect)`` per line.
+
+    FOCUS never adds a day to a calendar, so both conditions are data to fix, and both keep a cost unknown:
+
+    * ``CALENDAR_NO_DAYS_LEFT``: no working shift ends after the data cut. None of the line's open work can be planned,
+      so its finish date and its cost stay unknown.
+    * ``CALENDAR_ENDS_BEFORE_DUE``: the last working shift ends on or before the line's due instant. A late finish cannot
+      be planned on this line: work that does not fit shows as an unknown finish, never as a late one, so the cost
+      objective can never count this aircraft's lateness.
+
+    Lines without an admitted calendar are reported by ``admit_line_calendars`` and skipped here.
+    """
+    service = CalendarService(calendars, shift_policy, site)
+    out: list[tuple[str, str, str, str]] = []
+    for line in sorted(set(open_lines)):
+        cal = calendars.get(line)
+        if cal is None or cal.status != "ADMITTED":
+            continue
+        left = service.eligible_shifts(line, cutoff_minute)
+        if not left:
+            out.append(("CALENDAR_NO_DAYS_LEFT", f"line {line}",
+                        f"CALENDAR_NO_DAYS_LEFT: the admitted calendar ends {cal.max_date.isoformat() if cal.max_date else 'nowhere'} and has "
+                        "no working shift after the data cut; none of the line's open work can be planned, so its finish date and "
+                        "cost stay unknown", "BLOCKS_ALL"))
+            continue
+        due = due_at.get(line)
+        last = max(max(s.end, s.ot_window[1] if s.ot_window else s.end) for s in left)
+        if due is not None and last <= to_minute(due):
+            out.append(("CALENDAR_ENDS_BEFORE_DUE", f"line {line}",
+                        f"CALENDAR_ENDS_BEFORE_DUE: the last working shift ends {from_minute(last).isoformat()}, not after the due "
+                        f"instant {due.isoformat()}; a late finish cannot be planned on this line, so work that does not fit shows "
+                        "as an unknown finish and no late-delivery cost is counted", "INFO"))
+    return out
+
+
 def horizon_dates(calendars: Mapping[int, LineCalendar]) -> tuple[date, date] | None:
     admitted = [c for c in calendars.values() if c.status == "ADMITTED" and c.min_date and c.max_date]
     if not admitted:
