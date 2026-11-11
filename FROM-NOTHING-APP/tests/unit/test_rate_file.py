@@ -104,3 +104,91 @@ def test_the_tool_writes_the_tables_and_fails_the_run_on_a_gap(tmp_path, app_roo
     full = subprocess.run(base + ["--rates", str(write("rates.csv", RATES)), "--aircraft", str(write("aircraft3.csv", AIRCRAFT[:3])),
                                   "--out", str(tmp_path / "full")], capture_output=True, text=True)
     assert full.returncode == 0 and json.loads((tmp_path / "full" / "coverage.json").read_text())["aircraft_without_rate"] == []
+
+
+# ---------------------------------------------------------------------- a rate file with its own layout (D-31)
+
+OWN_LAYOUT = [{"airline": "Alpha Air", "model": "787-9", "proxy_usd_per_day": "61234.5678912", "another_column": "1"},
+              {"airline": "Alpha Air", "model": "787-10", "proxy_usd_per_day": "70500.4", "another_column": "1"},
+              {"airline": "Beta Airways", "model": "787-10", "proxy_usd_per_day": "81000.07", "another_column": "1"},
+              {"airline": "Gamma Air", "model": "787-8", "proxy_usd_per_day": "40000.36", "another_column": "1"}]
+CODES = [{"CustomerCode": "AAA", "RateCustomer": "Alpha Air"}, {"CustomerCode": "AAX", "RateCustomer": "Alpha Air"},   # two codes, one airline
+         {"CustomerCode": "BBB", "RateCustomer": "Beta Airways"}]
+OWN_KW = dict(customer_column="airline", model_column="model", rate_column="proxy_usd_per_day", model_prefix="787-")
+
+
+def test_a_rate_file_with_its_own_layout_is_read_by_named_columns_a_model_prefix_and_an_explicit_customer_list(policy) -> None:
+    from focus.economics.rate_file import read_customer_codes
+
+    codes, code_problems = read_customer_codes(CODES)
+    assert code_problems == () and codes == {"Alpha Air": ("AAA", "AAX"), "Beta Airways": ("BBB",)}
+    aircraft = [{"LineNumber": "1201", "CustomerCode": "AAA", "MinorModel": "9"}, {"LineNumber": "1202", "CustomerCode": "AAX", "MinorModel": "787-9"},
+                {"LineNumber": "1203", "CustomerCode": "BBB", "MinorModel": "10"}, {"LineNumber": "1204", "CustomerCode": "BBB", "MinorModel": "9"},
+                {"LineNumber": "1205", "CustomerCode": "GGG", "MinorModel": "8"}]
+    data = read(OWN_LAYOUT, aircraft, customer_codes=codes, **OWN_KW)
+    assert data.problems == () and data.rate_customers_without_code == ("Gamma Air",)       # no code names it: set aside, not an error
+    assert sorted(data.rates) == [("AAA", 9), ("AAA", 10), ("AAX", 9), ("AAX", 10), ("BBB", 10)]
+    report = coverage(data)
+    assert report["priced"] == 3 and report["rate_customers_without_code"] == ["Gamma Air"]
+    assert report["aircraft_without_rate"] == [{"line": 1204, "customer": "BBB", "minor_model": 9},      # no 787-9 rate for that airline
+                                               {"line": 1205, "customer": "GGG", "minor_model": 8}]      # no code-to-name row for GGG
+    rows = build_rows(data, **KW)
+    econ = _economics(rows, policy, [1201, 1202, 1203, 1204, 1205])
+    assert econ[1201].daily_rate_cents == econ[1202].daily_rate_cents == Fraction(612345679, 100)       # four decimals kept, exactly
+    assert econ[1203].daily_rate_cents == Fraction(8_100_007) and econ[1204].daily_rate_cents is None and econ[1205].daily_rate_cents is None
+    assert {t["DailyRate"] for t in rows["econ_term"]} == {"61234.5679", "70500.4000", "81000.0700"}     # the unused column is never read
+    assert rows["econ_scenario"][0]["CapFraction"] == "0.0000"                                           # no cap (owner, D-31)
+
+
+def test_names_are_matched_exactly_and_what_cannot_be_read_exactly_is_refused() -> None:
+    from focus.economics.rate_file import read_customer_codes
+
+    aircraft = [{"LineNumber": "1201", "CustomerCode": "AAA", "MinorModel": "9"}, {"LineNumber": "1202", "CustomerCode": "CCC", "MinorModel": "9"}]
+    # the name differs by case: no match, so the aircraft stays unpriced and the rate is set aside
+    lower, _ = read_customer_codes([{"CustomerCode": "AAA", "RateCustomer": "alpha air"}])
+    data = read(OWN_LAYOUT, aircraft, customer_codes=lower, **OWN_KW)
+    assert data.rates == {} and "Alpha Air" in data.rate_customers_without_code and len(coverage(data)["aircraft_without_rate"]) == 2
+    # one code given to two airlines, and a row with no name
+    codes, problems = read_customer_codes(CODES + [{"CustomerCode": "CCC", "RateCustomer": "Alpha Air"}, {"CustomerCode": "CCC", "RateCustomer": "Beta Airways"},
+                                                   {"CustomerCode": "DDD", "RateCustomer": ""}])
+    assert sorted(p.split(":")[0] for p in problems) == ["CUSTOMER_CONFLICT", "CUSTOMER_ROW_INVALID"] and "CCC" not in sum(codes.values(), ())
+    # the family must be the one given; without the prefix a written-out model is not a number
+    other_family = read([{"airline": "Alpha Air", "model": "777-9", "proxy_usd_per_day": "1"}], aircraft, customer_codes=codes, **OWN_KW)
+    assert other_family.rates == {} and other_family.problems[0].startswith("RATE_ROW_UNREADABLE")
+    no_prefix = read(OWN_LAYOUT, aircraft, customer_codes=codes, **{**OWN_KW, "model_prefix": ""})
+    assert no_prefix.rates == {} and len(no_prefix.problems) == len(OWN_LAYOUT)
+    assert read([{"CustomerCode": "AAA", "MinorModel": "-9", "DailyRate": "5"}], aircraft).problems[0].startswith("RATE_ROW_UNREADABLE")
+
+
+def test_the_tool_reads_a_rate_file_with_its_own_layout(tmp_path, app_root) -> None:
+    import subprocess
+    import sys
+
+    def write(name, rows):
+        path = tmp_path / name
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+        return path
+
+    rates, codes = write("rate_table.csv", OWN_LAYOUT), write("codes.csv", CODES)
+    aircraft = [{"LineNumber": "1201", "CustomerCode": "AAA", "MinorModel": "9"}, {"LineNumber": "1202", "CustomerCode": "BBB", "MinorModel": "10"},
+                {"LineNumber": "1203", "CustomerCode": "AAX", "MinorModel": "10"}]
+    base = [sys.executable, str(app_root / "tools" / "build_economics_rows.py"), "--rates", str(rates), "--customer-column", "airline",
+            "--model-column", "model", "--model-prefix", "787-", "--customer-codes", str(codes), "--scenario-key", "AIRLINE-ECONOMIC-PROXY",
+            "--owner", "economics owner", "--source-reference", "rate_table.csv", "--effective-from", "2026-01-01T00:00:00.000",
+            "--created-at", "2026-11-11T12:00:00.000"]
+    column = ["--rate-column", "proxy_usd_per_day"]
+    full = subprocess.run(base + column + ["--aircraft", str(write("aircraft.csv", aircraft)), "--out", str(tmp_path / "full")], capture_output=True, text=True)
+    assert full.returncode == 0, full.stdout + full.stderr
+    terms = {(t["CustomerCode"], t["MinorModel"]): t["DailyRate"] for t in json.loads((tmp_path / "full" / "econ_term.json").read_text())}
+    assert terms[("AAA", 9)] == "61234.5679" and terms[("BBB", 10)] == "81000.0700" and terms[("AAX", 10)] == "70500.4000"
+    printed = json.loads(full.stdout)
+    assert printed["priced"] == 3 and printed["rate_customers_without_code"] == ["Gamma Air"]
+    gap = subprocess.run(base + column + ["--aircraft", str(write("aircraft2.csv", aircraft + [{"LineNumber": "1204", "CustomerCode": "BBB", "MinorModel": "9"}])),
+                                          "--out", str(tmp_path / "gap")], capture_output=True, text=True)
+    assert gap.returncode == 2 and json.loads(gap.stdout)["aircraft_without_rate"] == [{"line": 1204, "customer": "BBB", "minor_model": 9}]
+    wrong = subprocess.run(base + ["--rate-column", "daily_rate", "--aircraft", str(tmp_path / "aircraft.csv"), "--out", str(tmp_path / "wrong")],
+                           capture_output=True, text=True)
+    assert wrong.returncode == 2 and "has no column daily_rate" in wrong.stderr and not (tmp_path / "wrong").exists()

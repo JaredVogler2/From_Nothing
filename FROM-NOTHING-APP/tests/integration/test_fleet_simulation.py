@@ -109,17 +109,19 @@ def test_work_finished_after_the_next_cutoff_counts_once_in_its_own_shift(sims) 
     is credited to its own shift after the fact. The next plan may still hold it: there it is DONE_BEFORE_SHIFT, out of D,
     never missed and never earned twice."""
     first, _ = sims
-    late = _all(first, "SELECT shift_no, team, job_id FROM perf_unit WHERE status = 'DONE_BEFORE_SHIFT'")
+    late = _all(first, "SELECT shift_no, team, job_id, assignment_id FROM perf_unit WHERE status = 'DONE_BEFORE_SHIFT'")
     assert late, "the gap between the next cutoff and the shift end is modeled"
     ends = {k: datetime.fromisoformat(e) for k, e in _all(first, "SELECT shift_no, end_utc FROM sim_shift")}
     cutoff = {k: ends[k] - timedelta(minutes=SPEC.cutoff_lead_minutes) for k in ends}
-    for k, team, job in late:
+    for k, team, job, assignment in late:
         done = [datetime.fromisoformat(t) for (t,) in _all(first, "SELECT actual_end FROM exec_assignment WHERE shift_no = "
                                                                   f"{k - 1} AND job_id = '{job}' AND outcome = 'completed'")]
         done += [datetime.fromisoformat(t) for (t,) in _all(first, f"SELECT end_utc FROM exec_offplan WHERE shift_no = {k - 1} "
                                                                    f"AND job_id = '{job}'")]
         assert done and max(done) > cutoff[k - 1], (k, job)                                  # finished after the next plan's cutoff
-        assert not _all(first, f"SELECT 1 FROM exec_assignment WHERE shift_no = {k} AND job_id = '{job}' AND outcome = 'completed'")
+        # that planned task is not worked again in shift k. A later phase of the same job may be: it is another assignment,
+        # so the check is by assignment, not by job
+        assert not _all(first, f"SELECT 1 FROM exec_assignment WHERE shift_no = {k} AND assignment_id = '{assignment}'"), (k, job)
         credited = _all(first, f"SELECT COUNT(*) FROM perf_unit WHERE shift_no = {k - 1} AND job_id = '{job}' AND status = 'EARNED'")[0][0]
         credited += _all(first, f"SELECT COUNT(*) FROM exec_offplan WHERE shift_no = {k - 1} AND job_id = '{job}'")[0][0]
         assert credited, (k, job)                                                             # counted in the shift that did it

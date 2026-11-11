@@ -55,7 +55,11 @@ Then read the code those pages name. The two explainer pages list each rule with
     can never be planned late, so its lateness is never costed; the calendar feed must run past the due date.
   - `window`: the minutes from the data cut to the accepted plan and its dashboard data, against the owner's 20.
 - **Rates come from data, never from a guess.** Build the economics rows from a rate file with
-  `python tools/build_economics_rows.py`; it lists the aircraft it cannot price and leaves them unknown.
+  `python tools/build_economics_rows.py`; it lists the aircraft it cannot price and leaves them unknown. The owner's
+  rate is the airline economic proxy per customer airline and minor model, column
+  `daily_airline_economic_proxy_usd` of the owner's rate table, with the due date at 744 unload plus 2 days and no
+  cap (`FROM-NOTHING-APP/docs/execution/DECISIONS.md`, D-31). Ask the owner for the table: it is not in this
+  repository. Do not use another column of it.
 - **One definition of criticality**, from the cost objective (`OBJECTIVE_EXPLAINED.md` §5): the aircraft's cost of
   one more day late in the accepted forecast. Do not rank jobs by a hand-made list, a job type or a second formula,
   and do not weight scores by it until the owner decides (`DECISION_PLAYBOOK.md`, DEC-31).

@@ -415,6 +415,30 @@ attendance. A conditional ETA is never physical receipt.
     `tests/integration/test_calendar_coverage.py`, `tests/unit/test_rate_file.py`, the new cases in
     `tests/unit/test_calibrate_scores.py`, and `test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan`.
 
+- **D-31 The daily late-delivery rate is the airline economic proxy (owner, November 11, 2026).**
+  - **The owner's words**, on a rate table the owner supplied: "Column should be
+    'daily_airline_economic_proxy_usd' for daily lateness penalty cost." "Assume deliveries are 744 unload + 2 days."
+    "No cap on penalty costs."
+  - **Decision.**
+    - A late aircraft's daily rate is the owner's airline economic proxy for its customer airline and minor model:
+      column `daily_airline_economic_proxy_usd` of the owner's rate table. No other column of that table is used.
+    - The due date stays as decided on 2026-11-02 (OD-06): the planned unload at control station 744 plus 2 days.
+    - No cap. `economics.cap_policy` stays `EXPLICIT_ONLY` and no cap is supplied.
+  - **The table is the owner's and is not in this repository.** Publishing any of it here is the owner's call. Until
+    then the synthetic fleet keeps its earlier public ticket-revenue figures (`fixtures/economics/README.md`), which
+    are not the owner's rates, so simulated dollar figures are not at the owner's scale.
+  - **What was built.** `tools/build_economics_rows.py` (`focus/economics/rate_file.py`) reads a rate table in its
+    own layout: named columns, minor models written as `787-9`, and an explicit list that joins each customer code
+    to the airline name the table uses, matched exactly. An aircraft whose customer and minor model the table does
+    not cover, or whose customer code is not joined to a name, is listed and stays unpriced. Nothing is filled in.
+  - **Unchanged.** Cost = daily rate × minutes late ÷ 1,440; the order in which two schedules are compared; every
+    plan, validation, goal and score rule. The rates are `ASSUMED` planning values, never contract liability. OD-12
+    stays open for approved contract terms and booked liability.
+  - **Rates steer the plan, not only its price.** The scheduler's first pass orders work by each aircraft's daily
+    rate. How far apart the rates lie decides how much the improvement search has to repair, and the shipped time
+    budget leaves that search no time at 10 aircraft (`DECISION_PLAYBOOK.md`, DEC-34).
+  - **Tests.** The new cases in `tests/unit/test_rate_file.py`.
+
 ## Semantic gaps (live), each a precise readiness effect
 
 These are the policy file's `open_decisions` (OD-18 is tracked here only). None of them blocks local
@@ -441,7 +465,9 @@ quarantined), what each one withholds comes from the data its answer unlocks:
 - OD-09 affirmative no-cert census
 - OD-10 assignment/attendance feeds (currently empty)
 - OD-11 shift-start travel origin
-- OD-12 economics terms/caps/checkpoints
+- OD-12 economics terms/caps/checkpoints. The owner decided the planning rate (the airline economic proxy) and that
+  there is no cap on 2026-11-11 (D-31). Approved contract terms, sale bases and booked-liability checkpoints stay
+  open, so the gap stays in live snapshots.
 - OD-13 master shop-order status meanings
 - OD-14 which accepted plan purpose drives delivery commitments (fixture: FORECAST)
 - OD-15 live observation producers: no S04 table carries lifecycle facts, raw actual intervals, claims, decisions,

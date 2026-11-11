@@ -125,6 +125,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | Time | The database holds UTC; the app shows site local time (America/New_York); live `FOCUS_SOURCE_TIMEZONE_MAP_JSON={"*": "UTC"}` | owner, 2026-10-31 |
 | Display retention, per-job details | Display parts deleted when unread (D-24); per-job score evidence kept for 90 days (D-25) | D-24, D-25 |
 | Planning mode | `auto`: full solve before shift 1, repair otherwise; full solve when the incumbent is over 12 h old | `planning.*`, `PLAN_REPAIR.md` |
+| Daily late-delivery rate (D-31) | The owner's airline economic proxy per customer airline and minor model: column `daily_airline_economic_proxy_usd` of the owner's rate table, which the owner holds. Due = 744 unload + 2 days. No cap (owner, 2026-11-11). A customer and minor model without a row has no rate | `DECISIONS.md` D-31, `tools/build_economics_rows.py` |
 | Penalty proxy | Modeled from public airline and pricing data, labeled as a proxy (owner: keep) | A15 |
 | Duration statistic | P75 of verified comparable rework episodes | `duration.default_statistic` (`user_requirement`) |
 
@@ -162,6 +163,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-31 | Should criticality weight a team's score | OWNER (with data) | no: reported only (D-29) | after 4 weeks of pilot |
 | DEC-32 | Which measures, at which level | OWNER | the score for teams; nothing else is built | before the pilot |
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
+| DEC-34 | How long the scheduler may improve a plan | DATA, inside the owner's 20 minutes | 30 seconds for the whole run: no improvement at 10 aircraft | with the first 50-aircraft timings |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
@@ -362,7 +364,7 @@ Until confirmation, live behavior stays as the "Live effect" says.
 | OD-09 | Affirmative no-certificate census | Jobs without requirement rows stay blocked (`REQUIREMENTS_UNKNOWN`). | `queries/qualifications/requirement_census.sql`. Which system affirms "no certificate needed"? | A `requirement_census` producer; absence is never proof. |
 | OD-10 | Assignment and attendance feeds | No executable crews (both tables were empty on 2026-10-27). | Check that `person_team_map` (with `SUPERINTENDENT`) and `attendance_shift` are populated and current. | Load both from HR and timekeeping, plus `shift_roster`; team inference remains forecast-only. |
 | OD-11 | Travel origin at shift start | Muster at the first assignment, 0 minutes. | Check whether crews actually start at a muster point that costs time. | Keep the fixture rule unless supervisors report material travel at shift start. |
-| OD-12 | Economics terms, caps and checkpoints | Cost UNKNOWN where terms are missing; no default rate. | `queries/economics/effective_terms.sql` and `liability_floor.sql`. | Load approved terms only; leave unknown unknown. The planner still orders work by the other objectives. |
+| OD-12 | Economics terms, caps and checkpoints | Cost UNKNOWN where terms are missing; no default rate. | `queries/economics/effective_terms.sql` and `liability_floor.sql`. | The planning rate and "no cap" are decided (D-31): build the rows from the owner's table with `tools/build_economics_rows.py` and ask the owner for any row it lacks. Approved contract terms and booked liability stay open. Leave unknown unknown; the planner still orders work by the other objectives. |
 | OD-13 | Master status meanings | PREVIEW and FORECASTED stay forecast-only; unknown statuses are quarantined. | Count the statuses in the master list, and confirm each meaning with the planning system owner. | Confirm `scope.status_classes`, adding any new status explicitly; unknown is never open. |
 | OD-14 | Purpose behind delivery commitments | FORECAST plans drive commitments (fixture). | Ask the delivery owner which date is promised. | FORECAST, as today. |
 | OD-15 | Live observation producers | Official evaluation stays UNKNOWN. | Find the sources for verified completions, clock intervals, claims, decisions, amendments and defect evidence. | Producers into the migration 008 landing tables, plus attendance and holding evidence tables (DEC-01); `OBSERVED_AT_UTC` is when the producer first knew. |
@@ -752,6 +754,34 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   examples; `python tools/right_work_score.py sim RUN.db` scores a simulation run both ways.
 - **Do not** bring back job counts in any form, and do not grade on throughput: both rose on the floors that left
   their plan.
+
+### DEC-34 How long the scheduler may improve a plan
+
+- **Authority:** DATA, inside the owner's 20 minutes (D-28).
+- **Default now.** `optimizer.budget_seconds` = 30 for a whole scheduling run and `optimizer.max_neighborhood_moves`
+  = 400. Both are fixture values, never approved for production (`SCHEDULING_CONSTRAINTS.md`). The clock starts
+  with the run. At 10 aircraft the first pass alone took 49 to 54 seconds for the forecast and 26 to 29 for the
+  executable plan on the test machine, so the improvement search got no time on the forecast and almost none on
+  the executable plan.
+- **Why it matters** (`SB`, `docs/task-valuation-investigation/EVIDENCE_INDEX.md`: one 10-aircraft synthetic fleet,
+  one seed, the forecast of one shift). The first pass orders work by each aircraft's daily rate, so what the search
+  adds depends on how far apart the rates lie:
+
+  | Daily rates | First pass only | Three moves, two repairs | Ten moves, five repairs |
+  | --- | --- | --- | --- |
+  | The fixture's, the highest 2.8 times the lowest | $3,220,948 | $3,185,500 (−1.1%) | $3,157,323 (−2.0%) |
+  | Every aircraft at the same rate | $3,625,868 | $3,197,917 (−11.8%) | $3,153,646 (−13.0%) |
+
+  Three moves took about a minute more on the forecast and 25 seconds more on the executable plan. Real rates need
+  not be spread as widely as the fixture's, so on real data the search may matter more than the first row shows.
+- **Measure**, on the 50-aircraft fleet and then on real data: the late cost of the executable plan and of the
+  forecast against the seconds given to the search (0, 30, 120, 300, 600), with `window` from `pipeline --status`.
+- **Decision rule.** Give the forecast, which is outside the 20-minute window, the largest budget that still ends
+  before the next run starts. Give the executable plan what the window leaves after gathering, validating and
+  publishing. Stop raising a budget when doubling it saves under 1% of late cost.
+- **Until decided:** the shipped values. The schedule receipt records why the search stopped (`deadline` when the
+  budget ended it).
+- **Do not** read any plan as the lowest-cost plan. The receipt says `HEURISTIC_NO_PROOF`.
 
 ### OD-16 The OFFICIAL score policy (last)
 

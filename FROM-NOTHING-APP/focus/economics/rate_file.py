@@ -11,6 +11,12 @@ a conflict: neither is used.
 
 Every row is marked ``ASSUMED``: a modeled planning cost, never a contract liability. Ids are derived from the content,
 so the same files give the same rows.
+
+**A rate file with its own layout.** The column names can be given (``customer_column``, ``model_column``,
+``rate_column``), a minor model may carry its family first (``model_prefix="787-"`` reads ``787-9`` as 9), and a file
+keyed by a customer's name instead of its code is joined through an explicit list of ``CustomerCode, RateCustomer``
+pairs (``customer_codes``). Names are matched exactly as written: no case folding, no partial match. A code that
+the list gives to two names is not used. The owner's rate table is such a file (DECISIONS.md, D-31).
 """
 from __future__ import annotations
 
@@ -32,6 +38,7 @@ class RateFile:
     rates: dict[tuple[str, int], tuple[Decimal, str]]          # (customer, minor model) -> (daily rate, currency)
     aircraft: dict[int, tuple[str, int]]                        # line -> (customer, minor model)
     problems: tuple[str, ...]                                   # rows that were not used, each with its reason
+    rate_customers_without_code: tuple[str, ...] = ()           # with a customer list: rate customers no code points to
 
 
 def _text(row: Mapping[str, Any], column: str) -> str:
@@ -39,22 +46,61 @@ def _text(row: Mapping[str, Any], column: str) -> str:
     return "" if value is None else str(value).strip()
 
 
-def read(rate_rows: Iterable[Mapping[str, Any]], aircraft_rows: Iterable[Mapping[str, Any]], *, currency: str = "USD") -> RateFile:
-    """Validate both tables. A row that cannot be read exactly is left out and reported; nothing is guessed."""
+def _minor_model(text: str, prefix: str = "") -> int:
+    """``9``, or ``<prefix>9`` when the file writes the family first. Anything else is not a minor model."""
+    if prefix and text.startswith(prefix):
+        text = text[len(prefix):]
+    if not (text.isascii() and text.isdigit()):
+        raise ValueError(text)
+    return int(text)
+
+
+def read_customer_codes(rows: Iterable[Mapping[str, Any]]) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
+    """``CustomerCode, RateCustomer`` rows -> (rate customer -> its codes, problems). One name may have several codes.
+    A code given to two different names is a conflict: it is left out, so its aircraft stay unpriced."""
+    problems: list[str] = []
+    names: dict[str, set[str]] = {}
+    for n, row in enumerate(rows, start=1):
+        code, name = _text(row, "CustomerCode"), _text(row, "RateCustomer")
+        if not code or not name:
+            problems.append(f"CUSTOMER_ROW_INVALID: customer row {n} ({code or '?'} / {name or '?'}) needs a CustomerCode and a RateCustomer")
+            continue
+        names.setdefault(code, set()).add(name)
+    out: dict[str, list[str]] = {}
+    for code, given in sorted(names.items()):
+        if len(given) > 1:
+            problems.append(f"CUSTOMER_CONFLICT: {code} is given {len(given)} different rate customers; it is left out")
+        else:
+            out.setdefault(next(iter(given)), []).append(code)
+    return {name: tuple(codes) for name, codes in out.items()}, tuple(problems)
+
+
+def read(rate_rows: Iterable[Mapping[str, Any]], aircraft_rows: Iterable[Mapping[str, Any]], *, currency: str = "USD",
+         customer_column: str = "CustomerCode", model_column: str = "MinorModel", rate_column: str = "DailyRate", model_prefix: str = "",
+         customer_codes: Mapping[str, Iterable[str]] | None = None) -> RateFile:
+    """Validate both tables. A row that cannot be read exactly is left out and reported; nothing is guessed.
+
+    With ``customer_codes`` the rate file's customer is a name: each rate is filed under the codes listed for exactly
+    that name, and a rate whose name has no code is set aside (``rate_customers_without_code``), not an error."""
     problems: list[str] = []
     seen: dict[tuple[str, int], set[tuple[Decimal, str]]] = {}
+    unmapped: set[str] = set()
     for n, row in enumerate(rate_rows, start=1):
-        code, model, rate = _text(row, "CustomerCode"), _text(row, "MinorModel"), _text(row, "DailyRate")
+        code, model, rate = _text(row, customer_column), _text(row, model_column), _text(row, rate_column)
         cur = _text(row, "Currency") or currency
         try:
-            key, value = (code, int(model)), Decimal(rate)
+            minor, value = _minor_model(model, model_prefix), Decimal(rate)
         except (ValueError, InvalidOperation):
             problems.append(f"RATE_ROW_UNREADABLE: rate row {n} ({code or '?'} / {model or '?'} / {rate or '?'})")
             continue
         if not code or not value.is_finite() or value < 0:
             problems.append(f"RATE_ROW_INVALID: rate row {n} ({code or '?'} / {model}): the customer is empty or the rate is negative")
             continue
-        seen.setdefault(key, set()).add((value, cur))
+        codes = (code,) if customer_codes is None else tuple(customer_codes.get(code, ()))
+        if not codes:
+            unmapped.add(code)
+        for customer in codes:
+            seen.setdefault((customer, minor), set()).add((value, cur))
     rates: dict[tuple[str, int], tuple[Decimal, str]] = {}
     for key, values in sorted(seen.items()):
         if len(values) > 1:
@@ -65,12 +111,13 @@ def read(rate_rows: Iterable[Mapping[str, Any]], aircraft_rows: Iterable[Mapping
     for n, row in enumerate(aircraft_rows, start=1):
         line, code, model = _text(row, "LineNumber"), _text(row, "CustomerCode"), _text(row, "MinorModel")
         try:
-            lines.setdefault(int(line), set()).add((code, int(model)))
+            minor = _minor_model(model, model_prefix)
+            lines.setdefault(int(line), set()).add((code, minor))
         except ValueError:
             problems.append(f"AIRCRAFT_ROW_UNREADABLE: aircraft row {n} ({line or '?'} / {code or '?'} / {model or '?'})")
             continue
         if not code:
-            lines[int(line)].discard((code, int(model)))
+            lines[int(line)].discard((code, minor))
             problems.append(f"AIRCRAFT_ROW_INVALID: aircraft row {n} (line {line}) has no customer")
     aircraft: dict[int, tuple[str, int]] = {}
     for line_no, values in sorted(lines.items()):
@@ -78,7 +125,7 @@ def read(rate_rows: Iterable[Mapping[str, Any]], aircraft_rows: Iterable[Mapping
             problems.append(f"AIRCRAFT_CONFLICT: line {line_no} is given {len(values)} different customers or minor models; it is left out")
         elif values:
             aircraft[line_no] = next(iter(values))
-    return RateFile(rates, aircraft, tuple(problems))
+    return RateFile(rates, aircraft, tuple(problems), tuple(sorted(unmapped)))
 
 
 def coverage(data: RateFile) -> dict[str, Any]:
@@ -89,7 +136,7 @@ def coverage(data: RateFile) -> dict[str, Any]:
     return {"aircraft": len(data.aircraft), "priced": len(data.aircraft) - len(missing), "aircraft_without_rate": missing,
             "rates": len(data.rates),
             "rates_without_aircraft": [{"customer": c, "minor_model": m} for c, m in sorted(data.rates) if (c, m) not in used],
-            "problems": list(data.problems)}
+            "rate_customers_without_code": list(data.rate_customers_without_code), "problems": list(data.problems)}
 
 
 def build_rows(data: RateFile, *, scenario_key: str, methodology: str, owner: str, source_reference: str, effective_from_utc: str,

@@ -33,7 +33,10 @@ sum, so no amount of saved overtime can buy a late delivery.
 
 - **Daily rate.** One rate per aircraft, from its economics term. A term names a customer and minor model, a
   contract, or one aircraft; the most specific one wins. The shipped rates are a proxy for what a late day costs the
-  airline, not a contract figure, and are labeled ASSUMED.
+  airline, not a contract figure, and are labeled ASSUMED. On real data the rate is the owner's airline economic
+  proxy per customer airline and minor model, with no cap (owner decision D-31, 2026-11-11: column
+  `daily_airline_economic_proxy_usd` of the owner's rate table). The synthetic fleet's rates are public
+  ticket-revenue figures, so the amounts in this page's examples are not at the owner's scale.
 - **Due.** The aircraft's planned unload date at the last control station (CS744) plus 2 days, to the end of that
   local day (owner decision OD-06).
 - **Finish.** The time the last open job on the aircraft is released in the schedule. Every open job counts,
@@ -128,7 +131,7 @@ How to use it:
 
 | Cause | What it looks like | What to do |
 | --- | --- | --- |
-| No rate for the aircraft | `ECONOMICS_MISSING`, `NO_EFFECTIVE_TERM`, `AIRCRAFT_NOT_MAPPED` | Load a term for that customer and minor model, or ask the owner for one. `tools/build_economics_rows.py` builds the rows from a rate file and lists the aircraft it cannot price. Never substitute an average, a median or another customer's rate. |
+| No rate for the aircraft | `ECONOMICS_MISSING`, `NO_EFFECTIVE_TERM`, `AIRCRAFT_NOT_MAPPED` | Load a term for that customer and minor model. The rates are the owner's rate table (D-31); `tools/build_economics_rows.py` builds the rows from it and lists the aircraft it cannot price: a customer and minor model the table has no row for, or a customer code not joined to one of its airline names. Ask the owner for the missing row. Never substitute an average, a median or another customer's rate. |
 | No due date | `DUE_UNKNOWN` | The line has no CS744 planned unload date in the same run. Fix the control-station data. |
 | A job has no duration | the job is blocked with a duration reason | A duration producer, or the owner's decision on a fallback (OD-02). Never guess one. |
 | A job has no control-station window | the job is blocked with a control-station reason | OD-05 and the `cs_windows` producer. |
@@ -180,12 +183,15 @@ Read it under `criticality` in the pipeline status, beside `objective`. Use the 
 
 ## 6. Open, not built
 
-- **Live economics terms, caps and booked liability** (OD-12). Until approved terms are loaded, live costs are
-  unknown or assumed.
+- **Live economics terms and booked liability** (OD-12). The planning rate and the absence of a cap are decided
+  (D-31); approved contract terms and booked liability are not. Until the owner's rates are loaded for the live
+  aircraft, live costs are unknown.
 - **A carrying cost for early aircraft.** Today an aircraft costs nothing until it passes its due date, so its jobs
   have criticality 0 until then.
 - **A proven optimum.** The optional solver only proposes job orders to the same comparison
-  (`SOLVER_ENABLEMENT.md`).
+  (`SOLVER_ENABLEMENT.md`). The improvement search after the first pass cut one 10-aircraft forecast's late cost by
+  1% with the fixture's rates and by 12% when every aircraft had the same rate, and the shipped 30-second budget
+  leaves it no time at that size (`DECISION_PLAYBOOK.md`, DEC-34).
 - **Dollars per job.** Investigated and not adopted (`docs/task-valuation-investigation/`, reports `01` to `08`):
   single-job costs were zero for a one-shift slip and overlapped where they were not, so they cannot be added up.
   The scheduler's per-job cost of delay stays a search aid.

@@ -356,6 +356,11 @@ of jobs. Both show in the reports named above.
 - **A strict score makes the plan's quality matter more.** If plans are often wrong and leads cannot change them,
   the score will punish the crews for the planners' errors.
 - **Simulated crews** chose by a fixed rule every shift, on every team. Real crews mix reasons.
+- **The plans were the scheduler's first pass only.** The improvement search was off to save time, as in the other
+  runs made with this folder's scripts. A later check (`SB`, `EVIDENCE_INDEX.md`) put what the search adds on this
+  kind of fleet at 1% to 2% of the forecast's late cost with these rates, and at 12% to 13% when every aircraft has
+  the same rate. Every floor was planned the same way, so the comparisons stand. Whether a tighter plan would leave
+  less room to reorder work without a delivery cost was not tested.
 - **I built today's score and recommended the 80%.** The tests here were chosen to try to break it.
 
 ## 9. Decisions for the owner

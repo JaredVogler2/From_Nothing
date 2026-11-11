@@ -20,7 +20,7 @@ tests. Live entries come from the manual's S04 authoring observations
 | Per-line calendars | Verified: one active load (7001), dense bounds 2026-10-24..2026-11-15. | 5,079 WORKING / 2,409 WEEKEND / 1,305 NONWORKING active rows observed; generation selection per line required. |
 | CS windows | Verified: same-run lineage, station 744, signed offsets preserved. | 40,840 rows; date basis open (OD-05). |
 | Parts | Verified: linked, unresolved used-on and unknown ECD cases. | 450 active shortages with null ECD and 1,484 blank USED_ON become blocked/conditional gaps. |
-| Economics | Verified: assumed terms labeled; one aircraft unmapped stays unknown. | No production default rate; due date decided (OD-06); terms, caps and checkpoints open (OD-12). |
+| Economics | Verified: assumed terms labeled; one aircraft unmapped stays unknown. | No production default rate; due date decided (OD-06); planning rate and no cap decided (D-31); approved terms and checkpoints open (OD-12). |
 | Timezone policy | Fixture producer receipts declare America/New_York. | The database holds UTC (owner, 2026-10-31); live runs set `FOCUS_SOURCE_TIMEZONE_MAP_JSON` to `{"*": "UTC"}` (`manifest.yml`, `.gitlab-ci.yml`). Without a map, master_task_list, cday_op_plan and cs_windows carry `SOURCE_TIMEZONE_POLICY_MISSING`. |
 
 ## Clock semantics (P03 step 5)
