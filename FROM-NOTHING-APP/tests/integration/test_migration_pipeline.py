@@ -619,6 +619,15 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     assert "{ job: native_wheel, artifacts: true }" in jobs["schedule_validate"] and "dist/focus_native-" in jobs["schedule_validate"]
     assert "focus-native==" not in jobs["schedule_validate"]                     # never an index wheel from another commit
     assert "when: manual" in jobs["sign_accept"] and "focus-signer" in jobs["sign_accept"]
+    # DEC-11 is the owner's decision and is not made: the switch for automatic acceptance exists and is off. Turned on, it
+    # applies only to a scheduled run on a protected ref; every other run still waits for an operator
+    assert 'FOCUS_AUTO_SIGN: "false"' in jobs["variables"]
+    auto, manual = jobs["sign_accept"].split("when: on_success")[0], jobs["sign_accept"].split("when: on_success")[1]
+    rule = [line for line in auto.splitlines() if line.strip()][-1]              # the condition of the automatic rule
+    for condition in ('$FOCUS_AUTO_SIGN == "true"', '$CI_PIPELINE_SOURCE == "schedule"', '$CI_COMMIT_REF_PROTECTED == "true"', '$FOCUS_MODE == "live"'):
+        assert condition in rule and " || " not in rule, condition                # every condition must hold: no alternative
+    assert "when: manual" in manual and "FOCUS_AUTO_SIGN" not in manual
+    assert "FOCUS_AUTO_SIGN" not in jobs["forecast_sign_accept"]                 # the forecast is always promoted by an operator
     assert "when: manual" in jobs["forecast_sign_accept"] and "focus-signer" in jobs["forecast_sign_accept"]
     assert "dist/focus_native-" in jobs["forecast_schedule_validate"] and "FOCUS_SIGN_KEY_REF" not in jobs["forecast_stage_readback"]
     assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[".live"]

@@ -2,7 +2,8 @@
 
 The scheduler minimizes the fleet's modeled late-delivery cost. What a lost day of work costs depends on the aircraft:
 nothing in modeled dollars while the aircraft still finishes ahead of its due date, and its daily rate once it is late.
-The scheduler's own search orders work by this number (``EconomicsRegistry.derive_priority_weights``). So:
+The scheduler's own search orders work by the same measure, taken on its first schedule
+(``EconomicsRegistry.derive_priority_weights``). So:
 
     criticality of a job = the modeled cost of one more day late for its aircraft, in the accepted forecast plan,
                            as a share of the highest such cost in the fleet (0 to 1).

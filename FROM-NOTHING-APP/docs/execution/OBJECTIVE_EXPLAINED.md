@@ -152,7 +152,8 @@ The owner's rule (D-29): criticality is a function of the cost objective, never 
 type.
 
 **A job's criticality is the modeled cost of one more day late for its aircraft, in the accepted forecast plan, as a
-share of the highest such cost in the fleet** (0 to 1). It is the number the scheduler's own search orders work by.
+share of the highest such cost in the fleet** (0 to 1). It is the measure the scheduler's own search orders work by,
+read from the accepted plan.
 The code is `focus/valuation/criticality.py`; the tests are `tests/unit/test_criticality.py`.
 
 | State of the aircraft in the plan | Cost of one more day late | Example at $380,000 a day |

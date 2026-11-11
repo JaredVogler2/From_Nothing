@@ -73,7 +73,8 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 - **Tests that pin decisions.** Update them in the same change as the decision they pin:
   - `tests/unit/test_policy_config.py` pins which OD ids are open and that `cs.date_mode` is `open_decision`;
   - `tests/integration/test_migration_pipeline.py::test_ci_draft_orders_roles_and_protects_signing` pins
-    `when: manual` on both signing jobs, that acquisition needs every verify job in its pipeline, and that the long
+    manual acceptance as the default on both signing jobs (the `FOCUS_AUTO_SIGN` switch is off and never applies to
+    the forecast), that acquisition needs every verify job in its pipeline, and that the long
     suites run on merge while a live run requires a protected ref (D-28);
   - `tests/unit/test_data_reference_docs.py` pins the dataset columns against `docs/data/`.
 - **Validate before you push.**
@@ -388,7 +389,7 @@ first owner-confirmed OD, because any edit changes the policy hash.
 ### DEC-11 Signing before each shift
 
 - **Authority:** OWNER. It is a governance decision.
-- **Why.** `sign_accept` is `when: manual`. A plan accepted after its shift starts is only a proposal for that shift,
+- **Why.** `sign_accept` waits for an operator. A plan accepted after its shift starts is only a proposal for that shift,
   and teams are scored against the stale plan (DEC-24).
 - **Options:**
   - (a) manual promotion, staffed three times a day, with an alert at T−5 minutes;
@@ -397,8 +398,12 @@ first owner-confirmed OD, because any edit changes the policy hash.
   - (c) automatic for EXECUTABLE, manual for FORECAST.
 - **Recommendation: (b), or (c) if the owner wants a human on the delivery forecast.** Keep a kill switch
   (`FOCUS_AUTO_SIGN=false` falls back to manual).
-- **Build now.** Add the rules with the switch off. The test above asserts `when: manual`; extend it to assert the
-  manual fallback.
+- **Built, switched off.** The pipeline draft carries `FOCUS_AUTO_SIGN: "false"`. Set to `"true"`, `sign_accept`
+  runs by itself only in a scheduled pipeline on a protected ref; every other run, and every forecast, still waits
+  for an operator. The signer step refuses a plan without a clean FINAL validation and a clean READBACK either way
+  (`test_ci_draft_orders_roles_and_protects_signing`). Turn it on only with the owner's decision on record.
+- **Until decided:** a person accepts each plan, three times a day, inside the 20 minutes of D-28. A plan accepted
+  after its shift starts is not that shift's plan of record.
 - **Measure.** From `tools/calibrate_scores.py store`: `stale_plans.share`, and the minutes from acceptance to shift
   start (pipeline receipts).
 - **Decision evidence.** If manual signing gives any stale plan in a week of shadow, recommend automatic.

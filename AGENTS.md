@@ -45,10 +45,15 @@ Then read the code those pages name. The two explainer pages list each rule with
   second module.
 - **Unknown stays unknown.** Never fill a missing rate, duration, crew size, date or calendar day with an average, a
   median or a default. Report how many rows are affected, by reason, and work the cause.
-- **Report two things with every live run**, both from `python -m focus.cli pipeline --key K --status`:
+- **Report three things with every live run**, all from `python -m focus.cli pipeline --key K --status`:
   - `objective`: how many aircraft have a rate, a due date and a finish date, and the open jobs that could not be
-    planned, by reason. A run that publishes a plan while every cost is unknown has not optimized cost.
+    planned, by reason. Every aircraft in work should have a due date. A run that publishes a plan while every cost
+    is unknown has not optimized cost.
+  - `readiness_gaps`: the admitted data's gaps by code. `CALENDAR_ENDS_BEFORE_DUE` on a line means that aircraft
+    can never be planned late, so its lateness is never costed; the calendar feed must run past the due date.
   - `window`: the minutes from the data cut to the accepted plan and its dashboard data, against the owner's 20.
+- **Rates come from data, never from a guess.** Build the economics rows from a rate file with
+  `python tools/build_economics_rows.py`; it lists the aircraft it cannot price and leaves them unknown.
 - **One definition of criticality**, from the cost objective (`OBJECTIVE_EXPLAINED.md` §5): the aircraft's cost of
   one more day late in the accepted forecast. Do not rank jobs by a hand-made list, a job type or a second formula,
   and do not weight scores by it until the owner decides (`DECISION_PLAYBOOK.md`, DEC-31).

@@ -356,9 +356,9 @@ attendance. A conditional ETA is never physical receipt.
     function of global minimization of penalty costs."
   - **Decision.** FOCUS has one definition of criticality and it is derived from the objective, never assigned by
     hand, by job type or by a list: a job's criticality is **the modeled cost of one more day late for its aircraft,
-    in the accepted forecast plan, as a share of the highest such cost in the fleet** (0 to 1). It is the number the
-    scheduler's own search orders work by (`EconomicsRegistry.derive_priority_weights`), read from the plan's cost
-    lines, so it needs no second model.
+    in the accepted forecast plan, as a share of the highest such cost in the fleet** (0 to 1). It is the measure the
+    scheduler's own search orders work by (`EconomicsRegistry.derive_priority_weights`), read here from the
+    accepted plan's cost lines, so it needs no second model.
     - `LATE`: the plan finishes the aircraft after its due date. One more day costs its daily rate.
     - `ON_TIME`: the plan finishes it before the due date. One more day costs only what would fall past the due
       date, which is nothing when there is more than a day of margin.

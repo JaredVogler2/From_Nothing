@@ -278,7 +278,9 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
   `resource_group`. Acquisition waits for the verify jobs in its pipeline and for the staged sources. In a live run
   the long suites (non-UI, UI, rehearsal) are not in the pipeline: they ran on the merge that put the code on the
   protected ref, and acquisition refuses any other ref (D-28; `FOCUS_LIVE_VERIFY=full` runs them every time).
-  `sign_accept` is `when: manual` and holds the only signing reference.
+  `sign_accept` waits for an operator and holds the only signing reference. `FOCUS_AUTO_SIGN=true` lets a scheduled
+  run on a protected ref accept the executable plan itself; it is off, and turning it on is the owner's decision
+  (`DECISION_PLAYBOOK.md`, DEC-11).
 - **The window.** `python -m focus.cli pipeline --key K --status` reports, under `window`, the minutes from the data
   cut to the accepted executable plan against the owner's 20-minute budget, the seconds per step, and whether the plan
   was accepted after its shift started.

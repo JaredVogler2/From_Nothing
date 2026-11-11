@@ -49,6 +49,10 @@ variables:
   # ref, whose merge pipeline already passed them (acquire_admit refuses any other ref). "full" runs them before every
   # plan again, as P23 first had it.
   FOCUS_LIVE_VERIFY: "merged"
+  # Who accepts the executable plan before each shift is the owner's decision (DEC-11) and is not made. "false": an
+  # authorized operator promotes every plan. "true": a scheduled run on a protected ref accepts it once the validations
+  # before it are clean. Turn it on only with the owner's decision on record.
+  FOCUS_AUTO_SIGN: "false"
 
 stages: [verify, retain, stage_sql, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
 
@@ -216,7 +220,14 @@ sign_accept:
   extends: .live
   stage: sign
   needs: [stage_readback]
-  when: manual                                      # an authorized operator promotes; FOCUS_SIGN_KEY_REF exists only here
+  rules:                                            # FOCUS_SIGN_KEY_REF exists only in this job's environment
+    # DEC-11, off by default: the run accepts the plan itself only on a schedule, on a protected ref, with the switch on.
+    # The signer step still refuses a plan without a clean FINAL validation and a clean READBACK.
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && $FOCUS_AUTO_SIGN == "true" && $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_REF_PROTECTED == "true"
+      when: on_success
+    # otherwise an authorized operator promotes
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+      when: manual
   allow_failure: false
   environment: { name: focus-signer }
   script:

@@ -318,11 +318,13 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
   - `FOCUS_LIVE_VERIFY=full` puts the suites back into every live run.
   - Protect the default branch and require a passed pipeline to merge, or the rule protects nothing.
 - **Manual signing.**
-  - `sign_accept` is `when: manual`. With about five minutes between the end of planning and the shift start, a
+  - `sign_accept` waits for an operator. With about five minutes between the end of planning and the shift start, a
     missed promotion makes a late plan.
   - Options: automatic promotion inside the protected signer environment (signing only a plan whose FINAL and
     readback validations are clean), or a staffed promotion with an alert at T−5 minutes. This is an owner
-    decision.
+    decision (DEC-11).
+  - The automatic path is built and switched off: `FOCUS_AUTO_SIGN: "false"` in the pipeline draft. Do not turn it
+    on without the owner's decision on record.
 
 ## 6. Engineering work before going live (in order)
 
