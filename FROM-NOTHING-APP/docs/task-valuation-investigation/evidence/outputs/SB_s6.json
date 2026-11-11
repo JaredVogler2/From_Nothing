@@ -1,6 +1,25 @@
 {
  "shipped_budget_seconds": 30,
  "flat_rate_usd": 65000,
+ "fleet": {
+  "aircraft": 10,
+  "seed": 20261026,
+  "fleet_seed": null,
+  "late_parts": "few",
+  "customers_and_models": {
+   "AAL 787-9": 1,
+   "ANA 787-9": 1,
+   "BAW 787-10": 1,
+   "ETD 787-10": 1,
+   "KAL 787-10": 1,
+   "QTR 787-9": 1,
+   "THY 787-9": 1,
+   "UAL 787-10": 1,
+   "UAL 787-9": 2
+  },
+  "lowest_daily_rate_usd": 53569.98,
+  "highest_daily_rate_usd": 84372.07
+ },
  "cheapest_plan_at_fixture_rates": "SB_ticket_m3",
  "plans": [
   {
@@ -11,6 +30,9 @@
    "aircraft": 10,
    "seed": 20261026,
    "fleet_seed": null,
+   "late_parts": "few",
+   "run_seconds": 109.2,
+   "peak_memory_mb": null,
    "aircraft_with_unknown_finish": 0,
    "aircraft_late": 6,
    "late_days": {
@@ -96,6 +118,9 @@
    "aircraft": 10,
    "seed": 20261026,
    "fleet_seed": null,
+   "late_parts": "few",
+   "run_seconds": 184.6,
+   "peak_memory_mb": null,
    "aircraft_with_unknown_finish": 0,
    "aircraft_late": 6,
    "late_days": {
@@ -181,6 +206,9 @@
    "aircraft": 10,
    "seed": 20261026,
    "fleet_seed": null,
+   "late_parts": "few",
+   "run_seconds": 280.6,
+   "peak_memory_mb": null,
    "aircraft_with_unknown_finish": 0,
    "aircraft_late": 6,
    "late_days": {
@@ -266,6 +294,9 @@
    "aircraft": 10,
    "seed": 20261026,
    "fleet_seed": null,
+   "late_parts": "few",
+   "run_seconds": 107.4,
+   "peak_memory_mb": null,
    "aircraft_with_unknown_finish": 0,
    "aircraft_late": 6,
    "late_days": {
@@ -351,6 +382,9 @@
    "aircraft": 10,
    "seed": 20261026,
    "fleet_seed": null,
+   "late_parts": "few",
+   "run_seconds": 149.3,
+   "peak_memory_mb": null,
    "aircraft_with_unknown_finish": 0,
    "aircraft_late": 6,
    "late_days": {
@@ -436,6 +470,9 @@
    "aircraft": 10,
    "seed": 20261026,
    "fleet_seed": null,
+   "late_parts": "few",
+   "run_seconds": 238.7,
+   "peak_memory_mb": null,
    "aircraft_with_unknown_finish": 0,
    "aircraft_late": 6,
    "late_days": {
@@ -521,6 +558,9 @@
    "aircraft": 10,
    "seed": 20261026,
    "fleet_seed": null,
+   "late_parts": "few",
+   "run_seconds": 109.6,
+   "peak_memory_mb": null,
    "aircraft_with_unknown_finish": 0,
    "aircraft_late": 6,
    "late_days": {
@@ -606,6 +646,9 @@
    "aircraft": 10,
    "seed": 20261026,
    "fleet_seed": null,
+   "late_parts": "few",
+   "run_seconds": 159.9,
+   "peak_memory_mb": null,
    "aircraft_with_unknown_finish": 0,
    "aircraft_late": 6,
    "late_days": {

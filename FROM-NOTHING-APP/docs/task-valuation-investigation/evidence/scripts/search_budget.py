@@ -1,12 +1,20 @@
 """SB: what the scheduler's improvement search buys, and what the shipped time budget leaves of it. Investigation only.
 
 Usage: search_budget.py run OUT MOVES REPAIRS [fixture|flat|ticket] [--aircraft N] [--seed S] [--fleet-seed F]
+                            [--late-parts few|standard]
        search_budget.py compare OUT.json NAME [NAME ...]
 
-Runs with the same ``--aircraft`` and ``--fleet-seed`` plan one shift of the same fleet with the same data: the same
-customer and minor model on every line, the same work, people, parts and seed. Another ``--fleet-seed`` gives another
-fleet: other customers and models on the lines, other task networks, team sizes and late parts. What differs between
-the runs of one fleet:
+Runs with the same ``--aircraft``, ``--fleet-seed`` and ``--late-parts`` plan one shift of the same fleet with the same
+data: the same customer and minor model on every line, the same work, people, parts and seed. The fleet is whichever
+aircraft have open tasks (DECISIONS.md D-32), so one fleet is one example. Another ``--fleet-seed`` gives another:
+
+* its customers and minor models are drawn at random from the open orders that have a rate, in proportion to the
+  orders (without ``--fleet-seed`` the fleet is the proportional split the generator makes by default);
+* its task networks, team sizes, days in station, late parts and rework are drawn again.
+
+``--late-parts few`` (the default, as in the 10-aircraft runs) makes 2% of parts late by one to three days;
+``standard`` keeps the generator's own share and delays, as in the stored 50-aircraft run. What differs between the
+runs of one fleet:
 
 * the bounds of the improvement search after the first pass: ``MOVES`` neighbourhood moves and ``REPAIRS`` delay
   repairs. ``0 0`` is the first pass alone: the neutral seed and the economic redispatch;
@@ -24,6 +32,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import random
+import resource
 import sqlite3
 import sys
 import time
@@ -37,18 +47,31 @@ from focus.policy import load_policy
 from focus.sim.execute import FloorSpec, TeamTraits
 
 FLAT_RATE = 65_000
+LATE_PARTS = {"few": {"late_part_share": 0.02, "late_delays": ((1.0, 1, 3),)}, "standard": {}}
 
 
-def run(out: str, moves: int, repairs: int, rates: str, aircraft: int, seed: int, fleet_seed: int | None) -> None:
-    terms = None                                                           # the fixture's own rates
+def drawn(terms: list[tuple], aircraft: int, fleet_seed: int) -> tuple[tuple, ...]:
+    """The terms with ``aircraft`` aircraft drawn at random over the customers and minor models that have open orders
+    and a rate, in proportion to the orders. The count drawn stands where the open orders stood, so the generator's
+    split gives exactly this fleet."""
+    priced = [i for i, t in enumerate(terms) if t[3] > 0 and t[4] is not None]
+    picks = random.Random(fleet_seed).choices(priced, weights=[terms[i][3] for i in priced], k=aircraft)
+    return tuple((code, name, model, picks.count(i), rate) for i, (code, name, model, _, rate) in enumerate(terms))
+
+
+def run(out: str, moves: int, repairs: int, rates: str, aircraft: int, seed: int, fleet_seed: int | None, late_parts: str = "few") -> None:
+    terms = None                                                           # the fixture's own split and rates
+    if fleet_seed is not None:
+        terms = drawn(F.penalty_terms(), aircraft, fleet_seed)
     if rates != "fixture":
         with F.OPEN_ORDERS.open(encoding="utf-8", newline="") as fh:
             ticket = {(r["customer"], int(r["minor_model"])): int(r["ticket_revenue_usd_per_day"]) for r in csv.DictReader(fh)}
         other = (lambda name, model: FLAT_RATE) if rates == "flat" else (lambda name, model: ticket[(name, model)])
         # a pair without a rate in the fixture keeps none, so the fleet is the same under every set of rates
-        terms = tuple((code, name, model, orders, None if rate is None else other(name, model)) for code, name, model, orders, rate in F.penalty_terms())
+        terms = tuple((code, name, model, orders, None if rate is None else other(name, model))
+                      for code, name, model, orders, rate in (terms or F.penalty_terms()))
     team_size = (5, 10) if aircraft <= 10 else (10, 30)
-    fleet = F.FleetSpec(n_aircraft=aircraft, team_size=team_size, late_part_share=0.02, late_delays=((1.0, 1, 3),), customer_models=terms,
+    fleet = F.FleetSpec(n_aircraft=aircraft, team_size=team_size, customer_models=terms, **LATE_PARTS[late_parts],
                         **({} if fleet_seed is None else {"seed": fleet_seed}))
     spec = R.SimSpec(fleet=fleet, floor=FloorSpec(deviation=0.0, pull_ahead=0.35), days=1, shifts=1, purposes=("EXECUTABLE", "FORECAST"),
                      max_moves=moves, max_repairs=repairs, seed=seed, cutoff_lead_minutes=20)
@@ -58,7 +81,8 @@ def run(out: str, moves: int, repairs: int, rates: str, aircraft: int, seed: int
     started = time.time()
     R.run(spec, db, log=lambda message: None, traits=TeamTraits())
     summary = {"out": out, "rates": rates, "moves": moves, "repairs": repairs, "aircraft": aircraft, "seed": seed, "fleet_seed": fleet_seed,
-               "seconds": round(time.time() - started, 1)}
+               "late_parts": late_parts, "seconds": round(time.time() - started, 1),
+               "peak_memory_mb": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024)}
     (SCRATCH / "out" / f"{out}.summary.json").write_text(json.dumps(summary))
     print(json.dumps(summary))
 
@@ -79,7 +103,9 @@ def plan(name: str) -> dict:
     late = {line: max(0.0, (datetime.fromisoformat(finish) - datetime.fromisoformat(due)).total_seconds() / 86_400 if finish and due else days or 0.0)
             for line, _, days, _, finish, due in rows}
     return {"name": name, "rates": summary["rates"], "moves": summary["moves"], "repairs": summary["repairs"], "aircraft": len(rows),
-            "seed": summary.get("seed"), "fleet_seed": summary.get("fleet_seed"), "aircraft_with_unknown_finish": sum(1 for _, status, days, *_ in rows if status == "unknown" or days is None),
+            "seed": summary.get("seed"), "fleet_seed": summary.get("fleet_seed"), "late_parts": summary.get("late_parts", "few"),
+            "run_seconds": summary.get("seconds"), "peak_memory_mb": summary.get("peak_memory_mb"),
+            "aircraft_with_unknown_finish": sum(1 for _, status, days, *_ in rows if status == "unknown" or days is None),
             "aircraft_late": sum(1 for days in late.values() if days > 0),
             "late_days": {str(line): round(days, 3) for line, days in late.items()}, "total_late_days": round(sum(late.values()), 2),
             "late_cost_usd": round(sum(row[3] or 0.0 for row in rows)), "first_pass_seconds": first,
@@ -98,12 +124,21 @@ def compare(result: str, names: list[str]) -> None:
         p["late_cost_at_fixture_rates_usd"] = None if fixture is None else round(sum(days * fixture[line] for line, days in p["_late"].items()))
         p["first_pass_within_the_shipped_budget"] = {purpose: seconds < budget for purpose, seconds in p["first_pass_seconds"].items()}
     cheapest = min((p for p in plans if p["late_cost_at_fixture_rates_usd"] is not None), key=lambda p: p["late_cost_at_fixture_rates_usd"], default=None)
+    mix: dict[str, int] = {}
+    for code, model in plans[0]["_customer"].values():
+        mix[f"{code} 787-{model}"] = mix.get(f"{code} 787-{model}", 0) + 1
+    rates = sorted(v for v in (fixture or {}).values() if v is not None)
+    fleet = {"aircraft": plans[0]["aircraft"], "seed": plans[0]["seed"], "fleet_seed": plans[0]["fleet_seed"], "late_parts": plans[0]["late_parts"],
+             "customers_and_models": dict(sorted(mix.items())), "lowest_daily_rate_usd": rates[0] if rates else None,
+             "highest_daily_rate_usd": rates[-1] if rates else None}
     for p in plans:
         for key in ("_customer", "_rate", "_late"):
             p.pop(key)
-    json.dump({"shipped_budget_seconds": budget, "flat_rate_usd": FLAT_RATE, "cheapest_plan_at_fixture_rates": cheapest and cheapest["name"], "plans": plans},
-              open(result, "w"), indent=1)
-    print(f"shipped optimizer.budget_seconds: {budget}; aircraft {plans[0]['aircraft']}, seed {plans[0]['seed']}, fleet seed {plans[0]['fleet_seed']}\n")
+    json.dump({"shipped_budget_seconds": budget, "flat_rate_usd": FLAT_RATE, "fleet": fleet,
+               "cheapest_plan_at_fixture_rates": cheapest and cheapest["name"], "plans": plans}, open(result, "w"), indent=1)
+    print(f"shipped optimizer.budget_seconds: {budget}; aircraft {fleet['aircraft']}, seed {fleet['seed']}, fleet seed {fleet['fleet_seed']}, "
+          f"{fleet['late_parts']} late parts; {len(mix)} customers and models, {sum(1 for p in [plans[0]] for d in p['late_days'].values() if d > 0)} "
+          f"aircraft late in the first plan\n")
     print(f"{'plan':16s} {'rates':>8s} {'search':>7s} {'late d':>7s} {'late cost':>11s} {'vs first':>9s} {'at fixture rates':>17s} | first pass s (fc, ex) | search s (fc, ex)")
     for p in plans:
         f, s = p["first_pass_seconds"], p["search_seconds"]
@@ -130,7 +165,8 @@ if __name__ == "__main__":
         ap.add_argument("--aircraft", type=int, default=10)
         ap.add_argument("--seed", type=int, default=20261026)
         ap.add_argument("--fleet-seed", type=int, default=None, help="another fleet: other customers, networks, teams and late parts")
+        ap.add_argument("--late-parts", default="few", choices=tuple(LATE_PARTS))
         a = ap.parse_args(sys.argv[2:])
-        run(a.out, a.moves, a.repairs, a.rates, a.aircraft, a.seed, a.fleet_seed)
+        run(a.out, a.moves, a.repairs, a.rates, a.aircraft, a.seed, a.fleet_seed, a.late_parts)
     else:
         compare(sys.argv[2], sys.argv[3:])
