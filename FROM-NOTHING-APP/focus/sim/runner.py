@@ -210,6 +210,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print, traits: TeamTraits | None = 
         db.insert("exec_event", outcome.events)
         db.insert("exec_offplan", outcome.offplan)
         db.insert("exec_oos", outcome.oos)
+        db.insert("exec_priority", outcome.priority)
         db.insert("perf_unit", outcome.units)
         db.insert("perf_claim", outcome.claims)
         db.insert("perf_amendment", outcome.amendments)

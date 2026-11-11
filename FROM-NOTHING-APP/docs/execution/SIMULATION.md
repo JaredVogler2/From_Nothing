@@ -133,6 +133,19 @@ duration), `deviation` and `pull_ahead`. With traits a person starts a task only
 a slow team runs out of shift and its late tasks are missed as overruns, which are never excused. Without traits a
 run is unchanged. Report `docs/task-valuation-investigation/11_PERFORMANCE_MEASURES.md` uses it.
 
+`skip` models a floor that chooses its own work, as a crew chasing job counts does. Each shift a team leaves that
+share of its dispatched effort undone by choice (a deviation: no claim, never excused) and, with `fill` = `easy`,
+works the shortest ready tasks of the coming hours instead. `skip_pick` says which planned tasks it leaves: the
+`hardest`, `random` ones, first the ones other planned work waits on (`gating`) or first the ones nothing planned
+waits on (`non_gating`); a team with too few of its kind leaves some of the other kind to reach its share. Report
+`12_RIGHT_WORK_SCORE.md` uses it.
+
+**What waits on each task (`exec_priority`).** Every shift records, for each dispatched task, the plan's priority
+facts from `focus/valuation/priority.py`: how many other jobs planned for this shift or the next wait on it, their
+standard minutes (in total and for other teams), its tier (`MUST`: planned work waits on it; `FILL`: nothing depends
+on it; `PLAN`: the rest) and whether the team left it by choice. There is one row for each goal unit of record. No
+score reads it.
+
 **Write-back.** Finished work, and work an overrun cut short, is written back per job before the next cutoff. So each
 shift plans only the work the earlier shifts left open, and nothing is credited twice:
 
@@ -214,7 +227,7 @@ The dashboard compares:
 | Calculated | `calc_count`, `calc_job`, `calc_aircraft`, `calc_pool` | Each shift's admitted snapshot: inventory counts per item (`calc_count`). Per open job: team, window, duration, crew, earliest start, open shortage and disposition. Per aircraft: customer, model, due date and daily penalty. Per team and shift: pool size and activation cap. |
 | Method | `sim_shift`, `method_stage`, `method_move`, `method_check`, `method_violation`, `method_commitment` | Stage timings and notes, accepted moves, validator check counts and violations, the first 500 violations of each plan (check, code, entity, detail), each incumbent commitment's defense outcome (with the code of each UNSAFE one), stop reason, decision digest, each step's wall time and peak memory. |
 | Results | `plan_assignment`, `plan_duty`, `plan_aircraft`, `plan_exception` | Both purposes' published plans. |
-| Outcomes | `exec_assignment`, `exec_event`, `exec_offplan`, `exec_oos` | The floor's outcome for each dispatched assignment with its cause, source events, offplan work with its kind (`pull_ahead`, `deviation`, `outside_goals`), and out-of-sequence starts with their evidence. `exec_event` kinds: `call_off`, `done_before_shift`, `kit_short_at_point_of_use`, `shortage_found_undated`, `shortage_dated`, `part_slipped`, `part_late_unannounced`, `part_arrived`, `rework_found` and `plan_accepted_late` (only with `SimSpec.late_plan_share` > 0, which has no CLI flag; `docs/task-valuation-investigation/evidence/scripts/offplan_paired.py --late-plans` sets it). |
+| Outcomes | `exec_assignment`, `exec_event`, `exec_offplan`, `exec_oos`, `exec_priority` | The floor's outcome for each dispatched assignment with its cause, source events, offplan work with its kind (`pull_ahead`, `deviation`, `outside_goals`), out-of-sequence starts with their evidence, and what waits on each dispatched task (its tier, the planned work behind it, and whether the team left it by choice). `exec_event` kinds: `call_off`, `done_before_shift`, `kit_short_at_point_of_use`, `shortage_found_undated`, `shortage_dated`, `part_slipped`, `part_late_unannounced`, `part_arrived`, `rework_found` and `plan_accepted_late` (only with `SimSpec.late_plan_share` > 0, which has no CLI flag; `docs/task-valuation-investigation/evidence/scripts/offplan_paired.py --late-plans` sets it). |
 | Performance | `perf_goal_day`, `perf_unit`, `perf_unlock`, `perf_amendment`, `perf_claim`, `perf_team_shift` | Each shift's frozen goals with the simulation shift whose plan froze them, every goal unit (frozen or added) with its status, cause and claim and whether its role needs a certificate group at most two of the frozen membership hold (`scarce`), the other jobs each earned unit's completion released as their last prerequisite (`perf_unlock`), the emergency additions, the claims with their decisions and reasons, and each team-shift's missed units by cause (part, absence, predecessor, overrun, deviation), planned, actual and available hours, utilization, B0, additions, B, E, Cp, U, attainment, adherence, score and grade, scored by `status_and_score` with its parts kept: base before the out-of-sequence charge, the charge O, the clamped final, the policy id and hash, and why a goal is NEUTRAL (NO_PLAN or ALL_EXCUSED). Runs made before this change lack those last columns; the dashboard shows them as —. |
 
 ## Dashboard and API

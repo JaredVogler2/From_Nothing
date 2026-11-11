@@ -42,7 +42,9 @@ Then read the code those pages name. The two explainer pages list each rule with
 - **The same tests.** The test suite is the definition of the behavior. A port passes it, and adds tests for its
   adapters.
 - **One formula for scores**, in `focus/performance/score.py`. Never compute a score in SQL, in the browser or in a
-  second module.
+  second module. A proposed rule is tested as a tool outside `focus/`, as `tools/right_work_score.py` is
+  (`DECISION_PLAYBOOK.md`, DEC-33): nothing that grades, stores or shows a score reads it, and if the owner adopts it
+  the formula in `score.py` changes.
 - **Unknown stays unknown.** Never fill a missing rate, duration, crew size, date or calendar day with an average, a
   median or a default. Report how many rows are affected, by reason, and work the cause.
 - **Report three things with every live run**, all from `python -m focus.cli pipeline --key K --status`:

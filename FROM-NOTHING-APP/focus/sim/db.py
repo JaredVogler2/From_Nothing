@@ -81,6 +81,10 @@ CREATE TABLE IF NOT EXISTS perf_goal_day (
   frozen_shift_no INTEGER, production_day TEXT, plan_id TEXT, team TEXT, shift_number INTEGER, units INTEGER, B0 INTEGER);
 CREATE TABLE IF NOT EXISTS exec_offplan (
   shift_no INTEGER, team TEXT, job_id TEXT, phase TEXT, line INTEGER, soi TEXT, effort INTEGER, start_utc TEXT, end_utc TEXT, kind TEXT);
+CREATE TABLE IF NOT EXISTS exec_priority (
+  shift_no INTEGER, team TEXT, assignment_id TEXT, phase TEXT, line INTEGER, effort INTEGER, crew_size INTEGER, tier TEXT,
+  dependents INTEGER, gated_jobs INTEGER, gated_minutes INTEGER, gated_other_team_minutes INTEGER, tail_minutes INTEGER,
+  left_by_choice INTEGER);
 CREATE TABLE IF NOT EXISTS exec_oos (
   shift_no INTEGER, team TEXT, assignment_id TEXT, phase TEXT, blocked_by TEXT, discretionary INTEGER, charged INTEGER, affected_effort INTEGER,
   effective_utc TEXT, evidence TEXT);

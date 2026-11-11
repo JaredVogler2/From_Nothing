@@ -161,6 +161,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-30 | Completed jobs in the planning snapshot | ENGINEERING | keep them; fix the writes first | with the first live plans |
 | DEC-31 | Should criticality weight a team's score | OWNER (with data) | no: reported only (D-29) | after 4 weeks of pilot |
 | DEC-32 | Which measures, at which level | OWNER | the score for teams; nothing else is built | before the pilot |
+| DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
@@ -710,6 +711,48 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 - **Until decided:** the score, the pooled rollups and the excused minutes by cause, as built.
 - **Do not** grade a team or a shift on delivery cost or late days: a shift's work cannot be traced to them.
 
+### DEC-33 The right-work score
+
+- **Authority:** OWNER. Report `docs/task-valuation-investigation/12_RIGHT_WORK_SCORE.md` has the tests.
+- **Why.** The owner's floor counts jobs, and crews pick easy jobs over the right ones. On simulated floors that
+  leave about a quarter of their planned effort every shift and do easier work instead:
+  - jobs completed went up 1% to 3% and standard minutes stayed within 1.5%, so a count or a throughput figure
+    cannot see it;
+  - today's score stayed at 93, because work done in place of planned work earns 80% of it;
+  - when the jobs left were ones other planned work waited on, other production teams lost 12,000 to 13,300 minutes
+    to blocking, against 860 to 955 when they were not, and no measure without priorities could tell the two floors
+    apart;
+  - team by team, tasks completed and standard minutes pointed slightly the wrong way against the work a team blocked
+    for others (+0.08 to +0.15); the flat score followed it weakly at any credit (−0.32 to −0.49); the tiered score
+    and the share of must-do work done followed it (−0.71 to −0.78);
+  - no delivery effect showed: near-term work in the synthetic fleet has days of float. The tier is tested against
+    blocked work, not against delivery.
+- **The proposal** (`tools/right_work_score.py`, tested; today's score is its special case):
+
+      score = 100 × (planned points done + ρ × min(off-plan minutes, planned points left without excuse)) ÷ expected points
+
+  - a planned job's points are its standard person-minutes times its tier's multiplier;
+  - the tier comes from the accepted plan and the dependency graph (`focus/valuation/priority.py`): `MUST` when work
+    planned for this shift or the next waits on the job, `FILL` when nothing depends on it, `PLAN` otherwise;
+  - ρ is the credit for work done in place of planned work left without an excuse.
+- **Two decisions.**
+  1. **ρ: how much leaving the plan costs.** Today 0.80. Recommended 0.30 with DEC-26 as option (b), 0.50 without
+     it. It is a policy value only (`score.attainment_weight` 0.30, `score.adherence_weight` 0.70): no code changes.
+     The owner's ten-job example moves from 96 to 86.
+  2. **Tiers: whether the cost lands on the teams that did the damage.** Recommended multipliers 2 / 1 / ½ as the
+     pilot setting, shown on the dispatch list with what waits on each job. The plainer choice is a flat score with
+     "must-do jobs done" shown beside it. Either needs the tier frozen with each goal at acceptance and carried
+     through the evaluation, the job record, the rollups, the simulation and the views.
+- **Confirm on real data before a grade counts** (four weeks beside the job count): how often crews swap, the tier
+  mix of real plans (if most jobs are `MUST` the tier separates nothing), and whether blocked work follows the tier.
+- **Needs first:** DEC-26 as option (b), so a lead who sees the plan is wrong can approve a change and nobody loses
+  points for following it.
+- **Until decided:** today's rule. The tool and `exec_priority` report the facts; no grade reads them. The tool
+  stays outside `focus/`, which has one score formula. `python tools/right_work_score.py example` prints the worked
+  examples; `python tools/right_work_score.py sim RUN.db` scores a simulation run both ways.
+- **Do not** bring back job counts in any form, and do not grade on throughput: both rose on the floors that left
+  their plan.
+
 ### OD-16 The OFFICIAL score policy (last)
 
 - **Authority:** OWNER only. Never self-approve.
@@ -765,6 +808,7 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
    - review the readiness gaps with their owners.
 3. **First week of pipeline runs:** DEC-12; the evidence for DEC-11; DEC-24's measurement.
 4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-25 and
-   DEC-23. Ask the owner about DEC-26 before the pilot starts. DEC-31 is decided on the same pilot data.
+   DEC-23. Ask the owner about DEC-26 and DEC-33 before the pilot starts. DEC-31, and the settings of DEC-33, are
+   decided on the same pilot data.
 5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-11, DEC-23 to DEC-26
    and, last, OD-16.

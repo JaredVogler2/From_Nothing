@@ -1,0 +1,445 @@
+{
+ "floors": [
+  {
+   "name": "CP_plan_s7",
+   "pick": "plan",
+   "share": 0.25,
+   "shifts": 18,
+   "jobs_completed": 9006,
+   "planned_minutes": 1017209,
+   "planned_done_minutes": 969007,
+   "offplan_minutes": 42632,
+   "throughput_minutes": 1011639,
+   "offplan_jobs": 358,
+   "left_by_choice": {
+    "jobs": 0,
+    "minutes": 0,
+    "gated_minutes": 0,
+    "gated_other_team_minutes": 0
+   },
+   "blocked_by_another_team_minutes": 285,
+   "blocked_by_own_team_minutes": 1855,
+   "blocked_by_another_team_production_minutes": 105,
+   "blocked_by_another_team_inspection_minutes": 180,
+   "tier_share_of_planned_minutes": {
+    "FILL": 0.0065,
+    "MUST": 0.2396,
+    "PLAN": 0.7539
+   },
+   "forecast_first_shift": {
+    "aircraft_known": 10,
+    "aircraft_unknown": 0,
+    "late_days": 16.84,
+    "cost_usd": 4545670
+   },
+   "forecast_last_shift": {
+    "aircraft_known": 9,
+    "aircraft_unknown": 1,
+    "late_days": 20.7,
+    "cost_usd": 5103413
+   },
+   "left_then_dispatched_again_next_shift": {
+    "tasks": 0,
+    "left_again": 0
+   },
+   "tasks_first_left_in_the_first_half": {
+    "tasks": 0,
+    "done_by_the_end": 0,
+    "median_shifts_until_done": null,
+    "done_within_2_shifts": 0,
+    "ninth_decile_shifts_until_done": null
+   },
+   "jobs_open_at_last_cut": 24107,
+   "measures": {
+    "adherence_by_count": 99.47,
+    "adherence|flat": 99.32,
+    "score|flat|rho0.8": 99.48,
+    "score|flat|rho0.5": 99.42,
+    "score|flat|rho0.3": 99.38,
+    "score|flat|rho0.0": 99.32,
+    "adherence|tiers_2_1_half": 99.38,
+    "score|tiers_2_1_half|rho0.8": 99.52,
+    "score|tiers_2_1_half|rho0.5": 99.47,
+    "score|tiers_2_1_half|rho0.3": 99.44,
+    "score|tiers_2_1_half|rho0.0": 99.38,
+    "adherence|tiers_3_1_half": 99.42,
+    "score|tiers_3_1_half|rho0.8": 99.55,
+    "score|tiers_3_1_half|rho0.5": 99.5,
+    "score|tiers_3_1_half|rho0.3": 99.47,
+    "score|tiers_3_1_half|rho0.0": 99.42,
+    "must_jobs_done_share": 99.74
+   },
+   "team_shifts": 540,
+   "largest_gap_to_the_stored_canonical_score": 0.0,
+   "delivery_vs_baseline": {
+    "last_shift": {
+     "aircraft_shifts": 9,
+     "mean_days_later_than_baseline": 0.0,
+     "later": 0,
+     "earlier": 0
+    },
+    "last_6_shifts": {
+     "aircraft_shifts": 58,
+     "mean_days_later_than_baseline": 0.0,
+     "later": 0,
+     "earlier": 0
+    },
+    "all_shifts": {
+     "aircraft_shifts": 168,
+     "mean_days_later_than_baseline": 0.0,
+     "later": 0,
+     "earlier": 0
+    }
+   }
+  },
+  {
+   "name": "CP_hardest_s7",
+   "pick": "hardest",
+   "share": 0.25,
+   "shifts": 18,
+   "jobs_completed": 9208,
+   "planned_minutes": 997815,
+   "planned_done_minutes": 600085,
+   "offplan_minutes": 403380,
+   "throughput_minutes": 1003465,
+   "offplan_jobs": 3815,
+   "left_by_choice": {
+    "jobs": 1891,
+    "minutes": 279070,
+    "gated_minutes": 182010,
+    "gated_other_team_minutes": 146290
+   },
+   "blocked_by_another_team_minutes": 8420,
+   "blocked_by_own_team_minutes": 10140,
+   "blocked_by_another_team_production_minutes": 5855,
+   "blocked_by_another_team_inspection_minutes": 2565,
+   "tier_share_of_planned_minutes": {
+    "FILL": 0.0053,
+    "MUST": 0.2877,
+    "PLAN": 0.707
+   },
+   "forecast_first_shift": {
+    "aircraft_known": 10,
+    "aircraft_unknown": 0,
+    "late_days": 16.84,
+    "cost_usd": 4545670
+   },
+   "forecast_last_shift": {
+    "aircraft_known": 9,
+    "aircraft_unknown": 1,
+    "late_days": 20.86,
+    "cost_usd": 5042993
+   },
+   "left_then_dispatched_again_next_shift": {
+    "tasks": 693,
+    "left_again": 206
+   },
+   "tasks_first_left_in_the_first_half": {
+    "tasks": 935,
+    "done_by_the_end": 858,
+    "median_shifts_until_done": 5.0,
+    "done_within_2_shifts": 352,
+    "ninth_decile_shifts_until_done": 9
+   },
+   "jobs_open_at_last_cut": 23977,
+   "measures": {
+    "adherence_by_count": 73.23,
+    "adherence|flat": 67.45,
+    "score|flat|rho0.8": 92.97,
+    "score|flat|rho0.5": 83.39,
+    "score|flat|rho0.3": 77.0,
+    "score|flat|rho0.0": 67.43,
+    "adherence|tiers_2_1_half": 67.94,
+    "score|tiers_2_1_half|rho0.8": 91.28,
+    "score|tiers_2_1_half|rho0.5": 82.52,
+    "score|tiers_2_1_half|rho0.3": 76.68,
+    "score|tiers_2_1_half|rho0.0": 67.92,
+    "adherence|tiers_3_1_half": 68.28,
+    "score|tiers_3_1_half|rho0.8": 89.12,
+    "score|tiers_3_1_half|rho0.5": 81.3,
+    "score|tiers_3_1_half|rho0.3": 76.08,
+    "score|tiers_3_1_half|rho0.0": 68.26,
+    "must_jobs_done_share": 71.3
+   },
+   "team_shifts": 540,
+   "largest_gap_to_the_stored_canonical_score": 0.0,
+   "delivery_vs_baseline": {
+    "last_shift": {
+     "aircraft_shifts": 8,
+     "mean_days_later_than_baseline": 0.203,
+     "later": 4,
+     "earlier": 1
+    },
+    "last_6_shifts": {
+     "aircraft_shifts": 57,
+     "mean_days_later_than_baseline": -0.095,
+     "later": 10,
+     "earlier": 20
+    },
+    "all_shifts": {
+     "aircraft_shifts": 166,
+     "mean_days_later_than_baseline": -0.053,
+     "later": 40,
+     "earlier": 40
+    }
+   }
+  },
+  {
+   "name": "CP_gating_s7",
+   "pick": "gating",
+   "share": 0.25,
+   "shifts": 18,
+   "jobs_completed": 9162,
+   "planned_minutes": 990199,
+   "planned_done_minutes": 607608,
+   "offplan_minutes": 409742,
+   "throughput_minutes": 1017350,
+   "offplan_jobs": 3932,
+   "left_by_choice": {
+    "jobs": 2301,
+    "minutes": 268406,
+    "gated_minutes": 964289,
+    "gated_other_team_minutes": 869409
+   },
+   "blocked_by_another_team_minutes": 13420,
+   "blocked_by_own_team_minutes": 21355,
+   "blocked_by_another_team_production_minutes": 11980,
+   "blocked_by_another_team_inspection_minutes": 1440,
+   "tier_share_of_planned_minutes": {
+    "FILL": 0.0039,
+    "MUST": 0.3547,
+    "PLAN": 0.6414
+   },
+   "forecast_first_shift": {
+    "aircraft_known": 10,
+    "aircraft_unknown": 0,
+    "late_days": 16.84,
+    "cost_usd": 4545670
+   },
+   "forecast_last_shift": {
+    "aircraft_known": 9,
+    "aircraft_unknown": 1,
+    "late_days": 22.91,
+    "cost_usd": 5723142
+   },
+   "left_then_dispatched_again_next_shift": {
+    "tasks": 1322,
+    "left_again": 840
+   },
+   "tasks_first_left_in_the_first_half": {
+    "tasks": 833,
+    "done_by_the_end": 789,
+    "median_shifts_until_done": 4,
+    "done_within_2_shifts": 298,
+    "ninth_decile_shifts_until_done": 8
+   },
+   "jobs_open_at_last_cut": 24146,
+   "measures": {
+    "adherence_by_count": 67.44,
+    "adherence|flat": 67.83,
+    "score|flat|rho0.8": 92.96,
+    "score|flat|rho0.5": 83.53,
+    "score|flat|rho0.3": 77.24,
+    "score|flat|rho0.0": 67.81,
+    "adherence|tiers_2_1_half": 57.17,
+    "score|tiers_2_1_half|rho0.8": 84.02,
+    "score|tiers_2_1_half|rho0.5": 73.94,
+    "score|tiers_2_1_half|rho0.3": 67.22,
+    "score|tiers_2_1_half|rho0.0": 57.14,
+    "adherence|tiers_3_1_half": 50.68,
+    "score|tiers_3_1_half|rho0.8": 73.22,
+    "score|tiers_3_1_half|rho0.5": 64.75,
+    "score|tiers_3_1_half|rho0.3": 59.11,
+    "score|tiers_3_1_half|rho0.0": 50.65,
+    "must_jobs_done_share": 18.66
+   },
+   "team_shifts": 540,
+   "largest_gap_to_the_stored_canonical_score": 0.0,
+   "delivery_vs_baseline": {
+    "last_shift": {
+     "aircraft_shifts": 9,
+     "mean_days_later_than_baseline": 0.246,
+     "later": 5,
+     "earlier": 1
+    },
+    "last_6_shifts": {
+     "aircraft_shifts": 58,
+     "mean_days_later_than_baseline": 0.02,
+     "later": 14,
+     "earlier": 15
+    },
+    "all_shifts": {
+     "aircraft_shifts": 167,
+     "mean_days_later_than_baseline": -0.018,
+     "later": 44,
+     "earlier": 34
+    }
+   }
+  },
+  {
+   "name": "CP_non_gating_s7",
+   "pick": "non_gating",
+   "share": 0.25,
+   "shifts": 18,
+   "jobs_completed": 9274,
+   "planned_minutes": 1004960,
+   "planned_done_minutes": 609362,
+   "offplan_minutes": 416813,
+   "throughput_minutes": 1026175,
+   "offplan_jobs": 3974,
+   "left_by_choice": {
+    "jobs": 2266,
+    "minutes": 263563,
+    "gated_minutes": 14620,
+    "gated_other_team_minutes": 2265
+   },
+   "blocked_by_another_team_minutes": 3470,
+   "blocked_by_own_team_minutes": 10985,
+   "blocked_by_another_team_production_minutes": 860,
+   "blocked_by_another_team_inspection_minutes": 2610,
+   "tier_share_of_planned_minutes": {
+    "FILL": 0.0053,
+    "MUST": 0.2582,
+    "PLAN": 0.7365
+   },
+   "forecast_first_shift": {
+    "aircraft_known": 10,
+    "aircraft_unknown": 0,
+    "late_days": 16.84,
+    "cost_usd": 4545670
+   },
+   "forecast_last_shift": {
+    "aircraft_known": 9,
+    "aircraft_unknown": 1,
+    "late_days": 18.79,
+    "cost_usd": 4417542
+   },
+   "left_then_dispatched_again_next_shift": {
+    "tasks": 847,
+    "left_again": 293
+   },
+   "tasks_first_left_in_the_first_half": {
+    "tasks": 1031,
+    "done_by_the_end": 949,
+    "median_shifts_until_done": 6,
+    "done_within_2_shifts": 358,
+    "ninth_decile_shifts_until_done": 9
+   },
+   "jobs_open_at_last_cut": 24016,
+   "measures": {
+    "adherence_by_count": 69.05,
+    "adherence|flat": 68.75,
+    "score|flat|rho0.8": 93.28,
+    "score|flat|rho0.5": 84.08,
+    "score|flat|rho0.3": 77.94,
+    "score|flat|rho0.0": 68.74,
+    "adherence|tiers_2_1_half": 73.42,
+    "score|tiers_2_1_half|rho0.8": 93.92,
+    "score|tiers_2_1_half|rho0.5": 86.23,
+    "score|tiers_2_1_half|rho0.3": 81.1,
+    "score|tiers_2_1_half|rho0.0": 73.4,
+    "adherence|tiers_3_1_half": 76.39,
+    "score|tiers_3_1_half|rho0.8": 94.25,
+    "score|tiers_3_1_half|rho0.5": 87.55,
+    "score|tiers_3_1_half|rho0.3": 83.08,
+    "score|tiers_3_1_half|rho0.0": 76.37,
+    "must_jobs_done_share": 96.91
+   },
+   "team_shifts": 540,
+   "largest_gap_to_the_stored_canonical_score": 0.0,
+   "delivery_vs_baseline": {
+    "last_shift": {
+     "aircraft_shifts": 8,
+     "mean_days_later_than_baseline": -0.057,
+     "later": 1,
+     "earlier": 3
+    },
+    "last_6_shifts": {
+     "aircraft_shifts": 55,
+     "mean_days_later_than_baseline": -0.025,
+     "later": 10,
+     "earlier": 17
+    },
+    "all_shifts": {
+     "aircraft_shifts": 165,
+     "mean_days_later_than_baseline": 0.039,
+     "later": 35,
+     "earlier": 39
+    }
+   }
+  }
+ ],
+ "teams": {
+  "rank_correlation_with_other_production_teams_minutes_blocked": {
+   "all_floors": {
+    "team_periods": 120,
+    "jobs_completed": 0.106,
+    "throughput_minutes": 0.082,
+    "score|flat|rho0.8": -0.491,
+    "score|flat|rho0.3": -0.473,
+    "score|flat|rho0.0": -0.464,
+    "score|tiers_2_1_half|rho0.8": -0.769,
+    "score|tiers_2_1_half|rho0.3": -0.751,
+    "must_jobs_done_share": -0.779
+   },
+   "floors_that_choose_only": {
+    "team_periods": 90,
+    "jobs_completed": 0.135,
+    "throughput_minutes": 0.138,
+    "score|flat|rho0.8": -0.202,
+    "score|flat|rho0.3": -0.169,
+    "score|flat|rho0.0": -0.15,
+    "score|tiers_2_1_half|rho0.8": -0.702,
+    "score|tiers_2_1_half|rho0.3": -0.671,
+    "must_jobs_done_share": -0.707
+   }
+  },
+  "against_the_same_team_on_the_baseline_floor": {
+   "hardest": {
+    "teams": 30,
+    "teams_with_more_jobs_completed": 24,
+    "teams_with_more_standard_minutes": 13,
+    "median_change": {
+     "jobs_completed": 6.0,
+     "throughput_minutes": -120.5,
+     "other_production_teams_minutes_blocked": 127.5,
+     "score|flat|rho0.8": -6.7,
+     "score|flat|rho0.3": -22.36,
+     "score|tiers_2_1_half|rho0.3": -23.23
+    }
+   },
+   "gating": {
+    "teams": 30,
+    "teams_with_more_jobs_completed": 24,
+    "teams_with_more_standard_minutes": 16,
+    "median_change": {
+     "jobs_completed": 5.5,
+     "throughput_minutes": 27.5,
+     "other_production_teams_minutes_blocked": 300.0,
+     "score|flat|rho0.8": -6.62,
+     "score|flat|rho0.3": -22.21,
+     "score|tiers_2_1_half|rho0.3": -32.65
+    }
+   },
+   "non_gating": {
+    "teams": 30,
+    "teams_with_more_jobs_completed": 22,
+    "teams_with_more_standard_minutes": 17,
+    "median_change": {
+     "jobs_completed": 6.0,
+     "throughput_minutes": 457.5,
+     "other_production_teams_minutes_blocked": 0.0,
+     "score|flat|rho0.8": -6.16,
+     "score|flat|rho0.3": -21.29,
+     "score|tiers_2_1_half|rho0.3": -18.16
+    }
+   }
+  },
+  "tiers_on_the_baseline_floor": {
+   "teams": 30,
+   "mean_gap_points": 0.054,
+   "largest_gap_points": -0.345,
+   "rank_agreement_with_the_flat_score": 0.98
+  }
+ }
+}

@@ -48,6 +48,18 @@ test with a known truth a run can give teams their own pace (a multiplier on eve
 previous one, so a slow team runs out of shift: a task whose crew is still busy at the shift's end is missed as an
 ``overrun`` (a DURATION_OVERRUN claim, proposed and never approved). Without traits nothing changes, draw for draw.
 
+``skip`` models a floor that chooses its own work. Each shift a team leaves that share of its dispatched effort undone
+by choice (a ``deviation``: no claim, never excused) and, with ``fill`` = ``easy``, spends the time on the shortest
+ready tasks of the coming hours instead, as a crew chasing job counts does. ``skip_pick`` says which planned tasks it
+leaves: the ``hardest`` (most standard person-minutes), ``random`` ones, first the ones other planned work waits on
+(``gating``) or first the ones nothing planned waits on (``non_gating``); a team with too few of its kind leaves some
+of the other kind to reach its share. The same share is left under every pick, so the floors differ only in which jobs
+were left.
+
+**What waits on each task.** For every dispatched task the shift records the plan's priority facts
+(``valuation.priority``: the other jobs planned for this shift or the next that wait on it, and its tier) in
+``exec_priority``, with whether the team left it by choice.
+
 **Progress.** Finished phases, and work an overrun cut short, are written back per job:
 - A job with production work left becomes IN WORK with its performed and remaining minutes (``work_progress``), so the
   next admission plans only what is left. A phase cut short keeps the rest of its actual length.
@@ -97,6 +109,7 @@ from typing import Any, Mapping
 
 from ..domain import EdgeType, PhaseKind, digest_id, from_minute, to_minute
 from ..performance.score import status_and_score
+from ..valuation.priority import GATE_HORIZON_MINUTES, plan_priorities
 from .state import SourceState
 
 OT_ALLOWANCE = 60
@@ -128,6 +141,9 @@ class TeamTraits:
     deviation: Mapping[str, float] = field(default_factory=dict)     # chance per shift of swapping a planned task for an unplanned one
     pull_ahead: Mapping[str, float] = field(default_factory=dict)    # chance of pulling ready work forward when idle
     crew_sequencing: bool = True                                     # a person starts a task only after finishing the previous one
+    skip: Mapping[str, float] = field(default_factory=dict)          # share of dispatched effort left undone by choice, per shift
+    skip_pick: str = "hardest"                                       # hardest | random | gating | non_gating
+    fill: str = "easy"                                               # easy: the shortest ready tasks instead; none: the time is idle
 
 
 @dataclass(frozen=True)
@@ -250,6 +266,7 @@ class Outcome:
     offplan: list[tuple]
     oos: list[tuple]
     completed_jobs: int
+    priority: list[tuple] = field(default_factory=list)
     amendments: list[tuple] = field(default_factory=list)
     unlocks: list[tuple] = field(default_factory=list)
     deferred: Deferred | None = None
@@ -386,6 +403,43 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
                            "ASSIGNED_IN_ACCEPTED_PLAN", f"sim-lead:{team}", f"emergency rework {job.key.native_id} found after the goals froze"))
     deviating = {team for team in sorted({team_of_phase.get(a.phase) or "?" for a in todo})
                  if rng.random() < (traits.deviation.get(team, spec.deviation) if traits else spec.deviation)}
+    # what waits on each dispatched task (the plan's facts), and the tasks a team leaves undone by choice (TeamTraits.skip)
+    priority = plan_priorities(ctx, {a.phase: to_minute(a.start) for a in plan.assignments},
+                               [a.phase for a in todo if a.phase in phases and phases[a.phase].kind is not PhaseKind.RELEASE],
+                               s1 + GATE_HORIZON_MINUTES)
+    left_by_choice: set[str] = set()
+    if traits is not None and traits.skip:
+        pick_rng = random.Random(rng.random())
+        effort = lambda a: int(phases[a.phase].standard_person_minutes or 0)                # noqa: E731
+        gated = lambda a: priority[a.phase].gated_minutes if a.phase in priority else 0     # noqa: E731
+        for team, share in sorted(traits.skip.items()):
+            mine = [a for a in todo if team_of_phase.get(a.phase) == team and a.phase in phases and a.phase not in late
+                    and phases[a.phase].kind is PhaseKind.WORK]
+            target = share * sum(effort(a) for a in mine)
+            if target <= 0:
+                continue
+            pick_rng.shuffle(mine)
+            if traits.skip_pick == "hardest":                         # from the hardest tasks holding twice the target, at random
+                ranked, pool, held_effort = sorted(mine, key=lambda a: (-effort(a), a.id)), [], 0
+                for a in ranked:
+                    if held_effort >= 2 * target and len(pool) >= 2:
+                        break
+                    pool.append(a)
+                    held_effort += effort(a)
+                pick_rng.shuffle(pool)
+                order = pool + [a for a in ranked if a not in pool]
+            elif traits.skip_pick == "gating":
+                order = [a for a in mine if gated(a) > 0] + [a for a in mine if gated(a) == 0]
+            elif traits.skip_pick == "non_gating":
+                order = [a for a in mine if gated(a) == 0] + [a for a in mine if gated(a) > 0]
+            else:
+                order = mine
+            left = 0
+            for a in order:
+                if left >= target:
+                    break
+                left_by_choice.add(a.phase)
+                left += effort(a)
     taken: set[str] = set(late)
     rows, oos_rows, offplan_rows = [], [], []
     worked_on: dict[str, str] = {}                                    # phase -> why it was worked outside the dispatch
@@ -466,7 +520,24 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
         crew_free = max((busy.get(c.person, 0) for c in a.crew), default=0) if sequenced else 0
         held_by_own_work = crew_free > latest                         # the crew is still on its previous task
         latest = max(latest, crew_free)
-        if cause is None and team in deviating:
+        if cause is None and a.phase in left_by_choice:               # the team leaves this task and works easier ones
+            cause = "deviation"
+            clock = latest
+            if traits.fill == "easy":
+                until = latest + planned
+                for u in sorted((u for u in upcoming.get(team, ()) if u.phase not in taken),
+                                key=lambda u: (int(phases[u.phase].standard_person_minutes or 0), to_minute(u.start), u.id)):
+                    if clock >= until:
+                        break
+                    if u.phase in taken or not ready_at(u.phase, clock):
+                        continue
+                    done_at = offplan(team, u, clock, "deviation")
+                    if done_at is not None:
+                        clock = done_at
+            if sequenced:
+                for c in a.crew:
+                    busy[c.person] = max(busy.get(c.person, 0), min(clock, s1 + OT_ALLOWANCE))
+        elif cause is None and team in deviating:
             if spec.swap_pick == "largest":                           # cherry-picking: the biggest ready task that still fits
                 ready = sorted((u for u in upcoming.get(team, ()) if u.phase not in taken and ready_at(u.phase, latest)),
                                key=lambda u: (-phases[u.phase].standard_person_minutes, to_minute(u.start), u.id))
@@ -856,7 +927,11 @@ def execute_shift(state: SourceState, shift_plan: Any, shift: Any, *, shift_no: 
             if node is not None and node.kind is not PhaseKind.RELEASE:
                 k = (node.job, node.kind.value)
                 goals.progress[k] = goals.progress.get(k, 0) + 1
-    return Outcome(rows, events, perf, units_rows, claims, offplan_rows, oos_rows, completed, amendments, unlock_rows,
+    priority_rows = [(shift_no, team_of_phase.get(a.phase) or "?", a.id, a.phase, a.line, int(phases[a.phase].standard_person_minutes or 0),
+                      len(a.crew), pr.tier, pr.dependents, pr.gated_jobs, pr.gated_minutes, pr.gated_other_team_minutes, pr.tail_minutes,
+                      int(a.phase in left_by_choice))
+                     for a in todo for pr in (priority.get(a.phase),) if pr is not None]
+    return Outcome(rows, events, perf, units_rows, claims, offplan_rows, oos_rows, completed, priority_rows, amendments, unlock_rows,
                    deferred if (deferred.ops or deferred.done) else None)
 
 

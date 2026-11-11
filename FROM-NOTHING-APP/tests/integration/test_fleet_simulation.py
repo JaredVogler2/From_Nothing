@@ -431,3 +431,94 @@ def test_teams_can_be_made_to_differ_and_a_slow_team_shows_in_efficiency_and_une
     score = lambda path, team: _all(path, f"SELECT SUM(Cp) * 1.0 / SUM(B - E) FROM perf_team_shift WHERE team = '{team}'")[0][0]  # noqa: E731
     assert score(db, "T01") < score(first, "T01")                         # the plan was not done, and the score says so
     assert not _all(db, "SELECT 1 FROM exec_offplan WHERE team = 'T03' AND kind = 'pull_ahead'")       # this team never works ahead
+
+
+@pytest.fixture(scope="module")
+def choosing_floors(tmp_path_factory):
+    """The same tiny fleet worked by crews that leave a third of their dispatched effort by choice and do easier work instead."""
+    root = tmp_path_factory.mktemp("choosing")
+    teams = {"T01": 0.34, "T02": 0.34, "T03": 0.34, "T04": 0.34}
+    out = {}
+    for pick in ("gating", "non_gating"):
+        out[pick] = root / f"{pick}.db"
+        run(SPEC, out[pick], log=lambda message: None, traits=TeamTraits(skip=teams, skip_pick=pick))
+    return out
+
+
+def test_every_dispatched_task_records_what_waits_on_it(sims) -> None:
+    """``exec_priority``: the plan's priority facts for each dispatched task (valuation.priority), on every run."""
+    first, _ = sims
+    rows = _all(first, "SELECT tier, dependents, gated_jobs, gated_minutes, gated_other_team_minutes, left_by_choice FROM exec_priority")
+    assert rows and {r[0] for r in rows} <= {"MUST", "PLAN", "FILL"} and {r[0] for r in rows} >= {"MUST", "PLAN"}
+    for tier, dependents, jobs, minutes, other, left in rows:
+        assert (tier == "MUST") == (jobs > 0) == (minutes > 0) and other <= minutes and left == 0      # nobody chooses on this floor
+        assert (tier == "FILL") == (dependents == 0)
+    # one row for each goal unit of record and none besides, keyed as the unit is (a task finished before the shift has a
+    # unit and a row, and no executed assignment)
+    assert not _all(first, "SELECT p.assignment_id FROM exec_priority p LEFT JOIN perf_unit u ON u.shift_no = p.shift_no "
+                           "AND u.assignment_id = p.assignment_id WHERE u.assignment_id IS NULL")
+    assert not _all(first, "SELECT u.assignment_id FROM perf_unit u LEFT JOIN exec_priority p ON p.shift_no = u.shift_no "
+                           "AND p.assignment_id = u.assignment_id WHERE p.assignment_id IS NULL")
+    n, distinct = _all(first, "SELECT COUNT(*), COUNT(DISTINCT shift_no || ':' || assignment_id) FROM exec_priority")[0]
+    assert n == distinct
+
+
+def test_a_floor_that_chooses_its_work_leaves_planned_tasks_without_excuse_and_fills_with_other_work(sims, choosing_floors) -> None:
+    """``TeamTraits.skip`` (report 12): the tasks left are deviations (no claim, never excused); the time goes to other ready
+    tasks; and the two floors differ only in which tasks were left: first the ones planned work waits on, or first the ones
+    nothing planned waits on (a team with too few of its kind leaves some of the other kind to reach its share)."""
+    first, _ = sims
+    left = {}
+    for pick, db in choosing_floors.items():
+        chosen = _all(db, "SELECT COUNT(*), SUM(effort), SUM(gated_minutes) FROM exec_priority WHERE left_by_choice = 1")[0]
+        dispatched = _all(db, "SELECT SUM(p.effort) FROM exec_priority p WHERE p.team != 'QA' AND p.phase LIKE '%WORK%'")[0][0]
+        assert chosen[0] > 0 and 0.2 < chosen[1] / dispatched < 0.6, (pick, chosen, dispatched)
+        misses = _all(db, "SELECT u.claim_cause, u.relief FROM perf_unit u JOIN exec_priority p ON p.shift_no = u.shift_no "
+                          "AND p.assignment_id = u.assignment_id WHERE p.left_by_choice = 1 AND u.cause = 'deviation'")
+        assert misses and all(row == (None, 0) for row in misses)                          # a choice has no claim and no relief
+        assert _all(db, "SELECT COUNT(*) FROM exec_offplan WHERE kind = 'deviation'")[0][0] > _all(
+            first, "SELECT COUNT(*) FROM exec_offplan WHERE kind = 'deviation'")[0][0]     # the time went to other tasks
+        left[pick] = chosen
+    assert left["gating"][2] > 3 * left["non_gating"][2] >= 0                              # what was left: gating work, or little of it
+    score = lambda db: _all(db, "SELECT AVG(score) FROM perf_team_shift WHERE team != 'QA' AND score IS NOT NULL")[0][0]   # noqa: E731
+    assert score(choosing_floors["gating"]) < score(first) and score(choosing_floors["non_gating"]) < score(first)
+
+
+def _right_work_tool():
+    """tools/right_work_score.py, loaded as the other tools' tests load theirs."""
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    if "right_work_score" not in sys.modules:
+        spec = importlib.util.spec_from_file_location("right_work_score", Path(__file__).resolve().parents[2] / "tools" / "right_work_score.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module                # dataclasses look their module up by name
+        spec.loader.exec_module(module)
+    return sys.modules["right_work_score"]
+
+
+def test_the_right_work_tool_is_the_stored_score_at_todays_settings_and_its_tiers_tell_the_two_floors_apart(sims, choosing_floors, policy) -> None:
+    """``tools/right_work_score.py`` (report 12, DEC-33). With no tiers and today's credit the proposal is the stored canonical
+    score of every team-shift, on a floor that works its plan and on floors that choose. With a lower credit both choosing
+    floors lose points; with tiers the floor that left work others wait on loses more than the floor that left other work."""
+    from fractions import Fraction
+
+    tool = _right_work_tool()
+    today = Fraction(policy.str("score.attainment_weight"))
+    first, _ = sims
+    for db in (first, *choosing_floors.values()):
+        same = tool.score_run(db, today, tool.FLAT, today)
+        assert same["team_shifts_scored"] > 0 and same["same_as_the_stored_score_at_todays_settings"] == same["team_shifts_scored"]
+        assert same["all_teams"]["proposed_score"] == same["all_teams"]["todays_score"]
+    credit, tiers = Fraction("0.3"), tool.tiers_of("2,1,0.5")
+    flat = {pick: tool.score_run(db, credit, tool.FLAT, today)["all_teams"] for pick, db in choosing_floors.items()}
+    tiered = {pick: tool.score_run(db, credit, tiers, today)["all_teams"] for pick, db in choosing_floors.items()}
+    numbers = (flat, tiered)
+    for pick in choosing_floors:
+        assert flat[pick]["proposed_score"] < flat[pick]["todays_score"], numbers             # the lower credit costs both floors
+    assert tiered["gating"]["must_do_work_done_percent"] < tiered["non_gating"]["must_do_work_done_percent"], numbers
+    drop = {pick: flat[pick]["proposed_score"] - tiered[pick]["proposed_score"] for pick in choosing_floors}
+    assert drop["gating"] > drop["non_gating"], numbers                                       # the tiers charge the floor that left gating work
+    plan_tiered, plan_flat = (tool.score_run(first, credit, m, today)["all_teams"]["proposed_score"] for m in (tiers, tool.FLAT))
+    assert abs(plan_tiered - plan_flat) < 1.5, (plan_tiered, plan_flat)                       # where nobody chooses, the tiers change little

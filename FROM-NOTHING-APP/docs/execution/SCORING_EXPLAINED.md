@@ -145,6 +145,11 @@ A new difference is therefore worth reporting.
   the same job done unapproved. This needs the owner's decision (`DECISION_PLAYBOOK.md`, DEC-26).
 - **Grade bands from real data**, **protection when a plan is accepted late**, and **who gets credit for work finished
   in overtime**: `docs/integration/DECISION_PLAYBOOK.md` §7.
+- **A floor that chooses its own work.** Work done in place of planned work that was left without an excuse earns
+  80% of that work today, so a crew that leaves a quarter of its plan every shift and does easier jobs instead still
+  scores about 93, and the score cannot tell whether the jobs it left were ones other work waits on. Report
+  `docs/task-valuation-investigation/12_RIGHT_WORK_SCORE.md` measures this and proposes a lower credit and priority
+  tiers; `tools/right_work_score.py` is the tested proposal, outside `focus/`. It is the owner's decision (DEC-33).
 - **What the score cannot see.** It says whether a team did its part of the plan. It stops at 100, so it does not
   separate a fast team from a normal one, or a team that works ahead from one that finishes and stops. Labor
   efficiency and work beyond plan would, and neither is built. Throughput and summed job points are not a substitute:
