@@ -267,7 +267,8 @@ def status(services: Any, pid: str) -> dict[str, Any]:
     failed = [s["name"] for s in steps if s["status"] == "failed"]
     return {"status": "ok", "pipeline_id": pid, "scope": doc["scope"], "key": doc["key"], "version": version,
             "state": "completed" if done else ("failed" if failed else "in_progress"), "failed": failed, "steps": steps,
-            "window": window(services, doc), "objective": objective(doc), "criticality": criticality(doc),
+            "window": window(services, doc), "readiness_gaps": readiness_gaps(doc), "objective": objective(doc),
+            "criticality": criticality(doc),
             "outbox": outbox_events(services, pid)}
 
 
@@ -279,6 +280,13 @@ def _recorded(doc: Mapping[str, Any], name: str) -> dict[str, Any]:
         if state["status"] == "completed":
             out[purpose] = (state["output"].get(purpose) or {}).get(name)
     return out
+
+
+def readiness_gaps(doc: Mapping[str, Any]) -> dict[str, int] | None:
+    """The admitted data's readiness gaps by code, largest first (None before admission). The codes that keep a cost
+    unknown are named in docs/execution/OBJECTIVE_EXPLAINED.md, section 4."""
+    state = doc["steps"]["admit"]
+    return state["output"].get("readiness_gaps") if state["status"] == "completed" else None
 
 
 def objective(doc: Mapping[str, Any]) -> dict[str, Any]:
@@ -373,7 +381,11 @@ def step_admit(services: Any, doc: dict[str, Any], inputs: dict[str, Any]) -> di
     if snapshot is None:
         raise StepFailed("SNAPSHOT_MISSING", f"no admitted snapshot for {run_id}")
     snapshot.verify()
-    return {"source_run_id": run_id, "snapshot_id": snapshot.id, "snapshot_hash": snapshot.hash, "head_version": head.version}
+    gaps: dict[str, int] = {}
+    for gap in snapshot.gaps:                      # the admitted data's readiness gaps, counted by code (their detail is in the snapshot)
+        gaps[gap.code] = gaps.get(gap.code, 0) + 1
+    return {"source_run_id": run_id, "snapshot_id": snapshot.id, "snapshot_hash": snapshot.hash, "head_version": head.version,
+            "readiness_gaps": dict(sorted(gaps.items(), key=lambda kv: (-kv[1], kv[0])))}
 
 
 def _schedule_one(services: Any, doc: dict[str, Any], inputs: dict[str, Any], purpose: str) -> dict[str, Any]:

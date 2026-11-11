@@ -124,3 +124,64 @@ def test_spearman_and_percentiles():
     assert C.spearman([1, 2, 3, 4], [10, 20, 30, 40]) == 1.0
     assert C.spearman([1, 2, 3, 4], [4, 3, 2, 1]) == -1.0
     assert C.percentiles([5.0])["p50"] == 5.0
+
+
+def test_scores_by_shift_number_show_a_shift_that_is_lower_and_what_was_excused():
+    rows = [ts(f"T1|{d}|1", D=100, Cp=100, day=f"2027-01-0{d}", number=1) for d in (4, 5)]
+    rows += [ts(f"T1|{d}|3", D=100, Cp=70, day=f"2027-01-0{d}", number=3) for d in (4, 5)]
+    out = C.by_shift_number(rows)
+    assert out["shifts"]["1"] == {"team_shifts": 2, "mean_score": 100.0, "median_score": 100.0, "mean_shortfall": 0.0, "excused_share_of_B": 0.0}
+    assert out["shifts"]["3"]["mean_score"] == 70.0 and out["shifts"]["3"]["mean_shortfall"] == pytest.approx(0.3)
+    assert out["spread_of_means"] == 30.0                    # third shift sits 30 points under first shift
+    assert C.by_shift_number([]) == {"shifts": {}, "spread_of_means": None}
+
+
+def test_weekly_scores_say_whether_weeks_tell_teams_apart():
+    def week(team, monday, done):                            # five days of one team's shifts, pooled by ISO week
+        return [ts(f"{team}|{monday}|{i}", team=team, D=100, Cp=done, day=f"2027-01-{monday + i:02d}") for i in range(5)]
+
+    steady = week("T1", 4, 100) + week("T1", 11, 100) + week("T2", 4, 60) + week("T2", 11, 60)
+    s = C.weekly(steady)                                     # teams differ, each is the same every week
+    assert (s["team_weeks"], s["weeks"], s["teams"]) == (4, 2, 2)
+    assert s["change_between_consecutive_weeks"] == {"mean": 0.0, "p90": 0.0, "max": 0.0} and s["between_team_share_of_variance"] == 1.0
+    noisy = week("T1", 4, 100) + week("T1", 11, 60) + week("T2", 4, 60) + week("T2", 11, 100)
+    n = C.weekly(noisy)                                      # the same two scores, swapping between the teams each week
+    assert n["change_between_consecutive_weeks"]["mean"] == 40.0 and n["between_team_share_of_variance"] == 0.0
+    assert C.weekly(week("T1", 4, 100))["note"] == "needs at least two weeks of scores"
+    pooled_week = C.weekly(week("T1", 4, 100)[:4] + [ts("T1|x", team="T1", D=100, Cp=0, day="2027-01-08")] + week("T1", 11, 100))
+    assert pooled_week["weekly_score"]["p1"] == 80.0         # 400 of 500 minutes in the week: pooled first, not the mean of 100s and a 0
+
+
+def test_the_blind_grade_sample_hides_the_score_and_the_labels_show_which_bands_agree(tmp_path):
+    done = {"A": 95, "B": 85, "C": 75, "D": 65, "F": 40}
+    records = [ts(f"{g}{i}", D=100, Cp=cp, day="2027-01-04") for g, cp in done.items() for i in range(6)]
+    demo = C.BAND_SETS["demo 90/80/70/60"]
+    sample = C.grade_sample(records, 10, 7, demo)
+    assert len(sample) == 10 and all(row["supervisor_grade"] == "" for row in sample)
+    assert not any(k in row for row in sample for k in ("score", "grade", "today"))                 # blind to the result
+    first = next(row for row in sample if row["team_shift"].startswith("D"))                        # the facts a supervisor judges from
+    assert (first["expected_minutes"], first["planned_minutes_done"], first["planned_minutes_missed_not_excused"]) == (100.0, 65.0, 35.0)
+    assert sorted(key[0] for key in (row["team_shift"] for row in sample)) == sorted("AABBCCDDFF")  # two from each grade
+    assert C.grade_sample(records, 10, 7, demo) == sample and C.grade_sample(records, 10, 8, demo) != sample
+    assert len(C.grade_sample(records[:3], 10, 7, demo)) == 3                                        # never more than there are
+    path = tmp_path / "grades.csv"
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(sample[0]))
+        writer.writeheader()
+        for row in sample:                                    # the supervisor grades one step kinder than the demo bands for C and D work
+            given = {"A": "A", "B": "B", "C": "B", "D": "C", "F": "F"}[row["team_shift"][0]]
+            writer.writerow({**row, "supervisor_grade": given})
+        writer.writerow({**sample[0], "team_shift": "not a shift", "supervisor_grade": "A"})
+        writer.writerow({**sample[0], "team_shift": "A5" if sample[0]["team_shift"] != "A5" else "A4", "supervisor_grade": ""})
+    kinder = (90, 75, 65, 60)                                 # the bands the supervisor is using: 75 is a B and 65 a C
+    out = C.grade_agreement(path, records, {"demo 90/80/70/60": demo, "kinder": kinder})
+    assert (out["labeled"], out["unlabeled_or_unmatched"]) == (10, 2)
+    assert out["band_sets"]["demo 90/80/70/60"] == {"same_grade": 0.6, "within_one_grade": 1.0, "formula_stricter": 4, "formula_more_lenient": 0}
+    assert out["band_sets"]["kinder"]["same_grade"] == 1.0 and out["best_agreement"] == "kinder"
+
+
+def test_the_analysis_includes_the_shift_number_and_weekly_sections():
+    rows = [ts(f"T{t}|{d}|{n}", team=f"T{t}", D=100, Cp=90 + t, day=f"2027-01-{d:02d}", number=n) for t in (1, 2) for d in (4, 5, 11, 12) for n in (1, 2)]
+    res = C.analyze(rows, lead=20, bands=dict(C.BAND_SETS))
+    assert set(res["by_shift_number"]["shifts"]) == {"1", "2"} and res["by_shift_number"]["spread_of_means"] == 0.0
+    assert res["weekly"]["weeks"] == 2 and res["weekly"]["teams"] == 2 and res["weekly"]["between_team_share_of_variance"] == 1.0

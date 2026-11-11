@@ -56,6 +56,11 @@ stay in company storage. This public repository keeps the synthetic reference co
     run, and work it before speed (`DECISION_PLAYBOOK.md`, DEC-29).
 - **Unknown stays unknown.** Never fill a missing rate, duration, date or calendar day with an average, a median or
   a default.
+  - Rates from a file: `python tools/build_economics_rows.py` builds the economics rows and lists the aircraft it
+    cannot price. It never fills one in.
+  - Calendars: a line whose calendar ends at or before its due date can never be planned late, so its lateness is
+    never costed (`readiness_gaps` in the pipeline status: `CALENDAR_ENDS_BEFORE_DUE`, `CALENDAR_NO_DAYS_LEFT`). The
+    calendar producer fixes that; FOCUS never adds a day.
 - **Decisions.** Before asking the owner, look the question up in `DECISION_PLAYBOOK.md`: it says what to do now,
   what to decide from data, and what only the owner can decide.
 
@@ -400,6 +405,9 @@ rule.
 | Pipeline steps and roles | `focus/orchestration.py`; `docs/execution/INSTALL_AND_PIPELINE.md` §4 |
 | Migrations and grants | `sql/migrations/`, `sql/grants/focus_fn_roles.sql`, `focus/migrations.py` |
 | Live store (pending) | `focus/data/sql_store.py` |
+| Objective, cost and criticality reports | `focus/economics/evaluator.py` (`objective_status`), `focus/valuation/criticality.py`; `docs/execution/OBJECTIVE_EXPLAINED.md` §4 and §5 |
+| Calendar coverage check | `focus/calendar.py` (`coverage_gaps`); `docs/data/02-calendars-and-stations.md` |
+| Economics rows from a rate file | `tools/build_economics_rows.py`, `focus/economics/rate_file.py`; `docs/data/08-economics.md` |
 | Score calibration on real data | `tools/calibrate_scores.py`; `docs/task-valuation-investigation/10_CALIBRATION.md` |
 | Evaluator-only run | `tools/evaluate_closed_shifts.py` |
 | Simulation (synthetic) | `focus/sim/`; `docs/execution/SIMULATION.md` |

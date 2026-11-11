@@ -437,6 +437,12 @@ first owner-confirmed OD, because any edit changes the policy hash.
   (`calendar.admit_line_calendars`). If a line's calendar stops at its last control station, work that is still
   open after that date cannot be placed. The aircraft then has no finish date and no cost
   (`OBJECTIVE_EXPLAINED.md` §4), and these are the aircraft that are already late.
+- **What FOCUS reports.** Admission checks every line with open work and records a readiness gap
+  (`calendar.coverage_gaps`; `readiness_gaps` in the pipeline status counts them):
+  - `CALENDAR_NO_DAYS_LEFT`: no working shift is left after the data cut. Nothing on the line can be planned.
+  - `CALENDAR_ENDS_BEFORE_DUE`: the last working shift ends at or before the due instant. The line can be planned,
+    but never late: work that does not fit shows as an unknown finish. **While every line has this gap, the cost
+    objective cannot count a single late dollar**, whatever else is fixed.
 - **Measure.** For each line: the calendar's last date, the CS744 planned unload date, and the open work minutes
   after the calendar's last date.
 - **Recommendation.** The calendar producer sends working days for every line through the planning horizon, using
@@ -504,18 +510,24 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   whether the score behaves sensibly. The simulation cannot, because its floor is synthetic.
 - **Measure** (`10_CALIBRATION.md` §8, "What real data can and cannot decide"):
   - spread: the shortfall percentiles and the grades under each band set;
-  - noise: does a team's score one week predict its score the next;
-  - fairness: do shift number, team size or work mix move the score for reasons the team does not control;
-  - agreement: do supervisors, shown a blind sample of the highest- and lowest-scoring shifts, see the same thing;
+  - noise: does a team's weekly score hold from one week to the next, and do weekly scores tell teams apart
+    (`weekly`);
+  - fairness: do shift number, team size or work mix move the score for reasons the team does not control
+    (`by_shift_number`);
+  - agreement: do supervisors, shown a sample without scores or grades, give the grades the formula gives
+    (`--grade-sample`, `--grade-labels`);
   - outcomes: do higher-scoring team-weeks have better flow (fewer blocked successors, less rework);
   - sensitivity: do rankings change between 60/40, 70/30 and 80/20.
 - **Decision rules** (rules of thumb, for the owner to confirm):
   - rankings nearly identical across the weights (rank correlation 0.95 or more): keep the defaults;
-  - week-to-week correlation below about 0.3: single shifts are mostly noise, so grade weeks, not shifts;
+  - less than about 0.3 of the spread of weekly scores lies between teams
+    (`weekly.between_team_share_of_variance`): weekly scores cannot rank teams, so coach on them and compare teams
+    over a month;
   - supervisors disagree on more than about a quarter of the sample: find the cause first. It is usually the
     plan, the standard minutes or missing excusals, not the weights.
-- **Tooling.** `tools/calibrate_scores.py` reports spread, flips and the w grid today. The noise, by-shift fairness,
-  blind sample, outcome and 60/40–80/20 checks are not built yet.
+- **Tooling.** `tools/calibrate_scores.py` reports spread, flips, the w grid (which is the 60/40 to 80/20 split),
+  scores by shift number, week-to-week stability and the supervisor grade check. Not built: fairness by team size
+  and work mix, and the outcome check (scores against flow), which needs outcome data FOCUS does not hold.
 - **Record:** a D-entry with the measurements (summary only).
 
 ### DEC-20 Swap watch: unplanned work done in place of planned work
@@ -576,7 +588,10 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   rates, and `daily_pooled_R5_w0.8`. Exclude stale-plan shifts first (DEC-24).
 - **Decision rule:**
   - pick the tolerance set whose flip rate between a team's consecutive shifts is at most 5%;
-  - check that a supervisor review of a sample of C, D and F team-shifts finds real problems in most of them;
+  - check the grades against supervisors: `--grade-sample` writes a sample without scores or grades, and
+    `--grade-labels` reports per band set how often the formula's grade matches theirs. Prefer the set that agrees
+    best, and treat agreement under nine in ten within one grade as a fault in the plan, the standards or the
+    excusals;
   - tie recognition (badges, rankings) to pooled days or weeks, not single shifts.
 - **Implement in:** `score.bands` in `config/policies/grading-demo-v1.json` (one policy batch, at a period
   boundary).

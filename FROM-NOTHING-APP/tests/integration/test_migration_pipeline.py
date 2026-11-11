@@ -369,7 +369,10 @@ def test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan(pipel
     services = pipeline_services
     pid = _pid(services, "objective")
     assert O.status(services, pid)["objective"] == {}                                   # nothing scheduled yet
+    assert O.status(services, pid)["readiness_gaps"] is None                            # nothing admitted yet
     O.run_role(services, pid, "source")
+    # the admitted data's gaps by code: the demo has two, and no calendar that stops short of a due date (DEC-28)
+    assert O.status(services, pid)["readiness_gaps"] == {"IN_PROGRESS_CONTINUATION_HOLD": 1, "SEQUENCE_VIOLATION": 1}
     O.run_role(services, pid, "app")
     executable = O.status(services, pid)["objective"]
     assert set(executable) == {"EXECUTABLE"}                                            # the forecast waits for acceptance

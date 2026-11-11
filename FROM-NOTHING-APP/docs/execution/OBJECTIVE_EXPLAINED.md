@@ -112,6 +112,9 @@ plan and one for the forecast). The code is `objective_status` in `focus/economi
 | `cost_unknown_by_reason` | For each aircraft with no cost, its first cause, counted. `COMPLETION_UNKNOWN` means the rate and the due date are fine and the finish is not. |
 | `unplanned_open_jobs`, `unplanned_open_jobs_by_reason` | The required jobs that could not be planned, counted by first reason, largest first. |
 
+The same status lists `readiness_gaps`: the admitted data's gaps by code, largest first. The two calendar codes in
+the table below are there before any plan is made.
+
 How to use it:
 
 1. `cost_steering` should be `full` for the forecast plan. Until it is, the totals are not fleet totals.
@@ -125,13 +128,13 @@ How to use it:
 
 | Cause | What it looks like | What to do |
 | --- | --- | --- |
-| No rate for the aircraft | `ECONOMICS_MISSING`, `NO_EFFECTIVE_TERM`, `AIRCRAFT_NOT_MAPPED` | Load a term for that customer and minor model, or ask the owner for one. Never substitute an average, a median or another customer's rate. |
+| No rate for the aircraft | `ECONOMICS_MISSING`, `NO_EFFECTIVE_TERM`, `AIRCRAFT_NOT_MAPPED` | Load a term for that customer and minor model, or ask the owner for one. `tools/build_economics_rows.py` builds the rows from a rate file and lists the aircraft it cannot price. Never substitute an average, a median or another customer's rate. |
 | No due date | `DUE_UNKNOWN` | The line has no CS744 planned unload date in the same run. Fix the control-station data. |
 | A job has no duration | the job is blocked with a duration reason | A duration producer, or the owner's decision on a fallback (OD-02). Never guess one. |
 | A job has no control-station window | the job is blocked with a control-station reason | OD-05 and the `cs_windows` producer. |
 | Jobs depend on each other in a loop | the jobs are quarantined | Report the loops to the data owner. FOCUS will not pick an edge to drop. |
 | The crew size is invalid | the job is blocked with a crew reason | OD-01 fixed the meaning; fix the rows that break it. |
-| The line calendar ends before the work does | jobs cannot be placed after the calendar's last date | The calendar producer must cover the whole horizon, including days after roll-out for aircraft that are already late (`DECISION_PLAYBOOK.md`, DEC-28). FOCUS never adds days. |
+| The line calendar ends before the work does | readiness gap `CALENDAR_NO_DAYS_LEFT` (nothing on the line can be planned) or `CALENDAR_ENDS_BEFORE_DUE` (a late finish cannot be planned, so lateness shows as unknown and no cost is counted) | The calendar producer must cover the whole horizon, past each line's due date, including days after roll-out for aircraft that are already late (`DECISION_PLAYBOOK.md`, DEC-28). FOCUS never adds days. |
 | A part has no date (executable plan only) | the job waits for a confirmed receipt | Expected. The forecast plan uses the expected date and labels the result conditional. |
 
 **Rules for anyone wiring live data:**

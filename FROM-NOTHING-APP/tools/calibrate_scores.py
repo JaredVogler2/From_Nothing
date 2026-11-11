@@ -29,11 +29,20 @@ period of scored team-shifts, what other rates would do, and what the rule befor
   doing the missed planned work instead;
 * relief by cause, DONE_BEFORE_SHIFT work, completions in the last ``--lead`` minutes of the shift and in overtime, and
   shifts whose plan of record is the previous shift's plan (the run before the shift was not accepted in time);
-* fairness: planned minutes against the grade gain from off-plan credit and against the output index.
+* fairness: planned minutes against the grade gain from off-plan credit and against the output index;
+* scores by shift number (is one shift systematically lower?), and week to week: how much a team's pooled weekly score
+  moves from one week to the next, and how much of the difference between weekly scores is between teams. Weekly
+  scores that move as much within a team as they differ between teams cannot rank teams.
 
 **Checking the watch.** ``--review-sample N --review-csv FILE`` writes N team-shifts with off-plan work (half flagged
 as a possible swap, half not) for supervisors to label ``SWAP`` or ``EXTRA`` in the ``label`` column. ``--labels FILE``
 reads that file back and reports how many real swaps the watch missed and how many flags were real extra work.
+
+**Checking the grades.** ``--grade-sample N --grade-csv FILE`` writes N scored team-shifts, spread over the grades,
+with the facts of each shift and without its score or grade. A supervisor who knows the shift writes the grade they
+would give (A, B, C, D or F) in the ``supervisor_grade`` column. ``--grade-labels FILE`` reads it back and reports,
+for every band set, how often the formula's grade matches, how often it is within one grade, and whether the formula
+is the stricter or the more lenient of the two. The band set that agrees best is the evidence for DEC-23.
 """
 from __future__ import annotations
 
@@ -182,7 +191,12 @@ def from_sim(path: Path, *, lead: int) -> tuple[list[dict[str, Any]], dict[str, 
     for s, t, end in q("SELECT shift_no, team, actual_end FROM exec_assignment WHERE outcome = 'completed'"):
         done[(s, t)].append(datetime.fromisoformat(end))
     out = []
-    has_uc = any(c[1] == "Uc" for c in q("PRAGMA table_info(perf_team_shift)"))    # absent in a database made before D-27
+    columns = {c[1] for c in q("PRAGMA table_info(perf_team_shift)")}
+    missing = sorted({"B0", "B", "E", "Cp", "U", "O", "status", "score"} - columns)
+    if missing:
+        raise SystemExit(f"{path}: this simulation database was made by an older FOCUS (perf_team_shift has no {', '.join(missing)}); "
+                         "run the simulation again")
+    has_uc = "Uc" in columns                                                       # absent in a database made before D-27
     for s, team, B0, B, E, Cp, U, O, status, score, Uc in q(
             f"SELECT shift_no, team, B0, B, E, Cp, U, O, status, score, {'Uc' if has_uc else 'NULL'} FROM perf_team_shift ORDER BY shift_no, team"):
         missed_unclaimed, excused, done_before = 0.0, Counter(), 0.0
@@ -400,7 +414,56 @@ def analyze(records: list[dict[str, Any]], *, lead: int, bands: dict[str, tuple[
     res["fairness"] = {"spearman_planned_minutes_vs_R5_gain": spearman(planned, gain08),
                        "spearman_planned_minutes_vs_output_index": spearman(planned, [(r["Cp"] + credited(r)) / r["D"] for r in scored]),
                        "note": "planned minutes stand in for load; join available hours from attendance for the load itself"}
+    res["by_shift_number"] = by_shift_number(scored)
+    res["weekly"] = weekly(scored)
     return res
+
+
+def by_shift_number(scored: list[dict[str, Any]]) -> dict[str, Any]:
+    """Scores by shift number. A shift that is lower every week points at its conditions (support, parts, staffing), not at
+    its teams; compare the excused share before reading the scores."""
+    groups: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for r in scored:
+        groups[r["number"]].append(r)
+    out: dict[str, Any] = {}
+    for number, rows in sorted(groups.items()):
+        scores = [r5(r, 0.8) for r in rows]
+        expected = sum(r["B"] for r in rows)
+        out[str(number)] = {"team_shifts": len(rows), "mean_score": round(mean(scores), 2), "median_score": percentiles(scores)["p50"],
+                            "mean_shortfall": round(mean(1 - r["Cp"] / r["D"] for r in rows), 4),
+                            "excused_share_of_B": round(sum(r["E"] for r in rows) / expected, 4) if expected else None}
+    means = [v["mean_score"] for v in out.values()]
+    return {"shifts": out, "spread_of_means": round(max(means) - min(means), 2) if means else None}
+
+
+def weekly(scored: list[dict[str, Any]]) -> dict[str, Any]:
+    """Each team's pooled score per ISO week: how far it moves between consecutive weeks, and how much of the spread of
+    weekly scores lies between teams (1 = teams differ and each is steady; near 0 = the weeks differ, the teams do not)."""
+    groups: dict[tuple[str, tuple[int, int]], list[dict[str, Any]]] = defaultdict(list)
+    for r in scored:
+        iso = date.fromisoformat(r["day"]).isocalendar()
+        groups[(r["team"], (iso[0], iso[1]))].append(r)
+    by_team: dict[str, list[tuple[tuple[int, int], float]]] = defaultdict(list)
+    for (team, week), rows in groups.items():
+        p = pooled(rows)
+        if p["D"] > 0:
+            by_team[team].append((week, r5(p, 0.8)))
+    values = [score for seq in by_team.values() for _, score in seq]
+    weeks = {week for seq in by_team.values() for week, _ in seq}
+    if len(weeks) < 2 or not values:
+        return {"team_weeks": len(values), "weeks": len(weeks), "note": "needs at least two weeks of scores"}
+    moves = []
+    for seq in by_team.values():
+        seq.sort()
+        moves.extend(abs(b[1] - a[1]) for a, b in pairwise(seq))
+    overall = mean(values)
+    total = sum((v - overall) ** 2 for v in values)
+    between = sum(len(seq) * (mean(v for _, v in seq) - overall) ** 2 for seq in by_team.values())
+    ordered = sorted(moves)
+    return {"team_weeks": len(values), "weeks": len(weeks), "teams": len(by_team), "weekly_score": percentiles(values),
+            "change_between_consecutive_weeks": {"mean": round(mean(moves), 3), "p90": round(ordered[min(len(ordered) - 1, round(0.9 * (len(ordered) - 1)))], 3),
+                                                 "max": round(ordered[-1], 3)} if moves else None,
+            "between_team_share_of_variance": round(between / total, 4) if total > 0 else None}
 
 
 # ---------------------------------------------------------------------- review sample and labels
@@ -433,6 +496,56 @@ def label_rates(path: Path) -> dict[str, Any]:
                     "class's population share before quoting a site-wide rate"}
 
 
+# ---------------------------------------------------------------------- blind grade sample
+
+GRADES = "ABCDF"
+
+
+def _scored(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [r for r in records if r["D"] > 0 and r["U"] is not None and r["O"] is not None and r["status"] not in ("unknown", "UNKNOWN")]
+
+
+def grade_sample(records: list[dict[str, Any]], n: int, seed: int, bands: tuple[float, ...]) -> list[dict[str, Any]]:
+    """N scored team-shifts, as evenly over the five grades as the period allows, in random order and without the score
+    or the grade. The facts are what a supervisor needs to judge the shift."""
+    rng = random.Random(seed)
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for r in sorted(_scored(records), key=lambda r: r["key"]):
+        groups[grade(r5(r, 0.8), bands)].append(r)
+    pick: list[dict[str, Any]] = []
+    for g in GRADES:
+        pick += rng.sample(groups[g], min(len(groups[g]), n // len(GRADES)))
+    chosen = {r["key"] for r in pick}
+    rest = [r for g in GRADES for r in groups[g] if r["key"] not in chosen]
+    pick += rng.sample(rest, min(len(rest), max(0, n - len(pick))))
+    rng.shuffle(pick)
+    return [{"team_shift": r["key"], "team": r["team"], "day": r["day"], "shift_number": r["number"],
+             "expected_minutes": round(r["D"], 1), "planned_minutes_done": round(r["Cp"], 1),
+             "planned_minutes_missed_not_excused": round(max(0.0, r["D"] - r["Cp"]), 1),
+             "of_which_no_reason_on_record": round(r["missed_unclaimed"], 1), "excused_minutes": round(r["E"], 1),
+             "excused_causes": "; ".join(f"{c}={round(m, 1)}" for c, m in sorted(r["excused"].items())),
+             "extra_minutes": round(r["U"] or 0.0, 1), "out_of_sequence_minutes": round(r["O"] or 0.0, 1), "supervisor_grade": ""} for r in pick]
+
+
+def grade_agreement(path: Path, records: list[dict[str, Any]], bands: dict[str, tuple[float, ...]]) -> dict[str, Any]:
+    """Supervisors' grades against the formula's, for every band set. Stricter means the formula gave the lower grade."""
+    by_key = {r["key"]: r for r in _scored(records)}
+    rows = list(csv.DictReader(path.open(encoding="utf-8")))
+    labeled = [(by_key[row["team_shift"]], row["supervisor_grade"].strip().upper()) for row in rows
+               if row.get("team_shift") in by_key and row.get("supervisor_grade", "").strip().upper() in tuple(GRADES)]
+    out: dict[str, Any] = {"labeled": len(labeled), "unlabeled_or_unmatched": len(rows) - len(labeled), "band_sets": {}}
+    for label, b in bands.items():
+        diff = [GRADES.index(grade(r5(r, 0.8), b)) - GRADES.index(given) for r, given in labeled]
+        if diff:
+            out["band_sets"][label] = {"same_grade": round(sum(d == 0 for d in diff) / len(diff), 4),
+                                       "within_one_grade": round(sum(abs(d) <= 1 for d in diff) / len(diff), 4),
+                                       "formula_stricter": sum(d > 0 for d in diff), "formula_more_lenient": sum(d < 0 for d in diff)}
+    if out["band_sets"]:
+        out["best_agreement"] = max(out["band_sets"], key=lambda k: (out["band_sets"][k]["same_grade"], out["band_sets"][k]["within_one_grade"]))
+    out["note"] = "a few dozen labels show a direction, not a rate; label at least 20 shifts per grade before changing the bands"
+    return out
+
+
 # ---------------------------------------------------------------------- command line
 
 def main(argv: list[str] | None = None) -> int:
@@ -452,6 +565,10 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--review-sample", type=int, default=0)
         p.add_argument("--review-csv", type=Path, default=None)
         p.add_argument("--labels", type=Path, default=None)
+        p.add_argument("--grade-sample", type=int, default=0, help="team-shifts to hand a supervisor, without scores or grades")
+        p.add_argument("--grade-csv", type=Path, default=None)
+        p.add_argument("--grade-bands", default="demo 90/80/70/60", help="the band set the grade sample is spread over")
+        p.add_argument("--grade-labels", type=Path, default=None, help="the grade sample, filled in, to compare with the formula")
         p.add_argument("--seed", type=int, default=20261102)
     args = ap.parse_args(argv)
     if args.source == "store":
@@ -478,6 +595,17 @@ def main(argv: list[str] | None = None) -> int:
         result["review_sample"] = {"rows": len(sample), "csv": str(args.review_csv)}
     if args.labels:
         result["labels"] = label_rates(args.labels)
+    if args.grade_sample and args.grade_csv:
+        if args.grade_bands not in bands:
+            ap.error(f"--grade-bands {args.grade_bands!r}: one of {sorted(bands)}")
+        graded = grade_sample(records, args.grade_sample, args.seed, bands[args.grade_bands])
+        with args.grade_csv.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(graded[0]) if graded else ["team_shift", "supervisor_grade"])
+            writer.writeheader()
+            writer.writerows(graded)
+        result["grade_sample"] = {"rows": len(graded), "csv": str(args.grade_csv), "spread_over": args.grade_bands}
+    if args.grade_labels:
+        result["grade_agreement"] = grade_agreement(args.grade_labels, records, bands)
     text = json.dumps(result, indent=1, default=str)
     if args.out:
         args.out.write_text(text, encoding="utf-8")

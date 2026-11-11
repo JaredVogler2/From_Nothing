@@ -24,6 +24,12 @@ S04 is the manual's section of verified source-table contracts. Of its eight eco
   checkpoints). Per-aircraft reasons include `ECONOMICS_MISSING`, `UNSUPPORTED_TERM`, `TERM_OR_DUE_UNKNOWN`,
   `UNSUPPORTED_CURVE`, `DUE_POLICY_UNSUPPORTED:<basis>` and, when required jobs are unreleased in the plan,
   `COMPLETION_UNKNOWN`.
+- **Starting from a rate file.** Before contract terms exist, `python tools/build_economics_rows.py` turns a file of
+  daily rates per customer and minor model, with the list of aircraft, into the rows of `econ_scenario`,
+  `econ_mapping_revision`, `econ_aircraft_mapping` and `econ_term` (`focus/economics/rate_file.py`). Every row is
+  marked `ASSUMED`. An aircraft whose customer and minor model have no rate is listed and gets no term, so FOCUS
+  reports `NO_EFFECTIVE_TERM` and keeps its cost unknown. The tool never fills a rate in from an average, a median or
+  another customer, and it exits with code 2 while any aircraft is unpriced.
 - **Freshness.** None of the tables has a source clock (`LOAD_TIMESTAMP`, `SNAPSHOT_TS` or `LOAD_TS`) or a cutoff column, and none is listed in `admission.max_source_age_hours`. So no `SOURCE_STALE` check applies; only the run-wide `CAPTURE_SKEW` check does.
 - **Who reads the result.** Only `focus/economics/repository.py` reads the raw rows, at admission. The engine reads the per-aircraft result (`AircraftEconomics` on the snapshot) through `focus/economics/registry.py`. Users without an economics grant (`manager` or `scenario_planner`) see costs withheld as `ECONOMICS_RESTRICTED`, never as zero.
 

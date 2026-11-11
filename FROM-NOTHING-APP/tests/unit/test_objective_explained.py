@@ -123,6 +123,11 @@ def test_the_reason_codes_and_decisions_it_names_exist() -> None:
     playbook = (ROOT / "docs" / "integration" / "DECISION_PLAYBOOK.md").read_text(encoding="utf-8")
     for decision in ("OD-02", "OD-05", "OD-12", "DEC-28"):
         assert decision in TEXT and decision in playbook
+    calendar = (ROOT / "focus" / "calendar.py").read_text(encoding="utf-8")
+    for code in ("CALENDAR_NO_DAYS_LEFT", "CALENDAR_ENDS_BEFORE_DUE"):                       # the calendar gaps the page sends readers to
+        assert f"`{code}`" in TEXT and f'"{code}"' in calendar and code in playbook
+    assert "`readiness_gaps`" in TEXT and '"readiness_gaps": readiness_gaps(doc)' in pipeline
+    assert "`tools/build_economics_rows.py`" in TEXT and (ROOT / "tools" / "build_economics_rows.py").is_file()
 
 
 def test_the_criticality_section_names_the_codes_states_and_its_example_is_what_the_code_returns(policy) -> None:

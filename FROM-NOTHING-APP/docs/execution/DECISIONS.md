@@ -391,6 +391,30 @@ attendance. A conditional ETA is never physical receipt.
   - **Depends on the cost objective working** (DEC-29). With every aircraft's finish date unknown, criticality is
     known only for the aircraft already past due.
 
+- **D-30 A run says what kept it from optimizing cost (engineering, November 10, 2026).**
+  - **Why.** On live data a run can finish, publish a plan and never compare a dollar: an aircraft's cost is known
+    only when its rate, its due date and its finish date are all known. Nothing failed, so nothing showed it.
+  - **Decision.** Every run reports the facts itself, in `python -m focus.cli pipeline --key K --status`:
+    - `objective` (`economics.evaluator.objective_status`), for the executable plan and the forecast: the aircraft
+      with a known cost, a usable rate, a due date and a finish date; the aircraft already past due; the first cause
+      on each aircraft with no cost; the open jobs that could not be planned, by reason;
+    - `readiness_gaps`: the admitted data's gaps by code, largest first;
+    - `criticality` (D-29) and `window` (D-28).
+  - **Calendars.** Admission now checks every line with open work (`calendar.coverage_gaps`):
+    `CALENDAR_NO_DAYS_LEFT` when no working shift is left after the data cut, and `CALENDAR_ENDS_BEFORE_DUE` when the
+    last working shift ends at or before the due instant. The second matters most: such a line can be planned on
+    time or not at all, never late, so its lateness is never costed. FOCUS still never adds a day (DEC-28).
+  - **Rates.** `tools/build_economics_rows.py` (`focus/economics/rate_file.py`) builds the four economics tables'
+    rows from a rate file and the list of aircraft, marks them `ASSUMED`, lists every aircraft it cannot price and
+    exits with code 2 while one is unpriced. It never fills a rate in.
+  - **Calibration.** `tools/calibrate_scores.py` gained scores by shift number, week-to-week stability and a
+    supervisor grade check on a sample without scores (`10_CALIBRATION.md` §8).
+  - **Unchanged.** No plan, validation, goal or score changes. Unknown stays unknown: none of these estimates a
+    missing value.
+  - **Tests.** `tests/unit/test_objective_status.py`, `tests/unit/test_calendar_coverage.py`,
+    `tests/integration/test_calendar_coverage.py`, `tests/unit/test_rate_file.py`, the new cases in
+    `tests/unit/test_calibrate_scores.py`, and `test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan`.
+
 ## Semantic gaps (live), each a precise readiness effect
 
 These are the policy file's `open_decisions` (OD-18 is tracked here only). None of them blocks local
