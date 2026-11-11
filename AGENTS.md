@@ -21,10 +21,11 @@ If your build does not do all three, it is not finished, however well the data i
 | # | Page | What you must be able to explain afterwards |
 | --- | --- | --- |
 | 1 | `FROM-NOTHING-APP/docs/integration/HANDOFF.md` | The data flow, one shift end to end, the staging contract, the pipeline jobs, and what counts toward the pre-shift window |
-| 2 | `FROM-NOTHING-APP/docs/execution/OBJECTIVE_EXPLAINED.md` | The order in which two schedules are compared, how late-delivery cost is worked out, and how to tell whether the cost objective is working on your data |
-| 3 | `FROM-NOTHING-APP/docs/execution/SCORING_EXPLAINED.md` | How one team-shift is scored and graded, with the worked example |
-| 4 | `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md` | Which decisions are made, which are yours to take, and which need the owner |
-| 5 | `FROM-NOTHING-APP/docs/data/README.md` and its pages | Every input, column by column |
+| 2 | `FROM-NOTHING-APP/docs/integration/STAGING_PLAN.md` | What is copied from Teradata into SQL Server in which pass (nightly, before each shift, at the cut), how, and why only changed rows are pulled inside the 20 minutes |
+| 3 | `FROM-NOTHING-APP/docs/execution/OBJECTIVE_EXPLAINED.md` | The order in which two schedules are compared, how late-delivery cost is worked out, and how to tell whether the cost objective is working on your data |
+| 4 | `FROM-NOTHING-APP/docs/execution/SCORING_EXPLAINED.md` | How one team-shift is scored and graded, with the worked example |
+| 5 | `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md` | Which decisions are made, which are yours to take, and which need the owner |
+| 6 | `FROM-NOTHING-APP/docs/data/README.md` and its pages | Every input, column by column |
 
 Then read the code those pages name. The two explainer pages list each rule with its function and its tests.
 
@@ -35,6 +36,7 @@ Then read the code those pages name. The two explainer pages list each rule with
 - A team was expected to do 900 minutes, did 720 planned and 80 extra. What is its score, and why?
 - Which plan is a shift scored against, and what happens to a job finished just before the shift starts?
 - What does the web application read, and what does it never read?
+- Which datasets are pulled from the sources at the data cut, and why is the rest already in SQL Server?
 
 ## What a port to real data must keep
 

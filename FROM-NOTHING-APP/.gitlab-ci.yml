@@ -16,6 +16,12 @@
 # A second schedule per shift runs only the evaluator, just after the shift's authorized overtime window closes
 # (FOCUS_PIPELINE_PART=evaluate): stage the observation feeds, then score every shift whose credit window has closed.
 #
+# Staging has three passes (docs/integration/STAGING_PLAN.md). SQL Server always holds a complete copy of every source
+# table, so the pass inside the plan pipeline pulls only what changed since the pass before it:
+#   * nightly (FOCUS_PIPELINE_PART=nightly): full loads, full compares with the sources and repairs;
+#   * before each shift (FOCUS_PIPELINE_PART=preshift, 60 minutes before the shift): everything that changes in a day;
+#   * at the cut (the plan pipeline's first job, 20 minutes before the shift): the changes since the pass before it.
+#
 # How the order is enforced:
 #   * Each job runs ONE role of `python -m focus.cli pipeline` with that role's own protected credentials.
 #   * `needs` mirrors the step dependencies, and the pipeline state enforces them again. A job started early returns
@@ -28,6 +34,9 @@
 
 workflow:
   rules:
+    # an unknown part runs nothing: a misspelled schedule must never start a plan pipeline
+    - if: $FOCUS_PIPELINE_PART && $FOCUS_PIPELINE_PART != "evaluate" && $FOCUS_PIPELINE_PART != "preshift" && $FOCUS_PIPELINE_PART != "nightly"
+      when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
@@ -97,6 +106,10 @@ ui:
 native_wheel:
   stage: verify
   image: { name: "ghcr.io/pyo3/maturin:v1.7.4", entrypoint: [""] }   # Rust and manylinux Pythons; builds the abi3 wheel
+  rules:                                            # a staging-only run schedules nothing, so it builds no wheel
+    - if: $FOCUS_PIPELINE_PART == "preshift" || $FOCUS_PIPELINE_PART == "nightly"
+      when: never
+    - when: on_success
   before_script: []
   script:
     - maturin build --release -m native/Cargo.toml -o dist
@@ -123,9 +136,10 @@ fixture_pipeline_rehearsal:
 # ---------------------------------------------------------------------- live order (protected, scheduled or manual)
 
 .live:
-  rules:
-    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  rules:                                            # the plan pipeline is the one that names no part
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
   resource_group: focus-$FOCUS_SCOPE_KEY
+  interruptible: false                              # a merge to the default branch must never cancel a pre-shift run
   variables:
     FOCUS_MODE: live
     FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'   # database columns hold UTC (owner, 2026-10-31); the app shows local time
@@ -161,17 +175,22 @@ detail_retention:
 # Staging: the official sources (Teradata and the other systems of record) are loaded into the SQL Server tables the
 # FOCUS reference queries read (queries/source_inputs/*.sql, the S04 contract), plus the observation landing tables
 # (migration 008). The loader is company code: its mapping, source queries and credentials never enter this repository.
-# FOCUS_STAGE_COMMAND names it; its contract (arguments, atomic publication, row clocks, receipt) is HANDOFF.md section 4.
+# FOCUS_STAGE_COMMAND names it; its contract (arguments, atomic publication, row clocks, receipt) is HANDOFF.md section 4
+# and docs/integration/STAGING_PLAN.md.
+#
+# The pass at the cut: the copy in SQL Server is already complete (nightly and pre-shift passes below), so this job pulls
+# only the rows that changed since the pass before it, bounded by the cut. It counts toward the owner's 20 minutes (D-28)
+# and has 2 of them; the timeout is the stop, not the budget.
 stage_sources:
   extends: .live
   stage: stage_sql
-  needs: [import_and_lint]                          # runs while the other verify jobs run; touches only the staging tables
+  needs: []                                         # starts the second the pipeline does, beside the import check
   environment: { name: focus-staging }              # read-only source credentials, write access to the staging tables only
-  timeout: 10m
+  timeout: 5m
   script:
     - mkdir -p ci-receipts
     - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage.json; exit 3; }'
-    - $FOCUS_STAGE_COMMAND --part all --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage.json
+    - $FOCUS_STAGE_COMMAND --part cut --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage.json
 
 # The staged tables must match the S04 contract column for column before FOCUS reads them (read-only).
 verify_staged_sources:
@@ -223,10 +242,10 @@ sign_accept:
   rules:                                            # FOCUS_SIGN_KEY_REF exists only in this job's environment
     # DEC-11, off by default: the run accepts the plan itself only on a schedule, on a protected ref, with the switch on.
     # The signer step still refuses a plan without a clean FINAL validation and a clean READBACK.
-    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && $FOCUS_AUTO_SIGN == "true" && $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_REF_PROTECTED == "true"
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && $FOCUS_AUTO_SIGN == "true" && $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_REF_PROTECTED == "true"
       when: on_success
     # otherwise an authorized operator promotes
-    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
       when: manual
   allow_failure: false
   environment: { name: focus-signer }
@@ -283,6 +302,7 @@ observe_evaluate:
   rules:
     - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
   resource_group: focus-$FOCUS_SCOPE_KEY
+  interruptible: false
   variables:
     FOCUS_MODE: live
     FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'
@@ -309,3 +329,74 @@ evaluate_closed_shifts:
   environment: { name: focus-evaluator }
   script:
     - mkdir -p ci-receipts && python tools/evaluate_closed_shifts.py > ci-receipts/evaluate-closed-shifts.json
+
+
+# ---------------------------------------------------------------------- staging-only runs (docs/integration/STAGING_PLAN.md)
+
+# SQL Server holds none of the source data to begin with, and the queries on the sources are the slowest part of a run.
+# These two passes keep a complete copy current ahead of time, so the pass at the cut (stage_sources) is a small pull.
+# They share the plan pipeline's resource group: a pass never publishes while acquire_admit is reading the copy.
+.staging_only:
+  resource_group: focus-$FOCUS_SCOPE_KEY
+  interruptible: false
+  variables:
+    FOCUS_MODE: live
+    FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [ci-receipts/]
+
+# 60 minutes before each shift: every table that changes during a day is brought up to date, new lines are staged in
+# full, and keys are compared so that a job that left the source leaves the copy. It must be over before the cut: a
+# pass still running 30 minutes before the shift is stopped, and has then published everything or nothing.
+prestage_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "preshift" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: []
+  environment: { name: focus-staging }
+  timeout: 30m
+  script:
+    - mkdir -p ci-receipts
+    - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage-preshift.json; exit 3; }'
+    - $FOCUS_STAGE_COMMAND --part preshift --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage-preshift.json
+
+# a changed column is found here, with time to act, not at the cut
+verify_prestaged_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "preshift" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: [prestage_sources]
+  environment: { name: focus-source }               # source-worker SQL credentials only (read)
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli source-discover --read-only --mode live > ci-receipts/source-discover-preshift.json
+    - python -c "import json, sys; r = json.load(open('ci-receipts/source-discover-preshift.json')); sys.exit(0 if r.get('status') == 'ok' and not r.get('drift') else 1)"
+
+# Once a day, away from the plan runs: full loads of the reference tables, a full compare of every other table with its
+# source (row counts and checksums) with repairs, the history tables, and the row clocks of what was verified.
+nightly_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "nightly" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: []
+  environment: { name: focus-staging }
+  timeout: 4h
+  script:
+    - mkdir -p ci-receipts
+    - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage-nightly.json; exit 3; }'
+    - $FOCUS_STAGE_COMMAND --part nightly --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage-nightly.json
+
+verify_nightly_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "nightly" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: [nightly_sources]
+  environment: { name: focus-source }
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli source-discover --read-only --mode live > ci-receipts/source-discover-nightly.json
+    - python -c "import json, sys; r = json.load(open('ci-receipts/source-discover-nightly.json')); sys.exit(0 if r.get('status') == 'ok' and not r.get('drift') else 1)"

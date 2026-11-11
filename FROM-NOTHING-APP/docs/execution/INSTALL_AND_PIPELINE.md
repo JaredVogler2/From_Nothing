@@ -291,10 +291,17 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
   the executable plan and for the forecast: the aircraft with a rate, a due date and a finish date, and the open jobs
   that could not be planned, by reason (`OBJECTIVE_EXPLAINED.md` §4). A plan is published either way; this is how a
   run that compared nothing is seen.
-- **Staging** (`stage_sources`, then `verify_staged_sources`) loads the official sources into the SQL Server tables the
-  reference queries read, through the company loader named by `FOCUS_STAGE_COMMAND`, and checks the staged schema
-  against the S04 contract before acquisition. It runs while the verify jobs run. The loader's contract is
-  `docs/integration/HANDOFF.md` §4.
+- **Staging** keeps a complete copy of the official sources in the SQL Server tables the reference queries read,
+  through the company loader named by `FOCUS_STAGE_COMMAND` (`docs/integration/STAGING_PLAN.md`; the loader's
+  contract is `docs/integration/HANDOFF.md` §4).
+  - In the plan pipeline, `stage_sources` pulls only what changed since the pass before it (`--part cut`). It needs
+    no other job, so it starts with the pipeline, and `verify_staged_sources` then checks the staged schema against
+    the S04 contract before acquisition.
+  - **Staging-only pipelines** keep the copy current ahead of time: `FOCUS_PIPELINE_PART=preshift` (60 minutes
+    before each shift: `prestage_sources`, `verify_prestaged_sources`) and `FOCUS_PIPELINE_PART=nightly`
+    (`nightly_sources`, `verify_nightly_sources`). They share the plan pipeline's `resource_group`, so a pass never
+    publishes while acquisition reads.
+  - A value of `FOCUS_PIPELINE_PART` the draft does not know runs nothing, and no live job is interruptible.
 - **Evaluator-only pipelines** (`FOCUS_PIPELINE_PART=evaluate`, one schedule just after each shift's overtime window)
   run only `stage_observations` and `evaluate_closed_shifts` (`tools/evaluate_closed_shifts.py`), which scores every
   shift whose credit window has closed. The schedules are listed in `HANDOFF.md` §5.2.

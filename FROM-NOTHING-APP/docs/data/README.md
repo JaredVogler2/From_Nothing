@@ -323,6 +323,8 @@ Writing this reference turned up behaviour that matters for a live connection. E
 
 - `docs/integration/HANDOFF.md`: moving to the official data sources, the SQL Server staging job and the GitLab
   pipeline.
+- `docs/integration/STAGING_PLAN.md`: which dataset is copied from the sources in which pass (nightly, before each
+  shift, at the cut), and how.
 - `docs/integration/SOURCE_REPLACEMENT_CROSSWALK.md`: the mapping checklist for each dataset and the SQL query
   families.
 - `docs/execution/SQL_SCHEMA_LEDGER.md`: the S04 contracts, reader projections and drafted FOCUS tables.

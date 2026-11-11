@@ -142,7 +142,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-05 | Read grants for worker roles | ENGINEERING | least privilege per step | now |
 | DEC-06 | Live observe and evaluate | ENGINEERING | as `evaluate_closed_shifts` | now |
 | DEC-07 | Certified-empty and `loaded_at` for live captures | ENGINEERING | producer receipt table | now |
-| DEC-08 | Staging loader design | ENGINEERING | per `HANDOFF.md` §4 | now |
+| DEC-08 | Staging loader design | ENGINEERING | per `STAGING_PLAN.md`: a complete copy, three passes | now |
 | DEC-09 | Order of supplemental producers | ENGINEERING | `work_progress` first | now |
 | DEC-10 | Test suite inside the live window | **settled 2026-11-10 by the 20-minute requirement (D-28), built** | suites run on merge; live runs need a protected ref | now |
 | DEC-11 | Signing before each shift | OWNER | recommend: automatic with a kill switch | before go-live |
@@ -167,6 +167,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-34 | How long the scheduler may improve a plan | DATA, inside the owner's 20 minutes | 30 seconds for the whole run: the first pass uses it up, so no improvement | with the 50-aircraft timings on several fleets |
 | DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
 | DEC-36 | Bring the pre-shift run under 20 minutes | ENGINEERING; OWNER and DATA for when the full solve runs | as shipped: 23.2 minutes at 50 aircraft, over the budget | before the first live pre-shift run |
+| DEC-37 | When the pass at the cut fails: plan on the earlier copy, or stop | OWNER | stop: the previous plan stays | before the first live pre-shift run |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
@@ -301,22 +302,25 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 ### DEC-08 The staging loader design
 
 - **Authority:** ENGINEERING. It is company code in the internal fork.
-- **Default.** Follow `HANDOFF.md` §4 exactly:
-  - the `--part`, `--as-of` and `--receipt` interface;
-  - atomic publication (shadow tables and a swap);
-  - one extraction instant;
-  - row clocks stamped in UTC;
-  - the complete census;
-  - append-only observation history;
-  - delta loads with a nightly full reconciliation.
+- **Why.** SQL Server holds none of the source data to begin with, and the queries on Teradata are the slowest part
+  of a run (owner, 2026-11-11). The pass inside the 20 minutes can therefore only be a small one.
+- **Default.** Follow `STAGING_PLAN.md`, which extends `HANDOFF.md` §4:
+  - SQL Server keeps a complete copy of every dataset, and FOCUS reads it in full;
+  - three passes keep it current: nightly (full loads, full compares, repairs), 60 minutes before each shift
+    (everything that changes in a day) and at the cut (only the rows that changed since the pass before it);
+  - the `--part`, `--as-of` and `--receipt` interface, with one extraction instant per pass;
+  - atomic publication of each pass, and never while FOCUS reads;
+  - row clocks stamped in UTC; the complete census; append-only observation history.
 - **Staging counts toward the pre-shift window.** The window runs from the data cut to plan acceptance
-  (`HANDOFF.md` §3). Only a preload that runs before the cut is outside it.
-- **Measure** (once wired): the duration of each dataset load; the 95th percentile must fit the 2-minute budget.
-- **Decision rule.** If the 95th percentile is over 2 minutes, move the slowest datasets to an earlier preload, at
-  T−40 minutes, for slowly changing tables (`cday_op_plan`, `cs_windows`, `pnet_dag`, `cert_course_map`,
-  `dept_team_skill_ref`), and keep the fast-moving ones at T−20. Never preload completions, work in progress,
-  shortages, rosters or attendance: the plan would be built on data older than the cut.
-- **Verify:** `verify_staged_sources` passes, and a week of `stage.json` receipts shows complete loads.
+  (`HANDOFF.md` §3). The pass at the cut has 2 of the 20 minutes. The two earlier passes are outside the window.
+- **Measure first:** the seconds of every Teradata query (a full extract, a one-hour change pull, a key-only pull)
+  and how fresh each source itself is (`STAGING_PLAN.md` §11). Then, from the receipts, the duration of each pass.
+- **Decision rule.** The 95th percentile of the pass at the cut is 120 seconds or less. If it is not, make the
+  slowest dataset's change pull cheaper or get a change log from its owner. Floor state (jobs, work in progress,
+  shortages and receipts, attendance, leave, certificate revocations) is always brought up to the cut by a change
+  pull: an earlier load alone is never enough for it, and a full extract never runs at the cut.
+- **Verify:** `verify_staged_sources` passes; a week of receipts shows complete passes; the nightly compare finds no
+  row the change pulls missed; `tests/integration/test_migration_pipeline.py` (the draft's three passes).
 
 ### DEC-09 Order of the supplemental producers
 
@@ -793,10 +797,17 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   - **One fleet and one seed.** On the fleet and the ticket-revenue rates used before D-31, the same three moves
     saved 1% (`SB (before D-31)` in the evidence index). The saving depends on the fleet, and the fleet changes
     (D-32).
-  - **At 50 aircraft** (`SB50`, the first of three fleets: customers and models drawn from the open orders, the
-    generator's standard share of late parts, every aircraft late). The first pass alone cost $33,886,110. Three
-    moves and two repairs changed nothing. Ten moves and five repairs saved 0.8% ($33,606,703) and took 415 s more on
-    the forecast. Where late parts decide how late an aircraft is, reordering work buys little.
+  - **At 50 aircraft** (`SB50`, two fleets whose customers and models are drawn from the open orders; the forecast's
+    late cost at the owner's rates):
+
+    | Fleet | Late in the first plan | First pass only | Three moves, two repairs | Ten moves, five repairs |
+    | --- | --- | --- | --- | --- |
+    | The generator's standard share of late parts | 50 of 50 aircraft | $33,886,110 | $33,886,110 (no move accepted) | $33,606,703 (−0.8%) |
+    | Few late parts | 38 of 50 aircraft | $4,581,991 | $4,508,678 (−1.6%) | $4,174,213 (−8.9%) |
+
+    Ten moves took 415 s more on the forecast of the first fleet and 845 s more on the second. Where late parts
+    decide how late an aircraft is, reordering work buys little. Where capacity decides, ten moves bought 9% and
+    took 14 minutes, which only the forecast, outside the window, can afford.
 - **Measure**, on several different 50-aircraft fleets (D-32) and then on real data: the forecast's late cost with
   the first pass alone, with three moves and two repairs, and with ten moves and five repairs, and the seconds each
   took (`search_budget.py run NAME MOVES REPAIRS --aircraft 50 --fleet-seed N`). On real data add `window` from
@@ -865,10 +876,33 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   less, with the pull and the acceptance in it. Measure each change with `python tools/time_pre_shift.py` before and
   after; the candidate's id and hash must not change.
 - **Until decided:** as shipped. The window is not met at 50 aircraft on the test machine.
-- **Verify:** `tests/integration/test_publication_recovery.py` (A50, A51), `tests/integration/test_migration_pipeline.py`
-  and the display tests; for (b), the new test DEC-03 names.
+- **Verify:** `tests/integration/test_publication_recovery.py` (A50, A51),
+  `tests/integration/test_migration_pipeline.py` and the display tests; for (b), the new test DEC-03 names.
 - **Do not** drop a validation of the bytes that get signed, shorten the horizon, or preload completions, work in
   progress, shortages, rosters or attendance (DEC-08): each changes what the plan rests on.
+
+### DEC-37 When the pass at the cut fails
+
+- **Authority:** OWNER. It decides what a shift's plan may rest on.
+- **Why.** The pass at the cut pulls the last changes from Teradata inside the 20 minutes (`STAGING_PLAN.md`). When a
+  required dataset fails there, nothing is published, the plan pipeline stops and the previous shift's plan stays
+  the goal of record. The copy in SQL Server is still complete: it is as old as the pass before the shift, about 40
+  minutes.
+- **Options:**
+  - (a) stop, as shipped: no new plan for the shift;
+  - (b) plan on the earlier copy when it is no older than a set limit (start with 75 minutes), and mark the run: the
+    loader's receipt, the pipeline status and the dashboard say the plan rests on data from before the cut;
+  - (c) retry the pass once, then (b).
+- **Recommendation: (c).** A plan built on data 40 to 75 minutes old is far closer to the floor than the previous
+  shift's plan, which is 8 hours old. Work finished after a data cut is already handled: it counts once, in its own
+  shift, and the next shift holds it as `DONE_BEFORE_SHIFT` relief (D-26).
+- **Until decided:** (a).
+- **Implement in:** the loader's exit code for "the cut failed, the earlier copy is intact and N minutes old", the
+  `stage_sources` job (`allow_failure` on that code only) and the pipeline status. Record the data's age with the
+  plan.
+- **Measure:** how often the pass at the cut fails, and the age of the copy when it does (the receipts).
+- **Do not** raise `admission.max_source_age_hours` to hide a failed pass, and do not plan on a copy whose earlier
+  pass also failed.
 
 ### OD-16 The OFFICIAL score policy (last)
 
@@ -916,7 +950,8 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
 ## 9. Suggested order
 
 1. **Now (no data):** DEC-00 first, then DEC-01 to DEC-09; build DEC-11 and DEC-24 behind switches that are off.
-   DEC-10 and DEC-22 are settled and built: port them.
+   DEC-10 and DEC-22 are settled and built: port them. For DEC-08, start with the inventory and the query timings of
+   `STAGING_PLAN.md` §11.
 2. **Data wired, read-only:**
    - staging (DEC-08) and the OD profiling (§5), with OD-05 first, then OD-10, OD-13, OD-03, OD-07, OD-08, OD-09 and
      OD-04;

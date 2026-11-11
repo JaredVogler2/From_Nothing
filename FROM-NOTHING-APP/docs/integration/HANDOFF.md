@@ -12,6 +12,8 @@ behaviour were checked against the code on this date.
 - [`AGENTS.md`](../../../AGENTS.md), at the repository root: the one-page brief for a coding agent. Read it first.
 - [DECISION_PLAYBOOK.md](DECISION_PLAYBOOK.md): every open decision, with a recommendation, the rule for deciding
   once real data is wired, the files and tests to change and where to record it. Work through it after this guide.
+- [STAGING_PLAN.md](STAGING_PLAN.md): what to copy from Teradata into SQL Server, how and how often, and the
+  staging pipelines. Read it before writing the loader.
 - [WORKPLACE_PORTING_GUIDE.md](WORKPLACE_PORTING_GUIDE.md): confidentiality and the rollout gates A–F.
 - [SOURCE_REPLACEMENT_CROSSWALK.md](SOURCE_REPLACEMENT_CROSSWALK.md): the mapping checklist for each dataset.
 - [`docs/data/`](../data/README.md): every input, column by column, and what FOCUS does when it is missing.
@@ -150,10 +152,11 @@ be ready to go within 20 minutes"):
     of staging, checking, planning and signing widens the gap that is captured after the fact.
   - `stage_sources` runs alongside the verify jobs. The wall-clock total is therefore the longer of the two paths,
     not their sum.
-  - A preload that runs before the data cut does not count toward the window (playbook, DEC-08). Its tables are as
-    old as the preload, so use it only for data that does not change within a shift: calendars, control-station
-    windows, the template graph and the certificate and department reference tables. Completions, work in progress,
-    shortages, rosters and attendance must be staged at the cut.
+  - Staging that runs before the data cut does not count toward the window, and almost all of it can
+    ([STAGING_PLAN.md](STAGING_PLAN.md)). SQL Server keeps a complete copy of every source table, loaded nightly and
+    again 60 minutes before each shift. The pass at the cut then pulls only the rows that changed: jobs new, started
+    and completed, rework links, work in progress, shortages and receipts, attendance, leave and certificate
+    revocations. An earlier load alone is never enough for those.
   - The evaluator-only run after overtime is outside the window.
 - **Measured end to end: 23.2 minutes, over the budget.** The four jobs above, each in its own process, at 50
   aircraft on the test machine on 2026-11-11 (`docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow, action by
@@ -175,11 +178,16 @@ be ready to go within 20 minutes"):
 `stage_sources` runs the company loader named by the protected variable `FOCUS_STAGE_COMMAND`:
 
 ```bash
-$FOCUS_STAGE_COMMAND --part all --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage.json
+$FOCUS_STAGE_COMMAND --part cut --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage.json
 ```
 
-- **`--part`.** `sources` loads the planning datasets, `observations` loads the observation feeds, and `all` loads
-  both.
+- **`--part`.** Which pass to run ([STAGING_PLAN.md](STAGING_PLAN.md) §7):
+  - `cut`: the rows that changed since the pass before it, in the plan pipeline;
+  - `preshift`: everything that changes during a day, 60 minutes before each shift;
+  - `nightly`: full loads, full compares with the sources and repairs;
+  - `observations`: the observation feeds;
+  - `sources` and `all`: a full load of the planning datasets, or of them and the feeds, for the first load and for
+    recovery.
 - **`--as-of`.** The single extraction instant for every dataset of this load.
 - **`--receipt`.** A JSON file with one entry per dataset:
   - the target table and the row count;
@@ -192,7 +200,8 @@ $FOCUS_STAGE_COMMAND --part all --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-r
   - 0: every dataset was published;
   - 1: a required dataset failed and nothing was published;
   - 2: optional datasets failed and the rest were published;
-  - 3: the loader is not configured.
+  - 3: the loader is not configured;
+  - 5: another pass published while a job was reading (`--check-generation`, `STAGING_PLAN.md` §7).
 - **Environment.** `stage_sources` runs in `focus-staging`. It holds read-only credentials for the official sources
   and write access to the staging tables only. It never holds FOCUS_FN pipeline, signing or installer credentials.
 - **Observation landing tables.** These belong to `FOCUS_FN_ObservationProducer` (OD-15). Give the loader that role
@@ -252,9 +261,10 @@ $FOCUS_STAGE_COMMAND --part all --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-r
    - Corrections are new revisions, `VOIDED` or `CORRECTION` rows; never rewrite a row.
    - A row observed after the as-of is invisible to that as-of, so a late correction never rewrites what a past
      plan knew.
-8. **Load deltas, read full tables.** The shift-end budget assumes a delta pull: changed rows only, applied to the
-   shadow copy. FOCUS always reads the full tables. Reconcile in full nightly (row counts and checksums against the
-   source).
+8. **Load deltas, read full tables.** The pass at the cut is a delta pull: changed rows only, applied to a copy
+   that is already complete. FOCUS always reads the full tables. Reconcile in full nightly (row counts and checksums
+   against the source). `STAGING_PLAN.md` says which dataset is loaded in which pass, and how to find changed rows,
+   new jobs and deleted rows.
 9. **Late events.** Completions and constraints in the last 20 minutes of a shift arrive in the next load. They need
    no special handling: FOCUS scores each shift from timestamped events once its overtime closes, and revises when
    data arrives late.
@@ -278,8 +288,10 @@ The draft (`.gitlab-ci.yml`) has never been pushed to a GitLab remote.
 | --- | --- | --- | --- | --- |
 | `import_and_lint`, `unit_and_integration`, `ui`, `native_wheel`, `fixture_pipeline_rehearsal` | verify | none | – | Lint, migrations dry-run, preflight, tests, Rust wheel, fixture rehearsal |
 | `display_retention`, `detail_retention` | retain | `focus-retention` | verify | Housekeeping (D-24, D-25); never holds the plan back |
-| `stage_sources` | stage_sql | `focus-staging` | `import_and_lint` | §4 |
+| `stage_sources` | stage_sql | `focus-staging` | – | §4: the pass at the cut (`--part cut`) |
 | `verify_staged_sources` | stage_sql | `focus-source` | `stage_sources` | Schema drift check |
+| `prestage_sources`, `verify_prestaged_sources` | stage_sql | `focus-staging`, `focus-source` | – | Staging-only pipelines, 60 minutes before each shift (`--part preshift`), then the schema check |
+| `nightly_sources`, `verify_nightly_sources` | stage_sql | `focus-staging`, `focus-source` | – | Staging-only pipelines, once a day (`--part nightly`), then the schema check |
 | `acquire_admit` | source | `focus-source` | verify, `display_retention`, `verify_staged_sources` | Source run and snapshot |
 | `schedule_validate` | schedule | `focus-app`, runner tag `focus-scheduler` (≥ 4 vCPU, 16 GB) | `acquire_admit` | Executable plan (native core) |
 | `stage_readback` | stage | `focus-stager` | `schedule_validate` | Unsigned stage and readback |
@@ -304,6 +316,10 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
 
 | Schedule | Cron (site time) | Variables |
 | --- | --- | --- |
+| Nightly staging | `15 1 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=nightly` |
+| Staging before shift 1 | `0 5 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=preshift` |
+| Staging before shift 2 | `30 13 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=preshift` |
+| Staging before shift 3 | `0 22 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=preshift` |
 | Plan for shift 1 | `40 5 * * *` | `FOCUS_MODE=live` |
 | Plan for shift 2 | `10 14 * * *` | `FOCUS_MODE=live` |
 | Plan for shift 3 | `40 22 * * *` | `FOCUS_MODE=live` |
@@ -315,7 +331,10 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
   (`planning.cutoff_lead_minutes` = 60) then plans the next shift. The full solve runs before shift 1; the others
   repair the accepted plan (`PLAN_REPAIR.md`).
 - **Score schedules** run 5 minutes after each credit deadline.
-- `resource_group: focus-$FOCUS_SCOPE_KEY` serializes all pipelines of one scope.
+- **Staging schedules** keep the copy in SQL Server complete and current before the cut (`STAGING_PLAN.md` §4).
+- A plan schedule sets no `FOCUS_PIPELINE_PART`. A value the draft does not know runs nothing.
+- `resource_group: focus-$FOCUS_SCOPE_KEY` serializes the live jobs of one scope, so a staging pass never publishes
+  while `acquire_admit` reads. No live job is interruptible.
 
 ### 5.3 Two timing risks to settle before go-live
 
@@ -361,7 +380,8 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
 4. **Fix the live reader** (`LiveSourceReader`): add a certified-empty path for legitimately empty sources, and
    read a producer receipt's `loaded_at`.
 5. **Supplemental producers:** `work_progress` first (§4.2).
-6. **Write the staging loader** (company code), following §4.
+6. **Write the staging loader** (company code), following §4 and `STAGING_PLAN.md`. Start with its section 11: the
+   inventory and the timing of every Teradata query.
 7. **Policy.**
    - Correct the out-of-date `live_effect` texts (DECISIONS.md lists them). Do this with the next policy revision,
      because it changes the policy hash.
@@ -410,6 +430,7 @@ rule.
 | Need | File |
 | --- | --- |
 | Datasets, columns, required flags | `focus/data/datasets.py`; `docs/data/` |
+| What to stage, in which pass, and the staging pipelines | `docs/integration/STAGING_PLAN.md` |
 | Live reader, SQL access, allowlists | `focus/data/fixture_reader.py` (`LiveSourceReader`), `focus/data/sql.py` |
 | Acquisition, admission, freshness | `focus/data/acquisition.py`, `snapshot_builder.py`, `freshness.py` |
 | Observation feeds | `focus/performance/actuals.py`; `docs/data/09-observation-feeds.md` |

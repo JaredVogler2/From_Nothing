@@ -583,8 +583,8 @@ def test_retention_archives_only_unreferenced_candidates_and_restores_them(pipel
 # ---------------------------------------------------------------------- CI draft
 
 
-def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
-    text = (app_root / ".gitlab-ci.yml").read_text(encoding="utf-8")
+def _ci_jobs(text: str) -> dict[str, str]:
+    """The pipeline draft's top-level blocks by name, each with its own text."""
     jobs: dict[str, str] = {}
     current = None
     for line in text.splitlines():
@@ -593,6 +593,49 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
             jobs[current] = ""
         elif current:
             jobs[current] += line + "\n"
+    return jobs
+
+
+def test_ci_draft_keeps_a_staged_copy_current_in_three_passes(app_root) -> None:
+    """SQL Server holds a complete copy of the sources, kept current ahead of time, so the pass inside the owner's 20
+    minutes pulls only what changed (docs/integration/STAGING_PLAN.md)."""
+    from focus.data.datasets import DATASETS
+
+    jobs = _ci_jobs((app_root / ".gitlab-ci.yml").read_text(encoding="utf-8"))
+    cut, before, nightly = jobs["stage_sources"], jobs["prestage_sources"], jobs["nightly_sources"]
+    assert "--part cut " in cut and "extends: .live" in cut and "needs: []" in cut      # starts with the pipeline; counts toward D-28
+    assert "--part preshift " in before and "--part nightly " in nightly and "--part observations " in jobs["stage_observations"]
+    for name, part in (("prestage_sources", "preshift"), ("verify_prestaged_sources", "preshift"), ("nightly_sources", "nightly"),
+                       ("verify_nightly_sources", "nightly")):
+        job = jobs[name]
+        assert f'$FOCUS_PIPELINE_PART == "{part}"' in job and "extends: .staging_only" in job, name
+        assert "--role" not in job and "FOCUS_SIGN_KEY_REF" not in job and "focus-signer" not in job, name   # staging never plans or signs
+    for name in ("stage_sources", "prestage_sources", "nightly_sources", "stage_observations"):
+        assert '--as-of "$CI_PIPELINE_CREATED_AT"' in jobs[name] and "focus-staging" in jobs[name], name       # one instant; staging credentials only
+    for name, loaded in (("verify_prestaged_sources", "prestage_sources"), ("verify_nightly_sources", "nightly_sources")):
+        assert "source-discover --read-only --mode live" in jobs[name] and f"needs: [{loaded}]" in jobs[name] and "focus-source" in jobs[name]
+    # a pass never publishes while acquire_admit reads the copy, and a merge never cancels a live run
+    for template in (".live", ".staging_only", ".evaluate_only"):
+        assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[template] and "interruptible: false" in jobs[template], template
+    # the plan pipeline is the one that names no part, and an unknown part runs nothing
+    assert "$FOCUS_PIPELINE_PART == null" in jobs[".live"] and jobs["sign_accept"].count("$FOCUS_PIPELINE_PART == null") == 2
+    guard = jobs["workflow"].split("when: never")[0]
+    assert all(f'$FOCUS_PIPELINE_PART != "{part}"' in guard for part in ("evaluate", "preshift", "nightly"))
+    # the plan names every dataset and says which ones the pass at the cut pulls
+    plan = (app_root / "docs" / "integration" / "STAGING_PLAN.md").read_text(encoding="utf-8")
+    rows = {cells[1].strip().strip("`"): [c.strip() for c in cells] for cells in (line.split("|") for line in plan.splitlines() if line.startswith("| `"))}
+    assert set(DATASETS) <= set(rows), sorted(set(DATASETS) - set(rows))
+    at_the_cut = [name for name in DATASETS if rows[name][7] != "none"]
+    assert len(at_the_cut) == 18 and "the 18 datasets" in plan and {"master_task_list", "work_progress", "etracs_active"} <= set(at_the_cut)
+    assert all(rows[name][2] == ("yes" if DATASETS[name].required_for_run else "no") for name in DATASETS)
+    for needle in ("--part cut", "`prestage_sources`", "`nightly_sources`", "`stage_observations`", "FOCUS_PIPELINE_PART=preshift",
+                   "FOCUS_PIPELINE_PART=nightly", "DEC-37"):
+        assert needle in plan, needle
+
+
+def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
+    text = (app_root / ".gitlab-ci.yml").read_text(encoding="utf-8")
+    jobs = _ci_jobs(text)
     # the executable plan is scheduled, staged and signed first; the forecast follows its acceptance
     order = [("acquire_admit", "--role source"), ("schedule_validate", "--role app"), ("stage_readback", "--role stager"),
              ("sign_accept", "--role signer"), ("forecast_schedule_validate", "--role app"), ("forecast_stage_readback", "--role stager"),
