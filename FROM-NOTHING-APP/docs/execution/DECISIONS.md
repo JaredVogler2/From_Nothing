@@ -350,6 +350,10 @@ attendance. A conditional ETA is never physical receipt.
     P23's "every verification first" from "in this run" to "on the merge that put this code on the protected ref".
   - **Still open:** who accepts the plan (DEC-11). The draft's `sign_accept` waits for a person, three times a day,
     inside these 20 minutes.
+  - **Measured on November 11, 2026: not met as shipped.** At 50 aircraft on the test machine the four jobs from the
+    data cut to the accepted plan took 23.2 minutes, before the pull from SQL Server and the acceptance are counted
+    (`PRODUCTION_SCALE.md`, "The pre-shift flow, action by action"). The scheduler is 3 of those minutes. What
+    brings it under the budget without changing a plan is `DECISION_PLAYBOOK.md`, DEC-36.
 
 - **D-29 A job's criticality comes from the cost objective (owner direction, November 10, 2026).**
   - **The owner's words.** "Criticality should be a function of how critical that job is toward the objective

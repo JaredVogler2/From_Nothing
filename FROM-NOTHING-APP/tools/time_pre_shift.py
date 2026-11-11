@@ -401,7 +401,7 @@ def _publish_rows(doc: dict[str, Any]) -> list[tuple[str, float]]:
     final = sum(v["seconds"] for v in doc.get("validations", []) if v["kind"] == "FINAL")
     timers = doc.get("timers", {})
     once = timers.get("publish.serialize", {"calls": 1, "seconds": 0.0})          # the validations serialize again to compare
-    return [("start the process", doc["startup_seconds"]),
+    return [("start the process", doc.get("startup_seconds", 0.0)),
             ("load the admitted snapshot from the store", _seconds(doc, "load_snapshot")),
             ("read the candidate plan from the store", _seconds(doc, "store.read:candidates")),
             ("independent validation of the candidate (FINAL)", round(final, 1)),
@@ -432,7 +432,7 @@ def _schedule_rows(doc: dict[str, Any], schedule_seconds: float, validate_second
     validations = doc.get("validations", [])
     after_solve = validations[-2]["seconds"] if len(validations) >= 2 else 0.0
     solve, context, run = _seconds(doc, "schedule.schedule_snapshot"), _seconds(doc, "schedule.engine_context"), _seconds(doc, "schedule.optimizer_run")
-    return [("start the process", doc["startup_seconds"]),
+    return [("start the process", doc.get("startup_seconds", 0.0)),
             ("load the admitted snapshot from the store", round(schedule_seconds - solve, 1)),
             ("build the scheduler's working data (who is qualified for what, calendars, the task network)", context),
             ("the scheduler: first pass, then repairs and improvement moves while the budget lasts", run),
@@ -441,7 +441,8 @@ def _schedule_rows(doc: dict[str, Any], schedule_seconds: float, validate_second
             ("the validate step: read the candidate and validate it again (FINAL)", round(validate_seconds, 1))]
 
 
-def report(work: Path) -> dict[str, Any]:
+def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
+    """Print the run action by action; with ``receipt``, also write the report and every job's own timers to that file."""
     timing = work / "timing"
     load = lambda name: json.loads((timing / f"{name}.json").read_text()) if (timing / f"{name}.json").exists() else None   # noqa: E731
     run_doc, prepared, pulled = load("run") or {}, load("prepare"), load("pull")
@@ -491,6 +492,13 @@ def report(work: Path) -> dict[str, Any]:
         out["dashboard"] = {"web_start_seconds": seen["startup_seconds"], "peak_memory_mb": seen["peak_memory_mb"],
                             "operations": [o for o in seen["operations"] if o["status"] == 200]}
     (timing / "report.json").write_text(json.dumps(out, indent=1))
+    if receipt is not None:
+        keep = ("role", "planning", "purpose", "startup_seconds", "role_seconds", "schedule_seconds", "validate_seconds", "process_seconds",
+                "peak_memory_mb", "store_written_mb", "timers", "stages", "validations")
+        raw = {f.stem: {k: v for k, v in json.loads(f.read_text()).items() if k in keep}
+               for f in sorted(timing.glob("*.json")) if f.stem.split(".")[0] in ("first", "repair")}
+        receipt.write_text(json.dumps({"tool": "tools/time_pre_shift.py", "label": "SYNTHETIC_FULLSCALE_FIXTURE (real readiness not established)",
+                                       "process_wall_seconds": wall, "report": out, "jobs": raw}, indent=1) + "\n")
     for title, job in out["jobs"].items():
         print(f"\n{title}: {job['seconds']:.0f} s ({job['seconds'] / 60:.1f} min), peak {job['peak_memory_mb']} MB, wrote {job['written_mb']} MB")
         for a in job["actions"]:
@@ -541,6 +549,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--persona", default="manager")
     p = sub.add_parser("report")
     p.add_argument("work")
+    p.add_argument("--out", default=None, help="also write the report and the jobs' timers to this file")
     args = parser.parse_args(argv)
     work = Path(args.work).resolve()
     if args.command == "run":
@@ -554,7 +563,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "repair":
         out = repair(work, args.key, args.purpose, args.label or f"repair.{args.purpose.lower()}")
     elif args.command == "report":
-        report(work)
+        report(work, Path(args.out).resolve() if args.out else None)
         return 0
     else:
         out = views(work, args.persona)

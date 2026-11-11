@@ -189,6 +189,90 @@ Five things the synthetic run cannot show, each to measure on a real extract:
      projected and needs a decision.
    - The wall-clock budget also stops the search, but a run stopped by it is not repeatable.
 
+## The pre-shift flow, action by action (November 11, 2026)
+
+The owner asked how long each action takes: the data pull, digesting the data, the scheduler, storing the results and
+the dashboard. All of it has 20 minutes from the data cut (D-28).
+
+**Measured** with `python tools/time_pre_shift.py run WORKDIR --aircraft 50 --views --repair` on the full-scale
+synthetic fleet at the owner's rates: 1,216,781 source rows in 44 tables, on 4 cores and 15 GB.
+- Each pipeline role ran in a fresh process, as the pipeline's jobs do.
+- The settings are the shipped ones: a full solve with `optimizer.budget_seconds` = 30.
+- The receipt is `evidence/production-scale/pre_shift_timing_50.json`.
+
+**As shipped, the window is not met: 23.2 minutes** from the start of the first job to the accepted executable plan
+and its dashboard data. The pull from SQL Server, each job's start on a runner and a person's acceptance come on top.
+
+| Job (steps) | Seconds | Peak memory | Written to the store |
+| --- | --- | --- | --- |
+| source (`acquire`, `admit`) | 341 | 9.0 GB | 6.9 GB |
+| app (`schedule`, `validate`) | 375 | 7.5 GB | 0.1 GB |
+| stager (`stage_readback`) | 325 | 8.0 GB | 0.4 GB |
+| signer (`sign_accept`) | 350 | 8.3 GB | 0.7 GB |
+| **Data cut to the accepted plan** | **1,392 (23.2 min)** | | **8.2 GB** |
+| app (`forecast`) | 612 | 7.8 GB | 0.4 GB |
+| stager (`forecast_stage_readback`) | 493 | 10.3 GB | 0.7 GB |
+| signer (`forecast_sign_accept`) | 520 | 10.8 GB | 1.5 GB |
+| **Then to the accepted forecast** | **1,626 (27.1 min)** | | **2.6 GB** |
+
+**By action, over the four jobs of the window:**
+
+| Action | Seconds | Share |
+| --- | --- | --- |
+| Independent validations of the plan outside the scheduler (eight) | 403 | 29% |
+| Loading the admitted snapshot from the store again, once in each of the three later jobs | 327 | 23% |
+| The scheduler: working data (18), first pass (145), the candidate and its receipts (21) | 184 | 13% |
+| Digest: raw rows kept and read back (27), snapshot built (70), stored (64), verified (4), the rest (19) | 183 | 13% |
+| Dashboard data: the snapshot's parts (135), the plan's parts (11) | 146 | 11% |
+| Read the candidate, serialize, stage, accept | 69 | 5% |
+| Each process starting and ending (releasing several GB takes 11 to 20 s) and the rest | 68 | 5% |
+| Reading the source rows (fixture files) | 11 | 1% |
+
+- **The scheduler is 3 of the 23 minutes.** Loading again and validating again take 12.
+- **The plan is the first pass.** The first pass uses up the 30-second budget, so no repair and no improvement move
+  runs (stop reason `deadline`; `DECISION_PLAYBOOK.md`, DEC-34).
+- **Validations.** A FINAL validation takes 19 to 23 s in the scheduling job and 32 to 33 s in a job that builds its
+  own validation input. DETACHED and READBACK each decode the serialized plan and validate it: 66 to 70 s. The
+  stager runs FINAL, DETACHED and READBACK; the signer runs all three again before it signs.
+- **Digest stages** of the 70 s snapshot build: the task network 31 s; census and its indexes 12 s; people, pools and
+  availability 9 s; the seal 9 s; certificate requirements per job 4 s; durations 1.5 s; certificates held under 1 s.
+- **The pull is not measured.** The source rows here are fixture files (11 s to read). Reading the same 1.2 million
+  rows from a local SQLite database took 5 s, which is a floor: no network and no SQL Server. Source-run receipts
+  record each query's rows, not its time.
+- **Writing to SQL Server is not measured.** The live adapter is not built. The fixture store received 8.2 GB in the
+  window: 6.9 GB in the first job (the snapshot, its dashboard parts and the raw rows; earlier measurements put the
+  parts at 4.8 GB and the snapshot at 1.7 GB) and 1.3 GB for the plan.
+
+**What the owner asked about preparing earlier** (who holds which certificate, which job needs which):
+
+| Table or step | Rows | Seconds in the window |
+| --- | --- | --- |
+| Certificate requirements per job (`soi_cert_requirements`) | 326,657 | 4.4 to digest |
+| Certificates held (`mechanic_certs`) | 3,468 | under 0.1 to digest |
+| People, pools and availability (roster, team map, attendance) | about 8,400 | 8.6 to digest |
+| The scheduler's working data, built again in every scheduling job | | 18.4 |
+
+Preparing these earlier saves seconds in FOCUS. It matters for the pull: the requirement rows are 27% of all source
+rows and change rarely, so they belong in a preload before the cut (`DECISION_PLAYBOOK.md`, DEC-08).
+
+**The forecast** is the plan the cost objective compares in full: all 50 aircraft had a cost (`cost_steering`
+`full`). In the executable plan every aircraft's finish was unknown, because open parts were not yet received, so its
+candidates tied on cost (`cost_steering` `none`); its first pass still orders work by each aircraft's daily rate and
+slack. The forecast's three jobs took 27.1 minutes, so delivery dates and costs reached the dashboard 50 minutes
+after the data cut. Its first pass took 276 s.
+
+**Repair instead of a full solve** (the same admitted data scheduled again, so nothing had changed: a repair's best
+case). The scheduler took 32 s for the executable plan where the full first pass took 145 s, and 72 s for the
+forecast where it took 276 s. The job's other costs stay: loading the snapshot, building the candidate and the
+validations.
+
+**The dashboard**, one web process opening each read operation that needs no parameter: 0.6 s to start, 315 MB at its
+peak. The first request took 6.8 s for the budget view, 3.6 s for quality, 2.5 s for the arena and 1.9 s for the
+Gantt; every other view answered in under 0.6 s, and every view in under 0.6 s the second time. Views that need a
+team or a person were not opened here (`DISPLAY_PACKAGE.md` has them).
+
+**What would bring it under 20 minutes** is in `DECISION_PLAYBOOK.md`, DEC-36. Nothing was changed here.
+
 ## What changed in the native-core trial
 
 - **Native core** (`native/`, `docs/execution/NATIVE_CORE.md`): the duty ledger and crew selection in Rust, with

@@ -1,0 +1,2353 @@
+{
+ "tool": "tools/time_pre_shift.py",
+ "label": "SYNTHETIC_FULLSCALE_FIXTURE (real readiness not established)",
+ "process_wall_seconds": {
+  "prepare": 13.2,
+  "pull": 4.9,
+  "first.source": 341.3,
+  "first.app": 375.1,
+  "first.stager": 325.3,
+  "first.signer": 350.3,
+  "first.forecast_app": 612.1,
+  "first.forecast_stager": 493.4,
+  "first.forecast_signer": 520.3,
+  "views": 21.5,
+  "repair.executable": 285.2,
+  "repair.forecast": 434.1
+ },
+ "report": {
+  "aircraft": 50,
+  "cores": 4,
+  "source_rows": 1216781,
+  "source_tables": {
+   "soi_cert_requirements": 326657,
+   "master_task_list": 298009,
+   "flow_budget": 298009,
+   "neo_graph_rework": 73009,
+   "rework_classification": 73009,
+   "pnet_dag": 64098,
+   "etracs_active": 23301,
+   "etracs_history": 21942,
+   "buyoff_plan": 17666,
+   "cday_op_plan": 6150,
+   "mechanic_certs": 3468,
+   "duration_episodes": 2700,
+   "person_team_map": 2088,
+   "attendance_shift": 2088,
+   "shift_roster": 2088,
+   "people_directory": 2088,
+   "cs_windows": 250,
+   "ot_authorizations": 93,
+   "econ_aircraft_mapping": 50,
+   "econ_term": 13,
+   "inspection_standards": 2,
+   "econ_mapping_revision": 1,
+   "econ_scenario": 1,
+   "scope_receipt": 1
+  },
+  "local_pull_seconds": 4.8,
+  "jobs": {
+   "source: acquire, admit": {
+    "seconds": 341.3,
+    "peak_memory_mb": 9048,
+    "written_mb": 6936.8,
+    "actions": [
+     {
+      "action": "read the source rows (fixture files here; the SQL pull live)",
+      "seconds": 11.4
+     },
+     {
+      "action": "keep the raw rows with their receipts, and read them back",
+      "seconds": 26.6
+     },
+     {
+      "action": "digest: build the planning snapshot",
+      "seconds": 70.0
+     },
+     {
+      "action": "store the snapshot",
+      "seconds": 63.8
+     },
+     {
+      "action": "write the snapshot's dashboard data",
+      "seconds": 135.4
+     },
+     {
+      "action": "the admit step: verify the stored snapshot",
+      "seconds": 3.8
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 30.3
+     }
+    ]
+   },
+   "app: schedule, validate (executable plan)": {
+    "seconds": 375.1,
+    "peak_memory_mb": 7486,
+    "written_mb": 132.8,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.3
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 109.3
+     },
+     {
+      "action": "build the scheduler's working data (who is qualified for what, calendars, the task network)",
+      "seconds": 18.4
+     },
+     {
+      "action": "the scheduler: first pass, then repairs and improvement moves while the budget lasts",
+      "seconds": 144.8
+     },
+     {
+      "action": "build the candidate plan, store it, its dashboard digest and receipts",
+      "seconds": 21.1
+     },
+     {
+      "action": "independent validation after the solve (FINAL)",
+      "seconds": 19.4
+     },
+     {
+      "action": "the validate step: read the candidate and validate it again (FINAL)",
+      "seconds": 41.8
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 20.0
+     }
+    ],
+    "scheduler": {
+     "stop_reason": [
+      "deadline"
+     ],
+     "moves": 0,
+     "stages": [
+      {
+       "stage": "first pass, part 1: neutral order, with its validation",
+       "seconds": 89.1,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "first pass, part 2: ordered by cost of delay",
+       "seconds": 95.2,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "delay repairs",
+       "seconds": 0.4,
+       "candidates": 0,
+       "accepted": 0
+      },
+      {
+       "stage": "improvement moves",
+       "seconds": 0.0,
+       "candidates": 0,
+       "accepted": 0
+      }
+     ]
+    }
+   },
+   "app: forecast (schedule and validate)": {
+    "seconds": 612.1,
+    "peak_memory_mb": 7798,
+    "written_mb": 361.0,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.3
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 122.1
+     },
+     {
+      "action": "build the scheduler's working data (who is qualified for what, calendars, the task network)",
+      "seconds": 23.4
+     },
+     {
+      "action": "the scheduler: first pass, then repairs and improvement moves while the budget lasts",
+      "seconds": 276.2
+     },
+     {
+      "action": "build the candidate plan, store it, its dashboard digest and receipts",
+      "seconds": 42.0
+     },
+     {
+      "action": "independent validation after the solve (FINAL)",
+      "seconds": 37.8
+     },
+     {
+      "action": "the validate step: read the candidate and validate it again (FINAL)",
+      "seconds": 88.5
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 21.8
+     }
+    ],
+    "scheduler": {
+     "stop_reason": [
+      "deadline"
+     ],
+     "moves": 0,
+     "stages": [
+      {
+       "stage": "first pass, part 1: neutral order, with its validation",
+       "seconds": 162.9,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "first pass, part 2: ordered by cost of delay",
+       "seconds": 187.7,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "delay repairs",
+       "seconds": 0.1,
+       "candidates": 0,
+       "accepted": 0
+      },
+      {
+       "stage": "improvement moves",
+       "seconds": 0.0,
+       "candidates": 0,
+       "accepted": 0
+      }
+     ]
+    }
+   },
+   "stager: stage_readback (executable plan)": {
+    "seconds": 325.3,
+    "peak_memory_mb": 7972,
+    "written_mb": 415.5,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.3
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 109.5
+     },
+     {
+      "action": "read the candidate plan from the store",
+      "seconds": 11.3
+     },
+     {
+      "action": "independent validation of the candidate (FINAL)",
+      "seconds": 33.2
+     },
+     {
+      "action": "serialize the plan",
+      "seconds": 11.9
+     },
+     {
+      "action": "decode the serialized plan and validate it (DETACHED)",
+      "seconds": 66.3
+     },
+     {
+      "action": "write the unsigned stage",
+      "seconds": 5.3
+     },
+     {
+      "action": "read the stage back and validate those bytes (READBACK)",
+      "seconds": 70.3
+     },
+     {
+      "action": "accept: plan record, payload, frozen goals, head",
+      "seconds": 0.0
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 17.2
+     }
+    ]
+   },
+   "signer: sign_accept (executable plan)": {
+    "seconds": 350.3,
+    "peak_memory_mb": 8311,
+    "written_mb": 718.8,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.3
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 107.9
+     },
+     {
+      "action": "read the candidate plan from the store",
+      "seconds": 10.8
+     },
+     {
+      "action": "independent validation of the candidate (FINAL)",
+      "seconds": 32.3
+     },
+     {
+      "action": "serialize the plan",
+      "seconds": 11.9
+     },
+     {
+      "action": "decode the serialized plan and validate it (DETACHED)",
+      "seconds": 69.5
+     },
+     {
+      "action": "write the unsigned stage",
+      "seconds": 9.2
+     },
+     {
+      "action": "read the stage back and validate those bytes (READBACK)",
+      "seconds": 70.0
+     },
+     {
+      "action": "write the plan's dashboard data and sign it",
+      "seconds": 10.9
+     },
+     {
+      "action": "accept: plan record, payload, frozen goals, head",
+      "seconds": 9.0
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 18.5
+     }
+    ]
+   },
+   "stager: forecast_stage_readback": {
+    "seconds": 493.4,
+    "peak_memory_mb": 10270,
+    "written_mb": 669.4,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.3
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 120.8
+     },
+     {
+      "action": "read the candidate plan from the store",
+      "seconds": 37.1
+     },
+     {
+      "action": "independent validation of the candidate (FINAL)",
+      "seconds": 48.9
+     },
+     {
+      "action": "serialize the plan",
+      "seconds": 15.6
+     },
+     {
+      "action": "decode the serialized plan and validate it (DETACHED)",
+      "seconds": 109.3
+     },
+     {
+      "action": "write the unsigned stage",
+      "seconds": 9.3
+     },
+     {
+      "action": "read the stage back and validate those bytes (READBACK)",
+      "seconds": 132.1
+     },
+     {
+      "action": "accept: plan record, payload, frozen goals, head",
+      "seconds": 0.0
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 20.0
+     }
+    ]
+   },
+   "signer: forecast_sign_accept": {
+    "seconds": 520.3,
+    "peak_memory_mb": 10827,
+    "written_mb": 1541.0,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.4
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 118.3
+     },
+     {
+      "action": "read the candidate plan from the store",
+      "seconds": 34.7
+     },
+     {
+      "action": "independent validation of the candidate (FINAL)",
+      "seconds": 45.7
+     },
+     {
+      "action": "serialize the plan",
+      "seconds": 15.5
+     },
+     {
+      "action": "decode the serialized plan and validate it (DETACHED)",
+      "seconds": 107.0
+     },
+     {
+      "action": "write the unsigned stage",
+      "seconds": 14.5
+     },
+     {
+      "action": "read the stage back and validate those bytes (READBACK)",
+      "seconds": 127.4
+     },
+     {
+      "action": "write the plan's dashboard data and sign it",
+      "seconds": 20.2
+     },
+     {
+      "action": "accept: plan record, payload, frozen goals, head",
+      "seconds": 15.8
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 20.8
+     }
+    ]
+   }
+  },
+  "digest_stages_seconds": {
+   "build_graph": 31.0,
+   "build_census": 7.2,
+   "index_master": 3.1,
+   "flow_index": 1.8,
+   "build_workforce": 8.6,
+   "build_requirements": 4.4,
+   "build_holdings": 0.1,
+   "resolve": 1.5,
+   "build_parts": 0.4,
+   "seal_snapshot": 8.6
+  },
+  "window_seconds": 1392.0,
+  "forecast_seconds": 1625.8,
+  "repair": {
+   "EXECUTABLE": {
+    "planning": {
+     "requested": "repair",
+     "ran": "repair",
+     "reason": "repair requested",
+     "hints": 14038,
+     "kept": 14011,
+     "rehomed": 27,
+     "deferred": 0
+    },
+    "seconds": 265.9,
+    "peak_memory_mb": 7392,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.0
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 112.6
+     },
+     {
+      "action": "build the scheduler's working data (who is qualified for what, calendars, the task network)",
+      "seconds": 21.4
+     },
+     {
+      "action": "the scheduler: first pass, then repairs and improvement moves while the budget lasts",
+      "seconds": 32.4
+     },
+     {
+      "action": "build the candidate plan, store it, its dashboard digest and receipts",
+      "seconds": 24.0
+     },
+     {
+      "action": "independent validation after the solve (FINAL)",
+      "seconds": 24.7
+     },
+     {
+      "action": "the validate step: read the candidate and validate it again (FINAL)",
+      "seconds": 50.6
+     }
+    ],
+    "scheduler": {
+     "stop_reason": [
+      "repair"
+     ],
+     "moves": 0,
+     "stages": [
+      {
+       "stage": "repair: keep the accepted plan where it holds",
+       "seconds": 22.9,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "repair: re-dispatch what moved by cost of delay",
+       "seconds": 9.5,
+       "candidates": 1,
+       "accepted": 0
+      }
+     ]
+    }
+   },
+   "FORECAST": {
+    "planning": {
+     "requested": "repair",
+     "ran": "repair",
+     "reason": "repair requested",
+     "hints": 123189,
+     "kept": 122365,
+     "rehomed": 824,
+     "deferred": 0
+    },
+    "seconds": 415.0,
+    "peak_memory_mb": 7796,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.0
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 109.2
+     },
+     {
+      "action": "build the scheduler's working data (who is qualified for what, calendars, the task network)",
+      "seconds": 23.4
+     },
+     {
+      "action": "the scheduler: first pass, then repairs and improvement moves while the budget lasts",
+      "seconds": 72.2
+     },
+     {
+      "action": "build the candidate plan, store it, its dashboard digest and receipts",
+      "seconds": 61.4
+     },
+     {
+      "action": "independent validation after the solve (FINAL)",
+      "seconds": 51.5
+     },
+     {
+      "action": "the validate step: read the candidate and validate it again (FINAL)",
+      "seconds": 97.0
+     }
+    ],
+    "scheduler": {
+     "stop_reason": [
+      "repair"
+     ],
+     "moves": 0,
+     "stages": [
+      {
+       "stage": "repair: keep the accepted plan where it holds",
+       "seconds": 37.8,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "repair: re-dispatch what moved by cost of delay",
+       "seconds": 34.3,
+       "candidates": 1,
+       "accepted": 1
+      }
+     ]
+    }
+   }
+  },
+  "dashboard": {
+   "web_start_seconds": 0.6,
+   "peak_memory_mb": 315,
+   "operations": [
+    {
+     "operation": "/api/v1/arena",
+     "first_seconds": 2.46,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/budget",
+     "first_seconds": 6.79,
+     "status": 200,
+     "kb": 869.7,
+     "again_seconds": 0.34
+    },
+    {
+     "operation": "/api/v1/capacity",
+     "first_seconds": 0.29,
+     "status": 200,
+     "kb": 62.1,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/commitments",
+     "first_seconds": 0.03,
+     "status": 200,
+     "kb": 21.8,
+     "again_seconds": 0.01
+    },
+    {
+     "operation": "/api/v1/context",
+     "first_seconds": 0.01,
+     "status": 200,
+     "kb": 2.7,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/development",
+     "first_seconds": 0.25,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.26
+    },
+    {
+     "operation": "/api/v1/disruption-claims",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/economics",
+     "first_seconds": 0.01,
+     "status": 200,
+     "kb": 58.8,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/fleet",
+     "first_seconds": 0.01,
+     "status": 200,
+     "kb": 136.8,
+     "again_seconds": 0.01
+    },
+    {
+     "operation": "/api/v1/gantt",
+     "first_seconds": 1.85,
+     "status": 200,
+     "kb": 7543.7,
+     "again_seconds": 0.28
+    },
+    {
+     "operation": "/api/v1/history",
+     "first_seconds": 0.06,
+     "status": 200,
+     "kb": 10.1,
+     "again_seconds": 0.01
+    },
+    {
+     "operation": "/api/v1/ie-reviews",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.4,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/jobs",
+     "first_seconds": 0.03,
+     "status": 200,
+     "kb": 31.4,
+     "again_seconds": 0.17
+    },
+    {
+     "operation": "/api/v1/openapi.json",
+     "first_seconds": 0.01,
+     "status": 200,
+     "kb": 201.2,
+     "again_seconds": 0.01
+    },
+    {
+     "operation": "/api/v1/performance",
+     "first_seconds": 0.01,
+     "status": 200,
+     "kb": 30.0,
+     "again_seconds": 0.01
+    },
+    {
+     "operation": "/api/v1/performance/history",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.4,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/performance/jobs",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 1.2,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/performance/rollup",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 1.1,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/progression",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.4,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/quality",
+     "first_seconds": 3.55,
+     "status": 200,
+     "kb": 3398.4,
+     "again_seconds": 0.33
+    },
+    {
+     "operation": "/api/v1/recognition",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.4,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/scenarios",
+     "first_seconds": 0.57,
+     "status": 200,
+     "kb": 3709.3,
+     "again_seconds": 0.12
+    },
+    {
+     "operation": "/api/v1/shortages",
+     "first_seconds": 0.02,
+     "status": 200,
+     "kb": 69.9,
+     "again_seconds": 0.02
+    },
+    {
+     "operation": "/api/v1/sim/aircraft",
+     "first_seconds": 0.01,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/sim/capacity",
+     "first_seconds": 0.15,
+     "status": 200,
+     "kb": 40.5,
+     "again_seconds": 0.04
+    },
+    {
+     "operation": "/api/v1/sim/dispatch",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/sim/excusals",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/sim/gantt",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/sim/methods",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/sim/overview",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/sim/performance",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/sim/profile",
+     "first_seconds": 1.2,
+     "status": 200,
+     "kb": 10.4,
+     "again_seconds": 0.59
+    },
+    {
+     "operation": "/api/v1/sim/recognition",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/sim/supply",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.5,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/standards",
+     "first_seconds": 0.32,
+     "status": 200,
+     "kb": 3438.5,
+     "again_seconds": 0.1
+    },
+    {
+     "operation": "/api/v1/twin",
+     "first_seconds": 0.0,
+     "status": 200,
+     "kb": 0.7,
+     "again_seconds": 0.0
+    },
+    {
+     "operation": "/api/v1/workforce",
+     "first_seconds": 0.03,
+     "status": 200,
+     "kb": 561.4,
+     "again_seconds": 0.02
+    }
+   ]
+  }
+ },
+ "jobs": {
+  "first.app": {
+   "role": "app",
+   "planning": "full",
+   "startup_seconds": 0.3,
+   "role_seconds": 354.9,
+   "process_seconds": 355.1,
+   "peak_memory_mb": 7486,
+   "store_written_mb": 132.8,
+   "timers": {
+    "display.candidate_digest": {
+     "calls": 1,
+     "seconds": 0.05
+    },
+    "load_snapshot": {
+     "calls": 2,
+     "seconds": 111.18
+    },
+    "schedule": {
+     "calls": 1,
+     "seconds": 312.04
+    },
+    "schedule.build_candidate": {
+     "calls": 3,
+     "seconds": 34.19
+    },
+    "schedule.engine_context": {
+     "calls": 1,
+     "seconds": 18.44
+    },
+    "schedule.optimizer_run": {
+     "calls": 1,
+     "seconds": 144.75
+    },
+    "schedule.schedule_snapshot": {
+     "calls": 1,
+     "seconds": 203.65
+    },
+    "step:forecast": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:schedule": {
+     "calls": 1,
+     "seconds": 313.03
+    },
+    "step:validate": {
+     "calls": 1,
+     "seconds": 41.82
+    },
+    "store.read:candidates": {
+     "calls": 2,
+     "seconds": 15.86
+    },
+    "store.read_raw:candidate_digests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 2,
+     "seconds": 2.34
+    },
+    "store.read_raw:validations": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.write:candidate_digests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:candidates": {
+     "calls": 1,
+     "seconds": 5.12
+    },
+    "store.write:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:FINAL": {
+     "calls": 4,
+     "seconds": 84.1
+    }
+   },
+   "stages": {
+    "EXECUTABLE": [
+     {
+      "stop_reason": "deadline",
+      "moves": 0,
+      "stages": [
+       {
+        "stage": "neutral_seed",
+        "seconds": 89.1,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "economic_redispatch",
+        "seconds": 95.2,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "delay_repair",
+        "seconds": 0.4,
+        "candidates": 0,
+        "accepted": 0
+       },
+       {
+        "stage": "neighborhoods",
+        "seconds": 0.0,
+        "candidates": 0,
+        "accepted": 0
+       }
+      ]
+     }
+    ]
+   },
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 21.6,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 20.1,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 19.4,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 23.0,
+     "valid": true,
+     "violations": 0
+    }
+   ]
+  },
+  "first.forecast_app": {
+   "role": "app",
+   "planning": "full",
+   "startup_seconds": 0.3,
+   "role_seconds": 590.0,
+   "process_seconds": 590.3,
+   "peak_memory_mb": 7798,
+   "store_written_mb": 361.0,
+   "timers": {
+    "display.candidate_digest": {
+     "calls": 1,
+     "seconds": 0.05
+    },
+    "load_snapshot": {
+     "calls": 2,
+     "seconds": 120.26
+    },
+    "schedule": {
+     "calls": 1,
+     "seconds": 496.71
+    },
+    "schedule.build_candidate": {
+     "calls": 3,
+     "seconds": 48.9
+    },
+    "schedule.engine_context": {
+     "calls": 1,
+     "seconds": 23.45
+    },
+    "schedule.optimizer_run": {
+     "calls": 1,
+     "seconds": 276.22
+    },
+    "schedule.schedule_snapshot": {
+     "calls": 1,
+     "seconds": 379.4
+    },
+    "step:forecast": {
+     "calls": 1,
+     "seconds": 589.99
+    },
+    "step:schedule": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:validate": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:candidates": {
+     "calls": 2,
+     "seconds": 36.39
+    },
+    "store.read_raw:candidate_digests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 2,
+     "seconds": 3.16
+    },
+    "store.read_raw:validations": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.write:candidate_digests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:candidates": {
+     "calls": 1,
+     "seconds": 22.2
+    },
+    "store.write:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:FINAL": {
+     "calls": 4,
+     "seconds": 179.7
+    }
+   },
+   "stages": {
+    "FORECAST": [
+     {
+      "stop_reason": "deadline",
+      "moves": 0,
+      "stages": [
+       {
+        "stage": "neutral_seed",
+        "seconds": 162.9,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "economic_redispatch",
+        "seconds": 187.7,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "delay_repair",
+        "seconds": 0.1,
+        "candidates": 0,
+        "accepted": 0
+       },
+       {
+        "stage": "neighborhoods",
+        "seconds": 0.0,
+        "candidates": 0,
+        "accepted": 0
+       }
+      ]
+     }
+    ]
+   },
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 47.1,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 42.6,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 37.8,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 52.1,
+     "valid": true,
+     "violations": 0
+    }
+   ]
+  },
+  "first.forecast_signer": {
+   "role": "signer",
+   "planning": "full",
+   "startup_seconds": 0.4,
+   "role_seconds": 503.4,
+   "process_seconds": 503.8,
+   "peak_memory_mb": 10827,
+   "store_written_mb": 1541.0,
+   "timers": {
+    "display.plan_parts": {
+     "calls": 1,
+     "seconds": 20.16
+    },
+    "display.plan_parts_signed": {
+     "calls": 1,
+     "seconds": 20.17
+    },
+    "load_snapshot": {
+     "calls": 1,
+     "seconds": 118.34
+    },
+    "publish": {
+     "calls": 1,
+     "seconds": 503.39
+    },
+    "publish.accept": {
+     "calls": 1,
+     "seconds": 9.24
+    },
+    "publish.build_artifact": {
+     "calls": 1,
+     "seconds": 10.63
+    },
+    "publish.post_acceptance": {
+     "calls": 1,
+     "seconds": 6.61
+    },
+    "publish.read_stage": {
+     "calls": 1,
+     "seconds": 14.41
+    },
+    "publish.serialize": {
+     "calls": 3,
+     "seconds": 14.69
+    },
+    "publish.stage": {
+     "calls": 1,
+     "seconds": 14.52
+    },
+    "step:forecast_sign_accept": {
+     "calls": 1,
+     "seconds": 503.4
+    },
+    "step:sign_accept": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:candidates": {
+     "calls": 1,
+     "seconds": 34.69
+    },
+    "store.read:delivery_events": {
+     "calls": 50,
+     "seconds": 0.0
+    },
+    "store.read:delivery_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:plan_stages": {
+     "calls": 2,
+     "seconds": 28.44
+    },
+    "store.read:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:accepted_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:delivery_events": {
+     "calls": 50,
+     "seconds": 0.0
+    },
+    "store.read_raw:delivery_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_manifests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_parts": {
+     "calls": 2550,
+     "seconds": 0.31
+    },
+    "store.read_raw:display_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:frozen_goals": {
+     "calls": 93,
+     "seconds": 0.01
+    },
+    "store.read_raw:published_payloads": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 1,
+     "seconds": 1.47
+    },
+    "store.read_raw:validations": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.write:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:accepted_plans": {
+     "calls": 1,
+     "seconds": 1.15
+    },
+    "store.write:delivery_events": {
+     "calls": 50,
+     "seconds": 0.05
+    },
+    "store.write:delivery_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:display_manifests": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "store.write:display_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:frozen_goals": {
+     "calls": 93,
+     "seconds": 0.27
+    },
+    "store.write:published_payloads": {
+     "calls": 1,
+     "seconds": 8.86
+    },
+    "store.write:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:DETACHED": {
+     "calls": 1,
+     "seconds": 46.66
+    },
+    "validate:FINAL": {
+     "calls": 1,
+     "seconds": 45.72
+    },
+    "validate:READBACK": {
+     "calls": 1,
+     "seconds": 47.81
+    },
+    "validate_artifact:DETACHED": {
+     "calls": 1,
+     "seconds": 106.99
+    },
+    "validate_artifact:READBACK": {
+     "calls": 1,
+     "seconds": 113.04
+    }
+   },
+   "stages": {},
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 45.7,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "DETACHED",
+     "seconds": 46.7,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "READBACK",
+     "seconds": 47.8,
+     "valid": true,
+     "violations": 0
+    }
+   ]
+  },
+  "first.forecast_stager": {
+   "role": "stager",
+   "planning": "full",
+   "startup_seconds": 0.3,
+   "role_seconds": 476.0,
+   "process_seconds": 476.3,
+   "peak_memory_mb": 10270,
+   "store_written_mb": 669.4,
+   "timers": {
+    "load_snapshot": {
+     "calls": 1,
+     "seconds": 120.79
+    },
+    "publish": {
+     "calls": 1,
+     "seconds": 475.97
+    },
+    "publish.build_artifact": {
+     "calls": 1,
+     "seconds": 10.53
+    },
+    "publish.read_stage": {
+     "calls": 1,
+     "seconds": 15.06
+    },
+    "publish.serialize": {
+     "calls": 3,
+     "seconds": 15.29
+    },
+    "publish.stage": {
+     "calls": 1,
+     "seconds": 9.35
+    },
+    "step:forecast_stage_readback": {
+     "calls": 1,
+     "seconds": 475.99
+    },
+    "step:stage_readback": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:candidates": {
+     "calls": 1,
+     "seconds": 37.12
+    },
+    "store.read:plan_stages": {
+     "calls": 2,
+     "seconds": 14.54
+    },
+    "store.read_raw:snapshots": {
+     "calls": 1,
+     "seconds": 1.39
+    },
+    "store.read_raw:validations": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 3,
+     "seconds": 0.01
+    },
+    "store.write:plan_stages": {
+     "calls": 1,
+     "seconds": 9.35
+    },
+    "store.write:validations": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "validate:DETACHED": {
+     "calls": 1,
+     "seconds": 51.1
+    },
+    "validate:FINAL": {
+     "calls": 1,
+     "seconds": 48.86
+    },
+    "validate:READBACK": {
+     "calls": 1,
+     "seconds": 52.04
+    },
+    "validate_artifact:DETACHED": {
+     "calls": 1,
+     "seconds": 109.31
+    },
+    "validate_artifact:READBACK": {
+     "calls": 1,
+     "seconds": 117.01
+    }
+   },
+   "stages": {},
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 48.9,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "DETACHED",
+     "seconds": 51.1,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "READBACK",
+     "seconds": 52.0,
+     "valid": true,
+     "violations": 0
+    }
+   ]
+  },
+  "first.signer": {
+   "role": "signer",
+   "planning": "full",
+   "startup_seconds": 0.3,
+   "role_seconds": 334.1,
+   "process_seconds": 334.4,
+   "peak_memory_mb": 8311,
+   "store_written_mb": 718.8,
+   "timers": {
+    "display.plan_parts": {
+     "calls": 1,
+     "seconds": 10.86
+    },
+    "display.plan_parts_signed": {
+     "calls": 1,
+     "seconds": 10.86
+    },
+    "load_snapshot": {
+     "calls": 1,
+     "seconds": 107.86
+    },
+    "publish": {
+     "calls": 1,
+     "seconds": 334.08
+    },
+    "publish.accept": {
+     "calls": 1,
+     "seconds": 6.03
+    },
+    "publish.build_artifact": {
+     "calls": 1,
+     "seconds": 9.49
+    },
+    "publish.post_acceptance": {
+     "calls": 1,
+     "seconds": 2.98
+    },
+    "publish.read_stage": {
+     "calls": 1,
+     "seconds": 8.67
+    },
+    "publish.serialize": {
+     "calls": 3,
+     "seconds": 7.14
+    },
+    "publish.stage": {
+     "calls": 1,
+     "seconds": 9.19
+    },
+    "step:forecast_sign_accept": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:sign_accept": {
+     "calls": 1,
+     "seconds": 334.1
+    },
+    "store.read:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:candidates": {
+     "calls": 1,
+     "seconds": 10.8
+    },
+    "store.read:plan_stages": {
+     "calls": 2,
+     "seconds": 17.63
+    },
+    "store.read:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:accepted_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_manifests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_parts": {
+     "calls": 1874,
+     "seconds": 0.14
+    },
+    "store.read_raw:display_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:frozen_goals": {
+     "calls": 93,
+     "seconds": 0.01
+    },
+    "store.read_raw:published_payloads": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 1,
+     "seconds": 1.38
+    },
+    "store.read_raw:validations": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.write:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:accepted_plans": {
+     "calls": 1,
+     "seconds": 0.34
+    },
+    "store.write:display_manifests": {
+     "calls": 1,
+     "seconds": 0.01
+    },
+    "store.write:display_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:frozen_goals": {
+     "calls": 93,
+     "seconds": 0.36
+    },
+    "store.write:published_payloads": {
+     "calls": 1,
+     "seconds": 5.66
+    },
+    "store.write:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:DETACHED": {
+     "calls": 1,
+     "seconds": 33.27
+    },
+    "validate:FINAL": {
+     "calls": 1,
+     "seconds": 32.29
+    },
+    "validate:READBACK": {
+     "calls": 1,
+     "seconds": 24.39
+    },
+    "validate_artifact:DETACHED": {
+     "calls": 1,
+     "seconds": 69.51
+    },
+    "validate_artifact:READBACK": {
+     "calls": 1,
+     "seconds": 61.34
+    }
+   },
+   "stages": {},
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 32.3,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "DETACHED",
+     "seconds": 33.3,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "READBACK",
+     "seconds": 24.4,
+     "valid": true,
+     "violations": 0
+    }
+   ]
+  },
+  "first.source": {
+   "role": "source",
+   "planning": "full",
+   "startup_seconds": 0.3,
+   "role_seconds": 329.7,
+   "process_seconds": 329.9,
+   "peak_memory_mb": 9048,
+   "store_written_mb": 6936.8,
+   "timers": {
+    "acquire": {
+     "calls": 1,
+     "seconds": 325.86
+    },
+    "acquire.move_source_head": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "acquire.readback_of_stored_rows": {
+     "calls": 1,
+     "seconds": 15.11
+    },
+    "digest.admit_line_calendars": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "digest.build_census": {
+     "calls": 1,
+     "seconds": 7.18
+    },
+    "digest.build_cs_facts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "digest.build_economics": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "digest.build_graph": {
+     "calls": 1,
+     "seconds": 31.02
+    },
+    "digest.build_holdings": {
+     "calls": 1,
+     "seconds": 0.07
+    },
+    "digest.build_parts": {
+     "calls": 1,
+     "seconds": 0.39
+    },
+    "digest.build_requirements": {
+     "calls": 1,
+     "seconds": 4.41
+    },
+    "digest.build_snapshot": {
+     "calls": 1,
+     "seconds": 69.96
+    },
+    "digest.build_triggers": {
+     "calls": 1,
+     "seconds": 0.12
+    },
+    "digest.build_virtual_support": {
+     "calls": 1,
+     "seconds": 0.33
+    },
+    "digest.build_workforce": {
+     "calls": 1,
+     "seconds": 8.56
+    },
+    "digest.compute_statistics": {
+     "calls": 1,
+     "seconds": 0.13
+    },
+    "digest.coverage_gaps": {
+     "calls": 1,
+     "seconds": 0.09
+    },
+    "digest.flow_index": {
+     "calls": 1,
+     "seconds": 1.8
+    },
+    "digest.freshness_gaps": {
+     "calls": 1,
+     "seconds": 0.13
+    },
+    "digest.horizon_dates": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "digest.index_master": {
+     "calls": 1,
+     "seconds": 3.08
+    },
+    "digest.merge_virtual_pools": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "digest.resolve": {
+     "calls": 138345,
+     "seconds": 1.51
+    },
+    "digest.scope_config": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "digest.seal_snapshot": {
+     "calls": 1,
+     "seconds": 8.62
+    },
+    "display.snapshot_parts": {
+     "calls": 1,
+     "seconds": 135.41
+    },
+    "load_snapshot": {
+     "calls": 1,
+     "seconds": 3.78
+    },
+    "pull.capture:actual_labor": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:attendance_shift": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "pull.capture:availability_exceptions": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:buyoff_plan": {
+     "calls": 1,
+     "seconds": 0.15
+    },
+    "pull.capture:carry_in": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:cday_op_plan": {
+     "calls": 1,
+     "seconds": 0.04
+    },
+    "pull.capture:cert_course_map": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:cert_eligibility_matrix": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:clock_observations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:cs_windows": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:dept_team_skill_ref": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:duration_episodes": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "pull.capture:econ_aircraft_mapping": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_contract_assignment": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_liability_checkpoint": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_mapping_revision": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_original_sale_basis": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_scenario": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_term": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:etracs_active": {
+     "calls": 1,
+     "seconds": 0.21
+    },
+    "pull.capture:etracs_history": {
+     "calls": 1,
+     "seconds": 0.13
+    },
+    "pull.capture:flow_budget": {
+     "calls": 1,
+     "seconds": 2.87
+    },
+    "pull.capture:holding_events": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:inspection_counts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:inspection_holds": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:inspection_standards": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:labor_shift": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:master_task_list": {
+     "calls": 1,
+     "seconds": 4.68
+    },
+    "pull.capture:mech_team_inferred": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:mechanic_certs": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "pull.capture:neo_graph_rework": {
+     "calls": 1,
+     "seconds": 0.3
+    },
+    "pull.capture:ot_authorizations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:part_events": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:people_directory": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:person_team_map": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "pull.capture:pnet_dag": {
+     "calls": 1,
+     "seconds": 0.52
+    },
+    "pull.capture:requirement_alternatives": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:requirement_census": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:rework_classification": {
+     "calls": 1,
+     "seconds": 0.5
+    },
+    "pull.capture:scope_receipt": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:shift_roster": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "pull.capture:soi_cert_requirements": {
+     "calls": 1,
+     "seconds": 1.93
+    },
+    "pull.capture:team_inference": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:work_progress": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:acquire": {
+     "calls": 1,
+     "seconds": 325.87
+    },
+    "step:admit": {
+     "calls": 1,
+     "seconds": 3.79
+    },
+    "store.read_raw:datasets": {
+     "calls": 44,
+     "seconds": 0.19
+    },
+    "store.read_raw:display_manifests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_parts": {
+     "calls": 7933,
+     "seconds": 0.7
+    },
+    "store.read_raw:org_charts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 2,
+     "seconds": 3.54
+    },
+    "store.write:datasets": {
+     "calls": 44,
+     "seconds": 11.46
+    },
+    "store.write:display_manifests": {
+     "calls": 1,
+     "seconds": 0.03
+    },
+    "store.write:manifests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:org_charts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:snapshots": {
+     "calls": 1,
+     "seconds": 63.76
+    },
+    "store.write:statistics": {
+     "calls": 183,
+     "seconds": 0.11
+    }
+   },
+   "stages": {},
+   "validations": []
+  },
+  "first.stager": {
+   "role": "stager",
+   "planning": "full",
+   "startup_seconds": 0.3,
+   "role_seconds": 309.9,
+   "process_seconds": 310.2,
+   "peak_memory_mb": 7972,
+   "store_written_mb": 415.5,
+   "timers": {
+    "load_snapshot": {
+     "calls": 1,
+     "seconds": 109.48
+    },
+    "publish": {
+     "calls": 1,
+     "seconds": 309.89
+    },
+    "publish.build_artifact": {
+     "calls": 1,
+     "seconds": 9.51
+    },
+    "publish.read_stage": {
+     "calls": 1,
+     "seconds": 8.66
+    },
+    "publish.serialize": {
+     "calls": 3,
+     "seconds": 7.23
+    },
+    "publish.stage": {
+     "calls": 1,
+     "seconds": 5.34
+    },
+    "step:forecast_stage_readback": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:stage_readback": {
+     "calls": 1,
+     "seconds": 309.9
+    },
+    "store.read:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:candidates": {
+     "calls": 1,
+     "seconds": 11.31
+    },
+    "store.read:plan_stages": {
+     "calls": 2,
+     "seconds": 8.39
+    },
+    "store.read_raw:snapshots": {
+     "calls": 1,
+     "seconds": 1.29
+    },
+    "store.read_raw:validations": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.write:plan_stages": {
+     "calls": 1,
+     "seconds": 5.34
+    },
+    "store.write:validations": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "validate:DETACHED": {
+     "calls": 1,
+     "seconds": 31.74
+    },
+    "validate:FINAL": {
+     "calls": 1,
+     "seconds": 33.15
+    },
+    "validate:READBACK": {
+     "calls": 1,
+     "seconds": 23.44
+    },
+    "validate_artifact:DETACHED": {
+     "calls": 1,
+     "seconds": 66.26
+    },
+    "validate_artifact:READBACK": {
+     "calls": 1,
+     "seconds": 61.65
+    }
+   },
+   "stages": {},
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 33.2,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "DETACHED",
+     "seconds": 31.7,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "READBACK",
+     "seconds": 23.4,
+     "valid": true,
+     "violations": 0
+    }
+   ]
+  },
+  "repair.executable": {
+   "purpose": "EXECUTABLE",
+   "planning": {
+    "requested": "repair",
+    "ran": "repair",
+    "reason": "repair requested",
+    "hints": 14038,
+    "kept": 14011,
+    "rehomed": 27,
+    "deferred": 0
+   },
+   "schedule_seconds": 215.1,
+   "validate_seconds": 50.6,
+   "process_seconds": 265.9,
+   "peak_memory_mb": 7392,
+   "timers": {
+    "display.candidate_digest": {
+     "calls": 1,
+     "seconds": 0.05
+    },
+    "load_snapshot": {
+     "calls": 2,
+     "seconds": 114.32
+    },
+    "schedule": {
+     "calls": 1,
+     "seconds": 214.22
+    },
+    "schedule.build_candidate": {
+     "calls": 1,
+     "seconds": 6.86
+    },
+    "schedule.engine_context": {
+     "calls": 1,
+     "seconds": 21.37
+    },
+    "schedule.optimizer_run": {
+     "calls": 1,
+     "seconds": 32.43
+    },
+    "schedule.schedule_snapshot": {
+     "calls": 1,
+     "seconds": 102.49
+    },
+    "store.read:accepted_plans": {
+     "calls": 3,
+     "seconds": 1.72
+    },
+    "store.read:candidates": {
+     "calls": 2,
+     "seconds": 16.76
+    },
+    "store.read_raw:candidate_digests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 2,
+     "seconds": 6.58
+    },
+    "store.read_raw:validations": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.write:candidate_digests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:candidates": {
+     "calls": 1,
+     "seconds": 11.23
+    },
+    "store.write:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:FINAL": {
+     "calls": 2,
+     "seconds": 55.22
+    }
+   },
+   "stages": {
+    "EXECUTABLE.repair": [
+     {
+      "stop_reason": "repair",
+      "moves": 0,
+      "stages": [
+       {
+        "stage": "repair",
+        "seconds": 22.9,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "repair_redispatch",
+        "seconds": 9.5,
+        "candidates": 1,
+        "accepted": 0
+       }
+      ]
+     }
+    ]
+   },
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 24.7,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 30.6,
+     "valid": true,
+     "violations": 0
+    }
+   ]
+  },
+  "repair.forecast": {
+   "purpose": "FORECAST",
+   "planning": {
+    "requested": "repair",
+    "ran": "repair",
+    "reason": "repair requested",
+    "hints": 123189,
+    "kept": 122365,
+    "rehomed": 824,
+    "deferred": 0
+   },
+   "schedule_seconds": 317.7,
+   "validate_seconds": 97.0,
+   "process_seconds": 415.0,
+   "peak_memory_mb": 7796,
+   "timers": {
+    "display.candidate_digest": {
+     "calls": 1,
+     "seconds": 0.05
+    },
+    "load_snapshot": {
+     "calls": 2,
+     "seconds": 111.04
+    },
+    "schedule": {
+     "calls": 1,
+     "seconds": 316.47
+    },
+    "schedule.build_candidate": {
+     "calls": 1,
+     "seconds": 16.88
+    },
+    "schedule.engine_context": {
+     "calls": 1,
+     "seconds": 23.4
+    },
+    "schedule.optimizer_run": {
+     "calls": 1,
+     "seconds": 72.15
+    },
+    "schedule.schedule_snapshot": {
+     "calls": 1,
+     "seconds": 208.5
+    },
+    "store.read:accepted_plans": {
+     "calls": 3,
+     "seconds": 6.93
+    },
+    "store.read:candidates": {
+     "calls": 2,
+     "seconds": 40.05
+    },
+    "store.read_raw:candidate_digests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 2,
+     "seconds": 2.99
+    },
+    "store.read_raw:validations": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.write:candidate_digests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:candidates": {
+     "calls": 1,
+     "seconds": 22.79
+    },
+    "store.write:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:FINAL": {
+     "calls": 2,
+     "seconds": 102.63
+    }
+   },
+   "stages": {
+    "FORECAST.repair": [
+     {
+      "stop_reason": "repair",
+      "moves": 0,
+      "stages": [
+       {
+        "stage": "repair",
+        "seconds": 37.8,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "repair_redispatch",
+        "seconds": 34.3,
+        "candidates": 1,
+        "accepted": 1
+       }
+      ]
+     }
+    ]
+   },
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 51.5,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 51.2,
+     "valid": true,
+     "violations": 0
+    }
+   ]
+  }
+ }
+}

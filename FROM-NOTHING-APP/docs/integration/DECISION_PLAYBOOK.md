@@ -166,6 +166,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
 | DEC-34 | How long the scheduler may improve a plan | DATA, inside the owner's 20 minutes | 30 seconds for the whole run: the first pass uses it up, so no improvement | with the 50-aircraft timings on several fleets |
 | DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
+| DEC-36 | Bring the pre-shift run under 20 minutes | ENGINEERING; OWNER and DATA for when the full solve runs | as shipped: 23.2 minutes at 50 aircraft, over the budget | before the first live pre-shift run |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
@@ -792,6 +793,10 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   - **One fleet and one seed.** On the fleet and the ticket-revenue rates used before D-31, the same three moves
     saved 1% (`SB (before D-31)` in the evidence index). The saving depends on the fleet, and the fleet changes
     (D-32).
+  - **At 50 aircraft** (`SB50`, the first of three fleets: customers and models drawn from the open orders, the
+    generator's standard share of late parts, every aircraft late). The first pass alone cost $33,886,110. Three
+    moves and two repairs changed nothing. Ten moves and five repairs saved 0.8% ($33,606,703) and took 415 s more on
+    the forecast. Where late parts decide how late an aircraft is, reordering work buys little.
 - **Measure**, on several different 50-aircraft fleets (D-32) and then on real data: the forecast's late cost with
   the first pass alone, with three moves and two repairs, and with ten moves and five repairs, and the seconds each
   took (`search_budget.py run NAME MOVES REPAIRS --aircraft 50 --fleet-seed N`). On real data add `window` from
@@ -829,6 +834,41 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   rule.
 - **Implement in:** the rate table for (a); `focus/economics/rate_file.py` for a rule, with each stand-in term's
   `Methodology` saying so.
+
+### DEC-36 Bring the pre-shift run under 20 minutes
+
+- **Authority:** ENGINEERING for (a), (b), (c), (e) and (f). DATA, then OWNER, for (d). No option changes a plan or
+  drops a check of the bytes that are signed.
+- **Why.** As shipped, the four jobs from the data cut to the accepted plan took 23.2 minutes at 50 aircraft on the
+  test machine (`docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow, action by action"). The owner's budget is
+  20 (D-28). The pull from SQL Server, each job's start on a runner and the acceptance come on top. The scheduler is
+  3 of the 23 minutes; loading the snapshot again and validating the plan again are 12.
+- **Options,** with the seconds each one took in that measurement:
+
+  | Option | Seconds | What changes |
+  | --- | --- | --- |
+  | (a) Load the admitted snapshot once | 217 to 327 | The three later jobs each parse the stored snapshot again (about 109 s each). Either the steps from `schedule` to `sign_accept` share a process (two loads fewer), or every job loads a fast copy bound to the snapshot's hash |
+  | (b) The signer validates only the bytes it signs | 123 | DEC-03 (a): `sign_accept` re-reads the staged bytes, validates them and signs. Today it also repeats the FINAL validation, the serialization, the DETACHED validation and the stage write |
+  | (c) Write the snapshot's dashboard parts beside scheduling | 135 | Today `acquire` writes them before the scheduler may start. A job beside `schedule` writes them instead, and `sign_accept` checks they are complete before the plan head moves |
+  | (d) Repair in every pre-shift run | 112 | The scheduler took 32 s for a repair and 145 s for the full first pass. The daily full solve then runs outside the window (`planning.full_solve_shifts`), where the improvement search of DEC-34 also belongs |
+  | (e) One FINAL validation in the scheduling job | 42 | The `validate` step repeats, in the same process, the check made right after the solve |
+  | (f) End each job without releasing its memory object by object | 62 | Each process took 11 to 20 s to exit after its outputs were written |
+
+  (a), (b) and (c) together leave about 15 minutes; with (d), about 13; with all six, under 12.
+- **What preparing earlier buys.** Digesting who holds which certificate and which job needs which takes seconds
+  here (4.4 s and under 0.1 s; the scheduler's working data 18 s). The pull is where it helps: load the slowly
+  changing tables before the cut (DEC-08). A complete digest of the unchanged part of the data before the cut, with
+  only the changes applied at the cut, would cut the 70 s snapshot build; it is not built.
+- **Recommendation:** (a), (b) and (c) first: they need no company data. Then (d), once the drift check shows what a
+  repair loses against the full solve on real shifts (`docs/execution/PLAN_REPAIR.md`).
+- **Decision rule.** The window is met when the 95th percentile of `window.minutes` over a week of live runs is 20 or
+  less, with the pull and the acceptance in it. Measure each change with `python tools/time_pre_shift.py` before and
+  after; the candidate's id and hash must not change.
+- **Until decided:** as shipped. The window is not met at 50 aircraft on the test machine.
+- **Verify:** `tests/integration/test_publication_recovery.py` (A50, A51), `tests/integration/test_migration_pipeline.py`
+  and the display tests; for (b), the new test DEC-03 names.
+- **Do not** drop a validation of the bytes that get signed, shorten the horizon, or preload completions, work in
+  progress, shortages, rosters or attendance (DEC-08): each changes what the plan rests on.
 
 ### OD-16 The OFFICIAL score policy (last)
 
@@ -883,7 +923,8 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
    - a FORECAST plan for the complete scope, with the unknown-cost counts of DEC-29 and the calendar check of
      DEC-28;
    - review the readiness gaps with their owners.
-3. **First week of pipeline runs:** DEC-12; the evidence for DEC-11; DEC-24's measurement.
+3. **First week of pipeline runs:** DEC-12; the evidence for DEC-11; DEC-24's measurement; `window` against the
+   20-minute budget (DEC-36: take its options (a), (b) and (c) before these runs).
 4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-25 and
    DEC-23. Ask the owner about DEC-26 and DEC-33 before the pilot starts. DEC-31, and the settings of DEC-33, are
    decided on the same pilot data.

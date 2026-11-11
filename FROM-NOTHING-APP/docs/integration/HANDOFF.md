@@ -134,9 +134,9 @@ be ready to go within 20 minutes"):
 | --- | --- | --- |
 | Data cut and `stage_sources` (changed rows into SQL Server) | ≤ 2 min | not measured (company loader) |
 | `verify_staged_sources` | < 1 min | not measured live |
-| `acquire_admit` | ≤ 1–2 min (target) | snapshot load 69–90 s at 50 aircraft (simulation); writing the snapshot's display parts adds 162 s (`DISPLAY_PACKAGE.md`) |
-| `schedule_validate` | ≤ 8 min | plan 118–192 s, validate 17–24 s at 50 aircraft |
-| `stage_readback`, `sign_accept` | ≤ 2 min | display parts for the executable plan 10 s; stage and sign not measured live |
+| `acquire_admit` | ≤ 1–2 min (target) | 5.7 min at 50 aircraft: snapshot built 70 s, stored 64 s, its dashboard parts 135 s |
+| `schedule_validate` | ≤ 8 min | 6.3 min: snapshot loaded again 109 s, first pass 145 s, two FINAL validations 61 s |
+| `stage_readback`, `sign_accept` | ≤ 2 min | 5.4 and 5.8 min: each loads the snapshot again (about 109 s) and validates the plan three times (about 170 s) |
 | **The plan must be accepted before the shift starts** | | |
 
 - **What counts toward the window.** The clock starts at the data cut (the pipeline's start, which is the loader's
@@ -155,10 +155,14 @@ be ready to go within 20 minutes"):
     windows, the template graph and the certificate and department reference tables. Completions, work in progress,
     shortages, rosters and attendance must be staged at the cut.
   - The evaluator-only run after overtime is outside the window.
-- **Total so far.** The plan path measured 3.6–5.2 minutes per shift at 50 aircraft, peaking at 6.6 GB
-  (`10_CALIBRATION.md` §7). With the snapshot's display parts (about 2.7 minutes) and the executable plan's parts
-  (10 s), that is roughly 6.5–8 minutes before staging, the drift check, stage and sign. The live data pull is the
-  unmeasured part. The window is achievable but not roomy: measure every step on the first live runs.
+- **Measured end to end: 23.2 minutes, over the budget.** The four jobs above, each in its own process, at 50
+  aircraft on the test machine on 2026-11-11 (`docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow, action by
+  action"; `python tools/time_pre_shift.py`). The live data pull, each job's start and the acceptance come on top.
+  - The scheduler is 3 of those minutes. Loading the snapshot again in three jobs is 5.4, validating the plan eight
+    times is 6.7, and the snapshot's dashboard parts are 2.3.
+  - `DECISION_PLAYBOOK.md`, DEC-36 lists what brings it to about 13 minutes without changing a plan. Take its options
+    (a), (b) and (c) before the first live pre-shift run.
+  - The forecast's three jobs took another 27.1 minutes, outside the window.
 - **A plan accepted after its shift starts** is only a proposal for that shift. The previous plan stays the goal of
   record, and the late plan becomes the next shift's. The calibration measured what late plans cost the teams: the
   95th-percentile shortfall doubled.

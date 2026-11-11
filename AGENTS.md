@@ -9,7 +9,8 @@ port to real data must keep. Reading needs no approval; approval is for changes.
    a constraint. The scheduler is a fixed, rule-based procedure. There is no AI in it.
 2. **Run before every shift**, three times a day, within 20 minutes from the data cut to the plan and its dashboard
    being ready. A pipeline gathers the data, schedules, validates and publishes; the web application only displays
-   what the pipeline published.
+   what the pipeline published. As shipped, that took 23.2 minutes at 50 aircraft on the test machine, and the
+   scheduler was 3 of them: `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md`, DEC-36 lists what to change.
 3. **Score each team's shift** against the plan accepted before that shift started, with an excusal process so a
    team is not marked down for causes outside its control.
 

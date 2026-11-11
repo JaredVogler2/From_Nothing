@@ -238,6 +238,9 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
     plan's snapshot.
   - The first load in a process holds as little at once as the checks allow: at 50 aircraft it takes about 2 minutes
     and peaks at 7.0 GB (`PRODUCTION_SCALE.md`).
+  - `python tools/time_pre_shift.py run WORKDIR --aircraft 50` times every action of the flow on the synthetic
+    fleet, each role in its own process. As shipped the four jobs to the accepted plan took 23.2 minutes
+    (`PRODUCTION_SCALE.md`; `DECISION_PLAYBOOK.md`, DEC-36).
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never
   runs without the accepted plan's frozen goals.
