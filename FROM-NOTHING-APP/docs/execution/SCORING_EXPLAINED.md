@@ -145,6 +145,11 @@ A new difference is therefore worth reporting.
   the same job done unapproved. This needs the owner's decision (`DECISION_PLAYBOOK.md`, DEC-26).
 - **Grade bands from real data**, **protection when a plan is accepted late**, and **who gets credit for work finished
   in overtime**: `docs/integration/DECISION_PLAYBOOK.md` §7.
+- **What the score cannot see.** It says whether a team did its part of the plan. It stops at 100, so it does not
+  separate a fast team from a normal one, or a team that works ahead from one that finishes and stops. Labor
+  efficiency and work beyond plan would, and neither is built. Throughput and summed job points are not a substitute:
+  they rank teams by head count. The tests and the method by level are in
+  `docs/task-valuation-investigation/11_PERFORMANCE_MEASURES.md`; the decision is DEC-32.
 - **Points by how critical a job is.** The owner's rule is that criticality comes from the cost objective (D-29).
   It is defined and reported with every run: a job's criticality is its aircraft's cost of one more day late
   (`OBJECTIVE_EXPLAINED.md` §5). No score reads it. On the simulated fleet, weighting scores by it moved a team's

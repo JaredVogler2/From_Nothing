@@ -40,7 +40,7 @@ from ..engine.max.optimizer.orchestrator import decision_digest  # noqa: E402
 from ..runtime import build_services  # noqa: E402
 from .db import SimDB  # noqa: E402
 from .engine import admit, plan, published_incumbent  # noqa: E402
-from .execute import DayGoals, FloorSpec, attendance_rows, execute_shift, freeze_day  # noqa: E402
+from .execute import DayGoals, FloorSpec, TeamTraits, attendance_rows, execute_shift, freeze_day  # noqa: E402
 from .state import SourceState  # noqa: E402
 
 UTC = timezone.utc
@@ -89,7 +89,7 @@ def _release_memory() -> float:
         return 0.0
 
 
-def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
+def run(spec: SimSpec, db_path: Path, *, log=print, traits: TeamTraits | None = None) -> dict[str, Any]:
     settings = Settings.from_env({"FOCUS_NATIVE_CORE": "true"}, app_root=APP_ROOT, inprocess_worker=False)
     first_day = spec.fleet.cutoff_day
     clock = FixedClock(datetime(first_day.year, first_day.month, first_day.day, 9, 0, tzinfo=UTC))
@@ -103,9 +103,12 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
     datasets = build_fullscale_fixture(spec.fleet)
     facts = dict(FLEET_FACTS)
     state = SourceState(datasets)
-    sim_id = digest_id("SIM", asdict(spec))
+    # teams that differ (experiments with a known truth) are part of the run's identity; without them the id is unchanged
+    sim_id = digest_id("SIM", asdict(spec)) if traits is None else digest_id("SIM", asdict(spec), asdict(traits))
     facts.update({"policy_id": services.policy.id, "policy_hash": services.policy.hash, "synthetic": True,
                   "score_policy_status": services.policy.str("score.policy_status")})
+    if traits is not None:
+        facts["team_traits"] = asdict(traits)
     db.run_meta(sim_id, datetime.now(UTC).isoformat(), asdict(spec), facts, "RUNNING")
     for name, ds in datasets.items():
         db.source_rows(name, ds.rows, 0)
@@ -200,7 +203,7 @@ def run(spec: SimSpec, db_path: Path, *, log=print) -> dict[str, Any]:
         outcome = execute_shift(state, floor_plan, shift, shift_no=k, week=week, rng=rng, spec=spec.floor, rework_rate=rework_rate,
                                 rework_minutes=rework_minutes, cert_of_team=cert_of_team, tz=tz, policy=services.policy, goals=day_goals,
                                 cutoff_lead=spec.cutoff_lead_minutes if spec.cutoff_gap else 0,
-                                done_before=pending.done if pending is not None else None)
+                                done_before=pending.done if pending is not None else None, traits=traits)
         pending = outcome.deferred
         timings["execute_s"] = time.time() - t
         db.insert("exec_assignment", outcome.rows)

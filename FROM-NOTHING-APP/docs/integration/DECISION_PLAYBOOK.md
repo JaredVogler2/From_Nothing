@@ -160,6 +160,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-29 | Make the cost objective steer on live data | ENGINEERING and DATA | count the unknowns every run; work them before speed | with the first live plans |
 | DEC-30 | Completed jobs in the planning snapshot | ENGINEERING | keep them; fix the writes first | with the first live plans |
 | DEC-31 | Should criticality weight a team's score | OWNER (with data) | no: reported only (D-29) | after 4 weeks of pilot |
+| DEC-32 | Which measures, at which level | OWNER | the score for teams; nothing else is built | before the pilot |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
@@ -685,6 +686,29 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   far say it changes almost nothing.
 - **Do not:** value single jobs in dollars and add them up (the values overlap, D-29), or assign criticality by
   hand or by job type.
+
+### DEC-32 Which measures, at which level
+
+- **Authority:** OWNER. Report `docs/task-valuation-investigation/11_PERFORMANCE_MEASURES.md` has the tests.
+- **Why.** No single number serves a shift, a team, a superintendent and a site, a day and a quarter. On simulated
+  floors:
+  - the score was the only fair and sensitive team measure, and it cannot see pace or work beyond the plan;
+  - throughput, summed job points and output per available hour ranked equal teams by head count or by the plan's
+    load, and could not find a team that was 10% worse;
+  - 84% of lost planned minutes were excused, and 42% of those were caused by another team on the same floor.
+- **Recommendation.**
+  - **Team:** the score stays the grade. Show labor efficiency (standard hours earned ÷ hours worked) and work
+    beyond plan beside it. Never rank teams on throughput, points, output per available hour or work beyond plan.
+  - **Any period:** sum the minutes first (built). Grade over five days or more; one shift is feedback.
+  - **Superintendent and site:** the same sums, with the lost minutes by cause and owner, and causes inside the
+    group counted against the group. For the site, output per available hour split into load, share not excused,
+    team execution, extra work and efficiency.
+  - **Comparing:** factor by factor, against the same team's own past, with a band measured on the pilot
+    (`tools/calibrate_scores.py`, `weekly`).
+- **What it needs.** Hours worked and hours available per team and shift stored with the performance row, and the
+  causing team kept with each excused minute. No score changes.
+- **Until decided:** the score, the pooled rollups and the excused minutes by cause, as built.
+- **Do not** grade a team or a shift on delivery cost or late days: a shift's work cannot be traced to them.
 
 ### OD-16 The OFFICIAL score policy (last)
 

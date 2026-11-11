@@ -1,0 +1,38 @@
+{
+ "all": {
+  "available_hours": 181441,
+  "productivity": 0.5685049675441047,
+  "load": 0.5953387444557307,
+  "not_excused_away": 0.9582117946933677,
+  "team_execution": 0.9918892807110767,
+  "extra_work": 1.0047208328666073,
+  "time_on_work": 0.5772636409281027,
+  "efficiency": 0.9848272561044793,
+  "check_plan_side": 0.5685049675441047,
+  "check_time_side": 0.5685049675441047
+ },
+ "week_1": {
+  "available_hours": 90745,
+  "productivity": 0.5863490318148746,
+  "load": 0.6160733934601482,
+  "not_excused_away": 0.9573938759752321,
+  "team_execution": 0.9885128518114289,
+  "extra_work": 1.005659114355691,
+  "time_on_work": 0.5953042855204929,
+  "efficiency": 0.9849568465683254,
+  "check_plan_side": 0.5863490318148747,
+  "check_time_side": 0.5863490318148746
+ },
+ "week_2": {
+  "available_hours": 90696,
+  "productivity": 0.5506513335780331,
+  "load": 0.5745929755477893,
+  "not_excused_away": 0.9590892300607169,
+  "team_execution": 0.995504996023522,
+  "extra_work": 1.0037231129444748,
+  "time_on_work": 0.559213321215226,
+  "efficiency": 0.9846892280416588,
+  "check_plan_side": 0.5506513335780331,
+  "check_time_side": 0.5506513335780331
+ }
+}

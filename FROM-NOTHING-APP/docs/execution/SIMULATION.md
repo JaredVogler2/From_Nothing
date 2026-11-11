@@ -126,6 +126,13 @@ order:
 
 Afterwards, a team with at least two idle hours pulls ready work forward with `pull_ahead` = 35 %.
 
+**Teams that differ (`TeamTraits`, experiments only).** Every team follows the same `FloorSpec`, so no team is better
+than another: a measure that still ranks teams is ranking their size, their load or their work. For a test with a
+known truth, `run(spec, path, traits=TeamTraits(...))` gives named teams their own pace (a multiplier on every actual
+duration), `deviation` and `pull_ahead`. With traits a person starts a task only after finishing the previous one, so
+a slow team runs out of shift and its late tasks are missed as overruns, which are never excused. Without traits a
+run is unchanged. Report `docs/task-valuation-investigation/11_PERFORMANCE_MEASURES.md` uses it.
+
 **Write-back.** Finished work, and work an overrun cut short, is written back per job before the next cutoff. So each
 shift plans only the work the earlier shifts left open, and nothing is credited twice:
 

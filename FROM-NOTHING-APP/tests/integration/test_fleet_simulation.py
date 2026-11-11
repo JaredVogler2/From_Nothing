@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from focus.data.fullscale_fixture import FleetSpec
-from focus.sim.execute import FloorSpec
+from focus.sim.execute import FloorSpec, TeamTraits
 from focus.sim.runner import SimSpec, run
 from tests.integration.test_api_scope import client_on
 
@@ -396,3 +396,38 @@ def test_auto_planning_repairs_the_previous_plan_between_daily_full_solves(tmp_p
     assert "the daily full solve" in rows[0]["planning"]["EXECUTABLE"]["reason"]
     assert all(row["planning"]["EXECUTABLE"]["kept"] > 0 for row in rows[1:])            # the accepted plan is kept where it holds
     assert {s for (s,) in _all(db, "SELECT DISTINCT shift_no FROM exec_assignment")} == {0, 1, 2}
+
+
+@pytest.fixture(scope="module")
+def traits_run(tmp_path_factory):
+    """The same tiny fleet with one team made slow and one that always works ahead (teams that differ, for known-truth tests)."""
+    db = tmp_path_factory.mktemp("traits") / "traits.db"
+    result = run(SPEC, db, log=lambda message: None, traits=TeamTraits(pace={"T01": 3.0}, pull_ahead={"T02": 1.0, "T03": 0.0}))
+    return db, result
+
+
+def test_teams_can_be_made_to_differ_and_a_slow_team_shows_in_efficiency_and_unexcused_overruns(sims, traits_run) -> None:
+    """``TeamTraits`` is for experiments with a known truth (docs/task-valuation-investigation/11). Without it a run is
+    unchanged; with it the slow team works more hours for the same standard minutes, runs out of shift, and is not excused."""
+    first, _ = sims
+    db, result = traits_run
+    base_id, = _all(first, "SELECT sim_id FROM sim_run")[0]
+    assert result["sim_id"] != base_id                                    # the traits are part of the run's identity
+    import json
+
+    facts = json.loads(_all(db, "SELECT facts FROM sim_run")[0][0])
+    assert facts["team_traits"]["pace"] == {"T01": 3.0} and facts["team_traits"]["crew_sequencing"] is True
+    assert "team_traits" not in json.loads(_all(first, "SELECT facts FROM sim_run")[0][0])
+
+    def pace(path, team):                                                 # hours worked per standard hour completed
+        done, hours = _all(path, f"SELECT SUM(Cp + U), SUM(actual_hours) FROM perf_team_shift WHERE team = '{team}'")[0]
+        return hours * 60 / done
+
+    assert pace(db, "T01") > 2 * pace(first, "T01")                       # three times slower on every task
+    assert abs(pace(db, "T04") - pace(first, "T04")) < 0.35 * pace(first, "T04")       # a team without traits keeps its pace
+    slow_overruns = _all(db, "SELECT claim_cause, claim_status, relief FROM perf_unit WHERE team = 'T01' AND cause = 'overrun'")
+    assert slow_overruns and all(row == ("DURATION_OVERRUN", "PROPOSED", 0) for row in slow_overruns)   # its own pace: never excused
+    assert len(slow_overruns) > len(_all(first, "SELECT 1 FROM perf_unit WHERE team = 'T01' AND cause = 'overrun'"))
+    score = lambda path, team: _all(path, f"SELECT SUM(Cp) * 1.0 / SUM(B - E) FROM perf_team_shift WHERE team = '{team}'")[0][0]  # noqa: E731
+    assert score(db, "T01") < score(first, "T01")                         # the plan was not done, and the score says so
+    assert not _all(db, "SELECT 1 FROM exec_offplan WHERE team = 'T03' AND kind = 'pull_ahead'")       # this team never works ahead

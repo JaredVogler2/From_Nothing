@@ -1,0 +1,450 @@
+{
+ "database": "fleet.db",
+ "trials": 200,
+ "across_teams": {
+  "p0.02_n1": {
+   "score": 0.817,
+   "att_excused": 0.82,
+   "att_raw": 0.68,
+   "ppc_count": 0.841,
+   "throughput": 0.515,
+   "per_available_hour": 0.587,
+   "points_sum": 0.516,
+   "points_per_available_hour": 0.584
+  },
+  "p0.02_n3": {
+   "score": 0.896,
+   "att_excused": 0.915,
+   "att_raw": 0.695,
+   "ppc_count": 0.958,
+   "throughput": 0.53,
+   "per_available_hour": 0.645,
+   "points_sum": 0.529,
+   "points_per_available_hour": 0.633
+  },
+  "p0.02_n15": {
+   "score": 0.997,
+   "att_excused": 0.999,
+   "att_raw": 0.836,
+   "ppc_count": 1.0,
+   "throughput": 0.521,
+   "per_available_hour": 0.72,
+   "points_sum": 0.521,
+   "points_per_available_hour": 0.725
+  },
+  "p0.02_n42": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 0.963,
+   "ppc_count": 1.0,
+   "throughput": 0.51,
+   "per_available_hour": 0.733,
+   "points_sum": 0.509,
+   "points_per_available_hour": 0.738
+  },
+  "p0.05_n1": {
+   "score": 0.933,
+   "att_excused": 0.94,
+   "att_raw": 0.788,
+   "ppc_count": 0.96,
+   "throughput": 0.557,
+   "per_available_hour": 0.71,
+   "points_sum": 0.554,
+   "points_per_available_hour": 0.696
+  },
+  "p0.05_n3": {
+   "score": 0.991,
+   "att_excused": 0.994,
+   "att_raw": 0.868,
+   "ppc_count": 0.999,
+   "throughput": 0.555,
+   "per_available_hour": 0.806,
+   "points_sum": 0.556,
+   "points_per_available_hour": 0.796
+  },
+  "p0.05_n15": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 0.992,
+   "ppc_count": 1.0,
+   "throughput": 0.568,
+   "per_available_hour": 0.891,
+   "points_sum": 0.569,
+   "points_per_available_hour": 0.889
+  },
+  "p0.05_n42": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 1.0,
+   "ppc_count": 1.0,
+   "throughput": 0.549,
+   "per_available_hour": 0.879,
+   "points_sum": 0.552,
+   "points_per_available_hour": 0.883
+  },
+  "p0.1_n1": {
+   "score": 0.987,
+   "att_excused": 0.99,
+   "att_raw": 0.889,
+   "ppc_count": 0.996,
+   "throughput": 0.621,
+   "per_available_hour": 0.863,
+   "points_sum": 0.62,
+   "points_per_available_hour": 0.853
+  },
+  "p0.1_n3": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 0.979,
+   "ppc_count": 1.0,
+   "throughput": 0.627,
+   "per_available_hour": 0.943,
+   "points_sum": 0.627,
+   "points_per_available_hour": 0.937
+  },
+  "p0.1_n15": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 1.0,
+   "ppc_count": 1.0,
+   "throughput": 0.598,
+   "per_available_hour": 0.983,
+   "points_sum": 0.598,
+   "points_per_available_hour": 0.981
+  },
+  "p0.1_n42": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 1.0,
+   "ppc_count": 1.0,
+   "throughput": 0.613,
+   "per_available_hour": 0.977,
+   "points_sum": 0.613,
+   "points_per_available_hour": 0.976
+  }
+ },
+ "over_time": {
+  "p0.02_w3": {
+   "score": 0.839,
+   "att_excused": 0.853,
+   "att_raw": 0.63,
+   "ppc_count": 0.922,
+   "throughput": 0.569,
+   "per_available_hour": 0.589,
+   "points_sum": 0.573,
+   "points_per_available_hour": 0.586
+  },
+  "p0.05_w3": {
+   "score": 0.984,
+   "att_excused": 0.986,
+   "att_raw": 0.757,
+   "ppc_count": 0.997,
+   "throughput": 0.683,
+   "per_available_hour": 0.767,
+   "points_sum": 0.673,
+   "points_per_available_hour": 0.749
+  },
+  "p0.1_w3": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 0.945,
+   "ppc_count": 1.0,
+   "throughput": 0.855,
+   "per_available_hour": 0.928,
+   "points_sum": 0.845,
+   "points_per_available_hour": 0.908
+  },
+  "p0.02_w9": {
+   "score": 0.962,
+   "att_excused": 0.972,
+   "att_raw": 0.736,
+   "ppc_count": 0.998,
+   "throughput": 0.63,
+   "per_available_hour": 0.688,
+   "points_sum": 0.633,
+   "points_per_available_hour": 0.692
+  },
+  "p0.05_w9": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 0.911,
+   "ppc_count": 1.0,
+   "throughput": 0.801,
+   "per_available_hour": 0.885,
+   "points_sum": 0.789,
+   "points_per_available_hour": 0.874
+  },
+  "p0.1_w9": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 0.997,
+   "ppc_count": 1.0,
+   "throughput": 0.928,
+   "per_available_hour": 0.972,
+   "points_sum": 0.918,
+   "points_per_available_hour": 0.969
+  },
+  "p0.02_w15": {
+   "score": 0.981,
+   "att_excused": 0.989,
+   "att_raw": 0.797,
+   "ppc_count": 0.997,
+   "throughput": 0.632,
+   "per_available_hour": 0.698,
+   "points_sum": 0.621,
+   "points_per_available_hour": 0.685
+  },
+  "p0.05_w15": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 0.969,
+   "ppc_count": 1.0,
+   "throughput": 0.795,
+   "per_available_hour": 0.904,
+   "points_sum": 0.785,
+   "points_per_available_hour": 0.895
+  },
+  "p0.1_w15": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 1.0,
+   "ppc_count": 1.0,
+   "throughput": 0.961,
+   "per_available_hour": 0.979,
+   "points_sum": 0.957,
+   "points_per_available_hour": 0.981
+  },
+  "p0.02_w21": {
+   "score": 0.993,
+   "att_excused": 0.993,
+   "att_raw": 0.783,
+   "ppc_count": 1.0,
+   "throughput": 0.624,
+   "per_available_hour": 0.718,
+   "points_sum": 0.623,
+   "points_per_available_hour": 0.702
+  },
+  "p0.05_w21": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 0.962,
+   "ppc_count": 1.0,
+   "throughput": 0.808,
+   "per_available_hour": 0.895,
+   "points_sum": 0.788,
+   "points_per_available_hour": 0.875
+  },
+  "p0.1_w21": {
+   "score": 1.0,
+   "att_excused": 1.0,
+   "att_raw": 1.0,
+   "ppc_count": 1.0,
+   "throughput": 0.957,
+   "per_available_hour": 0.973,
+   "points_sum": 0.949,
+   "points_per_available_hour": 0.975
+  }
+ },
+ "no_change_band": {
+  "w3": {
+   "score": {
+    "median_abs_change": 0.4014,
+    "p90_abs_change": 1.9755,
+    "p90_as_share_of_level": 0.0201,
+    "pairs": 390
+   },
+   "att_excused": {
+    "median_abs_change": 0.5981,
+    "p90_abs_change": 2.0715,
+    "p90_as_share_of_level": 0.0212,
+    "pairs": 390
+   },
+   "att_raw": {
+    "median_abs_change": 3.3061,
+    "p90_abs_change": 9.3775,
+    "p90_as_share_of_level": 0.1014,
+    "pairs": 390
+   },
+   "ppc_count": {
+    "median_abs_change": 0.4512,
+    "p90_abs_change": 1.3274,
+    "p90_as_share_of_level": 0.0135,
+    "pairs": 390
+   },
+   "throughput": {
+    "median_abs_change": 695.0,
+    "p90_abs_change": 1750.0,
+    "p90_as_share_of_level": 0.1143,
+    "pairs": 390
+   },
+   "per_available_hour": {
+    "median_abs_change": 0.0188,
+    "p90_abs_change": 0.0535,
+    "p90_as_share_of_level": 0.0908,
+    "pairs": 390
+   },
+   "points_sum": {
+    "median_abs_change": 1240.1447,
+    "p90_abs_change": 3320.4211,
+    "p90_as_share_of_level": 0.1234,
+    "pairs": 390
+   },
+   "points_per_available_hour": {
+    "median_abs_change": 0.0365,
+    "p90_abs_change": 0.0952,
+    "p90_as_share_of_level": 0.0925,
+    "pairs": 390
+   }
+  },
+  "w9": {
+   "score": {
+    "median_abs_change": 0.325,
+    "p90_abs_change": 0.9946,
+    "p90_as_share_of_level": 0.01,
+    "pairs": 270
+   },
+   "att_excused": {
+    "median_abs_change": 0.4204,
+    "p90_abs_change": 1.1017,
+    "p90_as_share_of_level": 0.0111,
+    "pairs": 270
+   },
+   "att_raw": {
+    "median_abs_change": 1.5329,
+    "p90_abs_change": 4.0862,
+    "p90_as_share_of_level": 0.0428,
+    "pairs": 270
+   },
+   "ppc_count": {
+    "median_abs_change": 0.2538,
+    "p90_abs_change": 0.8135,
+    "p90_as_share_of_level": 0.0083,
+    "pairs": 270
+   },
+   "throughput": {
+    "median_abs_change": 1465.0,
+    "p90_abs_change": 3795.0,
+    "p90_as_share_of_level": 0.0856,
+    "pairs": 270
+   },
+   "per_available_hour": {
+    "median_abs_change": 0.0156,
+    "p90_abs_change": 0.0402,
+    "p90_as_share_of_level": 0.0704,
+    "pairs": 270
+   },
+   "points_sum": {
+    "median_abs_change": 2744.5921,
+    "p90_abs_change": 7502.2105,
+    "p90_as_share_of_level": 0.0993,
+    "pairs": 270
+   },
+   "points_per_available_hour": {
+    "median_abs_change": 0.0304,
+    "p90_abs_change": 0.0872,
+    "p90_as_share_of_level": 0.084,
+    "pairs": 270
+   }
+  },
+  "w15": {
+   "score": {
+    "median_abs_change": 0.3047,
+    "p90_abs_change": 0.8753,
+    "p90_as_share_of_level": 0.0088,
+    "pairs": 150
+   },
+   "att_excused": {
+    "median_abs_change": 0.3976,
+    "p90_abs_change": 1.0529,
+    "p90_as_share_of_level": 0.0107,
+    "pairs": 150
+   },
+   "att_raw": {
+    "median_abs_change": 1.3332,
+    "p90_abs_change": 3.1763,
+    "p90_as_share_of_level": 0.0325,
+    "pairs": 150
+   },
+   "ppc_count": {
+    "median_abs_change": 0.2853,
+    "p90_abs_change": 0.7908,
+    "p90_as_share_of_level": 0.008,
+    "pairs": 150
+   },
+   "throughput": {
+    "median_abs_change": 3085.0,
+    "p90_abs_change": 6390.0,
+    "p90_as_share_of_level": 0.0806,
+    "pairs": 150
+   },
+   "per_available_hour": {
+    "median_abs_change": 0.0212,
+    "p90_abs_change": 0.0406,
+    "p90_as_share_of_level": 0.0694,
+    "pairs": 150
+   },
+   "points_sum": {
+    "median_abs_change": 5848.2632,
+    "p90_abs_change": 11407.0263,
+    "p90_as_share_of_level": 0.0865,
+    "pairs": 150
+   },
+   "points_per_available_hour": {
+    "median_abs_change": 0.0414,
+    "p90_abs_change": 0.0746,
+    "p90_as_share_of_level": 0.0756,
+    "pairs": 150
+   }
+  },
+  "w21": {
+   "score": {
+    "median_abs_change": 0.524,
+    "p90_abs_change": 1.1322,
+    "p90_as_share_of_level": 0.0115,
+    "pairs": 30
+   },
+   "att_excused": {
+    "median_abs_change": 0.6753,
+    "p90_abs_change": 1.3625,
+    "p90_as_share_of_level": 0.0139,
+    "pairs": 30
+   },
+   "att_raw": {
+    "median_abs_change": 1.1363,
+    "p90_abs_change": 3.638,
+    "p90_as_share_of_level": 0.0378,
+    "pairs": 30
+   },
+   "ppc_count": {
+    "median_abs_change": 0.5578,
+    "p90_abs_change": 0.7471,
+    "p90_as_share_of_level": 0.0075,
+    "pairs": 30
+   },
+   "throughput": {
+    "median_abs_change": 6595.0,
+    "p90_abs_change": 10440.0,
+    "p90_as_share_of_level": 0.0881,
+    "pairs": 30
+   },
+   "per_available_hour": {
+    "median_abs_change": 0.0377,
+    "p90_abs_change": 0.0481,
+    "p90_as_share_of_level": 0.0842,
+    "pairs": 30
+   },
+   "points_sum": {
+    "median_abs_change": 14224.6053,
+    "p90_abs_change": 19358.7895,
+    "p90_as_share_of_level": 0.1016,
+    "pairs": 30
+   },
+   "points_per_available_hour": {
+    "median_abs_change": 0.0752,
+    "p90_abs_change": 0.092,
+    "p90_as_share_of_level": 0.0866,
+    "pairs": 30
+   }
+  }
+ }
+}
