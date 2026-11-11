@@ -57,9 +57,12 @@ Then read the code those pages name. The two explainer pages list each rule with
 - **Rates come from data, never from a guess.** Build the economics rows from a rate file with
   `python tools/build_economics_rows.py`; it lists the aircraft it cannot price and leaves them unknown. The owner's
   rate is the airline economic proxy per customer airline and minor model, column
-  `daily_airline_economic_proxy_usd` of the owner's rate table, with the due date at 744 unload plus 2 days and no
-  cap (`FROM-NOTHING-APP/docs/execution/DECISIONS.md`, D-31). Ask the owner for the table: it is not in this
-  repository. Do not use another column of it.
+  `daily_airline_economic_proxy_usd` of the owner's rate table
+  (`FROM-NOTHING-APP/fixtures/economics/airline_economic_proxy.csv`). Lateness begins at 744 unload plus 2 days, with
+  no other grace period and no cap (`FROM-NOTHING-APP/docs/execution/DECISIONS.md`, D-31). An aircraft the table does
+  not cover stays unpriced and listed until the owner supplies a row or a rule.
+- **The fleet is whichever aircraft have open tasks** at the data cut (D-32). No list of aircraft, no list of
+  customers and no count is fixed; 50 is a planning size. Never tune a setting to one fleet.
 - **One definition of criticality**, from the cost objective (`OBJECTIVE_EXPLAINED.md` §5): the aircraft's cost of
   one more day late in the accepted forecast. Do not rank jobs by a hand-made list, a job type or a second formula,
   and do not weight scores by it until the owner decides (`DECISION_PLAYBOOK.md`, DEC-31).

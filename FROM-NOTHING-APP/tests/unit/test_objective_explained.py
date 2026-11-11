@@ -65,14 +65,14 @@ def _ev(levels, *, unknown=(), cents=0, defended=0) -> Evaluation:
 
 def test_the_worked_example_is_what_the_registry_and_the_comparison_return(policy) -> None:
     a_due, b_due = datetime(2027, 3, 13, tzinfo=UTC), datetime(2027, 3, 15, tzinfo=UTC)      # the end of 12 and of 14 March
-    reg = EconomicsRegistry({1: _econ(1, 380_000, a_due), 2: _econ(2, 187_000, b_due)}, policy)
+    reg = EconomicsRegistry({1: _econ(1, 76_000, a_due), 2: _econ(2, 53_400, b_due)}, policy)
 
     def usd(line: int, finish: datetime) -> Fraction:
         return reg.penalty(line, to_minute(finish)) / 100
 
     one = usd(1, datetime(2027, 3, 14, 12, tzinfo=UTC)) + usd(2, datetime(2027, 3, 14, 18, tzinfo=UTC))
     two = usd(1, datetime(2027, 3, 13, 12, tzinfo=UTC)) + usd(2, datetime(2027, 3, 15, 6, tzinfo=UTC))
-    assert (one, two) == (570_000, 236_750) and "**$570,000**" in TEXT and "**$236,750**" in TEXT
+    assert (one, two) == (114_000, 51_350) and "**$114,000**" in TEXT and "**$51,350**" in TEXT
     assert usd(1, datetime(2027, 3, 12, 20, tzinfo=UTC)) == 0                                # early or on time costs nothing
     levels = key_levels(policy)
     s1, s2, s3 = _ev(levels, cents=one * 100), _ev(levels, cents=two * 100), _ev(levels, unknown=(2,), cents=0)
@@ -142,13 +142,13 @@ def test_the_criticality_section_names_the_codes_states_and_its_example_is_what_
     for path in ("focus/valuation/criticality.py", "tests/unit/test_criticality.py"):
         assert f"`{path}`" in section and (ROOT / path).is_file()
     now, day = datetime(2027, 3, 10, 12, tzinfo=UTC), timedelta(days=1)
-    reg = EconomicsRegistry({1: _econ(1, 380_000, now), 2: _econ(2, 190_000, now), 3: _econ(3, 95_000, now),
-                             4: _econ(4, 380_000, now + 10 * day), 5: _econ(5, 380_000, now + 10 * day)}, policy)
+    reg = EconomicsRegistry({1: _econ(1, 80_000, now), 2: _econ(2, 40_000, now), 3: _econ(3, 20_000, now),
+                             4: _econ(4, 80_000, now + 10 * day), 5: _econ(5, 80_000, now + 10 * day)}, policy)
     done = {1: now + 2 * day, 2: now + 2 * day, 3: now + 2 * day, 4: now + 10 * day - timedelta(hours=12), 5: now + 3 * day}
     costs = summarize(line_costs(reg, {line: AircraftCompletion(line, "known", at, 1, 1, (), ()) for line, at in done.items()}, to_minute(now)))
     crit = aircraft_criticality(costs, now)
     assert [crit[n].weight for n in (1, 2, 3)] == [1, Fraction(1, 2), Fraction(1, 4)] and "1, 0.5 and 0.25" in section
-    assert crit[4].cost_per_day_cents == 190_000 * 100 and "12 hours of margin: $190,000" in section
+    assert crit[4].cost_per_day_cents == 40_000 * 100 and "12 hours of margin: $40,000" in section
     assert crit[5].cost_per_day_cents == 0 and "a week of margin: $0" in section
     assert "DEC-31" in section and "DEC-31" in (ROOT / "docs" / "integration" / "DECISION_PLAYBOOK.md").read_text(encoding="utf-8")
     assert "D-29" in section and "D-29" in (ROOT / "docs" / "execution" / "DECISIONS.md").read_text(encoding="utf-8")

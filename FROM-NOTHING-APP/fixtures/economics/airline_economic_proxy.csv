@@ -1,0 +1,95 @@
+operator,minor_model,mission_profile,estimated_flights_per_day,expected_ticket_sales_usd_per_day,daily_airline_economic_proxy_usd,caveat
+Aeroméxico,787-8,LONG,1.55,342295.80,57344.37,Operator may differ from contractual buyer
+Aeroméxico,787-9,LONG,1.55,385652.40,65247.86,Operator may differ from contractual buyer
+Air Austral,787-8,REG,2.55,225895.32,39884.30,Operator may differ from contractual buyer
+Air Canada,787-10,LONG,1.55,488510.40,81276.56,Planned layout; verify before use
+Air Canada,787-8,LONG,1.55,328429.50,55264.43,Operator may differ from contractual buyer
+Air Canada,787-9,LONG,1.55,405377.70,68206.66,Operator may differ from contractual buyer
+Air China,787-9,LONG,1.55,413515.20,69427.28,Operator may differ from contractual buyer
+Air Europa,787-8,LEISURE,1.65,258419.70,44762.96,Operator may differ from contractual buyer
+Air Europa,787-9,LEISURE,1.65,290353.14,50952.97,Operator may differ from contractual buyer
+Air France,787-9,LONG,1.55,388061.10,65609.17,Operator may differ from contractual buyer
+Air India,787-8,LONG,1.55,302649.90,51397.49,Operator may differ from contractual buyer
+Air India,787-9,LONG,1.55,408339.75,68650.96,Operator may differ from contractual buyer
+Air New Zealand,787-9,ULTRA,1.1,366458.40,62368.76,Operator may differ from contractual buyer
+Air Premia,787-9,LEISURE,1.65,259140.42,46271.06,Operator may differ from contractual buyer
+Air Tahiti Nui,787-9,ULTRA,1.1,402864.00,67829.60,Operator may differ from contractual buyer
+Air Tanzania,787-8,MED,2.05,295667.40,50350.11,Operator may differ from contractual buyer
+Alaska Airlines,787-9,LONG,1.55,401797.20,67669.58,Operator may differ from contractual buyer
+American Airlines,787-8,LONG,1.55,316125.60,53418.84,Operator may differ from contractual buyer
+American Airlines,787-9,LONG,1.55,419862.45,70379.37,Operator may differ from contractual buyer
+ANA,787-10,DOM/LONG,2.58,345426.69,59814.00,Operator may differ from contractual buyer
+ANA,787-8,DOM/LONG,2.23,290915.80,49637.37,Operator may differ from contractual buyer
+ANA,787-9,DOM/LONG,2.37,327390.84,56508.63,Operator may differ from contractual buyer
+Austrian Airlines,787-9,LONG,1.55,386628.90,65394.34,Operator may differ from contractual buyer
+Avianca,787-8,MED,2.05,314265.00,53139.75,Operator may differ from contractual buyer
+Azerbaijan Airlines,787-8,LONG,1.55,293535.90,50030.39,Operator may differ from contractual buyer
+Biman Bangladesh Airlines,787-8,MED,2.05,309787.80,52468.17,Operator may differ from contractual buyer
+Biman Bangladesh Airlines,787-9,MED,2.05,370230.00,62934.50,Operator may differ from contractual buyer
+British Airways,787-10,LONG,1.55,509147.10,84372.07,Operator may differ from contractual buyer
+British Airways,787-8,LONG,1.55,339105.90,56865.89,Operator may differ from contractual buyer
+British Airways,787-9,LONG,1.55,445935.00,74290.25,Operator may differ from contractual buyer
+China Eastern,787-9,LONG,1.55,400365.00,67454.75,Operator may differ from contractual buyer
+China Southern,787-9,LONG,1.55,379142.40,64271.36,Operator may differ from contractual buyer
+Egyptair,787-9,MED,2.05,361620.00,61643.00,Operator may differ from contractual buyer
+El Al,787-8,LONG,1.55,326606.70,54991.01,Operator may differ from contractual buyer
+El Al,787-9,LONG,1.55,407753.85,68563.08,Operator may differ from contractual buyer
+Ethiopian,787-8,MED,2.05,308926.80,52339.02,Operator may differ from contractual buyer
+Ethiopian,787-9,MED,2.05,366786.00,62417.90,Operator may differ from contractual buyer
+Etihad Airways,787-10,REG,2.55,303799.86,53569.98,Operator may differ from contractual buyer
+Etihad Airways,787-9,LONG,1.55,379337.70,64300.66,Operator may differ from contractual buyer
+EVA Air,787-10,REG,2.55,315345.24,55301.79,Operator may differ from contractual buyer
+EVA Air,787-9,LONG,1.55,377059.20,63958.88,Operator may differ from contractual buyer
+Gulf Air,787-9,MED,2.05,325630.20,56244.53,Operator may differ from contractual buyer
+Hainan Airlines,787-8,LONG,1.55,330057.00,55508.55,Operator may differ from contractual buyer
+Hainan Airlines,787-9,LONG,1.55,380900.10,64535.02,Operator may differ from contractual buyer
+IndiGo,787-9,LEISURE,1.65,273069.72,48360.46,Leased from Norse; not a direct buyer
+Japan Airlines,787-8,DOM/LONG,2.23,267786.40,46167.96,Operator may differ from contractual buyer
+Japan Airlines,787-9,LONG,1.55,379207.50,64281.13,Operator may differ from contractual buyer
+Jetstar,787-8,LEISURE,1.65,277255.44,47588.32,Operator may differ from contractual buyer
+Juneyao Air,787-9,MED,2.05,371349.30,63102.40,Operator may differ from contractual buyer
+Kenya Airways,787-8,MED,2.05,297045.00,50556.75,Operator may differ from contractual buyer
+KLM,787-10,LONG,1.55,460647.60,77097.14,Operator may differ from contractual buyer
+KLM,787-9,LONG,1.55,384415.50,65062.33,Operator may differ from contractual buyer
+Korean Air,787-10,REG,2.55,306862.92,54029.44,Operator may differ from contractual buyer
+Korean Air,787-9,LONG,1.55,339887.10,58383.07,Operator may differ from contractual buyer
+LATAM,787-8,MED,2.05,302641.50,51396.23,Operator may differ from contractual buyer
+LATAM,787-9,MED,2.05,357602.00,61040.30,Operator may differ from contractual buyer
+LOT Polish Airlines,787-8,LONG,1.55,318143.70,53721.56,Operator may differ from contractual buyer
+LOT Polish Airlines,787-9,LONG,1.55,379077.30,64261.60,Operator may differ from contractual buyer
+Lufthansa,787-9,LONG,1.55,390632.55,65994.88,Operator may differ from contractual buyer
+Mongolian Airlines,787-9,LONG,1.55,414556.80,69583.52,Operator may differ from contractual buyer
+Neos,787-9,LEISURE,1.65,306292.14,53343.82,Operator may differ from contractual buyer
+Norse Atlantic Airways,787-9,LEISURE,1.65,273069.72,48360.46,Operator may differ from contractual buyer
+Oman Air,787-9,LONG,1.55,383699.40,64954.91,Operator may differ from contractual buyer
+Qantas,787-9,ULTRA,1.1,392792.40,66318.86,Operator may differ from contractual buyer
+Qatar Airways,787-8,LONG,1.55,312935.70,52940.36,Operator may differ from contractual buyer
+Qatar Airways,787-9,LONG,1.55,396719.40,66907.91,Operator may differ from contractual buyer
+Riyadh Air,787-9,LONG,1.55,391934.55,66190.18,Operator may differ from contractual buyer
+Royal Air Maroc,787-8,MED,2.05,291104.10,49665.62,Operator may differ from contractual buyer
+Royal Air Maroc,787-9,MED,2.05,346724.70,59408.71,Operator may differ from contractual buyer
+Royal Brunei Airlines,787-8,REG,2.55,220069.08,39010.36,Operator may differ from contractual buyer
+Royal Jordanian,787-8,MED,2.05,308926.80,52339.02,Operator may differ from contractual buyer
+Saudia,787-10,REG,2.55,306777.24,54016.59,Operator may differ from contractual buyer
+Saudia,787-9,LONG,1.55,362216.40,61732.46,Operator may differ from contractual buyer
+Scoot,787-8,LEISURE,1.65,246569.40,42985.41,Operator may differ from contractual buyer
+Scoot,787-9,LEISURE,1.65,288537.48,50680.62,Operator may differ from contractual buyer
+Shanghai Airlines,787-9,LONG,1.55,400365.00,67454.75,Operator may differ from contractual buyer
+Singapore Airlines,787-10,REG,2.55,315602.28,55340.34,Operator may differ from contractual buyer
+TAAG Angola Airlines,787-9,MED,2.05,338545.20,58181.78,Operator may differ from contractual buyer
+Thai Airways,787-8,REG,2.55,229322.52,40398.38,Operator may differ from contractual buyer
+Thai Airways,787-9,LONG,1.55,382137.00,64720.55,Operator may differ from contractual buyer
+TUI Airways,787-8,LEISURE,1.65,235779.39,41366.91,Operator may differ from contractual buyer
+TUI Airways,787-9,LEISURE,1.65,282286.62,49742.99,Operator may differ from contractual buyer
+Turkish Airlines,787-9,LONG,1.55,386694.00,65404.10,Operator may differ from contractual buyer
+United Airlines,787-10,LONG,1.55,476466.90,79470.04,Operator may differ from contractual buyer
+United Airlines,787-8,LONG,1.55,347699.10,58154.87,Operator may differ from contractual buyer
+United Airlines,787-9,LONG,1.55,457067.10,75960.07,Operator may differ from contractual buyer
+Uzbekistan Airways,787-8,LONG,1.55,325760.40,54864.06,Operator may differ from contractual buyer
+Vietnam Airlines,787-10,REG,2.55,309690.36,54453.55,Operator may differ from contractual buyer
+Vietnam Airlines,787-9,MED,2.05,356109.60,60816.44,Operator may differ from contractual buyer
+Virgin Atlantic,787-9,LONG,1.55,386368.50,65355.28,Operator may differ from contractual buyer
+WestJet,787-9,LONG,1.55,379402.80,64310.42,Operator may differ from contractual buyer
+XiamenAir,787-8,LONG,1.55,314172.60,53125.89,Operator may differ from contractual buyer
+XiamenAir,787-9,LONG,1.55,374845.80,63626.87,Operator may differ from contractual buyer
+Zipair,787-8,LEISURE,1.65,239667.12,41950.07,Operator may differ from contractual buyer

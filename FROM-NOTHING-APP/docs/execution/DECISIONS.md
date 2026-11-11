@@ -418,26 +418,63 @@ attendance. A conditional ETA is never physical receipt.
 - **D-31 The daily late-delivery rate is the airline economic proxy (owner, November 11, 2026).**
   - **The owner's words**, on a rate table the owner supplied: "Column should be
     'daily_airline_economic_proxy_usd' for daily lateness penalty cost." "Assume deliveries are 744 unload + 2 days."
-    "No cap on penalty costs."
+    "No cap on penalty costs." Later the same day: "14 day grace period is not real. Lateness begins at 744 unload
+    plus 2 days", and on keeping the table here: "yes can [put] penalties in repository, they are derived from public
+    data".
   - **Decision.**
     - A late aircraft's daily rate is the owner's airline economic proxy for its customer airline and minor model:
-      column `daily_airline_economic_proxy_usd` of the owner's rate table. No other column of that table is used.
-    - The due date stays as decided on 2026-11-02 (OD-06): the planned unload at control station 744 plus 2 days.
+      column `daily_airline_economic_proxy_usd` of the owner's rate table, $39,010 to $84,372 a day. No other column
+      of that table is used.
+    - Lateness begins at the planned unload at control station 744 plus 2 days, as decided on 2026-11-02 (OD-06).
+      There is no other grace period.
     - No cap. `economics.cap_policy` stays `EXPLICIT_ONLY` and no cap is supplied.
-  - **The table is the owner's and is not in this repository.** Publishing any of it here is the owner's call. Until
-    then the synthetic fleet keeps its earlier public ticket-revenue figures (`fixtures/economics/README.md`), which
-    are not the owner's rates, so simulated dollar figures are not at the owner's scale.
-  - **What was built.** `tools/build_economics_rows.py` (`focus/economics/rate_file.py`) reads a rate table in its
-    own layout: named columns, minor models written as `787-9`, and an explicit list that joins each customer code
-    to the airline name the table uses, matched exactly. An aircraft whose customer and minor model the table does
-    not cover, or whose customer code is not joined to a name, is listed and stays unpriced. Nothing is filled in.
+  - **The table is kept in `fixtures/economics/airline_economic_proxy.csv`** with the owner's approval: 94 rows, 63
+    airlines, the columns FOCUS uses and those that say where the rate comes from. The table's liquidated-damages
+    estimates and hypothetical caps are not used and not kept.
+  - **What changed.**
+    - The synthetic fleet is priced with these rates (`focus/data/fullscale_fixture.py`). Until now it used the
+      ticket revenue an aircraft would have earned in a day, which was 2.7 to 5.2 times higher (median 3.5; weighted
+      by open orders, $293,780 a day against $69,084).
+    - The order of customers changed as well as the level: rank agreement between the two sets is 0.70, the highest
+      rate is British Airways 787-10 where it was United 787-9, and the highest rate is 1.8 times the lowest where it
+      was 2.8 times.
+    - `tools/build_economics_rows.py` (`focus/economics/rate_file.py`) reads the table as it is: named columns,
+      minor models written as `787-9`, and an explicit list that joins each customer code to the airline name the
+      table uses, matched exactly.
+    - The superseded figures stay in `fixtures/economics/ticket_revenue_proxy.csv`, which still gives the synthetic
+      fleet its customers and its open-order mix.
+  - **Not covered by the table.**
+    - Qatar Airways 787-10 (75 open orders) and Turkish Airlines 787-10 (15) have no row: 18% of the open orders.
+      No rate is made up. The synthetic fleet gives them no aircraft. On real data such an aircraft is listed as
+      unpriced and its cost stays unknown until the owner supplies a row or a rule (`DECISION_PLAYBOOK.md`, DEC-35).
+    - The table is keyed by the airline that flies the aircraft, which may differ from the contractual buyer (the
+      table's own caveat). An aircraft whose customer is a lessor or another buyer has no row under that name.
   - **Unchanged.** Cost = daily rate × minutes late ÷ 1,440; the order in which two schedules are compared; every
     plan, validation, goal and score rule. The rates are `ASSUMED` planning values, never contract liability. OD-12
     stays open for approved contract terms and booked liability.
   - **Rates steer the plan, not only its price.** The scheduler's first pass orders work by each aircraft's daily
-    rate. How far apart the rates lie decides how much the improvement search has to repair, and the shipped time
-    budget leaves that search no time at 10 aircraft (`DECISION_PLAYBOOK.md`, DEC-34).
-  - **Tests.** The new cases in `tests/unit/test_rate_file.py`.
+    rate. On one 10-aircraft fleet the first pass alone cost 30% more at these rates than a first pass made with one
+    rate for every aircraft, and the improvement search then took a quarter off. The shipped time budget leaves that
+    search no time (`DECISION_PLAYBOOK.md`, DEC-34).
+  - **Earlier figures.** Dollar amounts in reports and evidence written before this decision used the ticket-revenue
+    figures and a synthetic fleet split over two more customer and minor-model pairs. They were not re-run.
+  - **Tests.** `tests/unit/test_fleet_rates.py` and the new cases in `tests/unit/test_rate_file.py`.
+
+- **D-32 The fleet is whichever aircraft have open tasks (owner, November 11, 2026).**
+  - **The owner's words**, asked about measuring on "the 50-aircraft fleet": "a dynamic 50 aircraft only depending
+    on what tasks are open because these tasks state which aircraft they belong on so a schedule derived a year from
+    now will be different from the 50 aircraft of a schedule made today."
+  - **Decision.** The aircraft in a run are those with open tasks in the data at the cut. No list of aircraft, no
+    list of customers and no count is fixed. Fifty is a planning size, not a limit and not a set.
+  - **Already so in the code.** The census takes every line with any work that is not complete; there is no line cap
+    and no top-50 (`focus/data/scope.py`; policy `scope.default_basis` = `ALL_WIP`, a user requirement). A narrower
+    scope needs an explicit scope receipt.
+  - **What follows.**
+    - Rates: any airline and minor model can come up, so the owner's whole table is kept (D-31), and an aircraft the
+      table does not cover is listed every run, never filled in.
+    - Nothing is tuned to one fleet. The search budget (DEC-34) is measured on several different fleets, and the
+      synthetic fleet is one example among many.
+    - Evidence from one synthetic fleet says how FOCUS behaved on that fleet, not what next year's will look like.
 
 ## Semantic gaps (live), each a precise readiness effect
 

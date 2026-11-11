@@ -125,7 +125,8 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | Time | The database holds UTC; the app shows site local time (America/New_York); live `FOCUS_SOURCE_TIMEZONE_MAP_JSON={"*": "UTC"}` | owner, 2026-10-31 |
 | Display retention, per-job details | Display parts deleted when unread (D-24); per-job score evidence kept for 90 days (D-25) | D-24, D-25 |
 | Planning mode | `auto`: full solve before shift 1, repair otherwise; full solve when the incumbent is over 12 h old | `planning.*`, `PLAN_REPAIR.md` |
-| Daily late-delivery rate (D-31) | The owner's airline economic proxy per customer airline and minor model: column `daily_airline_economic_proxy_usd` of the owner's rate table, which the owner holds. Due = 744 unload + 2 days. No cap (owner, 2026-11-11). A customer and minor model without a row has no rate | `DECISIONS.md` D-31, `tools/build_economics_rows.py` |
+| Daily late-delivery rate (D-31) | The owner's airline economic proxy per customer airline and minor model: column `daily_airline_economic_proxy_usd` of the owner's rate table. Lateness begins at 744 unload + 2 days; there is no other grace period. No cap (owner, 2026-11-11). A customer and minor model without a row has no rate | `fixtures/economics/README.md`, `tools/build_economics_rows.py` |
+| The fleet is dynamic (D-32) | The aircraft in a run are whichever have open tasks at the data cut. No list of aircraft, customers or count is fixed; 50 is a planning size (owner, 2026-11-11) | `focus/data/scope.py`, `scope.default_basis` |
 | Penalty proxy | Modeled from public airline and pricing data, labeled as a proxy (owner: keep) | A15 |
 | Duration statistic | P75 of verified comparable rework episodes | `duration.default_statistic` (`user_requirement`) |
 
@@ -163,7 +164,8 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-31 | Should criticality weight a team's score | OWNER (with data) | no: reported only (D-29) | after 4 weeks of pilot |
 | DEC-32 | Which measures, at which level | OWNER | the score for teams; nothing else is built | before the pilot |
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
-| DEC-34 | How long the scheduler may improve a plan | DATA, inside the owner's 20 minutes | 30 seconds for the whole run: no improvement at 10 aircraft | with the first 50-aircraft timings |
+| DEC-34 | How long the scheduler may improve a plan | DATA, inside the owner's 20 minutes | 30 seconds for the whole run: the first pass uses it up, so no improvement | with the 50-aircraft timings on several fleets |
+| DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
 ## 4. Engineering decisions (take now, no company data needed)
@@ -760,28 +762,73 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 - **Authority:** DATA, inside the owner's 20 minutes (D-28).
 - **Default now.** `optimizer.budget_seconds` = 30 for a whole scheduling run and `optimizer.max_neighborhood_moves`
   = 400. Both are fixture values, never approved for production (`SCHEDULING_CONSTRAINTS.md`). The clock starts
-  with the run. At 10 aircraft the first pass alone took 49 to 54 seconds for the forecast and 26 to 29 for the
-  executable plan on the test machine, so the improvement search got no time on the forecast and almost none on
-  the executable plan.
+  with the run, and the first pass alone uses the budget up:
+
+  | Fleet, on the test machine | First pass, executable plan | First pass, forecast |
+  | --- | --- | --- |
+  | 10 aircraft (`SB`, one shift) | 28 to 32 seconds | 50 to 57 seconds |
+  | 50 aircraft (the stored 14-day run, 42 shifts) | 143 seconds at the median (100 to 182) | 340 seconds at the median (280 to 498) |
+
+  So the improvement search gets no time at 50 aircraft and next to none at 10. It also runs only in a full solve:
+  once a production day as shipped (`planning.default_mode` = `auto`). The other runs repair the accepted plan and
+  do not search.
 - **Why it matters** (`SB`, `docs/task-valuation-investigation/EVIDENCE_INDEX.md`: one 10-aircraft synthetic fleet,
-  one seed, the forecast of one shift). The first pass orders work by each aircraft's daily rate, so what the search
-  adds depends on how far apart the rates lie:
+  one seed, the forecast of one shift, six aircraft late in every plan). Each figure is the plan's late cost at the
+  owner's rates (D-31), whichever rates the plan was made with:
 
-  | Daily rates | First pass only | Three moves, two repairs | Ten moves, five repairs |
+  | Rates the plan was made with | First pass only | Three moves, two repairs | Ten moves, five repairs |
   | --- | --- | --- | --- |
-  | The fixture's, the highest 2.8 times the lowest | $3,220,948 | $3,185,500 (−1.1%) | $3,157,323 (−2.0%) |
-  | Every aircraft at the same rate | $3,625,868 | $3,197,917 (−11.8%) | $3,153,646 (−13.0%) |
+  | The owner's | $1,779,625 | $1,351,099 (−24.1%) | $1,333,078 (−25.1%) |
+  | One rate for every aircraft ($65,000) | $1,369,330 | $1,369,330 (no move accepted) | $1,289,718 (−5.8%) |
+  | The superseded ticket-revenue figures | $1,393,648 | $1,276,877 (−8.4%) | not run |
 
-  Three moves took about a minute more on the forecast and 25 seconds more on the executable plan. Real rates need
-  not be spread as widely as the fixture's, so on real data the search may matter more than the first row shows.
-- **Measure**, on the 50-aircraft fleet and then on real data: the late cost of the executable plan and of the
-  forecast against the seconds given to the search (0, 30, 120, 300, 600), with `window` from `pipeline --status`.
-- **Decision rule.** Give the forecast, which is outside the 20-minute window, the largest budget that still ends
-  before the next run starts. Give the executable plan what the window leaves after gathering, validating and
-  publishing. Stop raising a budget when doubling it saves under 1% of late cost.
+  - **The search took a quarter off the late cost.** The first pass with the owner's rates was the dearest of the
+    eight plans, 30% above the first pass made with one rate for every aircraft.
+  - **No plan here is the lowest-cost plan.** The cheapest at the owner's rates was made with the superseded rates:
+    5.5% under the plan made with the owner's rates and the same search. With ten moves, the plan made with one rate
+    was 3.3% under the plan made with the owner's rates.
+  - **Time.** Three moves took 55 seconds more on the forecast and 22 on the executable plan. Ten moves took 127 and
+    48.
+  - **One fleet and one seed.** On the fleet and the ticket-revenue rates used before D-31, the same three moves
+    saved 1% (`SB (before D-31)` in the evidence index). The saving depends on the fleet, and the fleet changes
+    (D-32).
+- **Measure**, on several different 50-aircraft fleets (D-32) and then on real data: the forecast's late cost with
+  the first pass alone, with three moves and two repairs, and with ten moves and five repairs, and the seconds each
+  took (`search_budget.py run NAME MOVES REPAIRS --aircraft 50 --fleet-seed N`). On real data add `window` from
+  `pipeline --status`.
+- **Decision rule.**
+  - Give the forecast, which is outside the 20-minute window, the largest budget that still ends before the next run
+    starts.
+  - Give the executable plan what the window leaves after gathering, validating and publishing.
+  - Stop raising a budget when doubling it saves under 1% of late cost on every fleet measured.
+  - Set the move bound to what the budget allows, and keep the clock as the guard. A run stopped by its move bound
+    repeats exactly; a run stopped by the clock does not (the receipt's `repeatable`).
 - **Until decided:** the shipped values. The schedule receipt records why the search stopped (`deadline` when the
   budget ended it).
 - **Do not** read any plan as the lowest-cost plan. The receipt says `HEURISTIC_NO_PROOF`.
+
+### DEC-35 An aircraft the rate table does not cover
+
+- **Authority:** OWNER.
+- **Why.** The fleet is whichever aircraft have open tasks (D-32), so an airline and minor model outside the owner's
+  rate table (D-31) can come up at any time. Two do already: Qatar Airways 787-10 (75 open orders) and Turkish
+  Airlines 787-10 (15), 18% of the open orders. Neither airline flies the model yet, so the table has no row.
+- **Today.** No rate. The aircraft is listed (`aircraft_without_rate` from the rate tool, `objective` in the
+  pipeline status), its late cost is unknown, and the scheduler cannot weigh it against the others by cost.
+- **Options.**
+  - (a) The owner adds the row, as the table already does for a planned cabin (its Air Canada 787-10 row).
+  - (b) A stand-in the owner approves, marked as one: the same airline's rate for its nearest minor model. For the
+    two today that is the airline's 787-9 rate: $66,908 for Qatar and $65,404 for Turkish. Across the ten airlines
+    with both models in the table the 787-10 rate is 0.83 to 1.19 times the 787-9 rate (median 0.99).
+  - (c) The average of the table's rows for that minor model: $64,431 for a 787-10.
+  - (d) Leave it unpriced.
+- **Recommendation:** (a) for the two known pairs, and (b) as the standing rule for any airline that has a rate for
+  another minor model. An airline that is not in the table at all stays unpriced and listed: there is nothing of its
+  own to stand in.
+- **Until decided:** (d). The guardrail "unknown stays unknown" holds: no rate is filled in without the owner's
+  rule.
+- **Implement in:** the rate table for (a); `focus/economics/rate_file.py` for a rule, with each stand-in term's
+  `Methodology` saying so.
 
 ### OD-16 The OFFICIAL score policy (last)
 

@@ -59,9 +59,11 @@ stay in company storage. This public repository keeps the synthetic reference co
   - Rates from a file: `python tools/build_economics_rows.py` builds the economics rows and lists the aircraft it
     cannot price. It never fills one in.
   - Which rates (owner, 2026-11-11, D-31): the airline economic proxy per customer airline and minor model, column
-    `daily_airline_economic_proxy_usd` of the owner's rate table. Ask the owner for the table: it is not in this
-    repository. The due date is 744 unload plus 2 days and there is no cap. The table names airlines, so the tool
-    needs a list joining each customer code to the airline's name exactly as the table writes it.
+    `daily_airline_economic_proxy_usd` of the owner's rate table (`fixtures/economics/airline_economic_proxy.csv`).
+    Lateness begins at 744 unload plus 2 days; there is no other grace period and no cap. The table names airlines,
+    so the tool needs a list joining each customer code to the airline's name exactly as the table writes it.
+  - Which aircraft (owner, 2026-11-11, D-32): whichever have open tasks at the data cut. Never fix a list of
+    aircraft or of customers, and never tune to one fleet.
   - Calendars: a line whose calendar ends at or before its due date can never be planned late, so its lateness is
     never costed (`readiness_gaps` in the pipeline status: `CALENDAR_ENDS_BEFORE_DUE`, `CALENDAR_NO_DAYS_LEFT`). The
     calendar producer fixes that; FOCUS never adds a day.

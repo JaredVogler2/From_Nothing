@@ -95,8 +95,12 @@ Each production day has three shifts, so 14 days is 42 shifts. Each shift goes t
 Station windows are start floors. A task may be planned any distance ahead, but never before its own station's window
 opens on its own aircraft. The planner applies the floor and validator check V4 re-checks it.
 
-Customers and minor models follow the open-order mix of `fixtures/economics/penalty_proxy.csv`. Lateness is priced per
-customer and minor model with that table's daily ticket-revenue proxy (`fixtures/economics/README.md`).
+Customers and minor models follow the open-order mix of `fixtures/economics/ticket_revenue_proxy.csv`. Lateness is
+priced per customer and minor model with the owner's airline economic proxy
+(`fixtures/economics/airline_economic_proxy.csv`; owner decision D-31 of 2026-11-11, `fixtures/economics/README.md`).
+A customer and minor model with open orders and no rate in that table gets no aircraft, so every simulated aircraft is
+priced. Runs made before that date used the ticket-revenue figures, about 3.5 times higher. The simulated fleet is one
+example: the real fleet is whichever aircraft have open tasks (D-32).
 
 An aircraft's lateness is set by its worst late parts, the maximum over hundreds of draws. The 8-14 day tail of
 `late_delays` therefore decides how late the fleet runs. It is the first knob to review.

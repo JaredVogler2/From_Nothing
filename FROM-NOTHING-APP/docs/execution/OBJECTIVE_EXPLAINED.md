@@ -32,13 +32,12 @@ sum, so no amount of saved overtime can buy a late delivery.
 **Late-delivery cost of one aircraft** = daily rate × days late.
 
 - **Daily rate.** One rate per aircraft, from its economics term. A term names a customer and minor model, a
-  contract, or one aircraft; the most specific one wins. The shipped rates are a proxy for what a late day costs the
-  airline, not a contract figure, and are labeled ASSUMED. On real data the rate is the owner's airline economic
-  proxy per customer airline and minor model, with no cap (owner decision D-31, 2026-11-11: column
-  `daily_airline_economic_proxy_usd` of the owner's rate table). The synthetic fleet's rates are public
-  ticket-revenue figures, so the amounts in this page's examples are not at the owner's scale.
+  contract, or one aircraft; the most specific one wins. The rates are the owner's airline economic proxy per
+  customer airline and minor model (owner decision D-31, 2026-11-11: column `daily_airline_economic_proxy_usd` of
+  `fixtures/economics/airline_economic_proxy.csv`), $39,010 to $84,372 a day. They are a proxy for what a late day
+  costs the airline, not a contract figure, and are labeled ASSUMED. There is no cap.
 - **Due.** The aircraft's planned unload date at the last control station (CS744) plus 2 days, to the end of that
-  local day (owner decision OD-06).
+  local day (owner decision OD-06). Lateness begins the next minute; there is no other grace period (D-31).
 - **Finish.** The time the last open job on the aircraft is released in the schedule. Every open job counts,
   including ones the schedule could not place.
 - **Days late.** Finish minus due, to the minute, never below zero. Early is worth nothing extra.
@@ -64,16 +63,16 @@ decides what is kept.
 
 ## 2. Worked example
 
-Two aircraft. A costs $380,000 a day late and is due at the end of 12 March. B costs $187,000 a day and is due at
+Two aircraft. A costs $76,000 a day late and is due at the end of 12 March. B costs $53,400 a day and is due at
 the end of 14 March.
 
 | Schedule | A finishes | B finishes | Cost |
 | --- | --- | --- | --- |
-| 1 | 14 March 12:00, 1.5 days late | 14 March 18:00, on time | **$570,000** |
-| 2 | 13 March 12:00, 0.5 days late | 15 March 06:00, 0.25 days late | **$236,750** |
+| 1 | 14 March 12:00, 1.5 days late | 14 March 18:00, on time | **$114,000** |
+| 2 | 13 March 12:00, 0.5 days late | 15 March 06:00, 0.25 days late | **$51,350** |
 | 3 | 12 March 20:00, on time | one job cannot be planned: unknown | unknown |
 
-- Schedule 2 beats schedule 1 at order 3: both have every finish date, and $236,750 is less than $570,000.
+- Schedule 2 beats schedule 1 at order 3: both have every finish date, and $51,350 is less than $114,000.
 - Schedule 3 loses to both at order 2. It has one aircraft with no finish date, and they have none. Its dollars are
   never looked at.
 - If schedule 2 moved a job that was already committed to a slot and schedule 1 did not, schedule 1 would win at
@@ -131,7 +130,7 @@ How to use it:
 
 | Cause | What it looks like | What to do |
 | --- | --- | --- |
-| No rate for the aircraft | `ECONOMICS_MISSING`, `NO_EFFECTIVE_TERM`, `AIRCRAFT_NOT_MAPPED` | Load a term for that customer and minor model. The rates are the owner's rate table (D-31); `tools/build_economics_rows.py` builds the rows from it and lists the aircraft it cannot price: a customer and minor model the table has no row for, or a customer code not joined to one of its airline names. Ask the owner for the missing row. Never substitute an average, a median or another customer's rate. |
+| No rate for the aircraft | `ECONOMICS_MISSING`, `NO_EFFECTIVE_TERM`, `AIRCRAFT_NOT_MAPPED` | Load a term for that customer and minor model. The rates are the owner's rate table (D-31); `tools/build_economics_rows.py` builds the rows from it and lists the aircraft it cannot price: a customer and minor model the table has no row for, or a customer code not joined to one of its airline names. Ask the owner for the missing row or rule (DEC-35). Never substitute an average, a median or another customer's rate. |
 | No due date | `DUE_UNKNOWN` | The line has no CS744 planned unload date in the same run. Fix the control-station data. |
 | A job has no duration | the job is blocked with a duration reason | A duration producer, or the owner's decision on a fallback (OD-02). Never guess one. |
 | A job has no control-station window | the job is blocked with a control-station reason | OD-05 and the `cs_windows` producer. |
@@ -159,16 +158,16 @@ share of the highest such cost in the fleet** (0 to 1). It is the measure the sc
 read from the accepted plan.
 The code is `focus/valuation/criticality.py`; the tests are `tests/unit/test_criticality.py`.
 
-| State of the aircraft in the plan | Cost of one more day late | Example at $380,000 a day |
+| State of the aircraft in the plan | Cost of one more day late | Example at $80,000 a day |
 | --- | --- | --- |
-| `LATE`: finishes after its due date | the daily rate | $380,000 |
-| `ON_TIME`: finishes before its due date | only what would fall past the due date | 12 hours of margin: $190,000; a week of margin: $0 |
-| `PAST_DUE`: due date passed, finish unknown | the daily rate, whatever the finish turns out to be | $380,000 |
+| `LATE`: finishes after its due date | the daily rate | $80,000 |
+| `ON_TIME`: finishes before its due date | only what would fall past the due date | 12 hours of margin: $40,000; a week of margin: $0 |
+| `PAST_DUE`: due date passed, finish unknown | the daily rate, whatever the finish turns out to be | $80,000 |
 | `FINISH_UNKNOWN`: not yet due, finish unknown | unknown, never read as zero | — |
 | `NO_RATE_OR_DUE_DATE` | unknown, never read as zero and never filled in | — |
 | `NO_OPEN_WORK` | nothing | $0 |
 
-Example: three late aircraft at $380,000, $190,000 and $95,000 a day have criticality 1, 0.5 and 0.25. An aircraft
+Example: three late aircraft at $80,000, $40,000 and $20,000 a day have criticality 1, 0.5 and 0.25. An aircraft
 with a week of margin has 0.
 
 Read it under `criticality` in the pipeline status, beside `objective`. Use the forecast's entry.
@@ -189,9 +188,9 @@ Read it under `criticality` in the pipeline status, beside `objective`. Use the 
 - **A carrying cost for early aircraft.** Today an aircraft costs nothing until it passes its due date, so its jobs
   have criticality 0 until then.
 - **A proven optimum.** The optional solver only proposes job orders to the same comparison
-  (`SOLVER_ENABLEMENT.md`). The improvement search after the first pass cut one 10-aircraft forecast's late cost by
-  1% with the fixture's rates and by 12% when every aircraft had the same rate, and the shipped 30-second budget
-  leaves it no time at that size (`DECISION_PLAYBOOK.md`, DEC-34).
+  (`SOLVER_ENABLEMENT.md`). On one 10-aircraft forecast the improvement search after the first pass cut the late
+  cost by 24%, and a plan made with other rates was 5.5% cheaper still at the owner's rates. The shipped 30-second
+  budget is used up by the first pass, so it leaves that search no time (`DECISION_PLAYBOOK.md`, DEC-34).
 - **Dollars per job.** Investigated and not adopted (`docs/task-valuation-investigation/`, reports `01` to `08`):
   single-job costs were zero for a one-shift slip and overlapped where they were not, so they cannot be added up.
   The scheduler's per-job cost of delay stays a search aid.

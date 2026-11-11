@@ -13,15 +13,15 @@ giving its code, ``--customer-codes codes.csv`` supplies the join: a CSV with ``
 per customer code of the aircraft list, the name written exactly as in the rate file. Nothing is matched by
 resemblance; a rate whose customer has no code is listed under ``rate_customers_without_code`` and is not an error.
 
-The owner's rate table is such a file (DECISIONS.md D-31): it names airlines, writes minor models as ``787-9`` and
-holds the daily rate in the column ``daily_airline_economic_proxy_usd``. It stays with the owner and is not in this
-repository. It is read with:
+The owner's rate table is such a file (DECISIONS.md D-31; ``fixtures/economics/airline_economic_proxy.csv``): it names
+airlines in ``operator``, writes minor models as ``787-9`` in ``minor_model`` and holds the daily rate in
+``daily_airline_economic_proxy_usd``. It is read with:
 
-    python tools/build_economics_rows.py --rates owner_rate_table.csv \\
-        --customer-column AIRLINE_COLUMN --model-column MODEL_COLUMN --model-prefix 787- \\
+    python tools/build_economics_rows.py --rates fixtures/economics/airline_economic_proxy.csv \\
+        --customer-column operator --model-column minor_model --model-prefix 787- \\
         --rate-column daily_airline_economic_proxy_usd --customer-codes codes.csv --aircraft aircraft.csv --out DIR \\
         --scenario-key AIRLINE-ECONOMIC-PROXY-2026-11 --owner "economics owner" \\
-        --source-reference "owner rate table, decision of 2026-11-11" --effective-from 2026-01-01T00:00:00.000 \\
+        --source-reference "airline_economic_proxy.csv, owner decision 2026-11-11" --effective-from 2026-01-01T00:00:00.000 \\
         --methodology "Airline economic proxy per customer and minor model: a modeled cost, not a contract liability"
 
 It writes one JSON file per table into DIR (``econ_scenario``, ``econ_mapping_revision``, ``econ_aircraft_mapping``,

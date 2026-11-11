@@ -192,3 +192,39 @@ def test_the_tool_reads_a_rate_file_with_its_own_layout(tmp_path, app_root) -> N
     wrong = subprocess.run(base + ["--rate-column", "daily_rate", "--aircraft", str(tmp_path / "aircraft.csv"), "--out", str(tmp_path / "wrong")],
                            capture_output=True, text=True)
     assert wrong.returncode == 2 and "has no column daily_rate" in wrong.stderr and not (tmp_path / "wrong").exists()
+
+
+def test_the_tool_reads_the_owners_rate_table_kept_in_the_repository(tmp_path, app_root) -> None:
+    """D-31: the documented command, on ``fixtures/economics/airline_economic_proxy.csv`` as it is."""
+    import subprocess
+    import sys
+
+    def write(name, rows):
+        path = tmp_path / name
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+        return path
+
+    table = app_root / "fixtures" / "economics" / "airline_economic_proxy.csv"
+    with table.open(encoding="utf-8", newline="") as fh:
+        rates = {(r["operator"], r["minor_model"]): r["daily_airline_economic_proxy_usd"] for r in csv.DictReader(fh)}
+    codes = write("codes.csv", [{"CustomerCode": "UAL", "RateCustomer": "United Airlines"}, {"CustomerCode": "BAW", "RateCustomer": "British Airways"},
+                                {"CustomerCode": "QTR", "RateCustomer": "Qatar Airways"}])
+    aircraft = [{"LineNumber": "1201", "CustomerCode": "UAL", "MinorModel": "9"}, {"LineNumber": "1202", "CustomerCode": "BAW", "MinorModel": "10"},
+                {"LineNumber": "1203", "CustomerCode": "QTR", "MinorModel": "9"}]
+    base = [sys.executable, str(app_root / "tools" / "build_economics_rows.py"), "--rates", str(table), "--customer-column", "operator",
+            "--model-column", "minor_model", "--model-prefix", "787-", "--rate-column", "daily_airline_economic_proxy_usd",
+            "--customer-codes", str(codes), "--scenario-key", "AIRLINE-ECONOMIC-PROXY", "--owner", "economics owner",
+            "--source-reference", "airline_economic_proxy.csv", "--effective-from", "2026-01-01T00:00:00.000", "--created-at", "2026-11-11T12:00:00.000"]
+    full = subprocess.run(base + ["--aircraft", str(write("aircraft.csv", aircraft)), "--out", str(tmp_path / "full")], capture_output=True, text=True)
+    assert full.returncode == 0, full.stdout + full.stderr
+    terms = {(t["CustomerCode"], t["MinorModel"]): t["DailyRate"] for t in json.loads((tmp_path / "full" / "econ_term.json").read_text())}
+    assert terms[("UAL", 9)] == f"{rates[('United Airlines', '787-9')]}00" and terms[("BAW", 10)] == f"{rates[('British Airways', '787-10')]}00"
+    assert ("QTR", 10) not in terms                                        # the table has no Qatar 787-10 row, and none is made up
+    printed = json.loads(full.stdout)
+    assert printed["priced"] == 3 and len(printed["rate_customers_without_code"]) == 60          # 63 airlines, three with a code here
+    gap = subprocess.run(base + ["--aircraft", str(write("aircraft2.csv", aircraft + [{"LineNumber": "1204", "CustomerCode": "QTR", "MinorModel": "10"}])),
+                                 "--out", str(tmp_path / "gap")], capture_output=True, text=True)
+    assert gap.returncode == 2 and json.loads(gap.stdout)["aircraft_without_rate"] == [{"line": 1204, "customer": "QTR", "minor_model": 10}]
