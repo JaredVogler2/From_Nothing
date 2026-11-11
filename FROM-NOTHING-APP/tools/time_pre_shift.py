@@ -17,7 +17,8 @@
    cost what they cost for the first one.
 
 Every role runs the product's own ``orchestration.run_role``; only the source reader is replaced, by a fixture reader
-over the files of step 1. Named functions are wrapped with a wall-clock timer (inclusive times: a function's seconds
+over the files of step 1. Each job ends the way the pipeline draft's live jobs do (``FOCUS_FAST_EXIT``: without freeing
+its objects one by one); ``--slow-exit`` measures the ordinary exit. Named functions are wrapped with a wall-clock timer (inclusive times: a function's seconds
 include the functions it calls). The fixture clock is fixed, so the pipeline's own ``window`` report reads zero here;
 on live data it is the report to keep (``python -m focus.cli pipeline --key K --status``).
 
@@ -341,9 +342,13 @@ def views(work: Path, persona: str) -> dict[str, Any]:
 
 # ---------------------------------------------------------------------------------------------- the whole flow
 
+FAST_EXIT = True                                                  # jobs end as the pipeline draft's live jobs do
+
+
 def child(work: Path, *args: str) -> float:
     began = time.perf_counter()
-    done = subprocess.run([sys.executable, str(Path(__file__).resolve()), *args], cwd=APP_ROOT, capture_output=True, text=True)
+    env = {**os.environ, "FOCUS_FAST_EXIT": "1" if FAST_EXIT else ""}
+    done = subprocess.run([sys.executable, str(Path(__file__).resolve()), *args], cwd=APP_ROOT, capture_output=True, text=True, env=env)
     seconds = time.perf_counter() - began
     with (work / "timing" / "log.txt").open("a", encoding="utf-8") as log:
         log.write(f"--- {' '.join(args)}: exit {done.returncode}, {seconds:.1f}s\n{done.stdout[-1500:]}\n{done.stderr[-3000:]}\n")
@@ -404,11 +409,12 @@ def _publish_rows(doc: dict[str, Any]) -> list[tuple[str, float]]:
     return [("start the process", doc.get("startup_seconds", 0.0)),
             ("load the admitted snapshot from the store", _seconds(doc, "load_snapshot")),
             ("read the candidate plan from the store", _seconds(doc, "store.read:candidates")),
-            ("independent validation of the candidate (FINAL)", round(final, 1)),
+            ("independent validation of the candidate (FINAL), when the scheduling run's receipt cannot be taken", round(final, 1)),
             ("serialize the plan", round(_seconds(doc, "publish.build_artifact") + once["seconds"] / max(1, once["calls"]), 1)),
-            ("decode the serialized plan and validate it (DETACHED)", _seconds(doc, "validate_artifact:DETACHED")),
+            ("decode the serialized plan and validate it (DETACHED): the stager; the signer takes its receipt", _seconds(doc, "validate_artifact:DETACHED")),
             ("write the unsigned stage", _seconds(doc, "publish.stage")),
-            ("read the stage back and validate those bytes (READBACK)", round(_seconds(doc, "publish.read_stage") + _seconds(doc, "validate_artifact:READBACK"), 1)),
+            ("read the stage back; validate those bytes (READBACK): always in the signer, in the stager only if they differ",
+             round(_seconds(doc, "publish.read_stage") + _seconds(doc, "validate_artifact:READBACK"), 1)),
             ("write the plan's dashboard data and sign it", _seconds(doc, "display.plan_parts_signed")),
             ("accept: plan record, payload, frozen goals, head", round(_seconds(doc, "publish.accept") + _seconds(doc, "publish.post_acceptance"), 1))]
 
@@ -429,8 +435,8 @@ def _stages(doc: dict[str, Any], purpose: str) -> dict[str, Any]:
 
 def _schedule_rows(doc: dict[str, Any], schedule_seconds: float, validate_seconds: float) -> list[tuple[str, float]]:
     """``schedule_seconds`` is the schedule step (or call) and ``validate_seconds`` the validate step after it."""
-    validations = doc.get("validations", [])
-    after_solve = validations[-2]["seconds"] if len(validations) >= 2 else 0.0
+    finals = [v for v in doc.get("validations", []) if v["kind"] == "FINAL"]
+    after_solve = finals[-1]["seconds"] if finals else 0.0           # the last one computed: the validate step takes its receipt
     solve, context, run = _seconds(doc, "schedule.schedule_snapshot"), _seconds(doc, "schedule.engine_context"), _seconds(doc, "schedule.optimizer_run")
     return [("start the process", doc.get("startup_seconds", 0.0)),
             ("load the admitted snapshot from the store", round(schedule_seconds - solve, 1)),
@@ -438,7 +444,7 @@ def _schedule_rows(doc: dict[str, Any], schedule_seconds: float, validate_second
             ("the scheduler: first pass, then repairs and improvement moves while the budget lasts", run),
             ("build the candidate plan, store it, its dashboard digest and receipts", round(solve - context - run - after_solve, 1)),
             ("independent validation after the solve (FINAL)", round(after_solve, 1)),
-            ("the validate step: read the candidate and validate it again (FINAL)", round(validate_seconds, 1))]
+            ("the validate step: check the candidate's source binding and its FINAL receipt", round(validate_seconds, 1))]
 
 
 def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
@@ -469,9 +475,9 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
         if doc:
             step = "schedule" if purpose == "EXECUTABLE" else "forecast"
             total = _seconds(doc, f"step:{step}")
-            # the forecast step schedules and validates in one step: its validation is the last one recorded
-            check = _seconds(doc, "step:validate") if purpose == "EXECUTABLE" else _seconds(doc, "store.read:candidates") + doc["validations"][-1]["seconds"]
-            out["jobs"][title] = _job(doc, wall.get(label), _schedule_rows(doc, total - (0 if purpose == "EXECUTABLE" else check), check))
+            # the forecast step schedules and validates in one step, and its validate part takes the solve's FINAL receipt
+            check = _seconds(doc, "step:validate") if purpose == "EXECUTABLE" else 0.0
+            out["jobs"][title] = _job(doc, wall.get(label), _schedule_rows(doc, total, check))
             out["jobs"][title]["scheduler"] = _stages(doc, purpose)
     for label, title in (("first.stager", "stager: stage_readback (executable plan)"), ("first.signer", "signer: sign_accept (executable plan)"),
                          ("first.forecast_stager", "stager: forecast_stage_readback"), ("first.forecast_signer", "signer: forecast_sign_accept")):
@@ -527,6 +533,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--repair", action="store_true", help="then schedule the same admitted data again in repair mode")
     p.add_argument("--views", action="store_true", help="time the dashboard's read operations after the first pipeline")
     p.add_argument("--no-forecast", action="store_true", help="stop after the executable plan is accepted")
+    p.add_argument("--slow-exit", action="store_true", help="let every job tear its interpreter down (FOCUS_FAST_EXIT off)")
     p = sub.add_parser("prepare")
     p.add_argument("work")
     p.add_argument("--aircraft", type=int, default=50)
@@ -553,7 +560,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     work = Path(args.work).resolve()
     if args.command == "run":
+        global FAST_EXIT
+        FAST_EXIT = not args.slow_exit
         out = run(work, args.aircraft, args.fleet_seed, args.planning, args.repair, args.views, not args.no_forecast)
+        out["fast_exit"] = FAST_EXIT
     elif args.command == "prepare":
         out = prepare(work, args.aircraft, args.fleet_seed)
     elif args.command == "pull":
@@ -572,4 +582,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    from focus.cli import leave
+
+    leave(main())

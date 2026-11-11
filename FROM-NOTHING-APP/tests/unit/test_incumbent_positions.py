@@ -6,12 +6,12 @@
 """
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
 
-from focus.calendar import ShiftPolicy, build_shift, shift_local_minute
+from focus.calendar import ShiftPolicy, build_shift, local_wall, shift_local_minute
 from focus.contracts.planning import locate_position, work_to_go
 from focus.data.sourcetime import local_to_utc
 from focus.domain import PhaseKind, to_minute
@@ -39,6 +39,24 @@ def test_s3_starts_after_local_midnight_are_on_the_next_day(shift_policy) -> Non
     s1 = build_shift(DAY, 1, shift_policy)
     assert shift_local_minute(DAY, 1, "06:15", shift_policy) == _local(shift_policy, DAY, "06:15")
     assert s1.start <= shift_local_minute(DAY, 1, "06:15", shift_policy) < s1.end
+
+
+def test_a_slot_in_the_hour_the_clocks_repeat_is_read_back_as_the_same_instant(shift_policy) -> None:
+    """On the night the clocks go back (November 1, 2026 at this site) the hour from 01:00 happens twice inside S3. The
+    second one records its UTC offset; without it the slot was read back an hour early and could not be kept."""
+    night = date(2026, 10, 31)
+    s3 = build_shift(night, 3, shift_policy)
+    for hour, wall in ((4, "00:30"), (5, "01:30"), (6, "01:30-05:00"), (7, "02:30")):
+        instant = datetime(2026, 11, 1, hour, 30, tzinfo=timezone.utc)
+        assert local_wall(instant, shift_policy.tz) == wall
+        minute = shift_local_minute(night, 3, wall, shift_policy)
+        assert minute == to_minute(instant) and s3.start <= minute < s3.end
+    assert shift_local_minute(night, 3, "01:30", shift_policy) + 60 == shift_local_minute(night, 3, "01:30-05:00", shift_policy)
+    # every other night, and the spring change, write the plain wall time
+    assert local_wall(datetime(2026, 10, 27, 6, 30, tzinfo=timezone.utc), shift_policy.tz) == "02:30"
+    spring = datetime(2026, 3, 8, 7, 30, tzinfo=timezone.utc)                       # 03:30 local, after the skipped hour
+    assert local_wall(spring, shift_policy.tz) == "03:30"
+    assert shift_local_minute(date(2026, 3, 7), 3, "03:30", shift_policy) == to_minute(spring)
 
 
 def _phase(job: str, kind: PhaseKind, ordinal: int, minutes: int):

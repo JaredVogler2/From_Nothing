@@ -267,16 +267,36 @@ def build_shift(day: date, number: int, policy: ShiftPolicy, site: str = "DEMO")
     return _build_shift_cached(day, number, policy, site)
 
 
+def local_wall(instant: datetime, tz: ZoneInfo) -> str:
+    """An instant as the local wall-clock time ("HH:MM") that an accepted plan's slot records.
+
+    On the night the clocks go back one local hour happens twice. A time in its second occurrence carries its UTC
+    offset ("01:30-05:00"), so ``shift_local_minute`` reads it back as the same instant and not an hour early."""
+    local = instant.astimezone(tz)
+    wall = local.strftime("%H:%M")
+    if local.fold:
+        offset = local.strftime("%z")
+        wall += f"{offset[:3]}:{offset[3:5]}"
+    return wall
+
+
 def shift_local_minute(day: date, number: int, wall: str, policy: ShiftPolicy, site: str = "DEMO") -> int:
     """The UTC minute of a local wall-clock time ("HH:MM") inside shift ``number`` of production day ``day``.
 
     A time earlier than the shift's start belongs to the next calendar day: S3 runs past local midnight, so its
-    starts after midnight are on the day after its production day.
+    starts after midnight are on the day after its production day. A time written with its UTC offset (``local_wall``:
+    the second occurrence of a repeated hour) is that instant; without one, a repeated hour reads as its first occurrence.
     """
     shift = build_shift(day, number, policy, site)
     t = time.fromisoformat(wall)
-    at = to_minute(local_to_utc(datetime.combine(day, t), policy.tz))
-    return at if at >= shift.start else to_minute(local_to_utc(datetime.combine(day + timedelta(days=1), t), policy.tz))
+
+    def on(d: date) -> int:
+        if t.tzinfo is not None:
+            return to_minute(datetime.combine(d, t).astimezone(timezone.utc))
+        return to_minute(local_to_utc(datetime.combine(d, t), policy.tz))
+
+    at = on(day)
+    return at if at >= shift.start else on(day + timedelta(days=1))
 
 
 def parse_shift_id(shift_id: str) -> tuple[str, date, int]:

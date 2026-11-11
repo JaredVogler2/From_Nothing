@@ -7,7 +7,7 @@ order, with its evidence references dropped.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import fields, replace
+from dataclasses import fields, is_dataclass, replace
 from datetime import date
 from typing import Any, Iterable, Iterator
 
@@ -23,11 +23,29 @@ HOLD_KINDS = (PhaseKind.IP_QA, PhaseKind.FINAL_QA, PhaseKind.OTHER_BUYOFF)
 NO_TEAM = "~"                                       # team-day part of duties no pool of that day lists
 
 
+_STRIP: dict[type, Any] = {}          # record class -> the names of its other fields, or None when it has no evidence field
+
+
 def strip(record: Any) -> Any:
-    """The record without its evidence references (display parts never carry evidence)."""
-    if getattr(record, "evidence", ()) and "evidence" in {f.name for f in fields(record)}:
-        return replace(record, evidence=())
-    return record
+    """The record without its evidence references (display parts never carry evidence).
+
+    A snapshot package strips over a million records, so the copy is made field by field with the class's field names
+    looked up once. The result equals ``replace(record, evidence=())``: every field of a record that was already built
+    and checked is carried over as it is, and only ``evidence`` is emptied."""
+    cls = type(record)
+    try:
+        others = _STRIP[cls]
+    except KeyError:
+        names = [f.name for f in fields(record)] if is_dataclass(record) else []
+        others = _STRIP[cls] = tuple(n for n in names if n != "evidence") if "evidence" in names else None
+    if others is None or not record.evidence:
+        return record
+    out = object.__new__(cls)
+    put = object.__setattr__                                     # the records are frozen
+    for name in others:
+        put(out, name, getattr(record, name))
+    put(out, "evidence", ())
+    return out
 
 
 def phase_team(phase: Any) -> str | None:

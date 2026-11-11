@@ -301,18 +301,25 @@ def criticality(doc: Mapping[str, Any]) -> dict[str, Any]:
     return _recorded(doc, "criticality")
 
 
-WINDOW_STEPS = ("acquire", "admit", "schedule", "validate", "stage_readback", "sign_accept")   # the executable plan's path
+WINDOW_STEPS = ("acquire", "admit", "schedule", "validate", "stage_readback", "sign_accept")   # to the accepted shift plan
+DELIVERY_STEPS = ("forecast", "forecast_stage_readback", "forecast_sign_accept")              # then to the accepted delivery plan
 
 
 def window(services: Any, doc: Mapping[str, Any]) -> dict[str, Any]:
-    """The pre-shift window of one pipeline run, against the owner's budget (D-28: data gathering, scheduling and the
-    dashboard ready within 20 minutes).
+    """The pre-shift window of one pipeline run, against the owner's budget (D-28 and D-33: gathering the data, digesting
+    it and scheduling take 20 minutes at most, and the application is populated at shift start).
 
-    The clock runs from the data cut (the source run's cutoff) to the end of ``sign_accept``: acceptance writes the
-    executable plan's display package, which is what the dashboard reads. Work finished after the cut is not in the
-    plan, so every minute here widens the gap that is captured after the fact. The forecast steps follow acceptance and
-    are outside the window. ``late`` says the plan was accepted at or after the start of the shift it plans: that
-    shift is then scored against the previous plan (D-26).
+    The clock runs from the data cut (the source run's cutoff). Work finished after the cut is not in the plan, so every
+    minute here widens the gap that is captured after the fact. Two instants are reported:
+
+    * ``plan_and_dashboard_ready_at`` / ``minutes``: the end of ``sign_accept``. The shift plan is accepted and its
+      display package written: the task lists crews and leads open at shift start;
+    * ``delivery_plan_ready_at`` / ``schedule_minutes``: the end of ``forecast_sign_accept``. The delivery plan, which
+      carries the shift plan through delivery, is accepted too: the whole schedule, with its dates and late cost.
+
+    ``within_budget`` is about the whole schedule (D-33): unknown until the delivery plan is accepted, and false as soon as
+    the shift plan alone is over. ``shift_plan_within_budget`` is the first instant alone. ``late`` says the shift plan
+    was accepted at or after the start of the shift it plans: that shift is then scored against the previous plan (D-26).
     """
     from .data.acquisition import get_run
     from .performance.lifecycle import containing_shift_id, shift_window
@@ -324,23 +331,32 @@ def window(services: Any, doc: Mapping[str, Any]) -> dict[str, Any]:
     if steps["acquire"]["status"] == "completed":
         found = get_run(services.repositories, steps["acquire"]["output"]["source_run_id"])
         cut = None if found is None else found[0].cutoff
-    ready = _parse(steps["sign_accept"]["updated_at"]) if steps["sign_accept"]["status"] == "completed" else None
+
+    def ended(step: str) -> datetime | None:
+        return _parse(steps[step]["updated_at"]) if steps[step]["status"] == "completed" else None
+
+    def minutes_to(instant: datetime | None) -> float | None:
+        return None if cut is None or instant is None else round((instant - cut).total_seconds() / 60, 1)
+
+    ready, delivery_ready = ended("sign_accept"), ended("forecast_sign_accept")
     seconds: dict[str, float | None] = {}
-    for name in WINDOW_STEPS:
-        began, ended = _parse(steps[name].get("started_at")), _parse(steps[name]["updated_at"])
-        done = steps[name]["status"] == "completed" and began is not None and ended is not None
-        seconds[name] = round((ended - began).total_seconds(), 1) if done else None          # type: ignore[operator]
-    minutes = None if cut is None or ready is None else round((ready - cut).total_seconds() / 60, 1)
+    for name in WINDOW_STEPS + DELIVERY_STEPS:
+        began, finished = _parse(steps[name].get("started_at")), _parse(steps[name]["updated_at"])
+        done = steps[name]["status"] == "completed" and began is not None and finished is not None
+        seconds[name] = round((finished - began).total_seconds(), 1) if done else None      # type: ignore[operator]
+    minutes, schedule_minutes = minutes_to(ready), minutes_to(delivery_ready)
+    shift_ok = None if minutes is None else minutes <= budget
+    within = False if shift_ok is False else (None if schedule_minutes is None else schedule_minutes <= budget)
     planned_for, late = None, None
     if cut is not None:
         planned_for = containing_shift_id(policy, cut + timedelta(minutes=policy.int("planning.cutoff_lead_minutes")), services.settings.site)
         if planned_for is not None and ready is not None:
             late = ready >= shift_window(policy, planned_for).start
     return {"budget_minutes": budget, "data_cut": cut, "plan_and_dashboard_ready_at": ready, "minutes": minutes,
-            "within_budget": None if minutes is None else minutes <= budget, "plans_shift": planned_for, "late": late,
-            "step_seconds": seconds,
-            "note": "from the data cut to the accepted executable plan and its dashboard data; staging before the cut and the "
-                    "forecast after acceptance are outside it"}
+            "shift_plan_within_budget": shift_ok, "delivery_plan_ready_at": delivery_ready, "schedule_minutes": schedule_minutes,
+            "within_budget": within, "plans_shift": planned_for, "late": late, "step_seconds": seconds,
+            "note": "from the data cut: minutes to the accepted shift plan and its dashboard data, schedule_minutes to the accepted "
+                    "delivery plan as well (the whole schedule, D-33). Staging before the cut is outside it"}
 
 
 def outbox_events(services: Any, pid: str) -> list[dict[str, Any]]:
@@ -396,8 +412,11 @@ def _schedule_one(services: Any, doc: dict[str, Any], inputs: dict[str, Any], pu
     from .valuation.criticality import aircraft_criticality, report
 
     request = doc["request"]
+    mode = request.get("planning", "full")
+    # a full solve a pipeline asks for is the nightly one: it also records how far a repair would have landed (the drift check)
     plan, run = schedule(services, source_run=inputs["admit"]["source_run_id"], purpose=Purpose(purpose),
-                         budget_seconds=request["budget_seconds"], max_moves=request["max_moves"], mode=request.get("planning", "full"))
+                         budget_seconds=request["budget_seconds"], max_moves=request["max_moves"], mode=mode,
+                         measure_repair=mode == "full" and services.policy.bool("planning.drift_check"))
     return {"candidate_id": plan.id, "valid": run.validation.valid, "violations": len(run.validation.violations),
             "solver": run.solver.get("status"), "planning": run.planning or None,
             "objective": objective_status(plan.costs, plan.aircraft_completion, plan.job_dispositions, plan.created_at),
@@ -406,17 +425,19 @@ def _schedule_one(services: Any, doc: dict[str, Any], inputs: dict[str, Any], pu
 
 def _validate_one(services: Any, inputs: dict[str, Any], purpose: str, item: Mapping[str, Any]) -> dict[str, Any]:
     """Independent FINAL validation of one candidate against the admitted snapshot (same source, every required check)."""
-    from .contracts.planning import CandidatePlan
     from .data.acquisition import load_snapshot
-    from .validation.plan import CANDIDATES, load_incumbent, persist_receipt, validate
+    from .engine.max.optimizer.orchestrator import scheduled_candidate
+    from .validation.plan import load_incumbent, persist_receipt, recorded_pass, validate
 
     snapshot = load_snapshot(services.repositories, inputs["admit"]["snapshot_id"])
-    plan = services.repositories.get_typed(CANDIDATES, item["candidate_id"], "CandidatePlan", CandidatePlan)
+    plan = scheduled_candidate(services.repositories, item["candidate_id"])
     if plan is None or plan.source_run_id != inputs["admit"]["source_run_id"] or plan.snapshot_hash != snapshot.hash:
         raise StepFailed("SOURCE_MISMATCH", f"{purpose} candidate is not bound to the admitted source run and snapshot")
-    receipt = validate(snapshot, services.policy, plan, incumbent=load_incumbent(services.repositories, plan.incumbent_id), kind="FINAL",
-                       created_at=services.clock.now())
-    persist_receipt(services.repositories, receipt, plan)
+    receipt = recorded_pass(services.repositories, plan, snapshot, services.policy, kind="FINAL")     # the scheduling run's, when it passed
+    if receipt is None:
+        receipt = validate(snapshot, services.policy, plan, incumbent=load_incumbent(services.repositories, plan.incumbent_id), kind="FINAL",
+                           created_at=services.clock.now())
+        persist_receipt(services.repositories, receipt, plan)
     return {"candidate_id": plan.id, "validation_id": receipt.id, "valid": receipt.valid, "violations": len(receipt.violations),
             "required_skips": list(receipt.required_skips)}
 

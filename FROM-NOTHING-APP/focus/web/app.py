@@ -58,4 +58,7 @@ def create_app(settings: Settings | None = None, repositories: Repositories | No
     app.extensions["focus"] = services
     security.init_app(app, settings)
     routes.register(app, services)
+    from . import warm
+
+    app.extensions["focus_warm"] = warm.start(services)       # off unless FOCUS_WARM_SECONDS is set (D-33)
     return app

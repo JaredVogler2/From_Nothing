@@ -140,6 +140,110 @@ def test_a48_corrupted_readback_is_rejected_before_signing(world, name) -> None:
     assert readback is not None and readback.payload["valid"] is False                       # the independent readback receipt is durable
 
 
+# ---------------------------------------------------------------------- each validation computed once, the signer's own
+
+class _Counted:
+    """Counts the validations a publication computes, by kind (``validate_artifact`` decodes and validates the bytes)."""
+
+    def __init__(self, monkeypatch):
+        import focus.publication.service as service
+
+        self.calls: list[str] = []
+        real_plan, real_artifact = service.validate, service.validate_artifact
+
+        def plan_validation(snapshot, policy, plan, **kw):
+            self.calls.append(f"plan:{kw.get('kind', 'FINAL')}")
+            return real_plan(snapshot, policy, plan, **kw)
+
+        def artifact_validation(data, snapshot, policy, **kw):
+            self.calls.append(f"bytes:{kw.get('kind', 'DETACHED')}")
+            return real_artifact(data, snapshot, policy, **kw)
+
+        monkeypatch.setattr(service, "validate", plan_validation)
+        monkeypatch.setattr(service, "validate_artifact", artifact_validation)
+
+    def take(self) -> list[str]:
+        out, self.calls = self.calls, []
+        return out
+
+
+def test_each_validation_is_computed_once_and_the_signer_validates_the_bytes_it_signs(world, monkeypatch) -> None:
+    """D-28: the scheduling run's FINAL and the stager's DETACHED are not repeated by later steps. The signer still
+    decodes and validates the staged bytes itself, in its own call, before it signs them."""
+    w = world
+    counted = _Counted(monkeypatch)
+    staged = publish(w.services, w.t.p1c.id, until="readback")
+    assert staged.status == "STAGED" and counted.take() == ["bytes:DETACHED"]      # FINAL was the scheduler's; readback bytes equal
+    assert staged.steps == ["final_validation", "serialize", "detached_validation", "stage", "readback", "readback_validation"]
+    stored = {kind: w.services.repositories.get_envelope(VALIDATIONS, staged.validations[kind]).payload for kind in staged.validations}
+    assert {kind: (r["kind"], r["valid"]) for kind, r in stored.items()} == {k: (k, True) for k in ("FINAL", "DETACHED", "READBACK")}
+    assert stored["READBACK"]["check_counts"] == stored["DETACHED"]["check_counts"]   # the same findings on the same bytes
+    assert stored["READBACK"]["payload_sha256"] == stored["DETACHED"]["payload_sha256"] and len(set(staged.validations.values())) == 3
+    signed = publish(w.services, w.t.p1c.id)
+    assert signed.status == "ACCEPTED" and counted.take() == ["bytes:READBACK"]    # its own validation of the staged bytes, nothing else
+    assert signed.validations == staged.validations and head_id(w) == signed.plan_id
+    receipt = signed.receipt
+    assert (receipt.final_validation_id, receipt.detached_validation_id, receipt.readback_validation_id) == tuple(
+        staged.validations[k] for k in ("FINAL", "DETACHED", "READBACK"))
+
+
+def test_the_signer_rejects_staged_bytes_that_changed_after_the_stager_validated_them(world, monkeypatch) -> None:
+    """The stager's receipts never stand in for the signer's own validation of what it signs."""
+    w = world
+    assert publish(w.services, w.t.p1c.id, until="readback").status == "STAGED"
+    counted = _Counted(monkeypatch)
+    edit, expected = READBACK_CORRUPTIONS["crew"]
+    result = publish(w.services, w.t.p1c.id, repository=CorruptingRepo(w.services.repositories, edit))
+    assert counted.take() == ["bytes:READBACK"]
+    assert result.status == "REJECTED" and expected in result.reasons and "sign" not in result.steps
+    assert any(r.startswith("STAGE_READBACK_MISMATCH") for r in result.reasons) and head_id(w) == w.t.p0.plan_id
+
+
+def test_the_stager_validates_a_readback_that_differs_from_what_it_serialized(world, monkeypatch) -> None:
+    w = world
+    counted = _Counted(monkeypatch)
+    edit, expected = READBACK_CORRUPTIONS["timezone"]
+    result = publish(w.services, w.t.p1c.id, repository=CorruptingRepo(w.services.repositories, edit), until="readback")
+    assert counted.take() == ["bytes:DETACHED", "bytes:READBACK"]                  # different bytes are validated on their own
+    assert result.status == "REJECTED" and expected in result.reasons
+
+
+def test_a_receipt_that_did_not_pass_or_binds_other_inputs_is_never_reused(world, monkeypatch) -> None:
+    import focus.publication.service as service
+    from focus.contracts.planning import CandidatePlan
+    from focus.data.acquisition import load_snapshot
+    from focus.validation.plan import receipt_id, recorded_pass
+
+    w = world
+    repos, policy = w.services.repositories, w.services.policy
+    plan = repos.get_typed(CANDIDATES, w.t.p1c.id, "CandidatePlan", CandidatePlan)
+    snapshot = load_snapshot(repos, plan.snapshot_id)
+    wanted = receipt_id(plan, snapshot, policy, kind="FINAL")
+    good = recorded_pass(repos, plan, snapshot, policy, kind="FINAL")
+    assert good is not None and good.id == wanted                                   # the scheduling run stored it
+    assert recorded_pass(repos, plan, snapshot, policy, kind="DETACHED") is None    # another kind: another id, nothing stored
+    assert recorded_pass(repos, replace(plan, hash="0" * 64), snapshot, policy, kind="FINAL") is None
+    # the store keeps history: a receipt can be neither replaced nor deleted through it
+    with pytest.raises(Exception, match="IMMUTABLE_CONFLICT"):
+        repos.put_record(VALIDATIONS, "ValidationReceipt", wanted, replace(good, valid=False), source_run_id=plan.source_run_id,
+                         policy_hash=plan.policy_hash, purpose=plan.purpose.value)
+    with pytest.raises(Exception, match="NOT_DELETABLE"):
+        repos.store.delete_immutable(VALIDATIONS, wanted)
+    # and a record that reached the store some other way is still checked field by field before it is taken
+    holding = lambda receipt: SimpleNamespace(get_typed=lambda collection, record_id, type_name, cls: receipt)
+    assert recorded_pass(holding(good), plan, snapshot, policy, kind="FINAL") == good
+    for forged in (replace(good, valid=False), replace(good, required_skips=("V9",)), replace(good, plan_hash="1" * 64),
+                   replace(good, validator_version="0"), replace(good, snapshot_hash="2" * 64), replace(good, policy_hash="3" * 64),
+                   replace(good, kind="READBACK"), replace(good, candidate_id="other"), replace(good, payload_sha256="4" * 64),
+                   replace(good, id="VAL-other"), None):
+        assert recorded_pass(holding(forged), plan, snapshot, policy, kind="FINAL") is None
+    # without a usable receipt the publication computes the validation itself
+    monkeypatch.setattr(service, "recorded_pass", lambda *a, **kw: None)
+    counted = _Counted(monkeypatch)
+    result = publish(w.services, w.t.p1c.id)
+    assert counted.take()[0] == "plan:FINAL" and result.status == "ACCEPTED"
+
+
 # ---------------------------------------------------------------------- A51: crash at every step
 
 CRASHES = [

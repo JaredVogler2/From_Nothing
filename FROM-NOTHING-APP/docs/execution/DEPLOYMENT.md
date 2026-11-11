@@ -121,6 +121,7 @@ Connect content settings ("Vars"):
 | `FOCUS_MCP_ENABLED` | `false` until MCP access is approved |
 | `FOCUS_DISPLAY_CACHE_MB` | the display parts the web keeps verified in memory, in MB of stored JSON (default 192) |
 | `FOCUS_TWIN_FULL_LOAD` | leave `false`: the digital twin would load whole snapshots and plan artifacts (`DISPLAY_PACKAGE.md`) |
+| `FOCUS_WARM_SECONDS` | `30`: every 30 seconds each web process checks for a newly admitted run or accepted plan and, on a change, reads ahead what the team lead views need, so they open at once at shift start (D-33; `focus/web/warm.py`). Empty or `0` turns it off |
 
 **Memory.** The web reads only the display package the pipeline publishes, never a snapshot or a plan artifact
 (`DISPLAY_PACKAGE.md`). At 50 aircraft one process opening every view peaked at 857 MB with the default part cache, so

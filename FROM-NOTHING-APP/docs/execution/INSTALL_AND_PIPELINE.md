@@ -208,11 +208,13 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
   `observe_evaluate` step stops with `LIVE_OBSERVATIONS_UNAVAILABLE` until the live observation path is built
   (`docs/integration/HANDOFF.md` §6).
 
-- **Executable first.** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only the executable plan, the one
-  crews are dispatched on. `forecast` needs the accepted executable plan, so each role's first run stops before the
-  forecast and the shift's dispatch never waits for it. The forecast (delivery dates, days late and penalties for every
-  aircraft) still runs on every pipeline, on the same admitted snapshot, and is staged, read back and signed the same
-  way. The GitLab draft runs it as `forecast_schedule_validate`, `forecast_stage_readback` and `forecast_sign_accept`.
+- **Executable first, and one schedule (D-33).** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only
+  the executable plan (the shift plan), the one crews are dispatched on. `forecast` needs the accepted executable plan,
+  so each role's first run stops before the forecast and the shift's dispatch never waits for it. The forecast (the
+  delivery plan: delivery dates, days late and penalties for every aircraft) runs on every pipeline, on the same
+  admitted snapshot, and is staged, read back and signed the same way. It keeps every slot of the shift plan in force
+  and plans the rest of the flow around them (`PLAN_REPAIR.md`, "One schedule"), so the two plans are one schedule.
+  The GitLab draft runs it as `forecast_schedule_validate`, `forecast_stage_readback` and `forecast_sign_accept`.
 
 - **Planning mode.** A pipeline's request fixes how both plans are made (`--planning`, default policy
   `planning.default_mode` = `auto`). The schedule and forecast step outputs, and each candidate's receipt
@@ -222,11 +224,13 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
     new and changed work around it, then the cost-of-delay redispatch of that repair (the better one is kept). It re-plans the whole horizon, so a shift's shortfall still moves delivery
     dates and penalties. The FINAL validation gates it like any plan. With no accepted plan, or when the repaired plan
     fails validation, the full solve runs instead and the receipt says why (`REPAIR_NO_INCUMBENT`, `REPAIR_INVALID`).
-  - `auto`: repair between daily full solves. A run plans the shift that contains its cutoff plus
-    `planning.cutoff_lead_minutes` (60). It gets the full solve when that shift is in `planning.full_solve_shifts` ([1]),
-    when there is no accepted plan, or when the accepted plan's cutoff is more than
-    `planning.repair_max_incumbent_age_hours` (12) old. Each such full solve also decodes the repair it replaces and
-    records the drift (`planning.drift_check`): cost, deferred work and aircraft completion dates, repair minus full.
+  - `auto`: repair, unless a full solve is due. A run plans the shift that contains its cutoff plus
+    `planning.cutoff_lead_minutes` (60). It gets the full solve when that shift is in `planning.full_solve_shifts`
+    (empty since D-33: every pre-shift run repairs), when there is no accepted plan, or when the accepted plan's cutoff
+    is more than `planning.repair_max_incumbent_age_hours` (30) old.
+  - The full solve is the nightly pipeline's (`--planning full`). A full solve a pipeline runs also decodes the repair
+    it replaces and records the drift (`planning.drift_check`): cost, deferred work and aircraft completion dates,
+    repair minus full.
   - `docs/execution/PLAN_REPAIR.md` explains the method, the measurements and the limits.
 - **Admitted data is read once per process.** A process parses and verifies the admitted snapshot the first time it
   loads it.
@@ -249,6 +253,18 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 - **The stage/sign split.** `stage_readback` runs `publish(until="readback")`: the unsigned stage plus the independent
   readback validation, with no signing material. `sign_accept` re-reads and re-validates those exact bytes, signs,
   accepts and moves the head last.
+- **Each validation is computed once per plan (D-33).** The acceptance order names three: FINAL on the candidate,
+  DETACHED on the serialized bytes, READBACK on the bytes read back from the stage. Each role used to run all of the
+  earlier ones again, eight computations for one plan. Now:
+  - FINAL is the scheduling run's. The `validate` step, the stager and the signer take its stored receipt when it
+    passed and binds exactly the same plan, snapshot, policy and validator (`validation.plan.recorded_pass`; a
+    receipt's id is the digest of everything the validation reads). A receipt that did not pass is never taken.
+  - DETACHED is the stager's. The signer takes its receipt the same way.
+  - READBACK is computed by the signer, in its own process, on the bytes it is about to sign. It never comes from
+    the store. In the stager, bytes read back that equal byte for byte what it has just validated carry that
+    validation's findings; bytes that differ are validated on their own and rejected.
+- **A job ends when its outputs are written** (`FOCUS_FAST_EXIT=true`, set for the live jobs in the draft). Freeing
+  several GB of objects one by one took 11 to 20 seconds per job at 50 aircraft.
 - **The display package.** The web reads small, partitioned parts the pipeline publishes, never a snapshot or a plan
   artifact (`DISPLAY_PACKAGE.md`). There is no new step:
   - `acquire` writes the snapshot's parts before it moves the source head. At 50 aircraft that takes 162 s and writes

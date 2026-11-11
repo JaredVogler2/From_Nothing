@@ -273,6 +273,46 @@ team or a person were not opened here (`DISPLAY_PACKAGE.md` has them).
 
 **What would bring it under 20 minutes** is in `DECISION_PLAYBOOK.md`, DEC-36. Nothing was changed here.
 
+## The pre-shift flow after D-33 (November 11, 2026)
+
+The owner's requirement became one schedule through delivery inside the 20 minutes: the shift plan and the delivery
+plan (`DECISIONS.md`, D-33). Since the measurement above:
+
+- the delivery plan keeps every slot of the shift plan and plans the rest of the flow around them;
+- each validation is computed once per plan: FINAL by the scheduling run, DETACHED by the stager, READBACK by the
+  signer on the bytes it signs. A plan was validated eight times before;
+- every pre-shift run repairs the accepted plans; the full solve is nightly;
+- the `validate` step takes the solve's receipt and the candidate its process has just stored;
+- a job ends when its outputs are written (`FOCUS_FAST_EXIT`);
+- the snapshot's dashboard parts are built without a slow record copy.
+
+**Re-measured at 10 aircraft** with the same tool, each role in its own process: 303,739 source rows, a first run, so
+both plans were solved in full.
+
+| Job | Seconds | Of which |
+| --- | --- | --- |
+| source: `acquire`, `admit` | 81 | snapshot built 21, stored 19, its dashboard parts 26 |
+| app: `schedule`, `validate` | 95 | snapshot loaded 34, working data 7, scheduler 41, FINAL validation 8 |
+| stager: `stage_readback` | 59 | snapshot loaded 33, decode and DETACHED validation 14 |
+| signer: `sign_accept` | 67 | snapshot loaded 33, READBACK validation 16, dashboard parts 3, acceptance 4 |
+| **Data cut to the accepted shift plan** | **302** (5.0 min) | |
+| app: `forecast` | 126 | snapshot loaded 35, working data 7, scheduler 60, FINAL validation 10 |
+| stager: `forecast_stage_readback` | 86 | snapshot loaded 34, decode and DETACHED validation 29 |
+| signer: `forecast_sign_accept` | 95 | snapshot loaded 33, READBACK validation 32, dashboard parts 7 |
+| **Shift plan accepted to the accepted delivery plan** | **307** (5.1 min) | |
+| **The whole schedule** | **609** (10.2 min) | |
+
+- **The delivery plan held the shift plan slot for slot:** its 6,337 commitments and its 3,193 later slots, none
+  re-placed.
+- **One validation per job.** The stager computed DETACHED only and the signer READBACK only, for both plans.
+- **A repair of the same data**, which is what a pre-shift run does after the first: the scheduler took 13 seconds
+  for the shift plan (41 in full) and 22 for the delivery plan (60 in full), and kept every slot.
+- **The six snapshot loads are a third of the flow** (203 of 609 seconds). Options (g), (h) and (i) of
+  `DECISION_PLAYBOOK.md`, DEC-36 are about them.
+
+**At 50 aircraft the flow has not been timed again yet.** Until it is, the 50-aircraft figures in this document are
+those of the first measurement above, which the changes shorten but do not bring inside 20 minutes for both plans.
+
 ## What changed in the native-core trial
 
 - **Native core** (`native/`, `docs/execution/NATIVE_CORE.md`): the duty ledger and crew selection in Rust, with

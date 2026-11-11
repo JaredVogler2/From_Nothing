@@ -353,5 +353,22 @@ def cli_mcp_stdio(services: Any, args: argparse.Namespace) -> dict[str, Any]:
     return {"status": "ok"}
 
 
+def leave(code: int, env: Any = None) -> None:
+    """End the process with ``code``. With ``FOCUS_FAST_EXIT`` set to 1 or true, without tearing the interpreter down.
+
+    A pipeline job holds several GB of plan and snapshot objects, and freeing them one by one at exit took 11 to 20
+    seconds per job at 50 aircraft, inside the pre-shift window (D-28). Every command writes and flushes its durable
+    outputs before it returns, and its result is printed and flushed by ``emit``, so nothing is lost by leaving at once.
+    Off by default: the pipeline draft sets it for the live jobs."""
+    import os
+
+    env = os.environ if env is None else env
+    if str(env.get("FOCUS_FAST_EXIT", "")).strip().lower() in ("1", "true", "yes"):
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(code)
+    raise SystemExit(code)
+
+
 if __name__ == "__main__":  # pragma: no cover
-    raise SystemExit(main())
+    leave(main())

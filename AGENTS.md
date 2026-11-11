@@ -5,16 +5,31 @@ port to real data must keep. Reading needs no approval; approval is for changes.
 
 ## What FOCUS is for
 
-1. **Schedule every aircraft with open work, through delivery, at the lowest late-delivery cost**, without breaking
-   a constraint. The scheduler is a fixed, rule-based procedure. There is no AI in it.
-2. **Run before every shift**, three times a day, within 20 minutes from the data cut to the plan and its dashboard
-   being ready. A pipeline gathers the data, schedules, validates and publishes; the web application only displays
-   what the pipeline published. As shipped, that took 23.2 minutes at 50 aircraft on the test machine, and the
-   scheduler was 3 of them: `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md`, DEC-36 lists what to change.
-3. **Score each team's shift** against the plan accepted before that shift started, with an excusal process so a
-   team is not marked down for causes outside its control.
+The owner's requirement, in the owner's words, is `FROM-NOTHING-APP/docs/execution/DECISIONS.md`, D-33 (November 11,
+2026). Every pre-shift run delivers six things:
 
-If your build does not do all three, it is not finished, however well the data is wired.
+1. **One run before every shift**, three a day, started 20 minutes before the shift.
+2. **One schedule for every aircraft with open work, through delivery, at the lowest late-delivery cost**, without
+   breaking a constraint. The scheduler is a fixed, rule-based procedure. There is no AI in it.
+3. **What changed since the last run is taken in:** jobs completed, parts late or received, new work, absences.
+4. **The shift's task lists are part of that schedule,** and they stay similar from one run to the next. A run
+   makes two plans that are one schedule: the shift plan (only work that can really start; crews are dispatched from
+   it) and the delivery plan, which keeps every slot of the shift plan and carries it through delivery.
+5. **Gathering, digesting and scheduling take 20 minutes at most**, measured from the data cut to both plans
+   accepted. A pipeline does this; the web application only displays what the pipeline published.
+6. **At shift start the application opens at once**, already holding the schedule and the task lists.
+
+And one more, older than D-33:
+
+7. **Each team's shift is scored** against the plan accepted before that shift started, with an excusal process so
+   a team is not marked down for causes outside its control.
+
+If your build does not do all seven, it is not finished, however well the data is wired. Points 5 and 6 are not met
+yet on the test machine: `FROM-NOTHING-APP/docs/execution/PRODUCTION_SCALE.md` has the measurement and
+`FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md`, DEC-36 and DEC-11, what is left.
+
+**Do not take questions to the owner that the repository answers.** Each open decision has a default and a rule in
+the decision playbook. Use the default, measure, and report. Ask the owner only what is marked OWNER there.
 
 ## Read these, in this order, before you write code
 
@@ -37,6 +52,8 @@ Then read the code those pages name. The two explainer pages list each rule with
 - Which plan is a shift scored against, and what happens to a job finished just before the shift starts?
 - What does the web application read, and what does it never read?
 - Which datasets are pulled from the sources at the data cut, and why is the rest already in SQL Server?
+- Which of a run's two plans are crews dispatched from, what does the other one add, and why do they never disagree
+  about a shift?
 
 ## What a port to real data must keep
 
@@ -56,7 +73,8 @@ Then read the code those pages name. The two explainer pages list each rule with
     is unknown has not optimized cost.
   - `readiness_gaps`: the admitted data's gaps by code. `CALENDAR_ENDS_BEFORE_DUE` on a line means that aircraft
     can never be planned late, so its lateness is never costed; the calendar feed must run past the due date.
-  - `window`: the minutes from the data cut to the accepted plan and its dashboard data, against the owner's 20.
+  - `window`: the minutes from the data cut to the accepted shift plan and its dashboard data (`minutes`), and to
+    the accepted delivery plan as well (`schedule_minutes`), against the owner's 20.
 - **Rates come from data, never from a guess.** Build the economics rows from a rate file with
   `python tools/build_economics_rows.py`; it lists the aircraft it cannot price and leaves them unknown. The owner's
   rate is the airline economic proxy per customer airline and minor model, column

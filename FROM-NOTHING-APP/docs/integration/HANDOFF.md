@@ -74,11 +74,15 @@ stay in company storage. This public repository keeps the synthetic reference co
 
 ## 1. What FOCUS does and what is decided
 
-- **The scheduler.** It contains no AI. It runs before every shift, three times a day, as one global optimization
-  through delivery.
-  - It first makes the **EXECUTABLE** plan, the one crews are dispatched on.
-  - After that plan is accepted, it makes the **FORECAST** plan from the same snapshot: delivery dates, days late
-    and penalties.
+- **The scheduler.** It contains no AI. It runs before every shift, three times a day, and makes one schedule
+  through delivery (owner, 2026-11-11, `docs/execution/DECISIONS.md` D-33).
+  - It first makes the **shift plan** (`EXECUTABLE`): only work that can really start. Crews are dispatched from it
+    and shifts are scored against it.
+  - After that plan is accepted, it makes the **delivery plan** (`FORECAST`) from the same snapshot: delivery dates,
+    days late and penalties. It keeps every slot of the shift plan and plans the rest of the flow around them, so
+    the two never disagree about a shift (`docs/execution/PLAN_REPAIR.md`, "One schedule").
+  - Every pre-shift run repairs the accepted plans: it keeps what still holds and re-plans what changed. That keeps
+    the task lists similar from run to run and fits the time. The full solve runs once a night (§5.2).
 - **Scoring each shift (D-26).**
   - A team-shift is scored against the plan accepted before the shift starts.
   - Adherence means doing the same planned job; start and finish times are not compared.
@@ -142,12 +146,13 @@ be ready to go within 20 minutes"):
 | **The plan must be accepted before the shift starts** | | |
 
 - **What counts toward the window.** The clock starts at the data cut (the pipeline's start, which is the loader's
-  `--as-of`) and stops when `sign_accept` finishes. Acceptance writes the plan's dashboard data, so the plan and the
-  dashboard are ready together.
-  - `python -m focus.cli pipeline --key "$PIPELINE_KEY" --status` reports it under `window`: the minutes used against
-    the 20-minute budget, the seconds per step, and whether the plan was accepted after its shift started. Keep that
-    report with every run.
-  - The forecast (delivery dates and costs) follows acceptance and is outside the window.
+  `--as-of`). The owner's 20 minutes hold the whole schedule (D-33), so two instants are reported:
+  - when `sign_accept` finishes: the shift plan is accepted and its dashboard data written, so the task lists are
+    ready (`window.minutes`);
+  - when `forecast_sign_accept` finishes: the delivery plan is accepted too, with its dates and late cost
+    (`window.schedule_minutes`). `window.within_budget` is about this one.
+  - `python -m focus.cli pipeline --key "$PIPELINE_KEY" --status` reports them under `window`, with the seconds per
+    step and whether the shift plan was accepted after its shift started. Keep that report with every run.
   - Everything in between counts, staging included. Work finished after the cut is not in the plan, so every minute
     of staging, checking, planning and signing widens the gap that is captured after the fact.
   - `stage_sources` runs alongside the verify jobs. The wall-clock total is therefore the longer of the two paths,
@@ -158,14 +163,15 @@ be ready to go within 20 minutes"):
     and completed, rework links, work in progress, shortages and receipts, attendance, leave and certificate
     revocations. An earlier load alone is never enough for those.
   - The evaluator-only run after overtime is outside the window.
-- **Measured end to end: 23.2 minutes, over the budget.** The four jobs above, each in its own process, at 50
-  aircraft on the test machine on 2026-11-11 (`docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow, action by
+- **First measured end to end: 23.2 minutes to the shift plan, over the budget.** The four jobs above, each in its
+  own process, at 50 aircraft on the test machine on 2026-11-11 (`docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow, action by
   action"; `python tools/time_pre_shift.py`). The live data pull, each job's start and the acceptance come on top.
   - The scheduler is 3 of those minutes. Loading the snapshot again in three jobs is 5.4, validating the plan eight
     times is 6.7, and the snapshot's dashboard parts are 2.3.
-  - `DECISION_PLAYBOOK.md`, DEC-36 lists what brings it to about 13 minutes without changing a plan. Take its options
-    (a), (b) and (c) before the first live pre-shift run.
-  - The forecast's three jobs took another 27.1 minutes, outside the window.
+  - The delivery plan's three jobs took another 27.1 minutes.
+  - Since then (D-33): each validation is computed once per plan, every pre-shift run repairs, the `validate` step
+    takes the solve's receipt and jobs end without teardown. `PRODUCTION_SCALE.md`, "The pre-shift flow after
+    D-33", has what is measured since, and `DECISION_PLAYBOOK.md`, DEC-36 what is left.
 - **A plan accepted after its shift starts** is only a proposal for that shift. The previous plan stays the goal of
   record, and the late plan becomes the next shift's. The calibration measured what late plans cost the teams: the
   95th-percentile shortfall doubled.
@@ -323,13 +329,22 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
 | Plan for shift 1 | `40 5 * * *` | `FOCUS_MODE=live` |
 | Plan for shift 2 | `10 14 * * *` | `FOCUS_MODE=live` |
 | Plan for shift 3 | `40 22 * * *` | `FOCUS_MODE=live` |
+| Nightly full solve | `45 2 * * *` | `FOCUS_MODE=live`, `FOCUS_PLANNING=full`, `FOCUS_BUDGET_SECONDS`, `FOCUS_MAX_MOVES` |
 | Score shift 1 | `35 15 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=evaluate` |
 | Score shift 2 | `5 0 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=evaluate` |
 | Score shift 3 | `5 7 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=evaluate` |
 
 - **Plan schedules** start 20 minutes before the shift (the data cut). Auto planning
-  (`planning.cutoff_lead_minutes` = 60) then plans the next shift. The full solve runs before shift 1; the others
-  repair the accepted plan (`PLAN_REPAIR.md`).
+  (`planning.cutoff_lead_minutes` = 60) then plans the next shift. Every one of them repairs the accepted plans
+  (`PLAN_REPAIR.md`): `planning.full_solve_shifts` is empty.
+- **The nightly full solve** is a fourth schedule of the same plan pipeline, with `FOCUS_PLANNING=full`. It rebuilds
+  both plans, runs the improvement search for as long as `FOCUS_BUDGET_SECONDS` and `FOCUS_MAX_MOVES` allow (DEC-34),
+  and records how far a repair would have landed. Its plans are accepted like any other. Accepted while shift 3 is
+  running, they are that shift's proposal only (D-26), and they are what the run before shift 1 repairs.
+  - Start it when the nightly staging pass has finished, and give its jobs timeouts that end it before the 05:00
+    staging pass: the live jobs share one resource group, so a full solve that runs long would hold the shift 1 run.
+  - If it is missed, the pre-shift runs keep repairing. Only a plan older than
+    `planning.repair_max_incumbent_age_hours` (30) makes a pre-shift run fall back to the slow full solve.
 - **Score schedules** run 5 minutes after each credit deadline.
 - **Staging schedules** keep the copy in SQL Server complete and current before the cut (`STAGING_PLAN.md` §4).
 - A plan schedule sets no `FOCUS_PIPELINE_PART`. A value the draft does not know runs nothing.
@@ -354,6 +369,9 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
     decision (DEC-11).
   - The automatic path is built and switched off: `FOCUS_AUTO_SIGN: "false"` in the pipeline draft. Do not turn it
     on without the owner's decision on record.
+  - The delivery plan has its own switch, `FOCUS_AUTO_SIGN_DELIVERY: "false"`, which takes effect only with the first
+    one on. The schedule is whole, and the 20 minutes can be met, only when both plans are accepted (D-33). While
+    either switch is off, that waits for a person.
 
 ## 6. Engineering work before going live (in order)
 

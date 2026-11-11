@@ -327,8 +327,9 @@ def test_executable_plan_is_accepted_before_the_forecast_is_scheduled(pipeline_s
 
 
 def test_the_window_report_measures_the_data_cut_to_the_accepted_plan_against_the_owners_budget(pipeline_services) -> None:
-    """D-28: data gathering, scheduling and the dashboard ready within 20 minutes. The clock runs from the data cut to the
-    acceptance of the executable plan, which writes the dashboard's data; the forecast that follows is outside it."""
+    """D-28 and D-33: gathering, digesting and scheduling within 20 minutes. The clock runs from the data cut. The shift
+    plan's acceptance writes the dashboard's data (the task lists); the delivery plan's acceptance completes the schedule,
+    and the budget is about the whole schedule."""
     from focus.clock import FIXTURE_CUTOFF
     from focus.display.store import has_plan_display
 
@@ -347,20 +348,38 @@ def test_the_window_report_measures_the_data_cut_to_the_accepted_plan_against_th
     w = O.status(services, pid)["window"]
     plan_id = O.load(services, pid)[0]["steps"]["sign_accept"]["output"]["EXECUTABLE"]["plan_id"]
     assert has_plan_display(services.repositories, plan_id)                             # acceptance wrote the dashboard's data
-    assert (w["minutes"], w["within_budget"]) == (11.0, True)                            # 6 + 3 + 2 minutes after the cut
+    assert (w["minutes"], w["shift_plan_within_budget"]) == (11.0, True)                 # 6 + 3 + 2 minutes after the cut
+    assert (w["schedule_minutes"], w["delivery_plan_ready_at"], w["within_budget"]) == (None, None, None)   # the schedule is not whole yet
     assert w["plans_shift"] == "DEMO:2026-10-26:S1" and w["late"] is True                # the fixture cuts at the shift's start
-    assert set(w["step_seconds"]) == set(O.WINDOW_STEPS) and all(v == 0.0 for v in w["step_seconds"].values())
-    services.clock.advance(minutes=30)
-    for role in ("app", "stager", "signer"):                                             # the forecast follows acceptance
+    assert set(w["step_seconds"]) == set(O.WINDOW_STEPS + O.DELIVERY_STEPS)
+    assert all(w["step_seconds"][name] == 0.0 for name in O.WINDOW_STEPS) and all(w["step_seconds"][name] is None for name in O.DELIVERY_STEPS)
+    services.clock.advance(minutes=12)
+    for role in ("app", "stager", "signer"):                                             # the delivery plan follows acceptance
         O.run_role(services, pid, role)
-    assert O.status(services, pid)["window"]["minutes"] == 11.0                          # ... and is outside the window
+    over = O.status(services, pid)["window"]                                             # the task lists in time, the whole schedule not
+    assert (over["minutes"], over["shift_plan_within_budget"], over["schedule_minutes"], over["within_budget"]) == (11.0, True, 23.0, False)
+    assert over["delivery_plan_ready_at"] == FIXTURE_CUTOFF + timedelta(minutes=23)
+    assert all(over["step_seconds"][name] == 0.0 for name in O.DELIVERY_STEPS)
     slow = _pid(services, "window-slow")
     O.run_role(services, slow, "source")
     services.clock.advance(minutes=25)
     for role in ("app", "stager", "signer"):
         O.run_role(services, slow, role)
     over = O.status(services, slow)["window"]
-    assert over["minutes"] > 20 and over["within_budget"] is False
+    assert over["minutes"] > 20 and over["shift_plan_within_budget"] is False and over["within_budget"] is False   # known at once
+
+
+def test_the_window_is_met_only_when_the_delivery_plan_is_accepted_inside_it_too(pipeline_services) -> None:
+    """D-33: one schedule through delivery, made within the 20 minutes."""
+    services = pipeline_services
+    pid = _pid(services, "window-whole")
+    for role, minutes in (("source", 6), ("app", 3), ("stager", 2), ("signer", 4)):
+        O.run_role(services, pid, role)
+        services.clock.advance(minutes=minutes)
+    for role in ("app", "stager", "signer"):
+        O.run_role(services, pid, role)
+    w = O.status(services, pid)["window"]
+    assert (w["minutes"], w["shift_plan_within_budget"], w["schedule_minutes"], w["within_budget"]) == (11.0, True, 15.0, True)
 
 
 def test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan(pipeline_services) -> None:
@@ -402,8 +421,8 @@ def test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan(pipel
 
 
 def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> None:
-    """``auto`` at the fixture cutoff (06:00 local, shift 1) is the daily full solve and measures the repair it replaced;
-    a ``repair`` pipeline then repairs both plans the first one accepted."""
+    """As shipped a pipeline repairs the accepted plan, whichever shift it plans (``auto``, D-33). A pipeline asked for the
+    full solve (the nightly one) runs it and records how far a repair would have landed. A ``repair`` pipeline repairs."""
     services = pipeline_services
     first = _pid(services, "plan-auto")
     assert O.load(services, first)[0]["request"]["planning"] == services.policy.str("planning.default_mode") == "auto"
@@ -411,9 +430,20 @@ def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> N
         O.run_role(services, first, role)
     steps = O.load(services, first)[0]["steps"]
     auto = steps["schedule"]["output"]["EXECUTABLE"]["planning"]
-    assert (auto["requested"], auto["ran"]) == ("auto", "full") and "daily full solve" in auto["reason"]
-    assert auto["drift"]["repair_seconds"] >= 0                                    # the bootstrap incumbent was repaired for comparison
-    assert steps["forecast"]["output"]["FORECAST"]["planning"]["ran"] == "full"
+    assert (auto["requested"], auto["ran"]) == ("auto", "repair") and "the incumbent's cutoff is" in auto["reason"]
+    assert auto["kept"] + auto["rehomed"] <= auto["hints"] and "drift" not in auto
+    delivery = steps["forecast"]["output"]["FORECAST"]["planning"]
+    assert delivery["ran"] == "repair" and delivery["follows"]["purpose"] == "EXECUTABLE"     # it follows the shift plan just accepted
+    assert delivery["follows"]["plan"] != auto.get("plan") and delivery["rehomed"] <= delivery["hints"]
+    nightly = O.create(services, key="plan-nightly", budget_seconds=10, max_moves=10, planning="full")["pipeline_id"]
+    for role in ROLE_SEQUENCE:
+        O.run_role(services, nightly, role)
+    assert O.status(services, nightly)["state"] == "completed"
+    steps = O.load(services, nightly)[0]["steps"]
+    for step, purpose in (("schedule", "EXECUTABLE"), ("forecast", "FORECAST")):
+        record = steps[step]["output"][purpose]["planning"]
+        assert (record["requested"], record["ran"], record["reason"]) == ("full", "full", "full requested")
+        assert record["drift"]["repair_seconds"] >= 0                              # the accepted plan was repaired for comparison
     second = O.create(services, key="plan-repair", budget_seconds=10, max_moves=10, planning="repair")["pipeline_id"]
     for role in ROLE_SEQUENCE:
         O.run_role(services, second, role)
@@ -422,6 +452,7 @@ def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> N
     for step, purpose in (("schedule", "EXECUTABLE"), ("forecast", "FORECAST")):
         record = steps[step]["output"][purpose]["planning"]
         assert (record["requested"], record["ran"]) == ("repair", "repair") and record["kept"] + record["rehomed"] <= record["hints"]
+    assert steps["forecast"]["output"]["FORECAST"]["planning"]["follows"]["purpose"] == "EXECUTABLE"
 
 
 def test_a71_cli_role_that_only_waited_is_not_a_success(pipeline_services) -> None:
@@ -670,8 +701,21 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     for condition in ('$FOCUS_AUTO_SIGN == "true"', '$CI_PIPELINE_SOURCE == "schedule"', '$CI_COMMIT_REF_PROTECTED == "true"', '$FOCUS_MODE == "live"'):
         assert condition in rule and " || " not in rule, condition                # every condition must hold: no alternative
     assert "when: manual" in manual and "FOCUS_AUTO_SIGN" not in manual
-    assert "FOCUS_AUTO_SIGN" not in jobs["forecast_sign_accept"]                 # the forecast is always promoted by an operator
-    assert "when: manual" in jobs["forecast_sign_accept"] and "focus-signer" in jobs["forecast_sign_accept"]
+    # the delivery plan has its own switch, also off: accepted by the run only with both on, on a schedule, on a protected ref
+    assert 'FOCUS_AUTO_SIGN_DELIVERY: "false"' in jobs["variables"]
+    auto, manual = jobs["forecast_sign_accept"].split("when: on_success")[0], jobs["forecast_sign_accept"].split("when: on_success")[1]
+    rule = [line for line in auto.splitlines() if line.strip()][-1]
+    for condition in ('$FOCUS_AUTO_SIGN == "true"', '$FOCUS_AUTO_SIGN_DELIVERY == "true"', '$CI_PIPELINE_SOURCE == "schedule"',
+                      '$CI_COMMIT_REF_PROTECTED == "true"', '$FOCUS_MODE == "live"'):
+        assert condition in rule and " || " not in rule, condition
+    assert "when: manual" in manual and "FOCUS_AUTO_SIGN" not in manual and "focus-signer" in jobs["forecast_sign_accept"]
+    # D-33: every pre-shift run repairs; the nightly schedule asks for the full solve where the pipeline is created
+    create = next(line for line in jobs["acquire_admit"].splitlines() if "--role source" in line)
+    for flag in ('${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"}', '${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"}',
+                 '${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"}'):
+        assert flag in create, flag
+    assert "FOCUS_PLANNING" not in jobs["variables"]                              # unset: the policy's mode (auto: repair)
+    assert 'FOCUS_FAST_EXIT: "true"' in jobs[".live"]
     assert "dist/focus_native-" in jobs["forecast_schedule_validate"] and "FOCUS_SIGN_KEY_REF" not in jobs["forecast_stage_readback"]
     assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[".live"]
     # D-24: display retention runs before acquisition (the store holds the current package and the one being built), as

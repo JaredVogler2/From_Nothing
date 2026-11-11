@@ -1,0 +1,414 @@
+{
+ "shipped_budget_seconds": 30,
+ "flat_rate_usd": 65000,
+ "fleet": {
+  "aircraft": 50,
+  "seed": 20261026,
+  "fleet_seed": 303,
+  "late_parts": "few",
+  "customers_and_models": {
+   "AAL 787-9": 1,
+   "ACA 787-10": 2,
+   "ANA 787-9": 2,
+   "BAW 787-10": 5,
+   "ETD 787-10": 3,
+   "EVA 787-9": 1,
+   "JAL 787-9": 3,
+   "KAL 787-10": 8,
+   "KAL 787-9": 2,
+   "QTR 787-9": 4,
+   "THY 787-9": 8,
+   "UAL 787-10": 7,
+   "UAL 787-9": 4
+  },
+  "lowest_daily_rate_usd": 53569.98,
+  "highest_daily_rate_usd": 84372.07
+ },
+ "cheapest_plan_at_fixture_rates": "SB50_f303_m10",
+ "plans": [
+  {
+   "name": "SB50_f303_m0",
+   "rates": "fixture",
+   "moves": 0,
+   "repairs": 0,
+   "aircraft": 50,
+   "seed": 20261026,
+   "fleet_seed": 303,
+   "late_parts": "few",
+   "run_seconds": 654.3,
+   "peak_memory_mb": 4709,
+   "aircraft_with_unknown_finish": 0,
+   "aircraft_late": 39,
+   "late_days": {
+    "1201": 0.0,
+    "1202": 0.0,
+    "1203": 7.372,
+    "1204": 0.0,
+    "1205": 0.104,
+    "1206": 0.0,
+    "1207": 0.257,
+    "1208": 8.521,
+    "1209": 0.083,
+    "1210": 0.115,
+    "1211": 0.0,
+    "1212": 3.083,
+    "1213": 5.917,
+    "1214": 0.267,
+    "1215": 0.0,
+    "1216": 0.292,
+    "1217": 3.156,
+    "1218": 6.24,
+    "1219": 0.448,
+    "1220": 0.0,
+    "1221": 0.01,
+    "1222": 3.292,
+    "1223": 6.205,
+    "1224": 8.917,
+    "1225": 0.205,
+    "1226": 0.104,
+    "1227": 0.062,
+    "1228": 6.562,
+    "1229": 0.0,
+    "1230": 0.017,
+    "1231": 0.0,
+    "1232": 2.101,
+    "1233": 5.528,
+    "1234": 0.062,
+    "1235": 0.017,
+    "1236": 0.0,
+    "1237": 3.26,
+    "1238": 6.583,
+    "1239": 0.104,
+    "1240": 0.049,
+    "1241": 0.104,
+    "1242": 0.253,
+    "1243": 6.503,
+    "1244": 0.08,
+    "1245": 0.035,
+    "1246": 0.042,
+    "1247": 2.181,
+    "1248": 7.948,
+    "1249": 0.0,
+    "1250": 0.014
+   },
+   "total_late_days": 96.09,
+   "late_cost_usd": 6859874,
+   "first_pass_seconds": {
+    "EXECUTABLE": 181.6,
+    "FORECAST": 362.7
+   },
+   "search_seconds": {
+    "EXECUTABLE": 0.0,
+    "FORECAST": 0.0
+   },
+   "stages": {
+    "EXECUTABLE": {
+     "neutral_seed": {
+      "seconds": 88.3,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "economic_redispatch": {
+      "seconds": 93.3,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "delay_repair": {
+      "seconds": 0.4,
+      "candidates": 0,
+      "accepted": 0
+     },
+     "neighborhoods": {
+      "seconds": 0.0,
+      "candidates": 0,
+      "accepted": 0
+     }
+    },
+    "FORECAST": {
+     "neutral_seed": {
+      "seconds": 185.2,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "economic_redispatch": {
+      "seconds": 177.5,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "delay_repair": {
+      "seconds": 0.1,
+      "candidates": 0,
+      "accepted": 0
+     },
+     "neighborhoods": {
+      "seconds": 0.0,
+      "candidates": 0,
+      "accepted": 0
+     }
+    }
+   },
+   "late_cost_against_the_first_plan_percent": 0.0,
+   "late_cost_at_fixture_rates_usd": 6859874,
+   "first_pass_within_the_shipped_budget": {
+    "EXECUTABLE": false,
+    "FORECAST": false
+   }
+  },
+  {
+   "name": "SB50_f303_m3",
+   "rates": "fixture",
+   "moves": 3,
+   "repairs": 2,
+   "aircraft": 50,
+   "seed": 20261026,
+   "fleet_seed": 303,
+   "late_parts": "few",
+   "run_seconds": 945.0,
+   "peak_memory_mb": 6176,
+   "aircraft_with_unknown_finish": 0,
+   "aircraft_late": 39,
+   "late_days": {
+    "1201": 0.0,
+    "1202": 0.0,
+    "1203": 7.309,
+    "1204": 0.0,
+    "1205": 0.104,
+    "1206": 0.0,
+    "1207": 0.257,
+    "1208": 7.944,
+    "1209": 0.083,
+    "1210": 0.115,
+    "1211": 0.0,
+    "1212": 2.969,
+    "1213": 5.455,
+    "1214": 0.267,
+    "1215": 0.0,
+    "1216": 0.292,
+    "1217": 3.052,
+    "1218": 6.156,
+    "1219": 0.448,
+    "1220": 0.0,
+    "1221": 0.01,
+    "1222": 3.083,
+    "1223": 6.076,
+    "1224": 9.069,
+    "1225": 0.205,
+    "1226": 0.104,
+    "1227": 0.062,
+    "1228": 6.285,
+    "1229": 0.0,
+    "1230": 0.017,
+    "1231": 0.0,
+    "1232": 1.969,
+    "1233": 5.253,
+    "1234": 0.062,
+    "1235": 0.017,
+    "1236": 0.0,
+    "1237": 3.26,
+    "1238": 6.455,
+    "1239": 0.104,
+    "1240": 0.049,
+    "1241": 0.104,
+    "1242": 0.253,
+    "1243": 6.233,
+    "1244": 0.08,
+    "1245": 0.035,
+    "1246": 0.042,
+    "1247": 0.01,
+    "1248": 7.618,
+    "1249": 0.0,
+    "1250": 0.014
+   },
+   "total_late_days": 90.92,
+   "late_cost_usd": 6497878,
+   "first_pass_seconds": {
+    "EXECUTABLE": 181.5,
+    "FORECAST": 353.3
+   },
+   "search_seconds": {
+    "EXECUTABLE": 56.4,
+    "FORECAST": 246.6
+   },
+   "stages": {
+    "EXECUTABLE": {
+     "neutral_seed": {
+      "seconds": 87.5,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "economic_redispatch": {
+      "seconds": 94.0,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "delay_repair": {
+      "seconds": 0.4,
+      "candidates": 0,
+      "accepted": 0
+     },
+     "neighborhoods": {
+      "seconds": 56.4,
+      "candidates": 3,
+      "accepted": 0
+     }
+    },
+    "FORECAST": {
+     "neutral_seed": {
+      "seconds": 181.8,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "economic_redispatch": {
+      "seconds": 171.5,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "delay_repair": {
+      "seconds": 0.1,
+      "candidates": 0,
+      "accepted": 0
+     },
+     "neighborhoods": {
+      "seconds": 246.6,
+      "candidates": 3,
+      "accepted": 1
+     }
+    }
+   },
+   "late_cost_against_the_first_plan_percent": -5.3,
+   "late_cost_at_fixture_rates_usd": 6497878,
+   "first_pass_within_the_shipped_budget": {
+    "EXECUTABLE": false,
+    "FORECAST": false
+   }
+  },
+  {
+   "name": "SB50_f303_m10",
+   "rates": "fixture",
+   "moves": 10,
+   "repairs": 5,
+   "aircraft": 50,
+   "seed": 20261026,
+   "fleet_seed": 303,
+   "late_parts": "few",
+   "run_seconds": 1739.5,
+   "peak_memory_mb": 7106,
+   "aircraft_with_unknown_finish": 0,
+   "aircraft_late": 39,
+   "late_days": {
+    "1201": 0.0,
+    "1202": 0.0,
+    "1203": 7.722,
+    "1204": 0.0,
+    "1205": 0.104,
+    "1206": 0.0,
+    "1207": 0.257,
+    "1208": 0.292,
+    "1209": 0.083,
+    "1210": 0.115,
+    "1211": 0.0,
+    "1212": 3.035,
+    "1213": 5.986,
+    "1214": 0.309,
+    "1215": 0.0,
+    "1216": 0.292,
+    "1217": 3.174,
+    "1218": 6.528,
+    "1219": 0.448,
+    "1220": 0.0,
+    "1221": 0.01,
+    "1222": 3.17,
+    "1223": 6.503,
+    "1224": 7.514,
+    "1225": 0.205,
+    "1226": 0.104,
+    "1227": 0.062,
+    "1228": 6.608,
+    "1229": 0.0,
+    "1230": 0.017,
+    "1231": 0.0,
+    "1232": 2.125,
+    "1233": 5.562,
+    "1234": 0.062,
+    "1235": 0.017,
+    "1236": 0.0,
+    "1237": 3.337,
+    "1238": 6.646,
+    "1239": 0.104,
+    "1240": 0.125,
+    "1241": 0.104,
+    "1242": 0.253,
+    "1243": 6.538,
+    "1244": 0.08,
+    "1245": 0.035,
+    "1246": 0.042,
+    "1247": 0.01,
+    "1248": 7.983,
+    "1249": 0.0,
+    "1250": 0.014
+   },
+   "total_late_days": 85.58,
+   "late_cost_usd": 6141673,
+   "first_pass_seconds": {
+    "EXECUTABLE": 187.5,
+    "FORECAST": 363.0
+   },
+   "search_seconds": {
+    "EXECUTABLE": 214.8,
+    "FORECAST": 862.4
+   },
+   "stages": {
+    "EXECUTABLE": {
+     "neutral_seed": {
+      "seconds": 89.7,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "economic_redispatch": {
+      "seconds": 97.8,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "delay_repair": {
+      "seconds": 0.4,
+      "candidates": 0,
+      "accepted": 0
+     },
+     "neighborhoods": {
+      "seconds": 214.8,
+      "candidates": 10,
+      "accepted": 0
+     }
+    },
+    "FORECAST": {
+     "neutral_seed": {
+      "seconds": 183.3,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "economic_redispatch": {
+      "seconds": 179.7,
+      "candidates": 1,
+      "accepted": 1
+     },
+     "delay_repair": {
+      "seconds": 0.1,
+      "candidates": 0,
+      "accepted": 0
+     },
+     "neighborhoods": {
+      "seconds": 862.4,
+      "candidates": 10,
+      "accepted": 4
+     }
+    }
+   },
+   "late_cost_against_the_first_plan_percent": -10.5,
+   "late_cost_at_fixture_rates_usd": 6141673,
+   "first_pass_within_the_shipped_budget": {
+    "EXECUTABLE": false,
+    "FORECAST": false
+   }
+  }
+ ]
+}

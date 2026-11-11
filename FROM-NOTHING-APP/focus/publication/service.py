@@ -25,6 +25,22 @@ writes and independently re-validates the unsigned stage without ever resolving 
 runs ``publish`` again: the same deterministic bytes and ids reuse that stage, the readback is re-read and
 re-validated, and only then are the bytes signed and accepted. Signing therefore never precedes a clean readback.
 
+**One computation per validation (D-28).** Each of the three validations is computed once for a publication, and each in
+a different role when the roles are split:
+
+* FINAL by the scheduling run. A later step takes the stored receipt when it passed and binds exactly the same plan,
+  snapshot, policy and validator (``validation.plan.recorded_pass``: a receipt's id is the digest of everything the
+  validation reads).
+* DETACHED by the stager, on the serialized bytes before they are staged. The signer takes that stored receipt the same
+  way.
+* READBACK on the bytes read back from the stage. **A process that signs has itself validated the exact bytes it
+  signs:** the signer always computes this one, in its own process, and never takes it from the store. Where the
+  process has just validated byte-identical bytes as DETACHED (the stager, or one process running the whole order), the
+  readback's findings are those of that computation and it is not repeated (``same_bytes_receipt``); bytes that
+  differ in any byte are validated on their own, and rejected for the mismatch.
+
+A receipt that did not pass is never reused: the validation runs again.
+
 **Recovery.** Every step is deterministic for a given candidate, so a retry after a crash at any
 point recomputes the same bytes, stage and plan ids. If a receipt already exists, the retry
 compares exact content and reconciles the head once. Nothing is reported accepted before the
@@ -45,9 +61,10 @@ from typing import Any, Callable
 
 from ..contracts.planning import (AcceptanceReceipt, CandidatePlan, IncumbentAssignment, IncumbentPlan, PlanArtifact, PlanningSnapshot,
                                   PublishedPlan, work_to_go)
+from ..calendar import local_wall
 from ..domain import Purpose, digest_id
-from ..validation.plan import CANDIDATES, load_incumbent, persist_receipt, validate
-from ..validation.publication import publication_capability, validate_artifact
+from ..validation.plan import CANDIDATES, load_incumbent, persist_receipt, recorded_pass, validate
+from ..validation.publication import publication_capability, recorded_artifact_pass, same_bytes_receipt, validate_artifact
 from .repository import FixturePublicationRepository, PlanStage, PublicationError, PublishedPayload, repository_for
 from .serializer import artifact_bytes, build_artifact, decode_artifact, payload_sha256
 from .signing import Signer, resolve_signer
@@ -105,7 +122,7 @@ def incumbent_from(snapshot: PlanningSnapshot, published: PublishedPlan, plan: C
             continue
         _, day, label = a.shift_id.rsplit(":", 2)
         items.append(IncumbentAssignment(job.line, job.key.native_id, phase.kind.value, phase.ordinal, datetime.fromisoformat(day).date(),
-                                         int(label[1:]), a.start.astimezone(tz).strftime("%H:%M"), tuple(p.key.native_id for p in crew)))
+                                         int(label[1:]), local_wall(a.start, tz), tuple(p.key.native_id for p in crew)))
         if job.id not in to_go:
             to_go[job.id] = work_to_go(job_phases.get(job.id, ()))
         position = to_go[job.id].get(phase.key.id)
@@ -153,9 +170,11 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
     incumbent = load_incumbent(repos, plan.incumbent_id)
     now = services.clock.now()
 
-    # 1. independent final validation
-    final = validate(snapshot, policy, plan, incumbent=incumbent, kind="FINAL", created_at=now)
-    persist_receipt(repos, final, plan)
+    # 1. independent final validation: the scheduling run's, when its passing receipt for exactly these inputs is stored
+    final = recorded_pass(repos, plan, snapshot, policy, kind="FINAL")
+    if final is None:
+        final = validate(snapshot, policy, plan, incumbent=incumbent, kind="FINAL", created_at=now)
+        persist_receipt(repos, final, plan)
     result.validations["FINAL"] = final.id
     result.steps.append("final_validation")
     blocking = publication_capability(plan, final)
@@ -179,9 +198,12 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
         if prior is not None and prior.source_run_id != plan.source_run_id and _cutoff(repos, prior) > snapshot.cutoff:
             result.reasons = (f"STALE_REPLAY: the current plan {prior.id} rests on a later source cutoff",)
             return result
-    # 3. detached decode and independent validation
-    _, detached = validate_artifact(data, snapshot, policy, incumbent=incumbent, kind="DETACHED", created_at=now)
-    persist_receipt(repos, detached, plan)
+    # 3. detached decode and independent validation: the stager's, when its passing receipt for exactly these bytes is stored
+    detached = recorded_artifact_pass(repos, plan, snapshot, policy, kind="DETACHED", payload_sha256=sha)
+    validated_here = detached is None                       # this process decoded and validated these bytes itself
+    if detached is None:
+        _, detached = validate_artifact(data, snapshot, policy, incumbent=incumbent, kind="DETACHED", created_at=now)
+        persist_receipt(repos, detached, plan)
     result.validations["DETACHED"] = detached.id
     result.steps.append("detached_validation")
     if not detached.valid:
@@ -202,7 +224,10 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
     # 5-6. exact readback, independently re-validated from source while the previous head is unchanged
     readback = repo.read_stage(stage_id) or b""
     result.steps.append("readback")
-    _, rb = validate_artifact(readback, snapshot, policy, incumbent=incumbent, kind="READBACK", created_at=now)
+    if validated_here and detached.valid and readback == data:
+        rb = same_bytes_receipt(detached, plan, snapshot, policy, kind="READBACK")     # byte-identical to what was just validated
+    else:                                                   # the signer's own validation, or bytes that differ: computed
+        _, rb = validate_artifact(readback, snapshot, policy, incumbent=incumbent, kind="READBACK", created_at=now)
     persist_receipt(repos, rb, plan)
     result.validations["READBACK"] = rb.id
     problems = sorted({f"{v.check}:{v.code}" for v in rb.violations}) + (["STAGE_READBACK_MISMATCH: staged bytes differ from the serialized bytes"]

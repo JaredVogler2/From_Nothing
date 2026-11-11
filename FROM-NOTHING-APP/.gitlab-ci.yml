@@ -1,5 +1,9 @@
 # FOCUS pipeline (S17 MIGRATIONS/CI, P23). DRAFT: reviewable, never pushed to a GitLab remote or activated by this build.
 #
+# What a run must deliver (D-33, owner, 2026-11-11): one schedule through delivery, made within 20 minutes of the data
+# cut, with the application populated at shift start. The shift plan (EXECUTABLE) is accepted first; the delivery plan
+# (FORECAST) keeps every slot of it and carries it through delivery. `pipeline --status` reports both instants (window).
+#
 # Order (one pipeline before every shift, three a day; D-26):
 #   verify
 #   -> retention (retention role): display parts nothing reads any more, before the new package is built (D-24), and
@@ -15,6 +19,13 @@
 #
 # A second schedule per shift runs only the evaluator, just after the shift's authorized overtime window closes
 # (FOCUS_PIPELINE_PART=evaluate): stage the observation feeds, then score every shift whose credit window has closed.
+#
+# Every pre-shift run repairs the accepted plan (policy planning.default_mode = auto with no full-solve shift): that is
+# what fits the 20 minutes and keeps the task lists similar from run to run. The full solve, with the improvement search,
+# is a fourth schedule of this same plan pipeline, once a night after the nightly staging pass, with the variables
+# FOCUS_PLANNING=full and, as measured (DEC-34), FOCUS_BUDGET_SECONDS and FOCUS_MAX_MOVES. Its plans are accepted like
+# any other; accepted while a shift is running, they are that shift's proposal only (D-26) and the plan the next
+# pre-shift run repairs.
 #
 # Staging has three passes (docs/integration/STAGING_PLAN.md). SQL Server always holds a complete copy of every source
 # table, so the pass inside the plan pipeline pulls only what changed since the pass before it:
@@ -58,10 +69,13 @@ variables:
   # ref, whose merge pipeline already passed them (acquire_admit refuses any other ref). "full" runs them before every
   # plan again, as P23 first had it.
   FOCUS_LIVE_VERIFY: "merged"
-  # Who accepts the executable plan before each shift is the owner's decision (DEC-11) and is not made. "false": an
-  # authorized operator promotes every plan. "true": a scheduled run on a protected ref accepts it once the validations
+  # Who accepts the plans before each shift is the owner's decision (DEC-11) and is not made. "false": an authorized
+  # operator promotes every plan. "true": a scheduled run on a protected ref accepts the shift plan once the validations
   # before it are clean. Turn it on only with the owner's decision on record.
   FOCUS_AUTO_SIGN: "false"
+  # The delivery plan has its own switch, so the owner can keep a person on it (DEC-11, option c). It takes effect only
+  # with FOCUS_AUTO_SIGN on as well. While either is off, the whole schedule is ready only when an operator has promoted it.
+  FOCUS_AUTO_SIGN_DELIVERY: "false"
 
 stages: [verify, retain, stage_sql, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
 
@@ -143,6 +157,7 @@ fixture_pipeline_rehearsal:
   variables:
     FOCUS_MODE: live
     FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'   # database columns hold UTC (owner, 2026-10-31); the app shows local time
+    FOCUS_FAST_EXIT: "true"                          # a job ends when its outputs are written, without freeing GBs object by object
   artifacts:
     when: always
     expire_in: 90 days
@@ -211,7 +226,8 @@ acquire_admit:
   script:
     - test "$FOCUS_LIVE_VERIFY" = "full" -o "$CI_COMMIT_REF_PROTECTED" = "true"   # unverified code never plans a shift
     - mkdir -p ci-receipts && python -m focus.cli preflight --role worker --probe-sql > ci-receipts/preflight-source.json
-    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source > ci-receipts/source.json
+    # the request is fixed when the pipeline is created, here: the nightly schedule sets FOCUS_PLANNING=full with its budget
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source ${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"} ${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"} ${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"} > ci-receipts/source.json
 
 schedule_validate:
   extends: .live
@@ -253,8 +269,9 @@ sign_accept:
     - mkdir -p ci-receipts && python -m focus.cli preflight --role signer > ci-receipts/preflight-signer.json
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role signer > ci-receipts/signer.json
 
-# the forecast (delivery dates, days late, penalties for every aircraft) runs on the same admitted snapshot once the
-# executable plan is accepted, so it never delays the shift's dispatch
+# the delivery plan (delivery dates, days late, penalties for every aircraft) runs on the same admitted snapshot once the
+# shift plan is accepted, so it never delays the shift's dispatch. It keeps every slot of that plan and carries it through
+# delivery (D-33), and it is part of what the 20 minutes must hold
 forecast_schedule_validate:
   extends: .live
   stage: forecast
@@ -279,7 +296,14 @@ forecast_sign_accept:
   extends: .live
   stage: forecast_sign
   needs: [forecast_stage_readback]
-  when: manual                                      # the same operator promotion as the executable plan
+  rules:
+    # DEC-11, off by default: both switches on, on a schedule, on a protected ref. The signer step still validates the
+    # staged bytes itself before it signs them.
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && $FOCUS_AUTO_SIGN == "true" && $FOCUS_AUTO_SIGN_DELIVERY == "true" && $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_REF_PROTECTED == "true"
+      when: on_success
+    # otherwise the same operator promotion as the shift plan
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+      when: manual
   allow_failure: false
   environment: { name: focus-signer }
   script:

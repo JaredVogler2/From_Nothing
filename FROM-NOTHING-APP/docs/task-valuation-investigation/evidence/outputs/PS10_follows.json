@@ -1,0 +1,636 @@
+{
+ "what": "How similar a shift's task list is from one pre-shift run to the next, in a stored simulation",
+ "simulation": {
+  "aircraft": 10,
+  "days": 4,
+  "shifts": 12,
+  "max_moves": 3,
+  "max_repairs": 2,
+  "every_run_is_a_full_solve": false,
+  "delivery_plan_follows_the_shift_plan": true,
+  "stages_recorded": {
+   "delay_repair": 8,
+   "economic_redispatch": 8,
+   "neighborhoods": 8,
+   "neutral_seed": 8,
+   "repair": 16,
+   "repair_redispatch": 16
+  }
+ },
+ "leads": {
+  "0": "the same run",
+  "1": "the run before the shift before",
+  "3": "one day earlier",
+  "6": "two days",
+  "9": "three days"
+ },
+ "reading": {
+  "executable": "earlier and final lists both from shift plans",
+  "forecast": "earlier and final lists both from delivery plans",
+  "delivery_plan_against_...": "the earlier list is the delivery plan's, the final list is the shift plan's"
+ },
+ "executable": {
+  "lead_1_shifts": {
+   "pairs": 11,
+   "lines_on_the_earlier_lists": 7582,
+   "lines_on_the_final_lists": 7583,
+   "lines_on_both": 6884,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 11,
+    "median": 92.1,
+    "lowest": 81.1,
+    "highest": 95.4
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 11,
+    "median": 91.3,
+    "lowest": 81.2,
+    "highest": 96.2
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 11,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 11,
+    "median": 99.2,
+    "lowest": 96.7,
+    "highest": 100.0
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 285,
+    "not_planned_by_the_final_run": 3,
+    "planned_in_a_later_shift": 410
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 438,
+    "not_planned_by_the_earlier_run": 259,
+    "pulled_in_from_a_later_shift": 2
+   }
+  },
+  "lead_2_shifts": {
+   "pairs": 10,
+   "lines_on_the_earlier_lists": 6835,
+   "lines_on_the_final_lists": 6765,
+   "lines_on_both": 5873,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 10,
+    "median": 86.8,
+    "lowest": 73.3,
+    "highest": 91.7
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 10,
+    "median": 86.1,
+    "lowest": 72.0,
+    "highest": 92.3
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 10,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 10,
+    "median": 99.0,
+    "lowest": 96.8,
+    "highest": 100.0
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 279,
+    "not_planned_by_the_final_run": 2,
+    "planned_in_a_later_shift": 681
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 413,
+    "not_planned_by_the_earlier_run": 477,
+    "pulled_in_from_a_later_shift": 2
+   }
+  },
+  "lead_3_shifts": {
+   "pairs": 9,
+   "lines_on_the_earlier_lists": 6267,
+   "lines_on_the_final_lists": 6211,
+   "lines_on_both": 5126,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 9,
+    "median": 82.2,
+    "lowest": 73.0,
+    "highest": 89.5
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 9,
+    "median": 82.8,
+    "lowest": 74.3,
+    "highest": 88.8
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 9,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 9,
+    "median": 98.5,
+    "lowest": 95.8,
+    "highest": 99.9
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 238,
+    "not_planned_by_the_final_run": 2,
+    "planned_in_a_later_shift": 901
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 440,
+    "not_planned_by_the_earlier_run": 636,
+    "pulled_in_from_a_later_shift": 9
+   }
+  },
+  "lead_6_shifts": {
+   "pairs": 6,
+   "lines_on_the_earlier_lists": 3776,
+   "lines_on_the_final_lists": 4127,
+   "lines_on_both": 2637,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 6,
+    "median": 67.0,
+    "lowest": 38.2,
+    "highest": 77.7
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 6,
+    "median": 69.8,
+    "lowest": 55.1,
+    "highest": 77.7
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 6,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 6,
+    "median": 98.3,
+    "lowest": 97.0,
+    "highest": 99.3
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 173,
+    "not_planned_by_the_final_run": 9,
+    "planned_in_a_later_shift": 957
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 479,
+    "not_planned_by_the_earlier_run": 1003,
+    "pulled_in_from_a_later_shift": 8
+   }
+  },
+  "lead_9_shifts": {
+   "pairs": 3,
+   "lines_on_the_earlier_lists": 811,
+   "lines_on_the_final_lists": 2039,
+   "lines_on_both": 432,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 3,
+    "median": 20.3,
+    "lowest": 12.5,
+    "highest": 28.6
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 3,
+    "median": 54.3,
+    "lowest": 44.4,
+    "highest": 56.7
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 3,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 3,
+    "median": 95.5,
+    "lowest": 76.6,
+    "highest": 100.0
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 72,
+    "not_planned_by_the_final_run": 11,
+    "planned_in_a_later_shift": 296
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 393,
+    "not_planned_by_the_earlier_run": 1212,
+    "pulled_in_from_a_later_shift": 2
+   }
+  }
+ },
+ "forecast": {
+  "lead_1_shifts": {
+   "pairs": 11,
+   "lines_on_the_earlier_lists": 7634,
+   "lines_on_the_final_lists": 7604,
+   "lines_on_both": 6906,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 11,
+    "median": 92.0,
+    "lowest": 81.1,
+    "highest": 95.4
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 11,
+    "median": 90.5,
+    "lowest": 81.2,
+    "highest": 96.1
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 11,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 11,
+    "median": 99.1,
+    "lowest": 96.7,
+    "highest": 99.9
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 286,
+    "planned_in_a_later_shift": 442
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 442,
+    "not_planned_by_the_earlier_run": 233,
+    "pulled_in_from_a_later_shift": 23
+   }
+  },
+  "lead_2_shifts": {
+   "pairs": 10,
+   "lines_on_the_earlier_lists": 6909,
+   "lines_on_the_final_lists": 6786,
+   "lines_on_both": 5900,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 10,
+    "median": 87.4,
+    "lowest": 73.3,
+    "highest": 92.1
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 10,
+    "median": 85.5,
+    "lowest": 72.0,
+    "highest": 91.7
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 10,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 10,
+    "median": 98.7,
+    "lowest": 96.8,
+    "highest": 99.9
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 283,
+    "planned_in_a_later_shift": 726
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 421,
+    "not_planned_by_the_earlier_run": 427,
+    "pulled_in_from_a_later_shift": 38
+   }
+  },
+  "lead_3_shifts": {
+   "pairs": 9,
+   "lines_on_the_earlier_lists": 6352,
+   "lines_on_the_final_lists": 6232,
+   "lines_on_both": 5152,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 9,
+    "median": 83.0,
+    "lowest": 73.3,
+    "highest": 89.9
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 9,
+    "median": 82.0,
+    "lowest": 74.2,
+    "highest": 88.6
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 9,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 9,
+    "median": 98.2,
+    "lowest": 95.8,
+    "highest": 99.9
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 245,
+    "planned_in_a_later_shift": 955
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 457,
+    "not_planned_by_the_earlier_run": 573,
+    "pulled_in_from_a_later_shift": 50
+   }
+  },
+  "lead_6_shifts": {
+   "pairs": 6,
+   "lines_on_the_earlier_lists": 3993,
+   "lines_on_the_final_lists": 4143,
+   "lines_on_both": 2676,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 6,
+    "median": 67.7,
+    "lowest": 39.7,
+    "highest": 77.9
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 6,
+    "median": 67.5,
+    "lowest": 45.8,
+    "highest": 77.3
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 6,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 6,
+    "median": 96.8,
+    "lowest": 94.7,
+    "highest": 99.3
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 194,
+    "planned_in_a_later_shift": 1123
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 509,
+    "not_planned_by_the_earlier_run": 920,
+    "pulled_in_from_a_later_shift": 38
+   }
+  },
+  "lead_9_shifts": {
+   "pairs": 3,
+   "lines_on_the_earlier_lists": 1159,
+   "lines_on_the_final_lists": 2050,
+   "lines_on_both": 428,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 3,
+    "median": 19.2,
+    "lowest": 12.1,
+    "highest": 29.2
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 3,
+    "median": 41.5,
+    "lowest": 20.1,
+    "highest": 45.2
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 3,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 3,
+    "median": 74.8,
+    "lowest": 68.2,
+    "highest": 75.0
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 101,
+    "planned_in_a_later_shift": 630
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 446,
+    "not_planned_by_the_earlier_run": 1154,
+    "pulled_in_from_a_later_shift": 22
+   }
+  }
+ },
+ "delivery_plan_against_the_shift_plan_of_the_same_run": {
+  "pairs": 12,
+  "lines_on_the_earlier_lists": 8473,
+  "lines_on_the_final_lists": 8451,
+  "lines_on_both": 8451,
+  "share_of_the_final_list_already_on_the_earlier_list_pct": {
+   "n": 12,
+   "median": 100.0,
+   "lowest": 100.0,
+   "highest": 100.0
+  },
+  "share_of_the_earlier_list_still_on_the_final_list_pct": {
+   "n": 12,
+   "median": 99.8,
+   "lowest": 98.7,
+   "highest": 100.0
+  },
+  "of_the_lines_on_both_same_team_pct": {
+   "n": 12,
+   "median": 100.0,
+   "lowest": 100.0,
+   "highest": 100.0
+  },
+  "of_the_lines_on_both_same_start_time_pct": {
+   "n": 12,
+   "median": 100.0,
+   "lowest": 100.0,
+   "highest": 100.0
+  },
+  "dropped_from_the_earlier_list": {
+   "not_planned_by_the_final_run": 21,
+   "planned_in_a_later_shift": 1
+  },
+  "added_to_the_final_list": {}
+ },
+ "delivery_plan_against_the_shift_plan_issued_later": {
+  "lead_1_shifts": {
+   "pairs": 11,
+   "lines_on_the_earlier_lists": 7634,
+   "lines_on_the_final_lists": 7583,
+   "lines_on_both": 6895,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 11,
+    "median": 92.2,
+    "lowest": 81.1,
+    "highest": 95.4
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 11,
+    "median": 90.4,
+    "lowest": 81.2,
+    "highest": 96.1
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 11,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 11,
+    "median": 99.1,
+    "lowest": 96.7,
+    "highest": 99.9
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 286,
+    "not_planned_by_the_final_run": 35,
+    "planned_in_a_later_shift": 418
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 440,
+    "not_planned_by_the_earlier_run": 233,
+    "pulled_in_from_a_later_shift": 15
+   }
+  },
+  "lead_2_shifts": {
+   "pairs": 10,
+   "lines_on_the_earlier_lists": 6909,
+   "lines_on_the_final_lists": 6765,
+   "lines_on_both": 5889,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 10,
+    "median": 87.5,
+    "lowest": 73.3,
+    "highest": 92.1
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 10,
+    "median": 85.5,
+    "lowest": 72.0,
+    "highest": 91.5
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 10,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 10,
+    "median": 98.8,
+    "lowest": 96.8,
+    "highest": 99.9
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 283,
+    "not_planned_by_the_final_run": 43,
+    "planned_in_a_later_shift": 694
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 421,
+    "not_planned_by_the_earlier_run": 427,
+    "pulled_in_from_a_later_shift": 28
+   }
+  },
+  "lead_3_shifts": {
+   "pairs": 9,
+   "lines_on_the_earlier_lists": 6352,
+   "lines_on_the_final_lists": 6211,
+   "lines_on_both": 5144,
+   "share_of_the_final_list_already_on_the_earlier_list_pct": {
+    "n": 9,
+    "median": 83.2,
+    "lowest": 73.6,
+    "highest": 89.9
+   },
+   "share_of_the_earlier_list_still_on_the_final_list_pct": {
+    "n": 9,
+    "median": 81.9,
+    "lowest": 73.4,
+    "highest": 88.6
+   },
+   "of_the_lines_on_both_same_team_pct": {
+    "n": 9,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   },
+   "of_the_lines_on_both_same_start_time_pct": {
+    "n": 9,
+    "median": 98.2,
+    "lowest": 95.8,
+    "highest": 99.9
+   },
+   "dropped_from_the_earlier_list": {
+    "completed_before_the_shift": 245,
+    "not_planned_by_the_final_run": 47,
+    "planned_in_a_later_shift": 916
+   },
+   "added_to_the_final_list": {
+    "carried_over_from_an_earlier_shift": 455,
+    "not_planned_by_the_earlier_run": 573,
+    "pulled_in_from_a_later_shift": 39
+   }
+  }
+ },
+ "aircraft_finish_between_consecutive_forecasts": {
+  "aircraft_run_pairs": {
+   "compared": 108,
+   "finish_unknown_in_one_of_the_two": 2
+  },
+  "finish_unchanged": 91,
+  "finish_later": 10,
+  "finish_earlier": 7,
+  "moved_by_hours_absolute": {
+   "median": 0.0,
+   "p90": 4.2,
+   "highest": 25.3
+  },
+  "moved_within_one_shift_pct": 91.7,
+  "moved_within_one_day_pct": 99.1
+ },
+ "commitments": {
+  "EXECUTABLE": {
+   "outcomes": {
+    "COMPLETED": 6791,
+    "CREW_CHANGED": 1192,
+    "KEPT": 42822,
+    "MOVED": 1457,
+    "OUT_OF_HORIZON": 27638,
+    "PERFORMED": 523,
+    "UNSAFE": 4891
+   },
+   "kept_at_the_same_slot_and_crew_pct_of_open_defended": {
+    "n": 11,
+    "median": 85.4,
+    "lowest": 80.5,
+    "highest": 87.2
+   }
+  },
+  "FORECAST": {
+   "outcomes": {
+    "CREW_CHANGED": 2,
+    "KEPT": 58792,
+    "OUT_OF_HORIZON": 32351
+   },
+   "kept_at_the_same_slot_and_crew_pct_of_open_defended": {
+    "n": 12,
+    "median": 100.0,
+    "lowest": 100.0,
+    "highest": 100.0
+   }
+  }
+ }
+}

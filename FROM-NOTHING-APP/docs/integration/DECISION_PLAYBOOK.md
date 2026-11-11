@@ -110,21 +110,24 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | Decision | Rule | Where |
 | --- | --- | --- |
 | No AI in the scheduler | The plans come from the deterministic optimizer; explanations are validated text only | `focus/engine/` |
-| Cadence | The scheduler runs before every shift, 3× a day, as a global optimization through delivery; GitLab runs it; Posit Connect only displays | D-22, D-26 |
+| Cadence | The scheduler runs before every shift, 3× a day, as a global optimization through delivery; GitLab runs it; Posit Connect only displays | D-22, D-26, D-33 |
+| One schedule (D-33) | A run makes the shift plan first (only work that can start; crews are dispatched from it), then the delivery plan, which keeps every slot of the shift plan and carries it through delivery. Never let the two be solved apart again: their dates and cost would describe a schedule the floor does not follow | `commitments.following`, `planning.forecast_follows_executable`, `PLAN_REPAIR.md` |
+| Questions to the owner (D-33) | Only what this playbook marks OWNER. Everything else takes the default here, is built, measured and reported | `DECISIONS.md` D-33 |
 | Per-shift goals (D-26) | A shift is scored against the EXECUTABLE plan accepted at or before its start; if none was, the first plan accepted for its day stands in | `lifecycle.GoalRegistry.plan_of_record` |
 | Adherence = same job | Start and finish times are never compared with the plan | D-26 |
 | No early credit | A completion before a goal's shift earns nothing there | `lifecycle.select_goal` |
 | Done before the shift | A unit whose phase was verified complete before its shift started is `DONE_BEFORE_SHIFT` and counts in E | `lifecycle.unit_facts`, `score.components` |
 | Amendments during the shift only | The command and the feed refuse `SHIFT_NOT_STARTED` / `SHIFT_ENDED` | `amendments.py`, `actuals.amendment_from_row` |
 | Late events after the fact | Scores come from timestamped events once overtime closes, and are revised when data arrives late | D-26 |
-| 20 minutes before each shift (D-28) | Data gathering, scheduling and the dashboard are ready within 20 minutes, from the data cut to the accepted executable plan. The test suites run on merge, not in the run | `orchestration.window`, `.gitlab-ci.yml`, `pipeline.pre_shift_budget_minutes` |
+| 20 minutes before each shift (D-28, D-33) | Gathering the data, digesting it and scheduling take 20 minutes at most, from the data cut to both plans accepted, and the application is populated at shift start. The test suites run on merge, not in the run | `orchestration.window` (`minutes`, `schedule_minutes`), `.gitlab-ci.yml`, `pipeline.pre_shift_budget_minutes` |
 | Extra work earns credit (D-27) | Every unplanned job a team gets done counts toward its score at 80% of the same planned work (rate confirmed by the owner) and never lowers it. A missed planned job costs points on its own unless excused. Adherence is the planned jobs done over the expected work | `score.formula`, `score.components`, `docs/execution/SCORING_EXPLAINED.md` |
 | Criticality comes from the objective (D-29) | A job's criticality is its aircraft's modeled cost of one more day late in the accepted forecast, as a share of the fleet's highest. Never assigned by hand or by job type. Reported only; whether it weights a score is DEC-31 | `focus/valuation/criticality.py` |
 | OD-01 crew | `TOTAL_MECHANICS` is the crew needed on the job at once (owner, 2026-10-31) | `duration.total_mechanics_semantics` |
 | OD-06 due date | CS744 planned unload + 2-day grace, as a whole local day (owner, 2026-11-02) | `due.*` |
 | Time | The database holds UTC; the app shows site local time (America/New_York); live `FOCUS_SOURCE_TIMEZONE_MAP_JSON={"*": "UTC"}` | owner, 2026-10-31 |
 | Display retention, per-job details | Display parts deleted when unread (D-24); per-job score evidence kept for 90 days (D-25) | D-24, D-25 |
-| Planning mode | `auto`: full solve before shift 1, repair otherwise; full solve when the incumbent is over 12 h old | `planning.*`, `PLAN_REPAIR.md` |
+| Planning mode (D-33) | Every pre-shift run repairs the accepted plans (`auto`, no full-solve shift). The full solve is a nightly run of the same pipeline (`--planning full`). A pre-shift run falls back to it only when the accepted plan is over 30 h old | `planning.*`, `PLAN_REPAIR.md` |
+| Each validation once per plan (D-33) | FINAL by the scheduling run, DETACHED by the stager, READBACK by the signer on the bytes it signs, in its own process. A later step takes an earlier one's receipt only when it passed and binds the same inputs | `publication.service.publish`, `validation.plan.recorded_pass` |
 | Daily late-delivery rate (D-31) | The owner's airline economic proxy per customer airline and minor model: column `daily_airline_economic_proxy_usd` of the owner's rate table. Lateness begins at 744 unload + 2 days; there is no other grace period. No cap (owner, 2026-11-11). A customer and minor model without a row has no rate | `fixtures/economics/README.md`, `tools/build_economics_rows.py` |
 | The fleet is dynamic (D-32) | The aircraft in a run are whichever have open tasks at the data cut. No list of aircraft, customers or count is fixed; 50 is a planning size (owner, 2026-11-11) | `focus/data/scope.py`, `scope.default_basis` |
 | Penalty proxy | Modeled from public airline and pricing data, labeled as a proxy (owner: keep) | A15 |
@@ -164,9 +167,9 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-31 | Should criticality weight a team's score | OWNER (with data) | no: reported only (D-29) | after 4 weeks of pilot |
 | DEC-32 | Which measures, at which level | OWNER | the score for teams; nothing else is built | before the pilot |
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
-| DEC-34 | How long the scheduler may improve a plan | DATA, inside the owner's 20 minutes | 30 seconds for the whole run: the first pass uses it up, so no improvement | with the 50-aircraft timings on several fleets |
+| DEC-34 | How long the nightly full solve may improve a plan, and what its search may reorder | DATA | pre-shift runs do not search; the nightly run takes its budget from the schedule's variables | after two weeks of nightly runs on real data |
 | DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
-| DEC-36 | Bring the pre-shift run under 20 minutes | ENGINEERING; OWNER and DATA for when the full solve runs | as shipped: 23.2 minutes at 50 aircraft, over the budget | before the first live pre-shift run |
+| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | four of nine options built (D-33); the delivery plan is not inside 20 minutes yet | before the first live pre-shift run |
 | DEC-37 | When the pass at the cut fails: plan on the earlier copy, or stop | OWNER | stop: the previous plan stays | before the first live pre-shift run |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
@@ -409,12 +412,18 @@ first owner-confirmed OD, because any edit changes the policy hash.
   - (c) automatic for EXECUTABLE, manual for FORECAST.
 - **Recommendation: (b), or (c) if the owner wants a human on the delivery forecast.** Keep a kill switch
   (`FOCUS_AUTO_SIGN=false` falls back to manual).
-- **Built, switched off.** The pipeline draft carries `FOCUS_AUTO_SIGN: "false"`. Set to `"true"`, `sign_accept`
-  runs by itself only in a scheduled pipeline on a protected ref; every other run, and every forecast, still waits
-  for an operator. The signer step refuses a plan without a clean FINAL validation and a clean READBACK either way
-  (`test_ci_draft_orders_roles_and_protects_signing`). Turn it on only with the owner's decision on record.
-- **Until decided:** a person accepts each plan, three times a day, inside the 20 minutes of D-28. A plan accepted
-  after its shift starts is not that shift's plan of record.
+- **What D-33 adds.** The owner wants the application populated at shift start, with the schedule and the task
+  lists. The task lists come with the shift plan's acceptance and the delivery dates with the delivery plan's. With
+  (a) both wait for a person three times a day; with (c) the task lists are automatic and the delivery dates wait.
+- **Built, switched off.** The pipeline draft carries `FOCUS_AUTO_SIGN: "false"` and
+  `FOCUS_AUTO_SIGN_DELIVERY: "false"`. With the first set to `"true"`, `sign_accept` runs by itself only in a
+  scheduled pipeline on a protected ref. With both set, `forecast_sign_accept` does too. Every other run still waits
+  for an operator. Either way the signer validates the staged bytes itself before it signs them
+  (`test_ci_draft_orders_roles_and_protects_signing`,
+  `test_each_validation_is_computed_once_and_the_signer_validates_the_bytes_it_signs`). Turn them on only with the
+  owner's decision on record.
+- **Until decided:** a person accepts each plan, three times a day, inside the 20 minutes. A plan accepted after its
+  shift starts is not that shift's plan of record.
 - **Measure.** From `tools/calibrate_scores.py store`: `stale_plans.share`, and the minutes from acceptance to shift
   start (pipeline receipts).
 - **Decision evidence.** If manual signing gives any stale plan in a week of shadow, recommend automatic.
@@ -764,64 +773,58 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 
 ### DEC-34 How long the scheduler may improve a plan
 
-- **Authority:** DATA, inside the owner's 20 minutes (D-28).
-- **Default now.** `optimizer.budget_seconds` = 30 for a whole scheduling run and `optimizer.max_neighborhood_moves`
-  = 400. Both are fixture values, never approved for production (`SCHEDULING_CONSTRAINTS.md`). The clock starts
-  with the run, and the first pass alone uses the budget up:
+- **Authority:** DATA.
+- **What the improvement search is.** After the first pass, which dispatches work by the cost of delaying it, a full
+  solve may try improvement moves. Each move reorders some jobs, decodes a whole schedule and is kept only when the
+  fleet's cost is strictly lower. It compares cost, so it needs a finish date for every aircraft.
+- **Where it runs (D-33).** In the nightly full solve only. Every pre-shift run repairs the accepted plans and does
+  not search: that is what fits the 20 minutes and keeps the task lists similar from run to run.
+- **What it can change today.** Not the work crews do in the coming days.
+  - The delivery plan keeps every slot of the shift plan, so there the search reorders only work the shift plan does
+    not place: work that cannot start yet, and work beyond its reach.
+  - In the shift plan the search cannot compare cost wherever an aircraft has work that cannot start, because that
+    aircraft's finish is unknown there. That is nearly every aircraft. It still compares travel, waiting and overtime.
+  - So the order of near-term work comes from the cost-of-delay dispatch: each aircraft's daily rate, reduced by the
+    slack of the job (`OBJECTIVE_EXPLAINED.md`).
+- **What reordering could save: the measurements made before D-33**, when the delivery plan was arranged on its own.
+  They are an upper bound on what the search can add, not a saving the floor gets today. Each figure is the delivery
+  plan's late cost at the owner's rates (D-31).
 
-  | Fleet, on the test machine | First pass, executable plan | First pass, forecast |
-  | --- | --- | --- |
-  | 10 aircraft (`SB`, one shift) | 28 to 32 seconds | 50 to 57 seconds |
-  | 50 aircraft (the stored 14-day run, 42 shifts) | 143 seconds at the median (100 to 182) | 340 seconds at the median (280 to 498) |
-
-  So the improvement search gets no time at 50 aircraft and next to none at 10. It also runs only in a full solve:
-  once a production day as shipped (`planning.default_mode` = `auto`). The other runs repair the accepted plan and
-  do not search.
-- **Why it matters** (`SB`, `docs/task-valuation-investigation/EVIDENCE_INDEX.md`: one 10-aircraft synthetic fleet,
-  one seed, the forecast of one shift, six aircraft late in every plan). Each figure is the plan's late cost at the
-  owner's rates (D-31), whichever rates the plan was made with:
-
-  | Rates the plan was made with | First pass only | Three moves, two repairs | Ten moves, five repairs |
+  | One 10-aircraft fleet (`SB`), by the rates the plan was made with | First pass only | Three moves, two repairs | Ten moves, five repairs |
   | --- | --- | --- | --- |
   | The owner's | $1,779,625 | $1,351,099 (−24.1%) | $1,333,078 (−25.1%) |
   | One rate for every aircraft ($65,000) | $1,369,330 | $1,369,330 (no move accepted) | $1,289,718 (−5.8%) |
   | The superseded ticket-revenue figures | $1,393,648 | $1,276,877 (−8.4%) | not run |
 
-  - **The search took a quarter off the late cost.** The first pass with the owner's rates was the dearest of the
-    eight plans, 30% above the first pass made with one rate for every aircraft.
-  - **No plan here is the lowest-cost plan.** The cheapest at the owner's rates was made with the superseded rates:
-    5.5% under the plan made with the owner's rates and the same search. With ten moves, the plan made with one rate
-    was 3.3% under the plan made with the owner's rates.
-  - **Time.** Three moves took 55 seconds more on the forecast and 22 on the executable plan. Ten moves took 127 and
-    48.
-  - **One fleet and one seed.** On the fleet and the ticket-revenue rates used before D-31, the same three moves
-    saved 1% (`SB (before D-31)` in the evidence index). The saving depends on the fleet, and the fleet changes
-    (D-32).
-  - **At 50 aircraft** (`SB50`, two fleets whose customers and models are drawn from the open orders; the forecast's
-    late cost at the owner's rates):
+  | Three 50-aircraft fleets (`SB50`), customers and models drawn from the open orders | Late in the first plan | First pass only | Three moves, two repairs | Ten moves, five repairs |
+  | --- | --- | --- | --- | --- |
+  | Fleet 101: the generator's standard share of late parts | 50 of 50 | $33,886,110 | $33,886,110 (no move accepted) | $33,606,703 (−0.8%) |
+  | Fleet 202: few late parts | 38 of 50 | $4,581,991 | $4,508,678 (−1.6%) | $4,174,213 (−8.9%) |
+  | Fleet 303: few late parts | 39 of 50 | $6,859,874 | $6,497,878 (−5.3%) | $6,141,673 (−10.5%) |
 
-    | Fleet | Late in the first plan | First pass only | Three moves, two repairs | Ten moves, five repairs |
-    | --- | --- | --- | --- | --- |
-    | The generator's standard share of late parts | 50 of 50 aircraft | $33,886,110 | $33,886,110 (no move accepted) | $33,606,703 (−0.8%) |
-    | Few late parts | 38 of 50 aircraft | $4,581,991 | $4,508,678 (−1.6%) | $4,174,213 (−8.9%) |
-
-    Ten moves took 415 s more on the forecast of the first fleet and 845 s more on the second. Where late parts
-    decide how late an aircraft is, reordering work buys little. Where capacity decides, ten moves bought 9% and
-    took 14 minutes, which only the forecast, outside the window, can afford.
-- **Measure**, on several different 50-aircraft fleets (D-32) and then on real data: the forecast's late cost with
-  the first pass alone, with three moves and two repairs, and with ten moves and five repairs, and the seconds each
-  took (`search_budget.py run NAME MOVES REPAIRS --aircraft 50 --fleet-seed N`). On real data add `window` from
-  `pipeline --status`.
+  - **Where late parts decide how late an aircraft is, reordering buys little** (fleet 101: under 1%). **Where
+    capacity decides, ten moves bought 9% to 10%.**
+  - **Time at 50 aircraft.** The first pass took 320 to 387 seconds for the delivery plan and 168 to 214 for the
+    shift plan. Three moves took 99 to 443 seconds more on the delivery plan; ten moves, 415 to 862.
+  - **No plan here is the lowest-cost plan.** On the 10-aircraft fleet the cheapest plan at the owner's rates was
+    made with the superseded rates. The receipt says `HEURISTIC_NO_PROOF`.
+  - **The saving depends on the fleet, and the fleet changes** (D-32). Never tune the budget to one fleet.
+- **Not built: the search acting on the plan the floor follows.** Let the nightly search's moves reorder the shift
+  plan, and judge each one by the cost of the delivery plan that follows that shift plan. Each candidate then costs
+  one decode of each plan (about 1.5 to 3 minutes at 50 aircraft), so an hour tries 20 to 40 moves. The tables above
+  say what there is to gain on a fleet; measure whether it survives on real data before building it.
+- **Default now:** `optimizer.budget_seconds` = 30 and `optimizer.max_neighborhood_moves` = 400, both fixture values.
+  At 50 aircraft the first pass alone uses the 30 seconds, so a run without its own budget does not search. The
+  nightly schedule sets its own: `FOCUS_BUDGET_SECONDS` and `FOCUS_MAX_MOVES` (`HANDOFF.md` §5.2).
+- **Measure**, on several different fleets (D-32) and then on real data: the delivery plan's late cost after the
+  nightly full solve with no moves, three moves and ten moves, and the seconds each took
+  (`search_budget.py run NAME MOVES REPAIRS --aircraft 50 --fleet-seed N`), and the nightly run's `planning.drift`.
 - **Decision rule.**
-  - Give the forecast, which is outside the 20-minute window, the largest budget that still ends before the next run
-    starts.
-  - Give the executable plan what the window leaves after gathering, validating and publishing.
-  - Stop raising a budget when doubling it saves under 1% of late cost on every fleet measured.
+  - Give the nightly run the largest budget that still ends before the 05:00 staging pass.
+  - Stop raising it when doubling it saves under 1% of late cost on every fleet measured.
   - Set the move bound to what the budget allows, and keep the clock as the guard. A run stopped by its move bound
     repeats exactly; a run stopped by the clock does not (the receipt's `repeatable`).
-- **Until decided:** the shipped values. The schedule receipt records why the search stopped (`deadline` when the
-  budget ended it).
-- **Do not** read any plan as the lowest-cost plan. The receipt says `HEURISTIC_NO_PROOF`.
+- **Do not** put the search back into a pre-shift run, and do not read any plan as the lowest-cost plan.
 
 ### DEC-35 An aircraft the rate table does not cover
 
@@ -848,36 +851,44 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 
 ### DEC-36 Bring the pre-shift run under 20 minutes
 
-- **Authority:** ENGINEERING for (a), (b), (c), (e) and (f). DATA, then OWNER, for (d). No option changes a plan or
-  drops a check of the bytes that are signed.
-- **Why.** As shipped, the four jobs from the data cut to the accepted plan took 23.2 minutes at 50 aircraft on the
-  test machine (`docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow, action by action"). The owner's budget is
-  20 (D-28). The pull from SQL Server, each job's start on a runner and the acceptance come on top. The scheduler is
-  3 of the 23 minutes; loading the snapshot again and validating the plan again are 12.
-- **Options,** with the seconds each one took in that measurement:
+- **Authority:** ENGINEERING. No option changes a plan or drops a check of the bytes that are signed.
+- **Why.** The owner's 20 minutes hold the whole schedule: the shift plan and the delivery plan, from the data cut
+  (D-28, D-33). As first measured, at 50 aircraft on the test machine, the four jobs to the accepted shift plan took
+  23.2 minutes and the delivery plan's three jobs 27.1 more (`docs/execution/PRODUCTION_SCALE.md`). The pull from SQL
+  Server, each job's start on a runner and the acceptance come on top. The scheduler was 3 of the 23 minutes; loading
+  the snapshot again and validating the plan again were 12.
+- **Options,** with the seconds each took in that first measurement, for the shift plan's four jobs. The delivery
+  plan's three jobs pay each of them again, at about twice the size:
 
-  | Option | Seconds | What changes |
-  | --- | --- | --- |
-  | (a) Load the admitted snapshot once | 217 to 327 | The three later jobs each parse the stored snapshot again (about 109 s each). Either the steps from `schedule` to `sign_accept` share a process (two loads fewer), or every job loads a fast copy bound to the snapshot's hash |
-  | (b) The signer validates only the bytes it signs | 123 | DEC-03 (a): `sign_accept` re-reads the staged bytes, validates them and signs. Today it also repeats the FINAL validation, the serialization, the DETACHED validation and the stage write |
-  | (c) Write the snapshot's dashboard parts beside scheduling | 135 | Today `acquire` writes them before the scheduler may start. A job beside `schedule` writes them instead, and `sign_accept` checks they are complete before the plan head moves |
-  | (d) Repair in every pre-shift run | 112 | The scheduler took 32 s for a repair and 145 s for the full first pass. The daily full solve then runs outside the window (`planning.full_solve_shifts`), where the improvement search of DEC-34 also belongs |
-  | (e) One FINAL validation in the scheduling job | 42 | The `validate` step repeats, in the same process, the check made right after the solve |
-  | (f) End each job without releasing its memory object by object | 62 | Each process took 11 to 20 s to exit after its outputs were written |
+  | Option | Seconds | Status | What changes |
+  | --- | --- | --- | --- |
+  | (a) Load the admitted snapshot once | 217 to 327 | not built | The three later jobs each parse the stored snapshot again (about 109 s each). Four fifths of that is building Python objects from the parsed JSON. Either fewer jobs need it (g, h) or the decode gets faster (i) |
+  | (b) Each validation once per plan; the signer validates the bytes it signs | 213 | **built** (D-33) | FINAL by the scheduling run, DETACHED by the stager, READBACK by the signer in its own process: three computations where there were eight (`publication.service.publish`) |
+  | (c) The snapshot's dashboard parts beside scheduling | 135 | not built; the build itself is faster | `acquire` writes them before it moves the source head, because the web must never see a head without its parts. A slow record copy in the builder is gone (`display.build.strip`) |
+  | (d) Repair in every pre-shift run | 112, and 80 of in-search validation | **built** (D-33) | `planning.full_solve_shifts` is empty; the full solve is the nightly pipeline's |
+  | (e) One FINAL validation in the scheduling job | 42 | **built** (D-33) | The `validate` step takes the solve's receipt and the candidate the process has just stored |
+  | (f) End each job without releasing its memory object by object | 62 | **built** (D-33) | `FOCUS_FAST_EXIT=true` in the live jobs |
+  | (g) The stager without the snapshot | about 120 per plan | not built | Move the DETACHED validation into the scheduling job, which has the snapshot loaded; the stager then stages bytes and compares them. It changes what `STAGED` means, so the acceptance tests (A48, A51) change with it |
+  | (h) Both plans in the same scheduling job and the same signing job | about 220 | not built | Two loads fewer. The delivery plan would follow a shift plan that is not accepted yet, so its own acceptance must wait for the shift plan's and fail with it |
+  | (i) A faster decode of stored snapshots and plans | up to 80 per load | not built | The typed decoder in native code, as the canonical encoder already is |
 
-  (a), (b) and (c) together leave about 15 minutes; with (d), about 13; with all six, under 12.
 - **What preparing earlier buys.** Digesting who holds which certificate and which job needs which takes seconds
   here (4.4 s and under 0.1 s; the scheduler's working data 18 s). The pull is where it helps: load the slowly
   changing tables before the cut (DEC-08). A complete digest of the unchanged part of the data before the cut, with
   only the changes applied at the cut, would cut the 70 s snapshot build; it is not built.
-- **Recommendation:** (a), (b) and (c) first: they need no company data. Then (d), once the drift check shows what a
-  repair loses against the full solve on real shifts (`docs/execution/PLAN_REPAIR.md`).
-- **Decision rule.** The window is met when the 95th percentile of `window.minutes` over a week of live runs is 20 or
-  less, with the pull and the acceptance in it. Measure each change with `python tools/time_pre_shift.py` before and
-  after; the candidate's id and hash must not change.
-- **Until decided:** as shipped. The window is not met at 50 aircraft on the test machine.
-- **Verify:** `tests/integration/test_publication_recovery.py` (A50, A51),
-  `tests/integration/test_migration_pipeline.py` and the display tests; for (b), the new test DEC-03 names.
+- **Where it stands.** `PRODUCTION_SCALE.md`, "The pre-shift flow after D-33", has the timing after (b), (d), (e)
+  and (f) at 10 aircraft. At 50 aircraft it has not been timed again; by the first measurement's own figures those
+  four leave the shift plan at about 15 to 16 minutes and the delivery plan at about as much again.
+- **Next:** (g), then (c), then (h) or a runner with more cores and memory, on which the delivery plan's jobs can
+  overlap the shift plan's. Measure each with `python tools/time_pre_shift.py` before and after; the candidate's id
+  and hash must not change.
+- **Decision rule.** The window is met when the 95th percentile of `window.schedule_minutes` over a week of live runs
+  is 20 or less, with the pull and both acceptances in it. Until then report `window.minutes` (the task lists) and
+  `window.schedule_minutes` (the whole schedule) with every run.
+- **Do not start the run earlier to make it fit** without telling the owner: an earlier data cut means an older
+  task list (DEC-12).
+- **Verify:** `tests/integration/test_publication_recovery.py` (A48, A50, A51 and the single-computation tests),
+  `tests/integration/test_migration_pipeline.py` and the display tests.
 - **Do not** drop a validation of the bytes that get signed, shorten the horizon, or preload completions, work in
   progress, shortages, rosters or attendance (DEC-08): each changes what the plan rests on.
 

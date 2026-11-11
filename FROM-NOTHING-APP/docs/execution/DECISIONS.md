@@ -339,8 +339,9 @@ attendance. A conditional ETA is never physical receipt.
     the same moment. The budget is policy `pipeline.pre_shift_budget_minutes` = 20 (`owner_decision`).
     - Staging at the cut counts. A preload before the cut does not, and suits only data that does not change within
       a shift.
-    - The forecast (delivery dates and costs for every aircraft) follows acceptance in the same pipeline and is
-      outside the window. Its dashboard views update when it is accepted.
+    - The forecast (delivery dates and costs for every aircraft) follows acceptance in the same pipeline. *Changed
+      by D-33 (November 11, 2026):* it is part of the one schedule the 20 minutes must hold, and the report gives
+      both instants (`minutes` and `schedule_minutes`).
     - The report gives the minutes used, whether they are within the budget, the seconds per step, and whether the
       plan was accepted after its shift had started (`late`; D-26 then scores that shift against the previous plan).
   - **Tests run on merge, not before every shift.** The full suites take about half of the budget. The pipeline
@@ -479,6 +480,87 @@ attendance. A conditional ETA is never physical receipt.
     - Nothing is tuned to one fleet. The search budget (DEC-34) is measured on several different fleets, and the
       synthetic fleet is one example among many.
     - Evidence from one synthetic fleet says how FOCUS behaved on that fleet, not what next year's will look like.
+
+- **D-33 One schedule through delivery, made before every shift (owner, November 11, 2026).**
+  - **The owner's words.** "I'm getting lost in all the assumptions and questions asked throughout building this
+    application from the initial prompts. The intent is for 20 minutes prior to shift start, a schedule is created
+    which reduces the all fleet penalty costs. Then after that shift, 20 minutes before the next shift, the scheduler
+    [runs] again accounting for any new [constraints] such as late parts or any completed jobs. Ideally there is some
+    stability between shifts [...] the scheduler that ran prior to first shift produces a [schedule] throughout all
+    flow to deliveries so therefore it's also making the second shift schedule then for second shift when the
+    scheduler re runs it should be a similar task list for second shift as the prior plan. [...] The data gathering
+    and digesting and scheduler should all take no more than 20 minutes and when a user loads the application [at]
+    shift start time it should load instantly populated with schedule and task lists etc."
+  - **Decision: what every pre-shift run delivers.**
+    1. One run before every shift, started 20 minutes before the shift starts.
+    2. One schedule that covers every aircraft's whole flow to delivery and lowers the fleet's total late cost.
+    3. It takes in what changed since the run before: jobs completed, parts late or received, new work, absences.
+    4. The shift's task lists are part of that schedule. The schedule made before one shift already holds the next
+       shifts' lists, and the next run changes them only where something changed.
+    5. Gathering the data, digesting it and scheduling take 20 minutes at most, all of it.
+    6. At shift start the application opens at once, already holding the schedule and the task lists.
+  - **Questions.** The owner is asked only what only the owner can decide. Everything else takes the recommended
+    default in `docs/integration/DECISION_PLAYBOOK.md`, is built, and is reported with its measurement.
+  - **What was found** (`PS50`, `PS10`; `docs/task-valuation-investigation/EVIDENCE_INDEX.md`).
+    - *The shift plan was already stable.* In the stored 50-aircraft, 14-day simulation a median 95.8% of the task
+      list issued for a shift was already on the list the run before had made for that shift (87.7% to 98.7% over 41
+      pairs of runs); a day ahead, 88.5%. Of the lines on both lists, 99.6% kept their start time. What changed was
+      work pushed to a later shift, work a late part or an unfinished job blocked, and new rework.
+    - *The delivery plan was a second schedule.* A run makes two plans: the shift plan (only work that can really
+      start; crews are dispatched from it) and the delivery plan (all work through delivery; dates and late cost
+      come from it). Each defended its own previous plan, so they arranged the same shift differently, a little more
+      every run: in that simulation the delivery plan held, in the same shift, a median 36% of the lines its own
+      run's shift plan issued for the coming shift (94% in the first run, 24% at the lowest), and 8% at the same
+      start time. The dates and cost on the dashboard were those of an arrangement the floor never followed.
+  - **Built with this decision.**
+    - *One schedule* (`focus/engine/commitments.following`, policy `planning.forecast_follows_executable` = true,
+      `docs/execution/PLAN_REPAIR.md`). The shift plan is made and accepted first, unchanged. The delivery plan then
+      keeps every slot of the shift plan in force and plans the rest of the flow around them, in a full solve as well
+      as in a repair. On the same 10-aircraft fleet and floor, four days, with and without it:
+
+      | | Each plan defends its own (before) | The delivery plan follows the shift plan |
+      | --- | --- | --- |
+      | Lines of the shift plan's coming shift that the delivery plan of the same run has in that shift | 77.1% at the median (42.3 to 99.2) | 100% in all 12 runs |
+      | ... of those, at the same start time | 63.4% | 100% |
+      | The list the delivery plan of the run before made for a shift, against the list issued for it | 71.2% (29.4 to 87.9) | 92.2% (81.1 to 95.4), the shift plan's own figure |
+      | Shift plans, what the floor did, team scores | | identical, row for row (91,145 planned assignments) |
+      | The delivery plan's late cost | $9,804,002 in every run | $9,791,674 to $9,823,621 (within 0.2%) |
+      | An aircraft's planned finish, from one run to the next | unchanged in 108 of 108 | unchanged in 91 of 108; 99.1% within a day; 25.3 hours at most |
+
+      The delivery plan's dates now move when the plan the floor follows moves, which is what they are for.
+    - *Two defects found on the way*, both older than this decision and both fixed. A job's release books no crew,
+      and the next job waits for it; in a repair, other work could take a kept slot's crew before that release was
+      dispatched (`greedy.hint_leads`). And on the night the clocks go back, a slot in the hour that happens twice
+      was read back an hour early, so it could not be kept (`calendar.local_wall`).
+    - *Every pre-shift run repairs the accepted plan* (`planning.full_solve_shifts` is empty). That is what keeps the
+      lists similar and what fits the time. The full solve, with the improvement search, is a nightly run of the same
+      pipeline (`--planning full`), which also records how far a repair would have landed.
+    - *Each validation is computed once per plan* (`publication.service.publish`): FINAL by the scheduling run,
+      DETACHED by the stager, READBACK by the signer on the bytes it signs, in its own process. Eight validations per
+      plan became the three the manual's acceptance order names.
+    - *The application reads ahead* (`focus/web/warm.py`, `FOCUS_WARM_SECONDS`). Each web process checks for a newly
+      admitted run or accepted plan and then loads what the team lead views read: each team's work, pools and plan
+      for the day, the dependency graphs of its aircraft, and the goals of record. Those views then open without
+      first reading their data. It is off unless the setting gives the seconds between checks.
+    - *The window report covers the whole schedule* (`orchestration.window`): `minutes` to the accepted shift plan
+      and its dashboard data, `schedule_minutes` to the accepted delivery plan, and `within_budget` about both.
+      This changes D-28, which ended the clock at the shift plan.
+  - **Not met yet.**
+    - *The 20 minutes* (point 5). First measured at 50 aircraft: 23.2 minutes to the accepted shift plan and 27.1
+      more to the accepted delivery plan. The changes above shorten both; `docs/execution/PRODUCTION_SCALE.md`, "The
+      pre-shift flow after D-33", has what is measured since, and `DECISION_PLAYBOOK.md`, DEC-36 the options left.
+    - *Cost comparison of near-term work* (point 2). The order of the work crews do in the coming days comes from
+      the cost-of-delay dispatch: each aircraft's daily rate, reduced by the slack of the job. The improvement search
+      compares whole schedules by cost, but it can only do that in the delivery plan, where every aircraft has a
+      finish date, and there it now reorders only work the shift plan does not place. Letting its moves reorder the
+      shift plan, judged by the delivery plan's cost, is not built (`DECISION_PLAYBOOK.md`, DEC-34).
+    - *Who accepts the plans* (point 6) is the owner's (DEC-11). The switches for automatic acceptance exist and are
+      off. While they are off, the application is populated when a person has promoted the plan.
+  - **Tests.** `tests/integration/test_one_schedule.py`, `test_the_delivery_plan_holds_the_shift_plan_slot_for_slot`
+    (simulation), `tests/integration/test_warm_views.py`,
+    `test_each_validation_is_computed_once_and_the_signer_validates_the_bytes_it_signs`,
+    `test_a_slot_in_the_hour_the_clocks_repeat_is_read_back_as_the_same_instant`, and the window and cadence tests in
+    `tests/integration/test_migration_pipeline.py` and `test_plan_repair.py`.
 
 ## Semantic gaps (live), each a precise readiness effect
 
