@@ -870,7 +870,7 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   | (f) End each job without releasing its memory object by object | 62 | **built** (D-33) | `FOCUS_FAST_EXIT=true` in the live jobs |
   | (g) The stager without the snapshot | about 120 per plan | not built | Move the DETACHED validation into the scheduling job, which has the snapshot loaded; the stager then stages bytes and compares them. It changes what `STAGED` means, so the acceptance tests (A48, A51) change with it |
   | (h) Both plans in the same scheduling job and the same signing job | about 220 | not built | Two loads fewer. The delivery plan would follow a shift plan that is not accepted yet, so its own acceptance must wait for the shift plan's and fail with it |
-  | (i) A faster decode of stored snapshots and plans | up to 80 per load | not built | The typed decoder in native code, as the canonical encoder already is |
+  | (i) A faster decode of stored snapshots and plans | 38 per load so far | **partly built** | Well-formed data takes short paths through the typed decoder (`codec.from_jsonable`): the 50-aircraft snapshot loads in 67 s instead of 105, to the same verified hash. A decoder in native code, as the canonical encoder already is, would take more |
 
 - **What preparing earlier buys.** Digesting who holds which certificate and which job needs which takes seconds
   here (4.4 s and under 0.1 s; the scheduler's working data 18 s). The pull is where it helps: load the slowly

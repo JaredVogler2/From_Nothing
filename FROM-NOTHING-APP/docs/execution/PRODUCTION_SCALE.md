@@ -360,6 +360,10 @@ repair's best case; `PLAN_REPAIR.md` has repairs on changed data):
 
   The scheduler is 100 seconds of 1,895. Reading stored JSON back into objects (the snapshot six times, each plan
   four times) is about half.
+- **Since this measurement, the typed decoder takes short paths through well-formed data** (`codec.from_jsonable`;
+  `tests/unit/test_codec_fast_path.py` holds it against the full rules on valid and damaged data). The snapshot of
+  this measurement then loads in 67 seconds instead of 105, to the same verified hash, and the stored shift plan
+  decodes in 1.5 seconds instead of 3.8. The seven jobs have not been timed again with it.
 - **The 20 minutes are met for the task lists and not for the whole schedule.** The shift plan and its dashboard
   data are accepted 16.1 minutes after the data cut (17.6 on a first run); the delivery plan, with the dates and the
   late cost, 15.5 minutes later. The pull from SQL Server, each job's start on a runner and the acceptances come on

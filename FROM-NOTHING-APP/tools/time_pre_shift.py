@@ -1,6 +1,6 @@
 """Time the pre-shift flow action by action on a synthetic fleet (D-28: data cut to accepted plan within 20 minutes).
 
-    python tools/time_pre_shift.py run WORKDIR --aircraft 50 [--planning full] [--repair] [--views] [--no-forecast]
+    python tools/time_pre_shift.py run WORKDIR --aircraft 50 [--planning full] [--repair] [--views] [--no-forecast] [--sample]
 
 ``run`` does, in order, each in a fresh process the way the pipeline's jobs run:
 
@@ -21,6 +21,10 @@ over the files of step 1. Each job ends the way the pipeline draft's live jobs d
 its objects one by one); ``--slow-exit`` measures the ordinary exit. Named functions are wrapped with a wall-clock timer (inclusive times: a function's seconds
 include the functions it calls). The fixture clock is fixed, so the pipeline's own ``window`` report reads zero here;
 on live data it is the report to keep (``python -m focus.cli pipeline --key K --status``).
+
+``--sample`` also reads each job's stack every 25 ms from a second thread and records where the job was (``sampled`` in
+each job's file): which functions, without wrapping them. It costs the job nothing measurable. C code that holds the
+interpreter lock (the JSON parser, the native encoder) is not seen, and its time is spread over the rest.
 
 Not measured here, and to be measured on the company's systems: the pull from SQL Server over the network, and writes
 into SQL Server (the fixture store writes files).
@@ -85,6 +89,50 @@ class Timers:
 
     def table(self) -> dict[str, dict[str, float]]:
         return {label: {"calls": int(calls), "seconds": round(seconds, 2)} for label, (calls, seconds) in sorted(self.rows.items())}
+
+
+class Sampler:
+    """Where the main thread is, read every ``interval`` seconds from a second thread (``--sample``)."""
+
+    def __init__(self, interval: float = 0.025) -> None:
+        import collections
+        import threading
+
+        self.interval, self.inclusive, self.leaf = interval, collections.Counter(), collections.Counter()
+        self.samples, self._stop, self._began = 0, False, time.perf_counter()
+        self._main = threading.main_thread().ident
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    @classmethod
+    def if_asked(cls) -> "Sampler | None":
+        return cls() if os.environ.get("FOCUS_TIMING_SAMPLE", "") in ("1", "true", "yes") else None
+
+    def _run(self) -> None:
+        root = str(APP_ROOT) + os.sep
+        while not self._stop:
+            frame = sys._current_frames().get(self._main)
+            seen: set[str] = set()
+            innermost = True
+            while frame is not None:
+                code = frame.f_code
+                name = f"{code.co_filename.replace(root, '')}:{code.co_name}"
+                if innermost:
+                    self.leaf[name] += 1
+                    innermost = False
+                if name not in seen:
+                    seen.add(name)
+                    self.inclusive[name] += 1
+                frame = frame.f_back
+            self.samples += 1
+            time.sleep(self.interval)
+
+    def stop(self, top: int = 45) -> dict[str, Any]:
+        self._stop = True
+        per = (time.perf_counter() - self._began) / max(self.samples, 1)
+        return {"samples": self.samples, "seconds_per_sample": round(per, 4),
+                "inclusive_seconds": {name: round(n * per, 1) for name, n in self.inclusive.most_common(top)},
+                "running_seconds": {name: round(n * per, 1) for name, n in self.leaf.most_common(top // 2)}}
 
 
 def tree_bytes(path: Path) -> int:
@@ -265,6 +313,7 @@ def role(work: Path, key: str, role_name: str, planning: str, label: str) -> dic
     store = work / "store"
     before = tree_bytes(store)
     imported = time.perf_counter() - started
+    sampler = Sampler.if_asked()
     doc = orchestration.create(services, key=key, scenario=SCENARIO, planning=planning)
     began = time.perf_counter()
     results = orchestration.run_role(services, doc["pipeline_id"], role_name)
@@ -287,6 +336,8 @@ def role(work: Path, key: str, role_name: str, planning: str, label: str) -> dic
     out = {"label": label, "key": key, "role": role_name, "planning": planning, "startup_seconds": round(imported, 1),
            "role_seconds": round(seconds, 1), "process_seconds": round(time.perf_counter() - started, 1), "peak_memory_mb": peak_mb(),
            "store_written_mb": round((tree_bytes(store) - before) / 1e6, 1), "steps": outputs, "timers": timers.table(), **facts}
+    if sampler is not None:
+        out["sampled"] = sampler.stop()
     (work / "timing" / f"{label}.json").write_text(json.dumps(out, indent=1))
     return out
 
@@ -301,6 +352,7 @@ def repair(work: Path, key: str, purpose: str, label: str) -> dict[str, Any]:
     facts = install_timers(timers, work)
     doc = orchestration.create(services, key=key, scenario=SCENARIO)
     inputs = {"admit": doc["steps"]["admit"]["output"]}
+    sampler = Sampler.if_asked()
     began = time.perf_counter()
     scheduled = orchestration._schedule_one(services, {"request": {**doc["request"], "planning": "repair"}}, inputs, purpose)
     schedule_seconds = time.perf_counter() - began
@@ -309,6 +361,8 @@ def repair(work: Path, key: str, purpose: str, label: str) -> dict[str, Any]:
     out = {"label": label, "key": key, "purpose": purpose, "planning": scheduled.get("planning"), "schedule_seconds": round(schedule_seconds, 1),
            "validate_seconds": round(time.perf_counter() - began, 1), "valid": validated["valid"], "violations": validated["violations"],
            "process_seconds": round(time.perf_counter() - started, 1), "peak_memory_mb": peak_mb(), "timers": timers.table(), **facts}
+    if sampler is not None:
+        out["sampled"] = sampler.stop()
     (work / "timing" / f"{label}.json").write_text(json.dumps(out, indent=1, default=str))
     return out
 
@@ -343,11 +397,12 @@ def views(work: Path, persona: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------------------------- the whole flow
 
 FAST_EXIT = True                                                  # jobs end as the pipeline draft's live jobs do
+SAMPLE = False                                                    # --sample: each job also records where its time went
 
 
 def child(work: Path, *args: str) -> float:
     began = time.perf_counter()
-    env = {**os.environ, "FOCUS_FAST_EXIT": "1" if FAST_EXIT else ""}
+    env = {**os.environ, "FOCUS_FAST_EXIT": "1" if FAST_EXIT else "", "FOCUS_TIMING_SAMPLE": "1" if SAMPLE else ""}
     done = subprocess.run([sys.executable, str(Path(__file__).resolve()), *args], cwd=APP_ROOT, capture_output=True, text=True, env=env)
     seconds = time.perf_counter() - began
     with (work / "timing" / "log.txt").open("a", encoding="utf-8") as log:
@@ -500,7 +555,7 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
     (timing / "report.json").write_text(json.dumps(out, indent=1))
     if receipt is not None:
         keep = ("role", "planning", "purpose", "startup_seconds", "role_seconds", "schedule_seconds", "validate_seconds", "process_seconds",
-                "peak_memory_mb", "store_written_mb", "timers", "stages", "validations")
+                "peak_memory_mb", "store_written_mb", "timers", "stages", "validations", "sampled")
         raw = {f.stem: {k: v for k, v in json.loads(f.read_text()).items() if k in keep}
                for f in sorted(timing.glob("*.json")) if f.stem.split(".")[0] in ("first", "repair")}
         receipt.write_text(json.dumps({"tool": "tools/time_pre_shift.py", "label": "SYNTHETIC_FULLSCALE_FIXTURE (real readiness not established)",
@@ -535,6 +590,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--views", action="store_true", help="time the dashboard's read operations after the first pipeline")
     p.add_argument("--no-forecast", action="store_true", help="stop after the executable plan is accepted")
     p.add_argument("--slow-exit", action="store_true", help="let every job tear its interpreter down (FOCUS_FAST_EXIT off)")
+    p.add_argument("--sample", action="store_true", help="each job also samples its stack and records where its time went")
     p = sub.add_parser("prepare")
     p.add_argument("work")
     p.add_argument("--aircraft", type=int, default=50)
@@ -561,8 +617,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     work = Path(args.work).resolve()
     if args.command == "run":
-        global FAST_EXIT
-        FAST_EXIT = not args.slow_exit
+        global FAST_EXIT, SAMPLE
+        FAST_EXIT, SAMPLE = not args.slow_exit, args.sample
         out = run(work, args.aircraft, args.fleet_seed, args.planning, args.repair, args.views, not args.no_forecast)
         out["fast_exit"] = FAST_EXIT
     elif args.command == "prepare":
