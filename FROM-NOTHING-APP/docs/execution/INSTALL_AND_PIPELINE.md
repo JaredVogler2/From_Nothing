@@ -190,6 +190,21 @@ python -m focus.cli pipeline --key 2026-10-26 --role evaluator
 python -m focus.cli pipeline --key 2026-10-26 --status
 ```
 
+One job may run several roles, joined by commas (`DECISION_PLAYBOOK.md`, DEC-36 (g)). The same pipeline in four jobs:
+
+```bash
+python -m focus.cli pipeline --key 2026-10-26 --role source,app,stager   # acquire, admit, schedule, validate, unsigned stage
+python -m focus.cli pipeline --key 2026-10-26 --role signer              # the executable plan is out
+python -m focus.cli pipeline --key 2026-10-26 --role app,stager          # the forecast, scheduled, validated and staged
+python -m focus.cli pipeline --key 2026-10-26 --role signer
+```
+
+- The process holds the snapshot it has just admitted and the candidate it has just stored, so it neither loads the
+  one nor reads the other back. The signer, a job of its own, loads both from the store and validates the staged
+  bytes itself before it signs them.
+- The plans are the same as with one role per job, id for id. What changes is who holds which rights: this job's
+  login is a member of the source, pipeline-worker and stager roles at once, and never of the signer role.
+
 Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept`, then
 `forecast -> forecast_stage_readback -> forecast_sign_accept`, and `observe_evaluate` after `sign_accept`.
 

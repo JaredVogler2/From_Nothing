@@ -303,6 +303,111 @@ def test_a71_roles_order_and_idempotent_replay(pipeline_services) -> None:
     assert _published(services) == plans and O.status(services, pid)["outbox"] == status["outbox"]
 
 
+def test_role_lists_name_roles_once_each() -> None:
+    assert O.roles_of("all") == O.ROLES and O.roles_of("app") == ("app",)
+    assert O.roles_of("source,app,stager") == ("source", "app", "stager") and O.roles_of("app, stager") == ("app", "stager")
+    for bad in ("", "planner", "app,", "app,app", "source,bogus", "all,app", ","):
+        assert O.roles_of(bad) is None, bad
+
+
+JOB_SEQUENCE = ("source,app,stager", "signer", "app,stager", "signer", "evaluator")     # four plan jobs where the roles alone take seven
+
+
+def test_a_job_that_runs_several_roles_parses_the_snapshot_once_and_reads_no_candidate_back(pipeline_services, monkeypatch) -> None:
+    """DEC-36 (g): one process runs the source, app and stager steps in a row. It holds the snapshot it has just
+    admitted and the candidate it has just stored, so it builds neither again; the signer, a job of its own, reads
+    everything from the store. Step by step the pipeline is the one the roles alone would have run."""
+    import focus.data.acquisition as acquisition
+    from focus.contracts.planning import CandidatePlan, PlanningSnapshot
+
+    services = pipeline_services
+    pid = _pid(services, "combined")
+    built: list[str] = []
+    real = acquisition.from_jsonable_releasing
+
+    def counted(tp, data, path="$"):
+        if tp is PlanningSnapshot:
+            built.append("snapshot")
+        return real(tp, data, path)
+    monkeypatch.setattr(acquisition, "from_jsonable_releasing", counted)
+    read: list[str] = []
+    get_typed = services.repositories.get_typed
+
+    def spy(collection, record_id, type_name, cls, *args, **kwargs):
+        found = get_typed(collection, record_id, type_name, cls, *args, **kwargs)
+        if cls is CandidatePlan and found is not None:      # a stored candidate read back and decoded
+            read.append(record_id)
+        return found
+    monkeypatch.setattr(services.repositories, "get_typed", spy)
+
+    first = O.run_role(services, pid, JOB_SEQUENCE[0])
+    assert [(r["step"], r["outcome"]) for r in first] == [("acquire", "COMPLETED"), ("admit", "COMPLETED"), ("schedule", "COMPLETED"),
+                                                          ("validate", "COMPLETED"), ("stage_readback", "COMPLETED"), ("forecast", "BLOCKED")]
+    steps = O.load(services, pid)[0]["steps"]
+    candidate = steps["schedule"]["output"]["EXECUTABLE"]["candidate_id"]
+    assert built == []                                    # the snapshot this process admitted was never parsed again
+    assert candidate not in read                          # nor was the candidate it stored read back for staging
+    assert steps["stage_readback"]["output"]["EXECUTABLE"]["status"] == "STAGED" and not _published_since(services, steps)
+
+    monkeypatch.setattr(acquisition, "_VERIFIED", {})     # the signer is another process: it holds nothing
+    from focus.engine.max.optimizer import orchestrator as scheduling
+
+    monkeypatch.setattr(scheduling, "_SCHEDULED", {})
+    signed = O.run_role(services, pid, JOB_SEQUENCE[1])
+    assert [(r["step"], r["outcome"]) for r in signed] == [("sign_accept", "COMPLETED"), ("forecast_sign_accept", "BLOCKED")]
+    assert built == ["snapshot"] and candidate in read    # it loaded the stored snapshot and the stored candidate itself
+
+    for job in JOB_SEQUENCE[2:]:
+        ran = [r for r in O.run_role(services, pid, job) if r["outcome"] != "ALREADY_COMPLETED"]
+        assert ran and ran[0]["outcome"] == "COMPLETED", (job, ran)
+    status = O.status(services, pid)
+    assert status["state"] == "completed" and len(status["outbox"]) == len(O.STEPS)
+    steps = O.load(services, pid)[0]["steps"]
+    assert {steps["sign_accept"]["output"]["EXECUTABLE"]["status"], steps["forecast_sign_accept"]["output"]["FORECAST"]["status"]} == {"ACCEPTED"}
+    validations = {v for name in ("stage_readback", "forecast_stage_readback") for v in [next(iter(steps[name]["output"].values()))["readback_validation_id"]]}
+    assert len(validations) == 2 and all(validations)
+
+
+def _published_since(services, steps) -> list[str]:
+    """Published plans of this pipeline's shift-plan candidate (none before its signer has run)."""
+    candidate = steps["schedule"]["output"]["EXECUTABLE"]["candidate_id"]
+    from focus.publication.repository import repository_for
+
+    repo = repository_for(services)
+    return [pid for pid in repo.accepted_ids() if repo.published(pid).candidate_id == candidate]
+
+
+def test_jobs_of_several_roles_accept_the_same_plans_as_the_roles_alone(services_factory) -> None:
+    from focus.pipeline import cli_demo_bootstrap
+
+    accepted = {}
+    for name, sequence in (("roles", ROLE_SEQUENCE), ("jobs", JOB_SEQUENCE)):
+        services = services_factory()
+        assert cli_demo_bootstrap(services, SimpleNamespace(scenario="manufacturing_demo", reset=False))["status"] == "ok"
+        pid = _pid(services, "same")
+        for role in sequence:
+            O.run_role(services, pid, role)
+        steps = O.load(services, pid)[0]["steps"]
+        assert O.status(services, pid)["state"] == "completed", name
+        accepted[name] = (steps["schedule"]["output"]["EXECUTABLE"]["candidate_id"], steps["sign_accept"]["output"]["EXECUTABLE"]["plan_id"],
+                          steps["forecast"]["output"]["FORECAST"]["candidate_id"], steps["forecast_sign_accept"]["output"]["FORECAST"]["plan_id"])
+    assert accepted["roles"] == accepted["jobs"] and all(accepted["jobs"])        # candidates and plans, id for id
+
+
+def test_cli_refuses_a_role_list_with_an_unknown_or_repeated_role(pipeline_services) -> None:
+    for bad in ("source,planner", "app,app", ""):
+        out = O.cli_pipeline(pipeline_services, Namespace(key="bad-role", role=bad, status=False, step=None))
+        if bad == "":
+            assert out["status"] != "invalid"              # no role given means all
+            continue
+        assert out["status"] == "invalid" and out["error"]["code"] == "BAD_ROLE", bad
+    out = O.cli_pipeline(pipeline_services, Namespace(key="list-role", role="source,app,stager", status=False, step=None))
+    assert out["status"] == "ok" and [r["step"] for r in out["ran"] if r["outcome"] == "COMPLETED"] == [
+        "acquire", "admit", "schedule", "validate", "stage_readback"]
+    one = O.cli_pipeline(pipeline_services, Namespace(key="list-role", role="app,stager", status=False, step="sign_accept"))
+    assert one["ran"][0]["outcome"] == "ROLE_MISMATCH"     # a step outside the job's roles is never run by it
+
+
 def test_executable_plan_is_accepted_before_the_forecast_is_scheduled(pipeline_services) -> None:
     """The shift's dispatch never waits for the forecast; the forecast still runs and publishes on the same snapshot."""
     from focus.publication.service import current_plan
@@ -673,8 +778,9 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
              ("forecast_sign_accept", "--role signer")]
     for (job, role), previous in zip(order, [None] + [j for j, _ in order]):
         assert role in jobs[job], job
-        if previous:
-            assert f"needs: [{previous}]" in jobs[job] or f"needs: [{previous}," in jobs[job], job   # each role needs the one before it
+        if previous:                                                              # each role needs the one before it
+            assert (f"needs: [{previous}]" in jobs[job] or f"needs: [{previous}," in jobs[job]
+                    or f"needs: [{{ job: {previous}, optional: true }}," in jobs[job]), job
     assert "--role evaluator" in jobs["observe_evaluate"] and "needs: [sign_accept]" in jobs["observe_evaluate"]
     # P23: every verification precedes acquisition, and the scheduler runs the native wheel built from the same commit
     needs = jobs["acquire_admit"].split("needs:")[1].splitlines()[0]
@@ -732,3 +838,25 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     assert "performance-details --apply" in jobs["fixture_pipeline_rehearsal"]
     assert "image: python:3.12-slim" in jobs["default"]
     assert "--role all" in jobs["fixture_pipeline_rehearsal"] and "FOCUS_SIGN_KEY_REF" not in jobs["stage_readback"]
+    # DEC-36 (g): fewer jobs is a switch, off as shipped. One layout's unsigned jobs or the other's exist in a run, never
+    # both; the signer jobs are the same in both and need whichever job staged the plan
+    assert 'FOCUS_JOBS: "roles"' in jobs["variables"]
+    for job in ("acquire_admit", "schedule_validate", "stage_readback", "forecast_schedule_validate", "forecast_stage_readback"):
+        assert "extends: .by_role" in jobs[job], job
+    for job in ("plan_unsigned", "delivery_unsigned"):
+        assert "extends: .by_planner" in jobs[job] and "FOCUS_SIGN_KEY_REF" not in jobs[job] and "dist/focus_native-" in jobs[job], job
+    assert '$FOCUS_JOBS != "planner"' in jobs[".by_role"] and '$FOCUS_JOBS == "planner"' in jobs[".by_planner"]
+    for template in (".by_role", ".by_planner"):
+        assert "extends: .live" in jobs[template] and '$FOCUS_MODE == "live"' in jobs[template] and "$FOCUS_PIPELINE_PART == null" in jobs[template]
+    assert "focus-planner" in jobs[".by_planner"] and "focus-signer" not in jobs[".by_planner"]
+    planned = jobs["plan_unsigned"]
+    assert planned.index(guard) < planned.index("--role source,app,stager")       # the same protected-ref guard, first
+    create = next(line for line in planned.splitlines() if "--role source,app,stager" in line)
+    for flag in ('${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"}', '${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"}',
+                 '${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"}'):
+        assert flag in create, flag
+    assert planned.split("needs:")[1].splitlines()[0].replace("{ job: native_wheel, artifacts: true }", "native_wheel") == needs
+    assert "--role app,stager" in jobs["delivery_unsigned"] and "needs: [sign_accept," in jobs["delivery_unsigned"]
+    assert "signer" not in "".join(line for job in ("plan_unsigned", "delivery_unsigned") for line in jobs[job].splitlines() if "--role" in line)
+    assert "needs: [{ job: stage_readback, optional: true }, { job: plan_unsigned, optional: true }]" in jobs["sign_accept"]
+    assert "needs: [{ job: forecast_stage_readback, optional: true }, { job: delivery_unsigned, optional: true }]" in jobs["forecast_sign_accept"]

@@ -144,8 +144,13 @@ def _post_acceptance(services: Any, snapshot: PlanningSnapshot, published: Publi
 
 
 def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, fault: Callable[[str], None] | None = None,
-            repository: Any = None, until: str | None = None) -> PublishResult:
-    """Run the acceptance order; ``until="readback"`` stops after the readback validation (stager role, never signs)."""
+            repository: Any = None, until: str | None = None, candidate: CandidatePlan | None = None) -> PublishResult:
+    """Run the acceptance order; ``until="readback"`` stops after the readback validation (stager role, never signs).
+
+    ``candidate`` is the candidate this process has just stored under ``candidate_id`` (a job that schedules and
+    stages in one process): it is used instead of reading the stored one back and decoding it, when the store holds
+    that id. A candidate's id is the digest of its substance, so the two are the same plan; an object with another id
+    is ignored and the store is read."""
     from ..data.acquisition import load_snapshot
 
     if until not in (None, "readback"):
@@ -154,7 +159,10 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
     fault = fault or (lambda step: None)
     repos = services.repositories
     result = PublishResult("REJECTED", candidate_id)
-    plan = repos.get_typed(CANDIDATES, candidate_id, "CandidatePlan", CandidatePlan)
+    if candidate is not None and candidate.id == candidate_id and repos.exists(CANDIDATES, candidate_id):
+        plan: CandidatePlan | None = candidate
+    else:
+        plan = repos.get_typed(CANDIDATES, candidate_id, "CandidatePlan", CandidatePlan)
     if plan is None:
         result.reasons = ("CANDIDATE_NOT_FOUND",)
         return result

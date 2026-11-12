@@ -242,12 +242,27 @@ def reconcile_outbox(services: Any, pid: str) -> list[str]:
     return [s["name"] for s in doc["steps"].values() if s["status"] == "completed" and _emit(services, pid, doc["scope"], s)]
 
 
+def roles_of(role: str) -> tuple[str, ...] | None:
+    """The roles one job runs: ``all``, one role, or several joined by commas (``source,app,stager``). None when a name
+    is not a role or is given twice."""
+    if role == "all":
+        return ROLES
+    names = tuple(name.strip() for name in str(role).split(","))
+    return names if names and all(name in ROLES for name in names) and len(set(names)) == len(names) else None
+
+
 def run_role(services: Any, pid: str, role: str, *, owner: str | None = None, lease_seconds: float = 900.0) -> list[dict[str, Any]]:
-    """Run every step of ``role`` that is ready, in pipeline order, until one is blocked, leased or fails."""
+    """Run every step of ``role`` that is ready, in pipeline order, until one is blocked, leased or fails.
+
+    ``role`` may name several roles (``roles_of``). One process then runs their steps in a row: it parses the admitted
+    snapshot once at most, and the stager's step takes the candidate the scheduling step has just stored. A job that
+    runs ``source,app,stager`` needs all three roles' rights; the signer's step stays a job of its own, where it loads
+    the snapshot from the store and validates the staged bytes itself before it signs them."""
+    wanted = roles_of(role) or ()
     results = []
     reconcile_outbox(services, pid)
     for defn in STEPS:
-        if role not in ("all", defn.role):
+        if defn.role not in wanted:
             continue
         result = run_step(services, pid, defn.name, role=defn.role, owner=owner, lease_seconds=lease_seconds)
         results.append(result)
@@ -443,6 +458,7 @@ def _validate_one(services: Any, inputs: dict[str, Any], purpose: str, item: Map
 
 
 def _stage(services: Any, validated: Mapping[str, Any]) -> dict[str, Any]:
+    from .engine.max.optimizer.orchestrator import held_candidate
     from .publication.service import publish
 
     out: dict[str, Any] = {}
@@ -450,7 +466,8 @@ def _stage(services: Any, validated: Mapping[str, Any]) -> dict[str, Any]:
         if not item["valid"]:
             out[purpose] = {"status": "NOT_STAGED", "reason": "invalid candidate"}
             continue
-        result = publish(services, item["candidate_id"], until="readback")
+        # when this process scheduled the candidate (a job that runs the app and the stager roles), it is not read back
+        result = publish(services, item["candidate_id"], until="readback", candidate=held_candidate(item["candidate_id"]))
         if result.status not in ("STAGED", "ACCEPTED", "RECOVERED", "ALREADY_ACCEPTED"):
             raise StepFailed("STAGE_REJECTED", f"{purpose}: {result.status} {list(result.reasons)[:3]}")
         out[purpose] = {"candidate_id": item["candidate_id"], "status": result.status, "stage_id": result.stage_id,
@@ -534,11 +551,14 @@ def step_observe_evaluate(services: Any, doc: dict[str, Any], inputs: dict[str, 
 
 
 def cli_pipeline(services: Any, args: Any) -> dict[str, Any]:
-    """``pipeline --key K [--role R] [--step S] [--status]``: run a role's ready steps (``all`` in one process) or show state."""
+    """``pipeline --key K [--role R] [--step S] [--status]``: run the ready steps of a role, or of several roles joined
+    by commas, in one process (``all``: every role), or show state."""
     key = getattr(args, "key", None) or "default"
     role = getattr(args, "role", None) or "all"
-    if role not in ROLES + ("all",):
-        return {"status": "invalid", "error": {"code": "BAD_ROLE", "message": f"role must be one of {ROLES + ('all',)}"}}
+    wanted = roles_of(role)
+    if wanted is None:
+        return {"status": "invalid", "error": {"code": "BAD_ROLE", "message": f"role must be all, one of {ROLES}, or several of them joined "
+                                                                              f"by commas, each once"}}
     pid = pipeline_id(services.settings.scope_key, key)
     if getattr(args, "status", False):
         return status(services, pid)
@@ -549,7 +569,7 @@ def cli_pipeline(services: Any, args: Any) -> dict[str, Any]:
         step = args.step
         if step not in BY_NAME:
             return {"status": "invalid", "error": {"code": "BAD_STEP", "message": f"step must be one of {sorted(BY_NAME)}"}}
-        results = [run_step(services, pid, step, role=BY_NAME[step].role if role == "all" else role, lease_seconds=lease)]
+        results = [run_step(services, pid, step, role=BY_NAME[step].role if BY_NAME[step].role in wanted else wanted[0], lease_seconds=lease)]
     else:
         results = run_role(services, pid, role, lease_seconds=lease)
     state = status(services, pid)

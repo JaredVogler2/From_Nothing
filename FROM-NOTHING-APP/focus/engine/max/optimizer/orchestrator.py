@@ -833,6 +833,11 @@ def remember_candidate(plan: CandidatePlan) -> None:
         del _SCHEDULED[next(iter(_SCHEDULED))]
 
 
+def held_candidate(candidate_id: str) -> CandidatePlan | None:
+    """The candidate this process stored under that id, if it still holds it (None in any other process)."""
+    return _SCHEDULED.get(candidate_id)
+
+
 def scheduled_candidate(repositories: Any, candidate_id: str) -> CandidatePlan | None:
     """The stored candidate: the object this process stored under that id when it has it, else read from the store. A
     candidate's id is the digest of its substance, so the two are the same plan."""

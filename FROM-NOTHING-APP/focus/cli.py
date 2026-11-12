@@ -175,7 +175,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("pipeline", help="durable role-separated pipeline: acquire, admit, schedule, validate, stage/readback, sign/accept, evaluate")
     p.add_argument("--key", default="default", help="pipeline idempotency key (one pipeline per key and scope)")
-    p.add_argument("--role", choices=["all", "source", "app", "stager", "signer", "evaluator"], default="all")
+    p.add_argument("--role", default="all",
+                   help="all, one of source, app, stager, signer, evaluator, or several joined by commas to run in one job (source,app,stager)")
     p.add_argument("--step", default=None, help="run one step only")
     p.add_argument("--status", action="store_true", help="show the pipeline state without running anything")
     p.add_argument("--scenario", default=None)

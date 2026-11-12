@@ -34,7 +34,8 @@
 #   * at the cut (the plan pipeline's first job, 20 minutes before the shift): the changes since the pass before it.
 #
 # How the order is enforced:
-#   * Each job runs ONE role of `python -m focus.cli pipeline` with that role's own protected credentials.
+#   * Each job runs ONE role of `python -m focus.cli pipeline` with that role's own protected credentials. FOCUS_JOBS=planner
+#     (off by default, DEC-36 (g)) lets one job run the source, app and stager roles in a row; signing stays a job of its own.
 #   * `needs` mirrors the step dependencies, and the pipeline state enforces them again. A job started early returns
 #     BLOCKED, so signing can never precede a clean readback and evaluation never runs without frozen goals and coverage.
 #   * `resource_group` serializes pipelines per scope, so two pipelines never race one scope's heads.
@@ -76,6 +77,13 @@ variables:
   # The delivery plan has its own switch, so the owner can keep a person on it (DEC-11, option c). It takes effect only
   # with FOCUS_AUTO_SIGN on as well. While either is off, the whole schedule is ready only when an operator has promoted it.
   FOCUS_AUTO_SIGN_DELIVERY: "false"
+  # How the plan pipeline's steps are split into jobs (DEC-36 (g)). "roles": one job per role, each with its own protected
+  # rights; seven jobs a run, and every job after the first loads the admitted snapshot again. "planner": the source, app
+  # and stager roles run in one job (plan_unsigned) and the delivery plan's app and stager roles in another
+  # (delivery_unsigned); four jobs a run and three snapshot loads instead of six. That job holds the three roles' rights
+  # at once. The signer stays a job of its own either way: it loads the snapshot from the store and validates the staged
+  # bytes itself before it signs them. Whoever owns the runners and the SQL principals decides; the plans are the same.
+  FOCUS_JOBS: "roles"
 
 stages: [verify, retain, stage_sql, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
 
@@ -163,6 +171,22 @@ fixture_pipeline_rehearsal:
     expire_in: 90 days
     paths: [ci-receipts/]
 
+# One job per role (FOCUS_JOBS: "roles", the default): the unsigned steps of the plan pipeline, each with its own rights.
+.by_role:
+  extends: .live
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && $FOCUS_JOBS != "planner" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+
+# Several roles in one job (FOCUS_JOBS: "planner"): the same unsigned steps, run in a row by one process.
+.by_planner:
+  extends: .live
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && $FOCUS_JOBS == "planner" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  environment: { name: focus-planner }              # protected: the source, app and stager rights together, no signing material
+  tags: [focus-scheduler]
+  variables:
+    FOCUS_NATIVE_CORE: "true"
+
 # Display parts are a cache rebuilt from kept records (D-24). Retention deletes the ones nothing reads before this pipeline
 # builds the next package, so the store holds at most the current package and the one being built. It keeps the current
 # packages, any package that can still become current and every accepted plan's summary and goals; it never touches
@@ -218,7 +242,7 @@ verify_staged_sources:
     - python -c "import json, sys; r = json.load(open('ci-receipts/source-discover.json')); sys.exit(0 if r.get('status') == 'ok' and not r.get('drift') else 1)"
 
 acquire_admit:
-  extends: .live
+  extends: .by_role
   stage: source
   # every verification first (P23): in this run with FOCUS_LIVE_VERIFY=full, else on the merge that put this code on the protected ref
   needs: [import_and_lint, { job: unit_and_integration, optional: true }, { job: ui, optional: true }, { job: fixture_pipeline_rehearsal, optional: true }, native_wheel, display_retention, verify_staged_sources]
@@ -230,7 +254,7 @@ acquire_admit:
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source ${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"} ${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"} ${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"} > ci-receipts/source.json
 
 schedule_validate:
-  extends: .live
+  extends: .by_role
   stage: schedule
   needs: [acquire_admit, { job: native_wheel, artifacts: true }]
   environment: { name: focus-app }
@@ -244,17 +268,29 @@ schedule_validate:
     - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app > ci-receipts/app.json
 
 stage_readback:
-  extends: .live
+  extends: .by_role
   stage: stage
   needs: [schedule_validate]
   environment: { name: focus-stager }               # protected: stager credentials, no signing material
   script:
     - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role stager > ci-receipts/stager.json
 
+# FOCUS_JOBS=planner (DEC-36 (g)): acquire, admit, schedule, validate and the unsigned stage in one process. The snapshot it
+# has just admitted is not loaded again, and the candidate it has just stored is not read back for staging.
+plan_unsigned:
+  extends: .by_planner
+  stage: source
+  needs: [import_and_lint, { job: unit_and_integration, optional: true }, { job: ui, optional: true }, { job: fixture_pipeline_rehearsal, optional: true }, { job: native_wheel, artifacts: true }, display_retention, verify_staged_sources]
+  script:
+    - test "$FOCUS_LIVE_VERIFY" = "full" -o "$CI_COMMIT_REF_PROTECTED" = "true"   # unverified code never plans a shift
+    - python -m pip install --disable-pip-version-check --no-index dist/focus_native-*.whl
+    - mkdir -p ci-receipts && python -m focus.cli preflight --role worker --probe-sql > ci-receipts/preflight-source.json
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source,app,stager ${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"} ${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"} ${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"} > ci-receipts/plan.json
+
 sign_accept:
   extends: .live
   stage: sign
-  needs: [stage_readback]
+  needs: [{ job: stage_readback, optional: true }, { job: plan_unsigned, optional: true }]   # whichever layout staged the plan
   rules:                                            # FOCUS_SIGN_KEY_REF exists only in this job's environment
     # DEC-11, off by default: the run accepts the plan itself only on a schedule, on a protected ref, with the switch on.
     # The signer step still refuses a plan without a clean FINAL validation and a clean READBACK.
@@ -273,7 +309,7 @@ sign_accept:
 # shift plan is accepted, so it never delays the shift's dispatch. It keeps every slot of that plan and carries it through
 # delivery (D-33), and it is part of what the 20 minutes must hold
 forecast_schedule_validate:
-  extends: .live
+  extends: .by_role
   stage: forecast
   needs: [sign_accept, { job: native_wheel, artifacts: true }]
   environment: { name: focus-app }
@@ -284,8 +320,17 @@ forecast_schedule_validate:
     - python -m pip install --disable-pip-version-check --no-index dist/focus_native-*.whl
     - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app > ci-receipts/forecast-app.json
 
+# FOCUS_JOBS=planner: the delivery plan scheduled, validated and staged in one process, once the shift plan is accepted.
+delivery_unsigned:
+  extends: .by_planner
+  stage: forecast
+  needs: [sign_accept, { job: native_wheel, artifacts: true }]
+  script:
+    - python -m pip install --disable-pip-version-check --no-index dist/focus_native-*.whl
+    - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app,stager > ci-receipts/delivery.json
+
 forecast_stage_readback:
-  extends: .live
+  extends: .by_role
   stage: forecast_stage
   needs: [forecast_schedule_validate]
   environment: { name: focus-stager }
@@ -295,7 +340,7 @@ forecast_stage_readback:
 forecast_sign_accept:
   extends: .live
   stage: forecast_sign
-  needs: [forecast_stage_readback]
+  needs: [{ job: forecast_stage_readback, optional: true }, { job: delivery_unsigned, optional: true }]
   rules:
     # DEC-11, off by default: both switches on, on a schedule, on a protected ref. The signer step still validates the
     # staged bytes itself before it signs them.

@@ -1,6 +1,7 @@
 """Time the pre-shift flow action by action on a synthetic fleet (D-28: data cut to accepted plan within 20 minutes).
 
     python tools/time_pre_shift.py run WORKDIR --aircraft 50 [--planning full] [--repair] [--views] [--no-forecast] [--sample]
+                                                [--layout roles|planner] [--second]
 
 ``run`` does, in order, each in a fresh process the way the pipeline's jobs run:
 
@@ -22,6 +23,11 @@ over the files of step 1. Each job ends the way the pipeline draft's live jobs d
 its objects one by one); ``--slow-exit`` measures the ordinary exit. Named functions are wrapped with a wall-clock timer (inclusive times: a function's seconds
 include the functions it calls). The fixture clock is fixed, so the pipeline's own ``window`` report reads zero here;
 on live data it is the report to keep (``python -m focus.cli pipeline --key K --status``).
+
+``--layout planner`` runs the jobs of DEC-36 (g) instead of one job per role: ``source,app,stager`` in one process, the
+signer, ``app,stager`` for the delivery plan, the signer. ``--second`` then runs a second pipeline key on the same store
+in the same layout. Its data is the same, so both of its plans are repairs of the plans just accepted: a whole
+repairing run, every job of it, in a repair's best case.
 
 ``--sample`` also reads each job's stack every 25 ms from a second thread and records where the job was (``sampled`` in
 each job's file): which functions, without wrapping them. It costs the job nothing measurable. C code that holds the
@@ -51,6 +57,12 @@ if str(APP_ROOT) not in sys.path:
 SCENARIO = "fullscale"
 EXECUTABLE_ROLES = ("source", "app", "stager", "signer")          # the window: acquire .. sign_accept
 FORECAST_ROLES = ("app", "stager", "signer")                      # after acceptance, outside the window
+# a layout is the jobs of one pipeline, in order: (label, the roles the job runs, whether it belongs to the delivery plan)
+LAYOUTS: dict[str, tuple[tuple[str, str, bool], ...]] = {
+    "roles": tuple((name, name, False) for name in EXECUTABLE_ROLES) + tuple((f"forecast_{name}", name, True) for name in FORECAST_ROLES),
+    "planner": (("plan", "source,app,stager", False), ("signer", "signer", False),
+                ("forecast_plan", "app,stager", True), ("forecast_signer", "signer", True)),
+}
 
 
 class Timers:
@@ -453,22 +465,22 @@ def child(work: Path, *args: str) -> float:
     return round(seconds, 1)
 
 
-def pipeline(work: Path, key: str, planning: str, prefix: str, forecast: bool) -> dict[str, Any]:
+def pipeline(work: Path, key: str, planning: str, prefix: str, forecast: bool, layout: str = "roles") -> dict[str, Any]:
     wall: dict[str, float] = {}
-    for name in EXECUTABLE_ROLES:
-        wall[f"{prefix}.{name}"] = child(work, "role", str(work), key, name, "--planning", planning, "--label", f"{prefix}.{name}")
-    if forecast:
-        for name in FORECAST_ROLES:
-            wall[f"{prefix}.forecast_{name}"] = child(work, "role", str(work), key, name, "--planning", planning, "--label", f"{prefix}.forecast_{name}")
+    for label, roles, delivery in LAYOUTS[layout]:
+        if delivery and not forecast:
+            continue
+        wall[f"{prefix}.{label}"] = child(work, "role", str(work), key, roles, "--planning", planning, "--label", f"{prefix}.{label}")
     return wall
 
 
-def run(work: Path, aircraft: int, fleet_seed: int | None, planning: str, with_repair: bool, with_views: bool, forecast: bool) -> dict[str, Any]:
+def run(work: Path, aircraft: int, fleet_seed: int | None, planning: str, with_repair: bool, with_views: bool, forecast: bool,
+        layout: str = "roles", second: bool = False) -> dict[str, Any]:
     (work / "timing").mkdir(parents=True, exist_ok=True)
     wall: dict[str, float] = {"prepare": child(work, "prepare", str(work), "--aircraft", str(aircraft),
                                                *(() if fleet_seed is None else ("--fleet-seed", str(fleet_seed))))}
     wall["pull"] = child(work, "pull", str(work))
-    wall.update(pipeline(work, "shift-1", planning, "first", forecast))
+    wall.update(pipeline(work, "shift-1", planning, "first", forecast, layout))
     if with_views:
         wall["views"] = child(work, "views", str(work))
         wall["team_pages"] = child(work, "team-pages", str(work))
@@ -476,7 +488,10 @@ def run(work: Path, aircraft: int, fleet_seed: int | None, planning: str, with_r
         wall["repair.executable"] = child(work, "repair", str(work), "shift-1", "EXECUTABLE", "--label", "repair.executable")
         if forecast:
             wall["repair.forecast"] = child(work, "repair", str(work), "shift-1", "FORECAST", "--label", "repair.forecast")
-    out = {"aircraft": aircraft, "fleet_seed": fleet_seed, "planning": planning, "cores": os.cpu_count(), "process_wall_seconds": wall}
+    if second:                                    # the same data again under another key: every plan of it is a repair
+        wall.update(pipeline(work, "shift-2", planning, "second", forecast, layout))
+    out = {"aircraft": aircraft, "fleet_seed": fleet_seed, "planning": planning, "layout": layout, "cores": os.cpu_count(),
+           "process_wall_seconds": wall}
     (work / "timing" / "run.json").write_text(json.dumps(out, indent=1))
     return out
 
@@ -544,6 +559,102 @@ def _schedule_rows(doc: dict[str, Any], schedule_seconds: float, validate_second
             ("the validate step: check the candidate's source binding and its FINAL receipt", round(validate_seconds, 1))]
 
 
+DIGEST_STAGES = ("build_graph", "build_census", "index_master", "flow_index", "build_workforce", "build_requirements", "build_holdings", "resolve",
+                 "build_parts", "build_cs_facts", "admit_line_calendars", "build_economics", "seal_snapshot")
+DONE = ("COMPLETED", "COMPLETED_AFTER_TAKEOVER")
+
+
+def _source_rows(doc: dict[str, Any]) -> list[tuple[str, float]]:
+    return [("read the source rows (fixture files here; the SQL pull live)", _seconds(doc, prefix="pull.capture:")),
+            ("keep the raw rows with their receipts, and read them back",
+             round(_seconds(doc, "store.write:datasets") + _seconds(doc, "acquire.readback_of_stored_rows"), 1)),
+            ("digest: build the planning snapshot", _seconds(doc, "digest.build_snapshot")),
+            ("store the snapshot", _seconds(doc, "store.write:snapshots")),
+            ("write the snapshot's dashboard data", _seconds(doc, "display.snapshot_parts")),
+            ("the admit step: verify the stored snapshot", _seconds(doc, "step:admit"))]
+
+
+def _combined_job(doc: dict[str, Any], wall: float | None) -> dict[str, Any]:
+    """A job that ran several roles in one process (``--layout planner``): the rows of every step it completed."""
+    ran = {name for name, step in doc.get("steps", {}).items() if step.get("outcome") in DONE}
+    rows: list[tuple[str, float]] = [("start the process", doc.get("startup_seconds", 0.0))]
+    if "acquire" in ran:
+        rows += _source_rows(doc)
+    purpose = "FORECAST" if "forecast" in ran else "EXECUTABLE" if "schedule" in ran else None
+    rows.append(("the admitted snapshot: loaded from the store, or checked against the one this process holds", _seconds(doc, "load_snapshot")))
+    if purpose is not None:
+        total = _seconds(doc, "step:forecast" if purpose == "FORECAST" else "step:schedule")
+        rows += _schedule_rows(doc, total, _seconds(doc, "step:validate") if purpose == "EXECUTABLE" else 0.0)[2:]
+    if ran & {"stage_readback", "forecast_stage_readback", "sign_accept", "forecast_sign_accept"}:
+        rows += [r for r in _publish_rows(doc)[2:] if (r[1] or "sign" not in r[0]) and not (purpose and r[0].startswith("independent validation of the candidate"))]
+    job = _job(doc, wall, rows)
+    if purpose is not None:
+        job["scheduler"] = _stages(doc, purpose)
+    return job
+
+
+def _planning(doc: dict[str, Any]) -> dict[str, Any] | None:
+    """What the job's scheduling step recorded about its mode (full solve or repair, and the slots kept)."""
+    for step in ("schedule", "forecast"):
+        ran = doc.get("steps", {}).get(step) or {}
+        output = (ran.get("output") or {}) if ran.get("outcome") in DONE else {}      # a step this job ran, not one it found done
+        for item in output.values():
+            if isinstance(item, dict) and item.get("planning"):
+                return item["planning"]
+    return None
+
+
+def _pipeline_jobs(load: Callable[[str], Any], wall: dict[str, float], prefix: str) -> tuple[dict[str, Any], dict[str, float]]:
+    """The jobs of one pipeline (``prefix``: first or second), in either layout, each with its actions."""
+    jobs: dict[str, Any] = {}
+    digest: dict[str, float] = {}
+    source = load(f"{prefix}.source") or load(f"{prefix}.plan")
+    if source:
+        digest = {name: _seconds(source, f"digest.{name}") for name in DIGEST_STAGES if _seconds(source, f"digest.{name}") >= 0.05}
+    doc = load(f"{prefix}.source")
+    if doc:
+        jobs["source: acquire, admit"] = _job(doc, wall.get(f"{prefix}.source"), _source_rows(doc))
+    for label, title in (("plan", "plan: acquire, admit, schedule, validate, stage_readback (executable plan)"),):
+        doc = load(f"{prefix}.{label}")
+        if doc:
+            jobs[title] = _combined_job(doc, wall.get(f"{prefix}.{label}"))
+    for label, title, purpose in (("app", "app: schedule, validate (executable plan)", "EXECUTABLE"),
+                                  ("forecast_app", "app: forecast (schedule and validate)", "FORECAST")):
+        doc = load(f"{prefix}.{label}")
+        if doc:
+            step = "schedule" if purpose == "EXECUTABLE" else "forecast"
+            total = _seconds(doc, f"step:{step}")
+            # the forecast step schedules and validates in one step, and its validate part takes the solve's FINAL receipt
+            check = _seconds(doc, "step:validate") if purpose == "EXECUTABLE" else 0.0
+            jobs[title] = _job(doc, wall.get(f"{prefix}.{label}"), _schedule_rows(doc, total, check))
+            jobs[title]["scheduler"] = _stages(doc, purpose)
+    for label, title in (("stager", "stager: stage_readback (executable plan)"), ("signer", "signer: sign_accept (executable plan)")):
+        doc = load(f"{prefix}.{label}")
+        if doc:
+            jobs[title] = _job(doc, wall.get(f"{prefix}.{label}"), [r for r in _publish_rows(doc) if r[1] or "sign" not in r[0]])
+    doc = load(f"{prefix}.forecast_plan")
+    if doc:
+        jobs["plan: forecast, forecast_stage_readback"] = _combined_job(doc, wall.get(f"{prefix}.forecast_plan"))
+    for label, title in (("forecast_stager", "stager: forecast_stage_readback"), ("forecast_signer", "signer: forecast_sign_accept")):
+        doc = load(f"{prefix}.{label}")
+        if doc:
+            jobs[title] = _job(doc, wall.get(f"{prefix}.{label}"), [r for r in _publish_rows(doc) if r[1] or "sign" not in r[0]])
+    for label in ("app", "plan", "forecast_app", "forecast_plan"):
+        doc = load(f"{prefix}.{label}")
+        for title, job in jobs.items():
+            if doc and job.get("scheduler") is not None and "planning" not in job and _planning(doc) and (
+                    ("forecast" in label) == ("forecast" in title)) and title.split(":")[0] in ("app", "plan"):
+                job["planning"] = _planning(doc)
+    return jobs, digest
+
+
+def _window(jobs: dict[str, Any]) -> tuple[float | None, float]:
+    """Seconds of the jobs to the accepted shift plan (None unless its signer ran), and of the delivery plan's jobs."""
+    shift = [job["seconds"] for title, job in jobs.items() if "forecast" not in title]
+    signed = any(title.startswith("signer: sign_accept") for title in jobs)
+    return (round(sum(shift), 1) if signed else None), round(sum(job["seconds"] for title, job in jobs.items() if "forecast" in title), 1)
+
+
 def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
     """Print the run action by action; with ``receipt``, also write the report and every job's own timers to that file."""
     timing = work / "timing"
@@ -553,37 +664,15 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {"aircraft": prepared and prepared["aircraft"], "cores": os.cpu_count(), "source_rows": prepared and prepared["rows"],
                            "source_tables": prepared and {n: t["rows"] for n, t in sorted(prepared["tables"].items(), key=lambda kv: -kv[1]["rows"]) if t["rows"]},
                            "local_pull_seconds": pulled and pulled["seconds"], "jobs": {}}
-    source = load("first.source")
-    if source:
-        digest = ["build_graph", "build_census", "index_master", "flow_index", "build_workforce", "build_requirements", "build_holdings", "resolve",
-                  "build_parts", "build_cs_facts", "admit_line_calendars", "build_economics", "seal_snapshot"]
-        out["jobs"]["source: acquire, admit"] = _job(source, wall.get("first.source"), [
-            ("read the source rows (fixture files here; the SQL pull live)", _seconds(source, prefix="pull.capture:")),
-            ("keep the raw rows with their receipts, and read them back",
-             round(_seconds(source, "store.write:datasets") + _seconds(source, "acquire.readback_of_stored_rows"), 1)),
-            ("digest: build the planning snapshot", _seconds(source, "digest.build_snapshot")),
-            ("store the snapshot", _seconds(source, "store.write:snapshots")),
-            ("write the snapshot's dashboard data", _seconds(source, "display.snapshot_parts")),
-            ("the admit step: verify the stored snapshot", _seconds(source, "step:admit"))])
-        out["digest_stages_seconds"] = {name: _seconds(source, f"digest.{name}") for name in digest if _seconds(source, f"digest.{name}") >= 0.05}
-    for label, title, purpose in (("first.app", "app: schedule, validate (executable plan)", "EXECUTABLE"),
-                                  ("first.forecast_app", "app: forecast (schedule and validate)", "FORECAST")):
-        doc = load(label)
-        if doc:
-            step = "schedule" if purpose == "EXECUTABLE" else "forecast"
-            total = _seconds(doc, f"step:{step}")
-            # the forecast step schedules and validates in one step, and its validate part takes the solve's FINAL receipt
-            check = _seconds(doc, "step:validate") if purpose == "EXECUTABLE" else 0.0
-            out["jobs"][title] = _job(doc, wall.get(label), _schedule_rows(doc, total, check))
-            out["jobs"][title]["scheduler"] = _stages(doc, purpose)
-    for label, title in (("first.stager", "stager: stage_readback (executable plan)"), ("first.signer", "signer: sign_accept (executable plan)"),
-                         ("first.forecast_stager", "stager: forecast_stage_readback"), ("first.forecast_signer", "signer: forecast_sign_accept")):
-        doc = load(label)
-        if doc:
-            out["jobs"][title] = _job(doc, wall.get(label), [r for r in _publish_rows(doc) if r[1] or "sign" not in r[0]])
-    window = [j["seconds"] for title, j in out["jobs"].items() if "forecast" not in title]
-    out["window_seconds"] = round(sum(window), 1) if len(window) == 4 else None
-    out["forecast_seconds"] = round(sum(j["seconds"] for title, j in out["jobs"].items() if "forecast" in title), 1)
+    out["jobs"], digest = _pipeline_jobs(load, wall, "first")
+    if digest:
+        out["digest_stages_seconds"] = digest
+    out["window_seconds"], out["forecast_seconds"] = _window(out["jobs"])
+    again, _ = _pipeline_jobs(load, wall, "second")
+    if again:                                     # the second pipeline on the same store: every plan of it is a repair
+        shift, delivery = _window(again)
+        out["second"] = {"jobs": again, "window_seconds": shift, "forecast_seconds": delivery,
+                         "planning": {title: job["planning"] for title, job in again.items() if job.get("planning")}}
     for label, purpose in (("repair.executable", "EXECUTABLE"), ("repair.forecast", "FORECAST")):
         doc = load(label)
         if doc:
@@ -602,18 +691,25 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
         keep = ("role", "planning", "purpose", "startup_seconds", "role_seconds", "schedule_seconds", "validate_seconds", "process_seconds",
                 "peak_memory_mb", "store_written_mb", "timers", "stages", "validations", "sampled")
         raw = {f.stem: {k: v for k, v in json.loads(f.read_text()).items() if k in keep}
-               for f in sorted(timing.glob("*.json")) if f.stem.split(".")[0] in ("first", "repair")}
+               for f in sorted(timing.glob("*.json")) if f.stem.split(".")[0] in ("first", "second", "repair")}
         receipt.write_text(json.dumps({"tool": "tools/time_pre_shift.py", "label": "SYNTHETIC_FULLSCALE_FIXTURE (real readiness not established)",
                                        "process_wall_seconds": wall, **({"notes": run_doc["notes"]} if run_doc.get("notes") else {}),
                                        "report": out, "jobs": raw}, indent=1) + "\n")
-    for title, job in out["jobs"].items():
-        print(f"\n{title}: {job['seconds']:.0f} s ({job['seconds'] / 60:.1f} min), peak {job['peak_memory_mb']} MB, wrote {job['written_mb']} MB")
-        for a in job["actions"]:
-            print(f"  {a['seconds']:8.1f}  {a['action']}")
-        for st in job.get("scheduler", {}).get("stages", []):
-            print(f"            ({st['seconds']:.1f} s {st['stage']}; {st['candidates']} tried, {st['accepted']} kept)")
-        if job.get("scheduler"):
-            print(f"            (stopped by: {job['scheduler']['stop_reason']})")
+    def show(jobs: dict[str, Any]) -> None:
+        for title, job in jobs.items():
+            print(f"\n{title}: {job['seconds']:.0f} s ({job['seconds'] / 60:.1f} min), peak {job['peak_memory_mb']} MB, wrote {job['written_mb']} MB")
+            if job.get("planning"):
+                print(f"            (planning: {job['planning']})")
+            for a in job["actions"]:
+                print(f"  {a['seconds']:8.1f}  {a['action']}")
+            for st in job.get("scheduler", {}).get("stages", []):
+                print(f"            ({st['seconds']:.1f} s {st['stage']}; {st['candidates']} tried, {st['accepted']} kept)")
+            if job.get("scheduler"):
+                print(f"            (stopped by: {job['scheduler']['stop_reason']})")
+    show(out["jobs"])
+    if out.get("second"):
+        print("\n================ the second pipeline on the same store: both plans are repairs ================")
+        show(out["second"]["jobs"])
     for purpose, item in out.get("repair", {}).items():
         print(f"\nrepair {purpose}: {item['seconds']:.0f} s; {item['planning']}")
         for a in item["actions"]:
@@ -621,8 +717,11 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
     if pages:
         print(f"\nteam lead task lists, {pages['teams']} teams, after {pages['read_ahead_seconds']:.0f} s of reading ahead "
               f"({pages['read_ahead'].get('teams_read')} teams covered): first {pages['task_list_first_seconds']}, again {pages['task_list_again_seconds']}")
-    print(f"\nwindow (the four executable-plan jobs): {out['window_seconds']} s; forecast jobs: {out['forecast_seconds']} s; "
+    print(f"\nwindow (the jobs to the accepted shift plan): {out['window_seconds']} s; the delivery plan's jobs: {out['forecast_seconds']} s; "
           f"local pull of {out['source_rows']} rows: {out['local_pull_seconds']} s")
+    if out.get("second"):
+        print(f"second pipeline (repairs): to the accepted shift plan {out['second']['window_seconds']} s; the delivery plan's jobs "
+              f"{out['second']['forecast_seconds']} s")
     return out
 
 
@@ -639,6 +738,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-forecast", action="store_true", help="stop after the executable plan is accepted")
     p.add_argument("--slow-exit", action="store_true", help="let every job tear its interpreter down (FOCUS_FAST_EXIT off)")
     p.add_argument("--sample", action="store_true", help="each job also samples its stack and records where its time went")
+    p.add_argument("--layout", default="roles", choices=sorted(LAYOUTS), help="roles: one job per role; planner: source,app,stager in one job")
+    p.add_argument("--second", action="store_true", help="then run a second pipeline key on the same store: a whole repairing run")
     p = sub.add_parser("prepare")
     p.add_argument("work")
     p.add_argument("--aircraft", type=int, default=50)
@@ -648,7 +749,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("role")
     p.add_argument("work")
     p.add_argument("key")
-    p.add_argument("role", choices=("source", "app", "stager", "signer"))
+    p.add_argument("role", help="a role, or several joined by commas for one job (source,app,stager)")
     p.add_argument("--planning", default="full", choices=("full", "repair", "auto"))
     p.add_argument("--label", default=None)
     p = sub.add_parser("repair")
@@ -670,7 +771,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run":
         global FAST_EXIT, SAMPLE
         FAST_EXIT, SAMPLE = not args.slow_exit, args.sample
-        out = run(work, args.aircraft, args.fleet_seed, args.planning, args.repair, args.views, not args.no_forecast)
+        out = run(work, args.aircraft, args.fleet_seed, args.planning, args.repair, args.views, not args.no_forecast, args.layout, args.second)
         out["fast_exit"] = FAST_EXIT
     elif args.command == "prepare":
         out = prepare(work, args.aircraft, args.fleet_seed)
