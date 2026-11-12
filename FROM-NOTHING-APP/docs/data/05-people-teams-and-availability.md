@@ -9,7 +9,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 
 **Gaps that apply to every dataset here.**
 - A dataset captured as `NOT_PROBED`, `EMPTY_UNCERTIFIED` or `FAILED` adds the gap `DATASET_NOT_PROBED`, `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`, with effect `BLOCKS_EXECUTABLE` (`focus/data/snapshot_builder.py`). The live reader never certifies an empty result. Every supplemental dataset in this group except `team_inference` reports `NOT_PROBED` live today.
-- Freshness applies only to datasets listed in policy `admission.max_source_age_hours` (fixture defaults; live load cadences are an open decision). The newest row clock (`LOAD_TIMESTAMP` here), read in the dataset's declared time zone, must be within the limit at the cutoff. Otherwise the gap is `SOURCE_STALE`; a clock that cannot be read is `SOURCE_CLOCK_UNKNOWN`.
+- Freshness applies only to datasets listed in policy `admission.max_source_age_hours` (set from each dataset's staging cadence, D-34; `focus/data/cadence.py`). The newest row clock (`LOAD_TIMESTAMP` here), read in the dataset's declared time zone, must be within the limit at the cutoff. Otherwise the gap is `SOURCE_STALE`; a clock that cannot be read is `SOURCE_CLOCK_UNKNOWN`.
 - `BLOCKS_EXECUTABLE` is a label. The validator fails an EXECUTABLE plan outright only for `SOURCE_STALE`, `SOURCE_CLOCK_UNKNOWN` and `CAPTURE_SKEW` (`focus/validation/plan.py`). Other gaps act through the data, for example by leaving a pool with no executable members.
 - In live mode every open decision in the policy file is also added as a `BLOCKS_EXECUTABLE` gap. The ones for this group are `OD-04` (OT authority) and `OD-10` (assignment and attendance feeds).
 - The reference SOURCE queries take no as-of parameter. The company adapter must enforce the run cutoff itself (`docs/integration/SOURCE_REPLACEMENT_CROSSWALK.md`, section C).
@@ -65,7 +65,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | Required | No |
 | Capabilities | executable |
 | If missing or empty | Gap `ASSIGNMENT_FEED_EMPTY` (`BLOCKS_EXECUTABLE`): no pool has executable members on any day, and inference stays nominal. Dataset status gap `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`; live mode also raises `OD-10`. An unparseable `EFFECTIVE_FROM` or `EFFECTIVE_TO`, or a naive value with no time zone policy, rejects the run (`SOURCE_VALUE_INVALID` with `BAD_SOURCE_DATETIME` or `SOURCE_TIMEZONE_POLICY_MISSING`). |
-| Time and cutoff | `EFFECTIVE_FROM` (inclusive) and `EFFECTIVE_TO` (exclusive) are local wall times, converted to UTC with this dataset's time zone policy (fixture receipt or `FOCUS_SOURCE_TIMEZONE_MAP_JSON`); an explicit offset is honored. `LOAD_TIMESTAMP` is the freshness clock (limit 36 h). No cutoff column: rows that become effective later apply to later shifts. |
+| Time and cutoff | `EFFECTIVE_FROM` (inclusive) and `EFFECTIVE_TO` (exclusive) are local wall times, converted to UTC with this dataset's time zone policy (fixture receipt or `FOCUS_SOURCE_TIMEZONE_MAP_JSON`); an explicit offset is honored. `LOAD_TIMESTAMP` is the freshness clock (limit 48 h). No cutoff column: rows that become effective later apply to later shifts. |
 | Read by | `focus/data/workforce.py` (`build_workforce`); `focus/data/org.py` (the org chart behind performance rollups, D-25); `focus/data/freshness.py` (`LOAD_TIMESTAMP`). |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -81,7 +81,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | `RUN_ID` | varchar(40), nullable | Meaning not established in code or docs (fixture: `FIXTURE-ASSIGN-01`). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `EVIDENCE_COUNT` | int, not null | Meaning not established in code or docs (fixture: `0`). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `LOOKBACK_DAYS` | smallint, not null | Meaning not established in code or docs (fixture: `30`). | Fetched and kept with the source run; nothing in the planner reads it today. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Time the row was loaded at the source. | Freshness clock: the newest value must be within 36 h of the cutoff, or `SOURCE_STALE`. |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Time the row was loaded at the source. | Freshness clock: the newest value must be within 48 h of the cutoff, or `SOURCE_STALE`. |
 
 **Rules and pitfalls.**
 - Membership is decided at the shift start instant. An assignment effective exactly at 06:00 local governs the S1 shift that starts then; one effective at 06:01 does not (`docs/execution/TEAM_AUTHORITY.md`).
@@ -168,7 +168,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | Required | No |
 | Capabilities | forecast |
 | If missing or empty | No planning effect. Dataset status gap `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`. With rows, a stale or unreadable `LOAD_TIMESTAMP` raises `SOURCE_STALE` or `SOURCE_CLOCK_UNKNOWN`, and those fail every EXECUTABLE plan. |
-| Time and cutoff | `LOAD_TIMESTAMP` is the freshness clock (limit 168 h), read in this dataset's time zone. No cutoff column. |
+| Time and cutoff | `LOAD_TIMESTAMP` is not freshness-checked: no plan is built from this table, so its age never stops one (D-34). No cutoff column. |
 | Read by | `focus/data/freshness.py` (`LOAD_TIMESTAMP` only). Separately, `queries/workforce/infer_mechanic_teams.sql` joins the table. |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -177,7 +177,7 @@ These datasets tell FOCUS who the people are, which team and shift each person w
 | `PRIMARY_TEAM` | varchar(30), nullable | Team mapped to the department (fixture: `PROD-A`). | Fetched and kept with the source run; nothing in the planner reads it today. The SQL inference uses the trimmed value as the `DEPT_FALLBACK` team, and a blank value means no mapping. |
 | `DOMINANT_SKILL` | varchar(5), nullable | Meaning not established in code or docs (fixture: `MECH`, `QA`). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `LABOR_RECORDS` | int, nullable | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Time the row was loaded at the source. | Freshness clock: the newest value must be within 168 h of the cutoff, or `SOURCE_STALE`. |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Time the row was loaded at the source. | Not read. |
 
 **Rules and pitfalls.**
 - It proves only a labelled nominal team, never availability or certification (crosswalk section A; `docs/execution/TEAM_AUTHORITY.md`).

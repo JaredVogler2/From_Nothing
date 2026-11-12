@@ -1359,8 +1359,14 @@ def job_label(jobs: dict[str, Any], job_id: str | None) -> str | None:
 
 # ---------------------------------------------------------------------- Team Lead (S15 view 1)
 
-def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None, shift: int) -> Projection:
-    """Server-ranked actions of one team-shift with their current dispatch reasons, exact crews and amendment proposals."""
+def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None, shift: int, proposals: bool = True) -> Projection:
+    """Server-ranked actions of one team-shift with their current dispatch reasons, exact crews and amendment proposals.
+
+    ``proposals=False`` is the page's first paint (D-33: the application opens at once). It gives the same actions,
+    counts and goal, and leaves the addition proposals out: ``proposals_deferred`` says whether asking again would
+    assess any. The proposals assess every open job of the team on every aircraft, so they need all of the team's
+    work; the actions need only the aircraft the team is planned on in that shift, and that is all this form reads.
+    A commitment on another aircraft is then counted under the team its work had in the plan's own snapshot."""
     from ..domain import DomainError
     from ..performance.actuals import AMENDMENTS, ObservationStore, knowledge_time
     from ..performance.amendments import assess_addition
@@ -1377,7 +1383,11 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
     day = day or default_day(canon)
     shift_id = f"{services.settings.site}:{day.isoformat()}:S{shift}"
     now = services.clock.now()
-    canon = canon.work([team]).pools([team], [day]).team_days("EXECUTABLE", [team], [day]).commitments("EXECUTABLE")
+    if proposals:
+        canon = canon.work([team]).pools([team], [day]).team_days("EXECUTABLE", [team], [day]).commitments("EXECUTABLE")
+    else:
+        planned = canon.team_days("EXECUTABLE", [team], [day])
+        canon = planned.work([team], team_shift_lines(planned, shift_id)).pools([team], [day]).commitments("EXECUTABLE")
     plan = canon.plan("EXECUTABLE")
     inp = validation_input(canon)
     phases, jobs, people = canon.phases(), canon.jobs(), canon.people()
@@ -1389,7 +1399,7 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
             "requirement": bundle_text(p.role_demands[0].bundle) if p is not None and p.role_demands else None,
             "dispatchable": not why, "reasons": [{"code": c, "detail": d} for c, d in dict.fromkeys(why)], "rank": rank})
     record = registry(services).record(team, shift_id)
-    goal, proposals, proposal_reasons = None, [], []
+    goal, rows, proposal_reasons, deferred = None, [], [], False
     at = knowledge_time(services)
     if record is not None:
         goal = {"goal_id": record.goal_id, "plan_id": record.plan_id, "B0": record.B0, "versions": goal_versions(services, record.goal_id),
@@ -1398,6 +1408,8 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
             proposal_reasons.append(reason("SHIFT_ENDED", f"The shift ended before the knowledge time {at.isoformat()}; work after it is offplan output, not an addition."))
         elif at < record.window.start:
             proposal_reasons.append(reason("SHIFT_NOT_STARTED", "The shift has not started; its goal is the plan accepted before it starts, and additions open when it does."))
+        elif not proposals:
+            deferred = True                                 # additions are open: the next request assesses them
         else:
             store = ObservationStore(services.repositories, services.settings.scope_key)
             taken = {u.phase for u in record.original_units} | {u.phase for x in store.known(AMENDMENTS, at) if x.goal_id == record.goal_id for u in x.units}
@@ -1409,10 +1421,10 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
                 try:
                     _, evidence = assess_addition(inp, canon.snapshot, plan, canon.plan_id("EXECUTABLE"), team=team, shift_id=shift_id,
                                                   phase_id=p.key.id, at=at)
-                    proposals.append(row | {"feasible": True, "basis": evidence["basis"], "reasons": []})
+                    rows.append(row | {"feasible": True, "basis": evidence["basis"], "reasons": []})
                 except DomainError as exc:
-                    proposals.append(row | {"feasible": False, "basis": None, "reasons": [{"code": exc.code, "detail": exc.message}]})
-            proposals.sort(key=lambda r: (not r["feasible"], r["label"]))
+                    rows.append(row | {"feasible": False, "basis": None, "reasons": [{"code": exc.code, "detail": exc.message}]})
+            rows.sort(key=lambda r: (not r["feasible"], r["label"]))
     outcomes: dict[str, int] = defaultdict(int)
     for r in plan.commitment_results:
         if phase_team(phases.get(r.phase)) == team:
@@ -1420,10 +1432,20 @@ def team_lead(canon: Canon, ctx: RequestContext, *, team: str, day: date | None,
     data = {"team": team, "date": day, "shift": shift, "shift_id": shift_id, "assessed_at": now, "proposals_at": at,
             "actions": actions, "counts": {"actions": len(actions), "dispatchable": sum(1 for r in actions if r["dispatchable"]),
                                            "blocked": sum(1 for r in actions if not r["dispatchable"])},
-            "goal": goal, "proposals": proposals, "proposal_reasons": proposal_reasons, "commitment_outcomes": dict(sorted(outcomes.items())),
+            "goal": goal, "proposals": rows, "proposal_reasons": proposal_reasons, "commitment_outcomes": dict(sorted(outcomes.items())),
             "note": "ranked by the server: dispatchable first, then committed, then planned start; the browser never assigns or completes work"}
+    if not proposals:
+        data["proposals_deferred"] = deferred
     return Projection(canon.base_status() if actions else "empty", data, list(canon.reasons), None, canon.source_run_id,
                       canon.plan_id("EXECUTABLE"), purpose="EXECUTABLE")
+
+
+def team_shift_lines(planned: Canon, shift_id: str) -> list[int]:
+    """The aircraft a team is planned on in one shift, from its plan team-day (``planned``: a canon with it loaded)."""
+    plan = planned.plan("EXECUTABLE")
+    if plan is None or not plan.loaded("assignments"):
+        return []
+    return sorted({a.line for a in plan.assignments if a.shift_id == shift_id})
 
 
 # ---------------------------------------------------------------------- Mechanic (S15 view 3): certificates and readiness

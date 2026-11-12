@@ -28,7 +28,10 @@ economic redispatch or a neighbourhood perturbation). For each phase it does the
 * **Repair hints.** A repair keeps the accepted incumbent: each hinted phase is dispatched after
   the commitments, in its incumbent start order, and tried first at its incumbent slot with its
   incumbent crew (the same checks as a defended phase). If that slot no longer holds, it is placed
-  by the ordinary search at once. New and changed work then fills the remaining capacity.
+  by the ordinary search at once. New and changed work then fills the remaining capacity. A phase
+  that books no crew and that a kept slot waits for (a job's release) is dispatched with the kept
+  slots (``hint_leads``): in the ordinary class it would wait behind other work, and that work
+  could take the slot's crew before the slot became ready.
 * **Defended commitments.** Ready commitments are dispatched first and the phases that must
   precede a commitment come second, ahead of all other work. Each defended phase is tried in
   two attempts: first the exact start and full crew, then the same start with an alternate
@@ -169,14 +172,42 @@ def _candidate_starts(ctx: EngineContext, ledger: DutyLedger, shift, pool_id: st
     return sorted(t for t in points if first <= t <= shift.cutoff_instant)
 
 
+def hint_leads(ctx: EngineContext, hints: Mapping[str, "DefendedTask"], defended: Mapping[str, "DefendedTask"]) -> dict[str, int]:
+    """Crewless phases that a kept slot waits for -> the earliest start among the slots each one precedes.
+
+    A job's release is a phase with no crew; the first phase of the next job waits for it. Such a phase holds no capacity
+    and is placed at its floor whenever it is dispatched, so dispatching it with the kept slots displaces nothing. Work
+    that books a crew is never led here: it keeps its ordinary priority."""
+    leads: dict[str, int] = {}
+    preds, phases = ctx.preds, ctx.phases
+    # Kept slots are taken earliest first, so the first time a crewless phase is reached is from the earliest slot it
+    # precedes: every phase and every edge is visited once. (Taken in any order, a phase many slots wait for is lowered
+    # again and again and its chain re-walked each time: two minutes for a 50-aircraft delivery plan.)
+    for start, pid in sorted((hint.start, pid) for pid, hint in hints.items()):
+        stack = [pid]
+        while stack:
+            for e in preds.get(stack.pop(), ()):
+                pred = e.pred_phase
+                if pred in leads or pred in hints or pred in defended:
+                    continue
+                phase = phases.get(pred)
+                if phase is None or (phase.kind is not PhaseKind.RELEASE and phase.role_demands):
+                    continue
+                leads[pred] = start
+                stack.append(pred)
+    return leads
+
+
 class Decoder:
     def __init__(self, ctx: EngineContext, priority: Callable[[str], tuple], *, defended: Mapping[str, DefendedTask] | None = None,
-                 committed: Callable[[str], tuple] | None = None, hints: Mapping[str, DefendedTask] | None = None):
+                 committed: Callable[[str], tuple] | None = None, hints: Mapping[str, DefendedTask] | None = None,
+                 leads: Mapping[str, int] | None = None):
         self.ctx = ctx
         self.priority = priority
         self.committed = committed or priority       # order of defended phases and their prerequisites (the first classes)
         self.defended = dict(defended or {})
         self.hints = dict(hints or {})               # repair: incumbent slots kept when they still hold
+        self.leads = leads if leads is not None else (hint_leads(ctx, self.hints, self.defended) if self.hints else {})
         self._cone = self._commitment_cone()
         self._requeued: set[str] = set()
 
@@ -199,6 +230,9 @@ class Decoder:
         hint = self.hints.get(pid)
         if hint is not None:
             return (LEAD_HINT, hint.start, *self.priority(pid))
+        lead = self.leads.get(pid)
+        if lead is not None:                         # a crewless phase that a kept slot waits for goes with the kept slots
+            return (LEAD_HINT, lead, *self.priority(pid))
         return (LEAD_OTHER, *self.priority(pid))
 
     # ---------------------------------------------------------------- driver

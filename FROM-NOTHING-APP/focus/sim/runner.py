@@ -89,13 +89,19 @@ def _release_memory() -> float:
         return 0.0
 
 
-def run(spec: SimSpec, db_path: Path, *, log=print, traits: TeamTraits | None = None) -> dict[str, Any]:
+def run(spec: SimSpec, db_path: Path, *, log=print, traits: TeamTraits | None = None,
+        overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+    """``overrides`` are policy values changed for this run only (a separately hashed policy), to compare two settings on
+    the same fleet and floor; they are part of the run's identity."""
     settings = Settings.from_env({"FOCUS_NATIVE_CORE": "true"}, app_root=APP_ROOT, inprocess_worker=False)
     first_day = spec.fleet.cutoff_day
     clock = FixedClock(datetime(first_day.year, first_day.month, first_day.day, 9, 0, tzinfo=UTC))
     store_dir = Path(tempfile.mkdtemp(prefix="focus-sim-"))
     services = build_services(settings, repositories=Repositories(FixtureStore(store_dir), mode="fixture", scope_key=settings.scope_key,
                                                                   clock=clock), clock=clock)
+    if overrides:
+        changed = services.policy.with_overrides(overrides, new_id=f"{services.policy.id}+sim", reason="simulation setting")
+        services = build_services(settings, repositories=services.repositories, clock=clock, policy=changed)
     shift_policy = ShiftPolicy.from_policy(services.policy)
     tz = shift_policy.tz
     db = SimDB(db_path)
@@ -103,12 +109,17 @@ def run(spec: SimSpec, db_path: Path, *, log=print, traits: TeamTraits | None = 
     datasets = build_fullscale_fixture(spec.fleet)
     facts = dict(FLEET_FACTS)
     state = SourceState(datasets)
-    # teams that differ (experiments with a known truth) are part of the run's identity; without them the id is unchanged
-    sim_id = digest_id("SIM", asdict(spec)) if traits is None else digest_id("SIM", asdict(spec), asdict(traits))
+    # teams that differ (experiments with a known truth) and changed policy values are part of the run's identity; without them the id is unchanged
+    identity = [asdict(spec)] + ([asdict(traits)] if traits is not None else []) + ([{"policy": overrides}] if overrides else [])
+    sim_id = digest_id("SIM", *identity)
     facts.update({"policy_id": services.policy.id, "policy_hash": services.policy.hash, "synthetic": True,
-                  "score_policy_status": services.policy.str("score.policy_status")})
+                  "score_policy_status": services.policy.str("score.policy_status"),
+                  "delivery_plan_follows_the_shift_plan": ("EXECUTABLE" in spec.purposes
+                                                           and services.policy.bool("planning.forecast_follows_executable"))})
     if traits is not None:
         facts["team_traits"] = asdict(traits)
+    if overrides:
+        facts["policy_overrides"] = dict(overrides)
     db.run_meta(sim_id, datetime.now(UTC).isoformat(), asdict(spec), facts, "RUNNING")
     for name, ds in datasets.items():
         db.source_rows(name, ds.rows, 0)
@@ -143,19 +154,26 @@ def run(spec: SimSpec, db_path: Path, *, log=print, traits: TeamTraits | None = 
         snapshot, build = admit(services, state, cutoff=cutoff, run_id=run_id, created_at=cutoff)
         timings["load_s"] = time.time() - t
         log(f"shift {k} ({shift.id}): admitted {len(snapshot.jobs)} jobs, {len(snapshot.phases)} phases in {timings['load_s']:.1f}s")
-        # the dispatch purpose is planned last: every other purpose is written and released first, so only one engine
-        # context is alive at a time (at 50 aircraft one context is several GB)
+        # one engine context is alive at a time (at 50 aircraft one context is several GB). Where the delivery plan follows
+        # the shift plan (D-33, policy planning.forecast_follows_executable) the dispatch purpose is planned first and the
+        # others after the floor has worked the shift and the dispatch plan is released: they read only the sealed
+        # snapshot and the accepted plans, so they are the plans a run makes before the shift. Otherwise the dispatch
+        # purpose is planned last and every other purpose is written and released before it.
         dispatch_name = "EXECUTABLE" if "EXECUTABLE" in spec.purposes else spec.purposes[0]
-        order = [name for name in spec.purposes if name != dispatch_name] + [dispatch_name]
+        others = [name for name in spec.purposes if name != dispatch_name]
+        follows = dispatch_name == "EXECUTABLE" and services.policy.bool("planning.forecast_follows_executable")
         timings.update(plan_s=0.0, validate_s=0.0, write_s=0.0)
         accepted: dict[str, Any] = {}
         planning: dict[str, Any] = {}
-        dispatch = None
-        for purpose_name in order:
+
+        def plan_purpose(purpose_name: str) -> Any:
             t = time.time()
+            follow = None
+            if follows and purpose_name == "FORECAST":                # the shift plan in force: this run's, else the last valid one
+                follow = accepted.get(dispatch_name) or (incumbent or {}).get(dispatch_name)
             sp = plan(services, snapshot, Purpose(purpose_name), incumbent=incumbent.get(purpose_name) if incumbent else None,
                       max_moves=spec.max_moves, budget_seconds=spec.budget_seconds, created_at=cutoff, max_repairs=spec.max_repairs,
-                      mode=spec.planning)
+                      mode=spec.planning, follow=follow)
             timings["plan_s"] += time.time() - t
             timings[f"plan_{purpose_name.lower()}_s"] = time.time() - t
             if sp.run.planning:
@@ -168,18 +186,18 @@ def run(spec: SimSpec, db_path: Path, *, log=print, traits: TeamTraits | None = 
             if sp.run.validation.valid:
                 accepted[purpose_name] = published_incumbent(snapshot, sp, cutoff)
             timings["write_s"] += time.time() - t
-            if purpose_name == dispatch_name:
-                dispatch = sp
-            else:
-                del sp
+            return sp
+
+        if not follows:
+            for purpose_name in others:
+                plan_purpose(purpose_name)
                 _release_memory()
-        assert dispatch is not None
+        dispatch = plan_purpose(dispatch_name)
         t = time.time()
         if k == 0:
             _write_people(db, snapshot, state)
         _write_calc(db, k, snapshot, dispatch.context, state)
         timings["write_s"] += time.time() - t
-        incumbent = {**(incumbent or {}), **accepted}
         t = time.time()
         floor_plan = dispatch if dispatch.run.validation.valid else replace(dispatch, plan=replace(dispatch.plan, assignments=()))
         if day_goals is not None and day_goals.day != day:
@@ -216,19 +234,28 @@ def run(spec: SimSpec, db_path: Path, *, log=print, traits: TeamTraits | None = 
         db.insert("perf_amendment", outcome.amendments)
         db.insert("perf_unlock", outcome.unlocks)
         db.insert("perf_team_shift", outcome.perf)
-        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
-        val = dispatch.run.validation
-        db.insert("sim_shift", [(k, shift.id, day.isoformat(), number, week, cutoff.isoformat(), _iso(shift.start), _iso(shift.end), run_id,
-                                 snapshot.id, snapshot.hash, dispatch.plan.id, dispatch.plan.hash, decision_digest(dispatch.plan), int(val.valid),
-                                 dispatch.run.native.get("engine"), dispatch.run.stop_reason, dispatch.run.moves, round(timings["load_s"], 2),
-                                 round(timings["plan_s"], 2), round(timings["validate_s"], 2), round(timings["execute_s"], 2),
-                                 round(timings["write_s"], 2), round(rss, 1))])
-        db.commit()
+        valid = dispatch.run.validation.valid
+        shift_row = (snapshot.id, snapshot.hash, dispatch.plan.id, dispatch.plan.hash, decision_digest(dispatch.plan), int(valid),
+                     dispatch.run.native.get("engine"), dispatch.run.stop_reason, dispatch.run.moves)
         done = Counter(r[11] for r in outcome.rows)
-        row = {"shift": k, "id": shift.id, "valid": val.valid, "assignments": len(dispatch.plan.assignments), "executed": dict(done),
-               "jobs_completed": outcome.completed_jobs, **{key: round(v, 1) for key, v in timings.items()}, "rss_mb": round(rss),
-               **({"planning": to_jsonable(planning)} if planning else {})}
-        del snapshot, build, dispatch, outcome
+        row = {"shift": k, "id": shift.id, "valid": valid, "assignments": len(dispatch.plan.assignments), "executed": dict(done),
+               "jobs_completed": outcome.completed_jobs}
+        del dispatch, outcome
+        if follows:
+            if k == 0 and snapshot.computed_hash() != snapshot.hash:     # checked once a run: the floor's changes never reach it
+                raise RuntimeError("the sealed snapshot changed while the floor worked the shift")
+            for purpose_name in others:
+                _release_memory()
+                plan_purpose(purpose_name)
+        incumbent = {**(incumbent or {}), **accepted}
+        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+        db.insert("sim_shift", [(k, shift.id, day.isoformat(), number, week, cutoff.isoformat(), _iso(shift.start), _iso(shift.end), run_id,
+                                 *shift_row, round(timings["load_s"], 2), round(timings["plan_s"], 2), round(timings["validate_s"], 2),
+                                 round(timings["execute_s"], 2), round(timings["write_s"], 2), round(rss, 1))])
+        db.commit()
+        row.update({key: round(v, 1) for key, v in timings.items()}, rss_mb=round(rss),
+                   **({"planning": to_jsonable(planning)} if planning else {}))
+        del snapshot, build
         row["rss_after_mb"] = round(_release_memory())
         summary.append(row)
         log(json.dumps(row))
@@ -363,7 +390,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--shifts", type=int, default=None, help="stop after this many shifts (a trial run)")
     parser.add_argument("--planning", choices=["full", "repair", "auto"], default="full",
                         help="full solve every shift (default), repair the previous plan, or auto (repair between daily full solves)")
+    parser.add_argument("--set", action="append", default=[], metavar="KEY=JSON", dest="overrides",
+                        help="a policy value for this run only, e.g. --set planning.forecast_follows_executable=false (repeatable)")
     args = parser.parse_args(argv)
+    overrides = {}
+    for item in args.overrides:
+        key, _, value = item.partition("=")
+        overrides[key.strip()] = json.loads(value)
     lo, hi = (int(x) for x in args.team_size.split(","))
     spec = SimSpec(fleet=FleetSpec(n_aircraft=args.aircraft, baseline=args.baseline, edges=args.edges, rework_total=args.rework, teams=args.teams,
                                    team_size=(lo, hi)), days=args.days, purposes=tuple(p.strip() for p in args.purposes.split(",")),
@@ -372,7 +405,7 @@ def main(argv: list[str] | None = None) -> int:
     if db_path.exists():
         print(f"{db_path} exists; remove it or choose another --db", file=sys.stderr)
         return 2
-    run(spec, db_path, log=lambda m: print(m, flush=True))
+    run(spec, db_path, log=lambda m: print(m, flush=True), overrides=overrides or None)
     return 0
 
 

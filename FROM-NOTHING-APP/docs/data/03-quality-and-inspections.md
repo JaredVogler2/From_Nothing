@@ -20,7 +20,7 @@ These four datasets add quality (QA) work to each job. `buyoff_plan` says which 
 | Required | Yes: a capture error (for example `SCHEMA_DRIFT` or a database error) rejects the source run (one capture of all datasets at one cutoff) with `MANDATORY_DATASET_FAILED`. An empty result without a certified-empty receipt rejects it too (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
 | If missing or empty | Capture error: run `REJECTED`, `MANDATORY_DATASET_FAILED`. Empty without a certificate (every empty live read today): run `REJECTED`, `MANDATORY_DATASET_EMPTY`. A census job with no row is planned without QA, and nothing flags it. |
-| Time and cutoff | Row clock `LOAD_TIMESTAMP` (stored without a zone; read in the dataset's declared source timezone). The newest value must be within 36 h of the cutoff, the source run's as-of instant (`admission.max_source_age_hours`), else `SOURCE_STALE`; no readable clock gives `SOURCE_CLOCK_UNKNOWN`. Both fail EXECUTABLE plans; forecasts still run. A producer receipt `loaded_at` replaces the row clock. No cutoff column. |
+| Time and cutoff | Row clock `LOAD_TIMESTAMP` (stored without a zone; read in the dataset's declared source timezone). The newest value must be within 336 h of the cutoff (the full compare is weekly, D-34), the source run's as-of instant (`admission.max_source_age_hours`), else `SOURCE_STALE`; no readable clock gives `SOURCE_CLOCK_UNKNOWN`. Both fail EXECUTABLE plans; forecasts still run. A producer receipt `loaded_at` replaces the row clock. No cutoff column. |
 | Read by | `focus/data/inspections.py` (`build_triggers`, `phase_plan`), `focus/data/graph.py`, `focus/data/freshness.py`; called from `focus/data/snapshot_builder.py` |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -56,7 +56,7 @@ These four datasets add quality (QA) work to each job. `buyoff_plan` says which 
 | Required | No |
 | Capabilities | forecast |
 | If missing or empty | Capture error: status FAILED, gap `DATASET_FAILED`. Empty without a certificate: gap `DATASET_EMPTY_UNCERTIFIED`. Plans do not change either way; only the cross-check notes disappear. |
-| Time and cutoff | Row clock `LOAD_TIMESTAMP`, 36 h limit, as for `buyoff_plan`. A stale table gives `SOURCE_STALE`, which fails EXECUTABLE plans even though nothing schedules from this table. No cutoff column. |
+| Time and cutoff | Row clock `LOAD_TIMESTAMP` is not freshness-checked: no plan is built from this table, so its age never stops one (D-34). No cutoff column. |
 | Read by | `focus/data/inspections.py` (`build_triggers`), `focus/data/freshness.py` |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -70,7 +70,7 @@ These four datasets add quality (QA) work to each job. `buyoff_plan` says which 
 | `CC_INSPECTIONS` | int, not null | Count of CC inspections. | Stored in the trigger only. |
 | `ODAUNITMEMBER_INSPECTIONS` | int, not null | Count of ODA unit member inspections. | Stored in the trigger only. |
 | `PARTNER_QT_INSPECTIONS` | int, not null | Count of partner QT inspections. | Stored in the trigger only. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Freshness check only. |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Not read. |
 
 **Rules and pitfalls.**
 - Counts are a cross-check, never an authority. They do not add phases, locate IP holds or release work.

@@ -119,12 +119,15 @@ Connect content settings ("Vars"):
 | `FOCUS_SESSION_SECRET` | random 32+ bytes (secret) |
 | `FOCUS_SOURCE_TIMEZONE_MAP_JSON` | source datetime2 timezone policy: `{"*": "UTC"}`, because database columns hold UTC (owner, 2026-10-31). The app shows times in the site's zone (policy `shift.timezone`). |
 | `FOCUS_MCP_ENABLED` | `false` until MCP access is approved |
-| `FOCUS_DISPLAY_CACHE_MB` | the display parts the web keeps verified in memory, in MB of stored JSON (default 192) |
+| `FOCUS_DISPLAY_CACHE_MB` | the display parts the web keeps verified in memory, in MB of stored JSON (default 384). 384 holds what every team lead's page reads first for one shift at 50 aircraft; 768 holds all three shifts of the day |
 | `FOCUS_TWIN_FULL_LOAD` | leave `false`: the digital twin would load whole snapshots and plan artifacts (`DISPLAY_PACKAGE.md`) |
+| `FOCUS_WARM_SECONDS` | `30`: every 30 seconds each web process checks for a newly admitted run or accepted plan and, on a change, reads ahead what each team lead's page reads first, the shift about to start before the later ones, so the task lists open at once at shift start (D-33; `focus/web/warm.py`). At 50 aircraft that reading takes about 25 seconds. Empty or `0` turns it off |
 
 **Memory.** The web reads only the display package the pipeline publishes, never a snapshot or a plan artifact
-(`DISPLAY_PACKAGE.md`). At 50 aircraft one process opening every view peaked at 857 MB with the default part cache, so
-give the content at least 1.5 GB. Lowering `FOCUS_DISPLAY_CACHE_MB` lowers that peak at the cost of reloading parts.
+(`DISPLAY_PACKAGE.md`). At 50 aircraft one process that had read ahead and served every team lead's first request
+peaked at 1.1 GB with the default part cache (384 MB), and at 1.7 GB with 768 MB, so give the content at least 2 GB.
+Lowering `FOCUS_DISPLAY_CACHE_MB` lowers that peak at the cost of reloading parts: with 192 MB the read-ahead covers
+half of the teams.
 
 Before publishing, run `python -m focus.cli preflight --role web` with the content's variables. It checks:
 

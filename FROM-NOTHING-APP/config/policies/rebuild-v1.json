@@ -112,13 +112,13 @@
     },
     "admission.max_source_age_hours": {
       "value": {
-        "master_task_list": 36, "pnet_dag": 36, "flow_budget": 36, "buyoff_plan": 36, "inspection_counts": 36, "etracs_active": 36,
-        "etracs_history": 36, "actual_labor": 36, "labor_shift": 36, "person_team_map": 36, "attendance_shift": 18,
-        "neo_graph_rework": 48, "soi_cert_requirements": 48, "mechanic_certs": 48, "cert_course_map": 168, "dept_team_skill_ref": 168,
-        "cday_op_plan": 240, "cs_windows": 240
+        "attendance_shift": 18, "etracs_active": 36,
+        "master_task_list": 48, "neo_graph_rework": 48, "pnet_dag": 48, "person_team_map": 48,
+        "cday_op_plan": 240, "cs_windows": 240,
+        "flow_budget": 336, "soi_cert_requirements": 336, "buyoff_plan": 336, "mechanic_certs": 336
       },
       "authority": "fixture_default",
-      "ref": "S05 ATOMIC ACQUISITION step 5 freshness: hours from each dataset's newest source clock (or producer loaded_at) to the cutoff; daily feeds 36, NEO snapshots 48, weekly references 168, calendars and CS windows 240. Live load cadences are an open decision"
+      "ref": "S05 ATOMIC ACQUISITION step 5 freshness: hours from each dataset's newest source clock (or producer loaded_at) to the cutoff. D-34 (owner, 2026-11-12: determine the cadence of all data): the list is every dataset with a source clock that an executable plan rests on, and each limit is at least twice the interval of the staging pass that reads the dataset whole (focus/data/cadence.py), so one missed pass never stops a plan: at least 17 h for per-shift data, 48 h for nightly, 336 h for weekly. Six tables no plan reads left the list. Re-set from the measured load intervals (DEC-13)"
     },
     "crew.rare_holders_max": {
       "value": 2,
@@ -667,9 +667,9 @@
       "ref": "Owner direction 2026-11-01 (speed item 3): pipelines repair the accepted plan between daily full solves. full | repair | auto"
     },
     "planning.full_solve_shifts": {
-      "value": [1],
+      "value": [],
       "authority": "fixture_default",
-      "ref": "auto mode: a run that plans one of these shift numbers gets the full solve (once per production day); other shifts repair"
+      "ref": "auto mode: a run that plans one of these shift numbers gets the full solve. Empty since D-33 (owner, 2026-11-11: every pre-shift run within 20 minutes, with similar plans from run to run): every pre-shift run repairs, and the full solve is the nightly pipeline's (--planning full), outside the window"
     },
     "planning.cutoff_lead_minutes": {
       "value": 60,
@@ -682,14 +682,19 @@
       "ref": "D-28 (owner, 2026-11-10): data gathering, scheduling and the dashboard ready within 20 minutes before each shift. Measured from the data cut to the acceptance of the executable plan, which publishes its dashboard data (orchestration.window)"
     },
     "planning.repair_max_incumbent_age_hours": {
-      "value": 12,
+      "value": 30,
       "authority": "fixture_default",
-      "ref": "auto mode: an accepted incumbent whose cutoff is older than this gets a full solve instead of a repair"
+      "ref": "auto mode: an accepted incumbent whose cutoff is older than this gets a full solve instead of a repair. 30 h: the nightly full solve renews the incumbent every 24 h, so a pre-shift run falls back to the slow full solve only when that one was missed as well"
     },
     "planning.drift_check": {
       "value": true,
       "authority": "fixture_default",
       "ref": "auto mode: each scheduled full solve also decodes the repair and records how far it landed from the full plan"
+    },
+    "planning.forecast_follows_executable": {
+      "value": true,
+      "authority": "owner_decision",
+      "ref": "D-33 (owner, 2026-11-11): one schedule through delivery. The delivery plan (FORECAST) keeps the slots of the shift plan in force (EXECUTABLE) and plans the rest of the flow around them, so its dates and late cost are those of the schedule the floor follows. false: each purpose defends its own previous plan"
     },
     "llm.provider": {
       "value": "none",

@@ -61,7 +61,7 @@ from ..calendar import shift_local_minute
 from ..codec import parse_utc, to_jsonable
 from ..contracts.planning import CommitmentResult, IncumbentAssignment, IncumbentPlan, locate_position
 from ..data.store import VersionConflict
-from ..domain import Disposition, PersonKey, PhaseKind, digest_id
+from ..domain import Disposition, PersonKey, PhaseKind, Purpose, digest_id
 from ..policy import Policy
 from .max.optimizer.greedy import DefendedTask
 from .model import EngineContext, shift_id_of
@@ -157,17 +157,38 @@ class Defense:
     status: str = "NO_INCUMBENT"
     detail: str = ""
     plan: IncumbentPlan | None = None           # the loaded incumbent, which a repair keeps beyond the defended horizon
+    # a delivery plan that follows the shift plan (``following``): ``plan`` is the shift plan, and these three are set
+    follows: str = ""                           # the purpose of the plan followed; "" for a plan that defends its own purpose
+    kept: dict[str, DefendedTask] = field(default_factory=dict)    # the followed plan's later slots, kept in every mode
+    previous: IncumbentPlan | None = None       # this purpose's own accepted plan, which a repair keeps for the remaining work
+
+    @property
+    def repairable(self) -> IncumbentPlan | None:
+        """The accepted plan of this purpose that a repair starts from (the mode decision reads its age)."""
+        return self.previous if self.follows else self.plan
 
     def receipt(self) -> dict[str, str]:
-        return {"id": self.incumbent_id or "", "status": self.status, "detail": self.detail, "defended": str(len(self.defended))}
+        out = {"id": self.incumbent_id or "", "status": self.status, "detail": self.detail, "defended": str(len(self.defended))}
+        if self.follows:
+            out.update(follows=self.follows, kept=str(len(self.kept)))
+        return out
 
 
 def defended_tasks(services: Any, ctx: EngineContext) -> Defense:
     if not ctx.policy.bool("commitment.enabled"):
         return Defense(status="DISABLED", detail="commitment.enabled is false")
     namespaces = frozenset(p.namespace for p in ctx.snapshot.people if not p.synthetic)
-    found = lookup_incumbent(services, ctx.snapshot.scope_key, ctx.purpose.value, policy_id=ctx.policy.id, cutoff=ctx.snapshot.cutoff,
-                             namespaces=namespaces)
+
+    def accepted(purpose: str) -> IncumbentLookup:
+        return lookup_incumbent(services, ctx.snapshot.scope_key, purpose, policy_id=ctx.policy.id, cutoff=ctx.snapshot.cutoff,
+                                namespaces=namespaces)
+
+    found = accepted(ctx.purpose.value)
+    if ctx.purpose is Purpose.FORECAST and ctx.policy.bool("planning.forecast_follows_executable"):
+        shift_plan = accepted(Purpose.EXECUTABLE.value)
+        if shift_plan.plan is not None:
+            return following(ctx, shift_plan.plan, found.plan, status=shift_plan.status,
+                             detail=f"{shift_plan.detail}: the shift plan in force, which this delivery plan carries through delivery")
     if found.plan is None:
         return Defense(status=found.status, detail=found.detail)
     return defense_for(ctx, found.plan, status=found.status, detail=found.detail)
@@ -208,6 +229,40 @@ def repair_hints(ctx: EngineContext, plan: IncumbentPlan, defended: Mapping[str,
             continue
         if phase.key.id not in defended and phase.key.id not in hints:
             hints[phase.key.id] = _slot(ctx, plan, a, aid, phase, offset)
+    return hints
+
+
+def following(ctx: EngineContext, shift_plan: IncumbentPlan, previous: IncumbentPlan | None, *, status: str, detail: str) -> Defense:
+    """The defense of a delivery plan that follows the shift plan in force (D-33: one schedule through delivery).
+
+    Each run makes the shift plan first: only work that can really start, the plan crews are dispatched from. The
+    delivery plan then carries that plan through delivery instead of arranging the same work a second time:
+
+    * the shift plan's commitments (day offsets 0..horizon-1) are defended, as in any plan;
+    * its later slots are kept wherever they still hold, in a full solve as well as in a repair (``kept``);
+    * all other work (work that cannot start yet, and work the shift plan does not reach) is placed around them. A
+      repair keeps this purpose's own accepted plan for that work (``previous``); a full solve plans it afresh.
+
+    So the delivery dates and the late cost are those of the schedule the floor is following. Without this, each purpose
+    defends its own previous plan, and the delivery plan drifts away from the shift plan a little more every run."""
+    out = defense_for(ctx, shift_plan, status=status, detail=detail)
+    out.follows, out.previous = shift_plan.purpose, previous
+    out.kept = repair_hints(ctx, shift_plan, out.defended)
+    return out
+
+
+def plan_hints(ctx: EngineContext, defense: Defense, *, repair: bool) -> dict[str, DefendedTask]:
+    """The slots a run keeps where they still hold, beyond its defended commitments.
+
+    A plan that defends its own purpose keeps nothing in a full solve and its incumbent's open slots in a repair. A
+    delivery plan that follows the shift plan keeps the shift plan's slots in both, and in a repair also its own
+    accepted plan's slots for the work the shift plan does not place."""
+    if not defense.follows:
+        return repair_hints(ctx, defense.plan, defense.defended) if repair and defense.plan is not None else {}
+    hints = dict(defense.kept)
+    if repair and defense.previous is not None:
+        for pid, slot in repair_hints(ctx, defense.previous, defense.defended).items():
+            hints.setdefault(pid, slot)
     return hints
 
 

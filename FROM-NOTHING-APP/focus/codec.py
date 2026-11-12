@@ -21,8 +21,10 @@ import dataclasses
 import enum
 import functools
 import hashlib
+import inspect
 import json
 import math
+import operator
 import types
 import typing
 from datetime import date, datetime, timezone
@@ -466,6 +468,11 @@ def from_jsonable(tp: Any, data: Any, path: Any = "$") -> Any:
 
     Each type is compiled once into a decoder (``_compile``) that applies exactly the rules below and is cached. A path
     is built as (parent, segment) pairs and turned into text only when an error message needs it.
+
+    Well-formed data takes a short path through each decoder: an object with exactly its class's fields, a string for
+    a string field, a known enum value, a timestamp text seen before. Anything else goes through the full rules, in
+    order, so the result and the error of the first rule broken are those of the full rules alone
+    (``tests/unit/test_codec_fast_path.py`` holds the two against each other).
     """
     dec = _DECODERS.get(tp)
     if dec is None:
@@ -503,6 +510,36 @@ def _null_check(tp: Any) -> Any:
     return check
 
 
+_PASS_THROUGH = (str, int, bool)        # a JSON value of exactly one of these types decodes to itself for that hint
+
+
+def _scalar_of(tp: Any) -> tuple[Any, bool]:
+    """``(type, nullable)`` when a value decodes to itself under hint ``tp`` exactly when it has that type (or is null
+    and the hint allows null): ``str``, ``int``, ``bool`` and each of them ``| None``. ``(None, False)`` otherwise."""
+    if tp in _PASS_THROUGH:
+        return tp, False
+    origin = get_origin(tp)
+    if origin is Union or origin is types.UnionType:
+        args = get_args(tp)
+        if len(args) == 2 and type(None) in args:
+            other = args[0] if args[1] is type(None) else args[1]
+            if other in _PASS_THROUGH:
+                return other, True
+    return None, False
+
+
+@functools.lru_cache(maxsize=1 << 17)
+def _parse_utc_text(text: str) -> datetime:
+    """``parse_utc`` of a string, remembered: a plan's and a snapshot's timestamps repeat (shift starts, whole minutes).
+    Equal text gives an equal, immutable value; an error is raised again, never remembered."""
+    return parse_utc(text)
+
+
+@functools.lru_cache(maxsize=1 << 14)
+def _parse_date_text(text: str) -> date:
+    return parse_iso_date(text)
+
+
 def _build_decoder(tp: Any) -> Any:
     if tp is Any or tp is object:
         return lambda data, path: data
@@ -511,12 +548,21 @@ def _build_decoder(tp: Any) -> Any:
         args = get_args(tp)
         nullable = type(None) in args
         options = tuple(arg for arg in args if arg is not type(None))
+        only: Any = None                                  # the decoder of a single option, found on first use
 
         def dec_union(data: Any, path: Any) -> Any:
+            nonlocal only
             if data is None:
                 if nullable:
                     return None
                 raise CodecError("MISSING_VALUE", f"{_p(path)}: null not allowed")
+            if len(options) == 1:                             # ``X | None``: straight to X's decoder
+                if only is None:
+                    only = _DECODERS.get(options[0]) or _compile(options[0])
+                try:
+                    return only(data, path)
+                except CodecError:
+                    pass                                      # the loop below raises the union's own error
             errors = []
             for arg in options:
                 try:
@@ -544,13 +590,24 @@ def _build_decoder(tp: Any) -> Any:
         args = get_args(tp)
         if len(args) == 2 and args[1] is Ellipsis:
             item_tp = args[0]
+            scalar = item_tp if item_tp in _PASS_THROUGH else None
+            item: Any = None                                  # the item decoder, found on first use
 
             def dec_tuple_var(data: Any, path: Any) -> Any:
-                if data is None:
-                    raise null(path)
-                if not isinstance(data, list):
-                    raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected array")
-                item = _DECODERS.get(item_tp) or _compile(item_tp)
+                nonlocal item
+                if type(data) is not list:
+                    if data is None:
+                        raise null(path)
+                    if not isinstance(data, list):
+                        raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected array")
+                if scalar is not None:                        # strings, integers or booleans: they decode to themselves
+                    for x in data:
+                        if type(x) is not scalar:
+                            break
+                    else:
+                        return tuple(data)
+                if item is None:
+                    item = _DECODERS.get(item_tp) or _compile(item_tp)
                 return tuple([item(x, (path, i)) for i, x in enumerate(data)])
             return dec_tuple_var
 
@@ -602,7 +659,13 @@ def _build_decoder(tp: Any) -> Any:
         return dec_dict
     if isinstance(tp, type):
         if issubclass(tp, enum.Enum):
+            members = tp._value2member_map_                   # where ``tp(value)`` itself looks first
+
             def dec_enum(data: Any, path: Any) -> Any:
+                try:
+                    return members[data]
+                except (KeyError, TypeError):                 # not a member's value, or not hashable: the full rule decides
+                    pass
                 if data is None:
                     raise null(path)
                 try:
@@ -612,6 +675,22 @@ def _build_decoder(tp: Any) -> Any:
             return dec_enum
         if dataclasses.is_dataclass(tp):
             return _dataclass_decoder(tp, null)
+        if tp is datetime:
+            def dec_datetime(data: Any, path: Any) -> Any:
+                if type(data) is str:
+                    return _parse_utc_text(data)
+                if data is None:
+                    raise null(path)
+                return parse_utc(data)
+            return dec_datetime
+        if tp is date:
+            def dec_date(data: Any, path: Any) -> Any:
+                if type(data) is str:
+                    return _parse_date_text(data)
+                if data is None:
+                    raise null(path)
+                return parse_iso_date(data)
+            return dec_date
         simple = _SIMPLE.get(tp)
         if simple is not None:
             def dec_simple(data: Any, path: Any) -> Any:
@@ -665,8 +744,21 @@ _SIMPLE: dict[type, Any] = {
 }
 
 
+def _positional_init(cls: type, names: tuple[str, ...]) -> bool:
+    """True when ``cls(*values)`` in field order is ``cls(**dict(zip(names, values)))``: the ``__init__`` the dataclass
+    decorator generated, whose parameters are exactly the init fields, in order, each one positional."""
+    if not cls.__dataclass_params__.init:                     # type: ignore[attr-defined]
+        return False
+    try:
+        params = list(inspect.signature(cls.__init__).parameters.values())[1:]      # type: ignore[misc]
+    except (TypeError, ValueError):
+        return False
+    return tuple(p.name for p in params) == names and all(p.kind is p.POSITIONAL_OR_KEYWORD for p in params)
+
+
 def _dataclass_decoder(cls: type, null: Any) -> Any:
-    fields = None
+    fields: Any = None
+    fast: Any = None
 
     def setup() -> tuple:
         hints = _hints(cls)
@@ -674,14 +766,27 @@ def _dataclass_decoder(cls: type, null: Any) -> Any:
                       f.default is not dataclasses.MISSING or f.default_factory is not dataclasses.MISSING)  # type: ignore[misc]
                      for f in dataclasses.fields(cls) if f.init)
 
-    def dec_dataclass(data: Any, path: Any) -> Any:
-        nonlocal fields
+    def plan() -> tuple:
+        """The short path's plan: fetch every field at once, check by type the fields that decode to themselves, decode
+        the others. ``(None, ...)`` when the class cannot take it (fewer than two fields, or no plain ``__init__``)."""
+        names = tuple(name for name, _, _, _ in fields)
+        if len(names) < 2 or not _positional_init(cls, names):
+            return None, len(names), (), ()
+        scalars, decoded = [], []
+        for i, (_, segment, hint, _) in enumerate(fields):
+            scalar, nullable = _scalar_of(hint)
+            if scalar is not None:
+                scalars.append((i, scalar, nullable))
+            else:
+                decoded.append((i, _DECODERS.get(hint) or _compile(hint), segment))
+        return operator.itemgetter(*names), len(names), tuple(scalars), tuple(decoded)
+
+    def strict(data: Any, path: Any) -> Any:
+        """Every rule, in order, with the error of the first one broken."""
         if data is None:
             raise null(path)
         if not isinstance(data, dict):
             raise CodecError("TYPE_MISMATCH", f"{_p(path)}: expected object for {cls.__name__}")
-        if fields is None:
-            fields = setup()
         known = {name for name, _, _, _ in fields}
         for key in data:
             if key not in known:
@@ -697,6 +802,36 @@ def _dataclass_decoder(cls: type, null: Any) -> Any:
             kwargs[name] = dec(data[name], (path, segment))
         try:
             return cls(**kwargs)
+        except CodecError:
+            raise
+        except (ValueError, TypeError) as exc:
+            code = getattr(exc, "code", "INVALID_RECORD")
+            raise CodecError(code, f"{_p(path)}: {exc}") from exc
+
+    def dec_dataclass(data: Any, path: Any) -> Any:
+        nonlocal fields, fast
+        if fast is None:
+            if fields is None:
+                fields = setup()
+            fast = plan()
+        getter, n, scalars, decoded = fast
+        # The short path: a plain object with exactly this class's fields, so none is unknown and none is missing.
+        # Fields that decode to themselves are checked by exact type first; only then are the others decoded, in order.
+        # So an error raised here is the first one ``strict`` would raise, and everything else is left to ``strict``.
+        if getter is None or type(data) is not dict or len(data) != n:
+            return strict(data, path)
+        try:
+            args = list(getter(data))
+        except KeyError:                                      # a field is missing (and another is unknown)
+            return strict(data, path)
+        for i, scalar, nullable in scalars:
+            value = args[i]
+            if type(value) is not scalar and not (nullable and value is None):
+                return strict(data, path)
+        for i, dec, segment in decoded:
+            args[i] = dec(args[i], (path, segment))
+        try:
+            return cls(*args)
         except CodecError:
             raise
         except (ValueError, TypeError) as exc:

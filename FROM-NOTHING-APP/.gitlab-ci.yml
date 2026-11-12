@@ -1,5 +1,9 @@
 # FOCUS pipeline (S17 MIGRATIONS/CI, P23). DRAFT: reviewable, never pushed to a GitLab remote or activated by this build.
 #
+# What a run must deliver (D-33, owner, 2026-11-11): one schedule through delivery, made within 20 minutes of the data
+# cut, with the application populated at shift start. The shift plan (EXECUTABLE) is accepted first; the delivery plan
+# (FORECAST) keeps every slot of it and carries it through delivery. `pipeline --status` reports both instants (window).
+#
 # Order (one pipeline before every shift, three a day; D-26):
 #   verify
 #   -> retention (retention role): display parts nothing reads any more, before the new package is built (D-24), and
@@ -9,15 +13,34 @@
 #   -> acquire/admit (source role)
 #   -> schedule/validate on the same snapshot (app role)
 #   -> unsigned stage and readback (stager role, protected)
-#   -> sign and accept, head last (signer role, protected, manual)
+#   -> sign and accept, head last (signer role, protected). No person accepts a plan (D-34, owner, 2026-11-12): a
+#      scheduled run on a protected ref accepts it once its validations are clean, and it is then the floor's plan
 #   -> forecast: schedule/validate, stage/readback, sign (app, stager and signer roles), after the executable plan
 #   -> observe and evaluate against the frozen goals (evaluator role)
 #
 # A second schedule per shift runs only the evaluator, just after the shift's authorized overtime window closes
 # (FOCUS_PIPELINE_PART=evaluate): stage the observation feeds, then score every shift whose credit window has closed.
 #
+# Every pre-shift run repairs the accepted plan (policy planning.default_mode = auto with no full-solve shift): that is
+# what fits the 20 minutes and keeps the task lists similar from run to run. The full solve, with the improvement search,
+# is a fourth schedule of this same plan pipeline, once a night after the nightly staging pass, with the variables
+# FOCUS_PLANNING=full and, as measured (DEC-34), FOCUS_BUDGET_SECONDS and FOCUS_MAX_MOVES. Its plans are accepted like
+# any other; accepted while a shift is running, they are that shift's proposal only (D-26) and the plan the next
+# pre-shift run repairs.
+#
+# Staging has four passes, one per cadence (D-34; docs/integration/STAGING_PLAN.md; focus/data/cadence.py names every
+# dataset's). SQL Server always holds a complete copy of every source table, so the pass inside the plan pipeline pulls
+# only what changed since the pass before it:
+#   * weekly (FOCUS_PIPELINE_PART=weekly): the large tables that change with releases and training, not with the floor,
+#     in full: the standing facts of every job, the certificates people hold, lookups, and history no plan reads;
+#   * nightly (FOCUS_PIPELINE_PART=nightly): floor state reconciled in full, the small daily tables, yesterday's history;
+#   * before each shift (FOCUS_PIPELINE_PART=preshift, 60 minutes before the shift): everything that changes in a day;
+#   * at the cut (the plan pipeline's first job, 20 minutes before the shift): the changes since the pass before it.
+#
 # How the order is enforced:
-#   * Each job runs ONE role of `python -m focus.cli pipeline` with that role's own protected credentials.
+#   * A job runs one or several roles of `python -m focus.cli pipeline`. As shipped (FOCUS_JOBS=planner, DEC-36 (g)) one
+#     job runs the source, app and stager roles in a row and signing stays a job of its own; FOCUS_JOBS=roles gives every
+#     role its own job and its own protected credentials.
 #   * `needs` mirrors the step dependencies, and the pipeline state enforces them again. A job started early returns
 #     BLOCKED, so signing can never precede a clean readback and evaluation never runs without frozen goals and coverage.
 #   * `resource_group` serializes pipelines per scope, so two pipelines never race one scope's heads.
@@ -28,6 +51,9 @@
 
 workflow:
   rules:
+    # an unknown part runs nothing: a misspelled schedule must never start a plan pipeline
+    - if: $FOCUS_PIPELINE_PART && $FOCUS_PIPELINE_PART != "evaluate" && $FOCUS_PIPELINE_PART != "preshift" && $FOCUS_PIPELINE_PART != "nightly" && $FOCUS_PIPELINE_PART != "weekly"
+      when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
@@ -49,10 +75,24 @@ variables:
   # ref, whose merge pipeline already passed them (acquire_admit refuses any other ref). "full" runs them before every
   # plan again, as P23 first had it.
   FOCUS_LIVE_VERIFY: "merged"
-  # Who accepts the executable plan before each shift is the owner's decision (DEC-11) and is not made. "false": an
-  # authorized operator promotes every plan. "true": a scheduled run on a protected ref accepts it once the validations
-  # before it are clean. Turn it on only with the owner's decision on record.
-  FOCUS_AUTO_SIGN: "false"
+  # No person accepts a plan (D-34, owner, 2026-11-12: "They do not need to "accept" anything - the scheduler is the
+  # answer"; DEC-11 is decided). "true": a scheduled run on a protected ref accepts the shift plan once the validations
+  # before it are clean, and the floor works from it. A plan that fails a validation is never accepted: the plan before
+  # it stays in force and the pipeline fails. "false" holds every plan for an authorized operator: set it on one run, or
+  # in the project, to stop automatic acceptance without a code change.
+  FOCUS_AUTO_SIGN: "true"
+  # The delivery plan (delivery dates, days late, penalties) has its own switch. It takes effect only with FOCUS_AUTO_SIGN
+  # on as well. "false" here holds the delivery plan alone for an operator.
+  FOCUS_AUTO_SIGN_DELIVERY: "true"
+  # How the plan pipeline's steps are split into jobs (DEC-36 (g)). The owner leaves the split free (D-34: "a single or
+  # multiple pipelines can be used"), so the draft ships the one that came to the 20 minutes when measured at 50 aircraft.
+  # "planner": the source, app and stager roles run in one job (plan_unsigned) and the delivery plan's app and stager
+  # roles in another (delivery_unsigned); four jobs a run and three snapshot loads. That job holds the three roles' rights
+  # at once. "roles": one job per role, each with its own protected rights; seven jobs a run, every job after the first
+  # loads the admitted snapshot again, and the whole schedule took 26.9 minutes instead of 20.4. The signer stays a job
+  # of its own either way: it loads the snapshot from the store and validates the staged bytes itself before it signs
+  # them. The plans are the same. Set "roles" if the company's SQL principals may not be held by one job.
+  FOCUS_JOBS: "planner"
 
 stages: [verify, retain, stage_sql, source, schedule, stage, sign, forecast, forecast_stage, forecast_sign, observe]
 
@@ -97,6 +137,10 @@ ui:
 native_wheel:
   stage: verify
   image: { name: "ghcr.io/pyo3/maturin:v1.7.4", entrypoint: [""] }   # Rust and manylinux Pythons; builds the abi3 wheel
+  rules:                                            # a staging-only run schedules nothing, so it builds no wheel
+    - if: $FOCUS_PIPELINE_PART == "preshift" || $FOCUS_PIPELINE_PART == "nightly" || $FOCUS_PIPELINE_PART == "weekly"
+      when: never
+    - when: on_success
   before_script: []
   script:
     - maturin build --release -m native/Cargo.toml -o dist
@@ -123,16 +167,34 @@ fixture_pipeline_rehearsal:
 # ---------------------------------------------------------------------- live order (protected, scheduled or manual)
 
 .live:
-  rules:
-    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  rules:                                            # the plan pipeline is the one that names no part
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
   resource_group: focus-$FOCUS_SCOPE_KEY
+  interruptible: false                              # a merge to the default branch must never cancel a pre-shift run
   variables:
     FOCUS_MODE: live
     FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'   # database columns hold UTC (owner, 2026-10-31); the app shows local time
+    FOCUS_FAST_EXIT: "true"                          # a job ends when its outputs are written, without freeing GBs object by object
   artifacts:
     when: always
     expire_in: 90 days
     paths: [ci-receipts/]
+
+# One job per role (FOCUS_JOBS: "roles"): the unsigned steps of the plan pipeline, each with its own rights.
+.by_role:
+  extends: .live
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && $FOCUS_JOBS != "planner" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+
+# Several roles in one job (FOCUS_JOBS: "planner", as shipped): the same unsigned steps, run in a row by one process.
+.by_planner:
+  extends: .live
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && $FOCUS_JOBS == "planner" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  environment: { name: focus-planner }              # protected: the source, app and stager rights together, no signing material
+  tags: [focus-scheduler]
+  variables:
+    FOCUS_NATIVE_CORE: "true"
 
 # Display parts are a cache rebuilt from kept records (D-24). Retention deletes the ones nothing reads before this pipeline
 # builds the next package, so the store holds at most the current package and the one being built. It keeps the current
@@ -161,17 +223,22 @@ detail_retention:
 # Staging: the official sources (Teradata and the other systems of record) are loaded into the SQL Server tables the
 # FOCUS reference queries read (queries/source_inputs/*.sql, the S04 contract), plus the observation landing tables
 # (migration 008). The loader is company code: its mapping, source queries and credentials never enter this repository.
-# FOCUS_STAGE_COMMAND names it; its contract (arguments, atomic publication, row clocks, receipt) is HANDOFF.md section 4.
+# FOCUS_STAGE_COMMAND names it; its contract (arguments, atomic publication, row clocks, receipt) is HANDOFF.md section 4
+# and docs/integration/STAGING_PLAN.md.
+#
+# The pass at the cut: the copy in SQL Server is already complete (nightly and pre-shift passes below), so this job pulls
+# only the rows that changed since the pass before it, bounded by the cut. It counts toward the owner's 20 minutes (D-28)
+# and has 2 of them; the timeout is the stop, not the budget.
 stage_sources:
   extends: .live
   stage: stage_sql
-  needs: [import_and_lint]                          # runs while the other verify jobs run; touches only the staging tables
+  needs: []                                         # starts the second the pipeline does, beside the import check
   environment: { name: focus-staging }              # read-only source credentials, write access to the staging tables only
-  timeout: 10m
+  timeout: 5m
   script:
     - mkdir -p ci-receipts
     - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage.json; exit 3; }'
-    - $FOCUS_STAGE_COMMAND --part all --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage.json
+    - $FOCUS_STAGE_COMMAND --part cut --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage.json
 
 # The staged tables must match the S04 contract column for column before FOCUS reads them (read-only).
 verify_staged_sources:
@@ -184,7 +251,7 @@ verify_staged_sources:
     - python -c "import json, sys; r = json.load(open('ci-receipts/source-discover.json')); sys.exit(0 if r.get('status') == 'ok' and not r.get('drift') else 1)"
 
 acquire_admit:
-  extends: .live
+  extends: .by_role
   stage: source
   # every verification first (P23): in this run with FOCUS_LIVE_VERIFY=full, else on the merge that put this code on the protected ref
   needs: [import_and_lint, { job: unit_and_integration, optional: true }, { job: ui, optional: true }, { job: fixture_pipeline_rehearsal, optional: true }, native_wheel, display_retention, verify_staged_sources]
@@ -192,10 +259,11 @@ acquire_admit:
   script:
     - test "$FOCUS_LIVE_VERIFY" = "full" -o "$CI_COMMIT_REF_PROTECTED" = "true"   # unverified code never plans a shift
     - mkdir -p ci-receipts && python -m focus.cli preflight --role worker --probe-sql > ci-receipts/preflight-source.json
-    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source > ci-receipts/source.json
+    # the request is fixed when the pipeline is created, here: the nightly schedule sets FOCUS_PLANNING=full with its budget
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source ${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"} ${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"} ${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"} > ci-receipts/source.json
 
 schedule_validate:
-  extends: .live
+  extends: .by_role
   stage: schedule
   needs: [acquire_admit, { job: native_wheel, artifacts: true }]
   environment: { name: focus-app }
@@ -209,24 +277,37 @@ schedule_validate:
     - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app > ci-receipts/app.json
 
 stage_readback:
-  extends: .live
+  extends: .by_role
   stage: stage
   needs: [schedule_validate]
   environment: { name: focus-stager }               # protected: stager credentials, no signing material
   script:
     - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role stager > ci-receipts/stager.json
 
+# FOCUS_JOBS=planner (DEC-36 (g)): acquire, admit, schedule, validate and the unsigned stage in one process. The snapshot it
+# has just admitted is not loaded again, and the candidate it has just stored is not read back for staging.
+plan_unsigned:
+  extends: .by_planner
+  stage: source
+  needs: [import_and_lint, { job: unit_and_integration, optional: true }, { job: ui, optional: true }, { job: fixture_pipeline_rehearsal, optional: true }, { job: native_wheel, artifacts: true }, display_retention, verify_staged_sources]
+  script:
+    - test "$FOCUS_LIVE_VERIFY" = "full" -o "$CI_COMMIT_REF_PROTECTED" = "true"   # unverified code never plans a shift
+    - python -m pip install --disable-pip-version-check --no-index dist/focus_native-*.whl
+    - mkdir -p ci-receipts && python -m focus.cli preflight --role worker --probe-sql > ci-receipts/preflight-source.json
+    - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role source,app,stager ${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"} ${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"} ${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"} > ci-receipts/plan.json
+
 sign_accept:
   extends: .live
   stage: sign
-  needs: [stage_readback]
+  needs: [{ job: stage_readback, optional: true }, { job: plan_unsigned, optional: true }]   # whichever layout staged the plan
   rules:                                            # FOCUS_SIGN_KEY_REF exists only in this job's environment
-    # DEC-11, off by default: the run accepts the plan itself only on a schedule, on a protected ref, with the switch on.
+    # D-34: the run accepts the plan itself, on a schedule, on a protected ref, unless FOCUS_AUTO_SIGN is turned off.
     # The signer step still refuses a plan without a clean FINAL validation and a clean READBACK.
-    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && $FOCUS_AUTO_SIGN == "true" && $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_REF_PROTECTED == "true"
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && $FOCUS_AUTO_SIGN == "true" && $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_REF_PROTECTED == "true"
       when: on_success
-    # otherwise an authorized operator promotes
-    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART != "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+    # a run started by hand, or with the switch off, waits for an authorized operator. To recover a scheduled run,
+    # retry its failed job: the pipeline is still a scheduled one and still accepts by itself
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
       when: manual
   allow_failure: false
   environment: { name: focus-signer }
@@ -234,10 +315,11 @@ sign_accept:
     - mkdir -p ci-receipts && python -m focus.cli preflight --role signer > ci-receipts/preflight-signer.json
     - python -m focus.cli pipeline --key "$PIPELINE_KEY" --role signer > ci-receipts/signer.json
 
-# the forecast (delivery dates, days late, penalties for every aircraft) runs on the same admitted snapshot once the
-# executable plan is accepted, so it never delays the shift's dispatch
+# the delivery plan (delivery dates, days late, penalties for every aircraft) runs on the same admitted snapshot once the
+# shift plan is accepted, so it never delays the shift's dispatch. It keeps every slot of that plan and carries it through
+# delivery (D-33), and it is part of what the 20 minutes must hold
 forecast_schedule_validate:
-  extends: .live
+  extends: .by_role
   stage: forecast
   needs: [sign_accept, { job: native_wheel, artifacts: true }]
   environment: { name: focus-app }
@@ -248,8 +330,17 @@ forecast_schedule_validate:
     - python -m pip install --disable-pip-version-check --no-index dist/focus_native-*.whl
     - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app > ci-receipts/forecast-app.json
 
+# FOCUS_JOBS=planner: the delivery plan scheduled, validated and staged in one process, once the shift plan is accepted.
+delivery_unsigned:
+  extends: .by_planner
+  stage: forecast
+  needs: [sign_accept, { job: native_wheel, artifacts: true }]
+  script:
+    - python -m pip install --disable-pip-version-check --no-index dist/focus_native-*.whl
+    - mkdir -p ci-receipts && python -m focus.cli pipeline --key "$PIPELINE_KEY" --role app,stager > ci-receipts/delivery.json
+
 forecast_stage_readback:
-  extends: .live
+  extends: .by_role
   stage: forecast_stage
   needs: [forecast_schedule_validate]
   environment: { name: focus-stager }
@@ -259,8 +350,15 @@ forecast_stage_readback:
 forecast_sign_accept:
   extends: .live
   stage: forecast_sign
-  needs: [forecast_stage_readback]
-  when: manual                                      # the same operator promotion as the executable plan
+  needs: [{ job: forecast_stage_readback, optional: true }, { job: delivery_unsigned, optional: true }]
+  rules:
+    # D-34: both switches on (as shipped), on a schedule, on a protected ref. The signer step still validates the
+    # staged bytes itself before it signs them.
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && $FOCUS_AUTO_SIGN == "true" && $FOCUS_AUTO_SIGN_DELIVERY == "true" && $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_REF_PROTECTED == "true"
+      when: on_success
+    # otherwise the same operator promotion as the shift plan
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == null && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+      when: manual
   allow_failure: false
   environment: { name: focus-signer }
   script:
@@ -283,6 +381,7 @@ observe_evaluate:
   rules:
     - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "evaluate" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
   resource_group: focus-$FOCUS_SCOPE_KEY
+  interruptible: false
   variables:
     FOCUS_MODE: live
     FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'
@@ -309,3 +408,107 @@ evaluate_closed_shifts:
   environment: { name: focus-evaluator }
   script:
     - mkdir -p ci-receipts && python tools/evaluate_closed_shifts.py > ci-receipts/evaluate-closed-shifts.json
+
+
+# ---------------------------------------------------------------------- staging-only runs (docs/integration/STAGING_PLAN.md)
+
+# SQL Server holds none of the source data to begin with, and the queries on the sources are the slowest part of a run.
+# These three passes keep a complete copy current ahead of time, each at the cadence its data changes at (D-34), so the
+# pass at the cut (stage_sources) is a small pull. They share the plan pipeline's resource group: a pass never publishes
+# while a plan run is reading the copy.
+.staging_only:
+  resource_group: focus-$FOCUS_SCOPE_KEY
+  interruptible: false
+  variables:
+    FOCUS_MODE: live
+    FOCUS_SOURCE_TIMEZONE_MAP_JSON: '{"*": "UTC"}'
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [ci-receipts/]
+
+# 60 minutes before each shift: every table that changes during a day is brought up to date, new lines are staged in
+# full, and keys are compared so that a job that left the source leaves the copy. It must be over before the cut: a
+# pass still running 30 minutes before the shift is stopped, and has then published everything or nothing.
+prestage_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "preshift" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: []
+  environment: { name: focus-staging }
+  timeout: 30m
+  script:
+    - mkdir -p ci-receipts
+    - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage-preshift.json; exit 3; }'
+    - $FOCUS_STAGE_COMMAND --part preshift --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage-preshift.json
+
+# a changed column is found here, with time to act, not at the cut
+verify_prestaged_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "preshift" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: [prestage_sources]
+  environment: { name: focus-source }               # source-worker SQL credentials only (read)
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli source-discover --read-only --mode live > ci-receipts/source-discover-preshift.json
+    - python -c "import json, sys; r = json.load(open('ci-receipts/source-discover-preshift.json')); sys.exit(0 if r.get('status') == 'ok' and not r.get('drift') else 1)"
+
+# Once a day, away from the plan runs: floor state reconciled with its sources in full (keys, counts, repairs), the small
+# daily tables loaded whole (calendars, teams, rosters, rates), the rows that changed in the weekly tables, yesterday's
+# history, and the row clocks of what was verified.
+nightly_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "nightly" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: []
+  environment: { name: focus-staging }
+  timeout: 4h
+  script:
+    - mkdir -p ci-receipts
+    - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage-nightly.json; exit 3; }'
+    - $FOCUS_STAGE_COMMAND --part nightly --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage-nightly.json
+
+verify_nightly_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "nightly" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: [nightly_sources]
+  environment: { name: focus-source }
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli source-discover --read-only --mode live > ci-receipts/source-discover-nightly.json
+    - python -c "import json, sys; r = json.load(open('ci-receipts/source-discover-nightly.json')); sys.exit(0 if r.get('status') == 'ok' and not r.get('drift') else 1)"
+
+# Once a week, away from the plan runs and the nightly pass: the large tables that change with engineering releases and
+# training, not with the floor, loaded or compared in full: the standing facts of every job (durations, crews,
+# certificates required, inspections, rework class), the certificates people hold, lookup tables, and history that no plan
+# reads. Between two weekly passes the nightly pass brings in the rows that changed and every run brings in the rows of
+# new jobs, so the weekly pass is the complete check, not the only load. Every other live job waits for it (one resource
+# group): schedule it where a few hours hold no other schedule (Sunday 07:30 in docs/integration/DATA_CADENCE.md), and set
+# the timeout from the measured duration.
+weekly_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "weekly" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: []
+  environment: { name: focus-staging }
+  timeout: 4h
+  script:
+    - mkdir -p ci-receipts
+    - 'test -n "$FOCUS_STAGE_COMMAND" || { echo "{\"status\": \"unavailable\", \"code\": \"STAGE_COMMAND_MISSING\"}" > ci-receipts/stage-weekly.json; exit 3; }'
+    - $FOCUS_STAGE_COMMAND --part weekly --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage-weekly.json
+
+verify_weekly_sources:
+  extends: .staging_only
+  rules:
+    - if: $FOCUS_MODE == "live" && $FOCUS_PIPELINE_PART == "weekly" && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  stage: stage_sql
+  needs: [weekly_sources]
+  environment: { name: focus-source }
+  script:
+    - mkdir -p ci-receipts && python -m focus.cli source-discover --read-only --mode live > ci-receipts/source-discover-weekly.json
+    - python -c "import json, sys; r = json.load(open('ci-receipts/source-discover-weekly.json')); sys.exit(0 if r.get('status') == 'ok' and not r.get('drift') else 1)"

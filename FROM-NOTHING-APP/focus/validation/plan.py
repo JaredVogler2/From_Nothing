@@ -805,13 +805,43 @@ def validate(snapshot: PlanningSnapshot, policy: Policy, plan: CandidatePlan, *,
     coverage["notes"] = {"tool_overlap": "NOT_APPLICABLE: no tool-requirement source is mapped (S04); tool calendars are enforced when present",
                          "frozen_goals": "checked at publication (P16) against the accepted goal set"}
     receipt = ValidationReceipt(
-        id=digest_id("VAL", plan.id, plan.hash, snapshot.hash, policy.hash, purpose.value, kind, VALIDATOR_VERSION, payload_sha256 or "",
-                     sorted(required)),
+        id=receipt_id(plan, snapshot, policy, purpose=purpose, kind=kind, payload_sha256=payload_sha256, required=required),
         candidate_id=plan.id, kind=kind, snapshot_hash=snapshot.hash, policy_hash=policy.hash, validator_version=VALIDATOR_VERSION,
         check_counts={c: run.counts.get(c, 0) for c in REQUIRED_CHECKS}, coverage=coverage, violations=violations,
         required_skips=required_skips, plan_hash=plan.hash, payload_sha256=payload_sha256,
         valid=not violations and not required_skips, created_at=created_at or plan.created_at)
     return receipt
+
+
+def receipt_id(plan: CandidatePlan, snapshot: PlanningSnapshot, policy: Policy, *, purpose: Purpose | None = None, kind: str = "FINAL",
+               payload_sha256: str | None = None, required: Iterable[str] = REQUIRED_CHECKS) -> str:
+    """The id of the receipt ``validate`` gives these inputs. It is the digest of everything a validation reads: the plan
+    (whose content names its incumbent), the snapshot, the policy, the purpose, the kind, the validator version, the
+    payload and the required checks. The findings are not part of it."""
+    return digest_id("VAL", plan.id, plan.hash, snapshot.hash, policy.hash, (purpose or plan.purpose).value, kind, VALIDATOR_VERSION,
+                     payload_sha256 or "", sorted(required))
+
+
+def recorded_pass(repositories: Any, plan: CandidatePlan, snapshot: PlanningSnapshot, policy: Policy, *, kind: str = "FINAL",
+                  payload_sha256: str | None = None, receipt_id_: str | None = None) -> ValidationReceipt | None:
+    """The stored receipt of exactly this validation, when it passed; None otherwise.
+
+    A validation is a pure function of its inputs, and a receipt's id is their digest, so a stored receipt with that id
+    is the result of the same validation. Only a receipt that passed is taken (every required check ran and none found a
+    violation), and only when its own fields bind the same plan, snapshot, policy, kind, validator and payload: a record
+    that failed, or one stored when its incumbent was missing, is validated again.
+
+    This saves a later step from repeating a validation an earlier step of the same run completed (D-28). It never
+    stands in for a validation the caller owes on bytes it has not validated itself: the publication's signing path
+    validates the staged bytes it signs in its own process (``publication.service.publish``)."""
+    wanted = receipt_id_ or receipt_id(plan, snapshot, policy, kind=kind, payload_sha256=payload_sha256)
+    found = repositories.get_typed(VALIDATIONS, wanted, "ValidationReceipt", ValidationReceipt)
+    if found is None or not found.valid or found.violations or found.required_skips:
+        return None
+    bound = (found.id == wanted and found.candidate_id == plan.id and found.plan_hash == plan.hash and found.kind == kind
+             and found.snapshot_hash == snapshot.hash and found.policy_hash == policy.hash
+             and found.validator_version == VALIDATOR_VERSION and (found.payload_sha256 or None) == (payload_sha256 or None))
+    return found if bound else None
 
 
 def receipt_summary(receipt: ValidationReceipt, limit: int = 50) -> dict[str, Any]:

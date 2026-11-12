@@ -5,25 +5,54 @@ port to real data must keep. Reading needs no approval; approval is for changes.
 
 ## What FOCUS is for
 
-1. **Schedule every aircraft with open work, through delivery, at the lowest late-delivery cost**, without breaking
-   a constraint. The scheduler is a fixed, rule-based procedure. There is no AI in it.
-2. **Run before every shift**, three times a day, within 20 minutes from the data cut to the plan and its dashboard
-   being ready. A pipeline gathers the data, schedules, validates and publishes; the web application only displays
-   what the pipeline published.
-3. **Score each team's shift** against the plan accepted before that shift started, with an excusal process so a
-   team is not marked down for causes outside its control.
+The owner's requirement, in the owner's words, is `FROM-NOTHING-APP/docs/execution/DECISIONS.md`, D-33 (November 11,
+2026). Every pre-shift run delivers six things:
 
-If your build does not do all three, it is not finished, however well the data is wired.
+1. **One run before every shift**, three a day, started 20 minutes before the shift.
+2. **One schedule for every aircraft with open work, through delivery, at the lowest late-delivery cost**, without
+   breaking a constraint. The scheduler is a fixed, rule-based procedure. There is no AI in it.
+3. **What changed since the last run is taken in:** jobs completed, parts late or received, new work, absences.
+4. **The shift's task lists are part of that schedule,** and they stay similar from one run to the next. A run
+   makes two plans that are one schedule: the shift plan (only work that can really start; crews are dispatched from
+   it) and the delivery plan, which keeps every slot of the shift plan and carries it through delivery.
+5. **Gathering, digesting and scheduling take 20 minutes at most**, measured from the data cut to both plans
+   accepted. A pipeline does this; the web application only displays what the pipeline published.
+6. **At shift start the application opens at once**, already holding the schedule and the task lists.
+
+And one more, older than D-33:
+
+7. **Each team's shift is scored** against the plan accepted before that shift started, with an excusal process so
+   a team is not marked down for causes outside its control.
+
+If your build does not do all seven, it is not finished, however well the data is wired. Points 5 and 6 are not met
+yet in full on the test machines. At 50 aircraft, with the pipeline's steps in four jobs as shipped
+(`FOCUS_JOBS=planner`), the task lists are ready 9 to 11 minutes after the data cut and the whole schedule after 19
+to 22, depending on the machine; with one job per role it was 13.9 and 26.9. A team lead's task list opens in under a second once the web process has read ahead
+(`FOCUS_WARM_SECONDS=30`); three fleet views still take 1 to 4 seconds the first time after a new plan.
+`FROM-NOTHING-APP/docs/execution/PRODUCTION_SCALE.md` has the measurement and
+`FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md`, DEC-36, what is left.
+
+Two more things the owner decided on 2026-11-12 (D-34 in `FROM-NOTHING-APP/docs/execution/DECISIONS.md`):
+
+- **No person accepts a plan.** "once a schedule is produced that is what the mechanics and shop floor should use to
+  determine what jobs they work. They do not need to "accept" anything - the scheduler is the answer." A scheduled
+  run accepts its plan once the checks pass; a plan that fails a check is never accepted and the one before it stays.
+- **Every dataset is gathered, processed and staged at its own cadence**, not everything every shift.
+  `FROM-NOTHING-APP/docs/integration/DATA_CADENCE.md` lists every dataset and every schedule on one page.
+
+**Do not take questions to the owner that the repository answers.** Each open decision has a default and a rule in
+the decision playbook. Use the default, measure, and report. Ask the owner only what is marked OWNER there.
 
 ## Read these, in this order, before you write code
 
 | # | Page | What you must be able to explain afterwards |
 | --- | --- | --- |
 | 1 | `FROM-NOTHING-APP/docs/integration/HANDOFF.md` | The data flow, one shift end to end, the staging contract, the pipeline jobs, and what counts toward the pre-shift window |
-| 2 | `FROM-NOTHING-APP/docs/execution/OBJECTIVE_EXPLAINED.md` | The order in which two schedules are compared, how late-delivery cost is worked out, and how to tell whether the cost objective is working on your data |
-| 3 | `FROM-NOTHING-APP/docs/execution/SCORING_EXPLAINED.md` | How one team-shift is scored and graded, with the worked example |
-| 4 | `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md` | Which decisions are made, which are yours to take, and which need the owner |
-| 5 | `FROM-NOTHING-APP/docs/data/README.md` and its pages | Every input, column by column |
+| 2 | `FROM-NOTHING-APP/docs/integration/STAGING_PLAN.md` | What is copied from Teradata into SQL Server in which pass (weekly, nightly, before each shift, at the cut), how, and why only changed rows are pulled inside the 20 minutes. `DATA_CADENCE.md` beside it is the one-page version |
+| 3 | `FROM-NOTHING-APP/docs/execution/OBJECTIVE_EXPLAINED.md` | The order in which two schedules are compared, how late-delivery cost is worked out, and how to tell whether the cost objective is working on your data |
+| 4 | `FROM-NOTHING-APP/docs/execution/SCORING_EXPLAINED.md` | How one team-shift is scored and graded, with the worked example |
+| 5 | `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md` | Which decisions are made, which are yours to take, and which need the owner |
+| 6 | `FROM-NOTHING-APP/docs/data/README.md` and its pages | Every input, column by column |
 
 Then read the code those pages name. The two explainer pages list each rule with its function and its tests.
 
@@ -34,6 +63,9 @@ Then read the code those pages name. The two explainer pages list each rule with
 - A team was expected to do 900 minutes, did 720 planned and 80 extra. What is its score, and why?
 - Which plan is a shift scored against, and what happens to a job finished just before the shift starts?
 - What does the web application read, and what does it never read?
+- Which datasets are pulled from the sources at the data cut, and why is the rest already in SQL Server?
+- Which of a run's two plans are crews dispatched from, what does the other one add, and why do they never disagree
+  about a shift?
 
 ## What a port to real data must keep
 
@@ -53,7 +85,8 @@ Then read the code those pages name. The two explainer pages list each rule with
     is unknown has not optimized cost.
   - `readiness_gaps`: the admitted data's gaps by code. `CALENDAR_ENDS_BEFORE_DUE` on a line means that aircraft
     can never be planned late, so its lateness is never costed; the calendar feed must run past the due date.
-  - `window`: the minutes from the data cut to the accepted plan and its dashboard data, against the owner's 20.
+  - `window`: the minutes from the data cut to the accepted shift plan and its dashboard data (`minutes`), and to
+    the accepted delivery plan as well (`schedule_minutes`), against the owner's 20.
 - **Rates come from data, never from a guess.** Build the economics rows from a rate file with
   `python tools/build_economics_rows.py`; it lists the aircraft it cannot price and leaves them unknown. The owner's
   rate is the airline economic proxy per customer airline and minor model, column
