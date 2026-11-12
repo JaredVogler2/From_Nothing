@@ -648,6 +648,46 @@ def _pipeline_jobs(load: Callable[[str], Any], wall: dict[str, float], prefix: s
     return jobs, digest
 
 
+def _repairing_run(load: Callable[[str], Any], wall: dict[str, float]) -> dict[str, Any] | None:
+    """A run after the first, put together from the first run's jobs and the two repairs measured on the same data
+    (``--repair``): each scheduling step is replaced by its repair, everything else is the job as measured.
+
+    One job per role: the scheduling jobs are replaced whole (a repair is measured as a job of its own: it loads the
+    snapshot, schedules and validates). Several roles per job (``--layout planner``): only the steps are replaced.
+    The delivery plan's job loads the snapshot once in its ``forecast`` step, as the repair does, so the step is
+    swapped as it is. The shift plan's job holds the snapshot, so the repair's own load is taken out and the two checks
+    of the held snapshot that the step makes are put in."""
+    shift, delivery = load("repair.executable"), load("repair.forecast")
+    if not shift:
+        return None
+    out: dict[str, Any] = {}
+    plan, plan2 = load("first.plan"), load("first.forecast_plan")
+    if plan:
+        calls = max(1, plan["timers"].get("load_snapshot", {}).get("calls", 1))
+        check = _seconds(plan, "load_snapshot") / calls                      # one check of the held snapshot against the stored bytes
+        step = shift["schedule_seconds"] + shift["validate_seconds"] - _seconds(shift, "load_snapshot") + 2 * check
+        jobs = {"plan": round(plan["process_seconds"] - _seconds(plan, "step:schedule") - _seconds(plan, "step:validate") + step, 1),
+                "signer": wall.get("first.signer")}
+        if delivery and plan2:
+            jobs["forecast_plan"] = round(plan2["process_seconds"] - _seconds(plan2, "step:forecast")
+                                          + delivery["schedule_seconds"] + delivery["validate_seconds"], 1)
+            jobs["forecast_signer"] = wall.get("first.forecast_signer")
+    else:
+        jobs = {"source": wall.get("first.source"), "app": shift["process_seconds"], "stager": wall.get("first.stager"),
+                "signer": wall.get("first.signer")}
+        if delivery:
+            jobs.update(forecast_app=delivery["process_seconds"], forecast_stager=wall.get("first.forecast_stager"),
+                        forecast_signer=wall.get("first.forecast_signer"))
+    if any(v is None for v in jobs.values()):
+        return None
+    to_shift = round(sum(v for k, v in jobs.items() if "forecast" not in k), 1)
+    out.update(jobs_seconds=jobs, to_the_accepted_shift_plan_seconds=to_shift,
+               then_to_the_accepted_delivery_plan_seconds=round(sum(v for k, v in jobs.items() if "forecast" in k), 1),
+               whole_schedule_seconds=round(sum(jobs.values()), 1),
+               how="the first run's jobs with each scheduling step replaced by the repair of the same data, measured separately")
+    return out
+
+
 def _window(jobs: dict[str, Any]) -> tuple[float | None, float]:
     """Seconds of the jobs to the accepted shift plan (None unless its signer ran), and of the delivery plan's jobs."""
     shift = [job["seconds"] for title, job in jobs.items() if "forecast" not in title]
@@ -679,6 +719,9 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
             rows = _schedule_rows(doc, doc["schedule_seconds"], doc["validate_seconds"])
             out.setdefault("repair", {})[purpose] = {"planning": doc["planning"], "seconds": doc["process_seconds"], "peak_memory_mb": doc["peak_memory_mb"],
                                                      "actions": [{"action": a, "seconds": s} for a, s in rows], "scheduler": _stages(doc, purpose)}
+    composed = _repairing_run(load, wall)
+    if composed:
+        out["repairing_run"] = composed
     seen = load("views")
     if seen:
         out["dashboard"] = {"web_start_seconds": seen["startup_seconds"], "peak_memory_mb": seen["peak_memory_mb"],
@@ -719,6 +762,10 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
               f"({pages['read_ahead'].get('teams_read')} teams covered): first {pages['task_list_first_seconds']}, again {pages['task_list_again_seconds']}")
     print(f"\nwindow (the jobs to the accepted shift plan): {out['window_seconds']} s; the delivery plan's jobs: {out['forecast_seconds']} s; "
           f"local pull of {out['source_rows']} rows: {out['local_pull_seconds']} s")
+    if out.get("repairing_run"):
+        r = out["repairing_run"]
+        print(f"a repairing run ({r['how']}): {r['jobs_seconds']}; to the accepted shift plan {r['to_the_accepted_shift_plan_seconds']} s, "
+              f"then to the accepted delivery plan {r['then_to_the_accepted_delivery_plan_seconds']} s, whole schedule {r['whole_schedule_seconds']} s")
     if out.get("second"):
         print(f"second pipeline (repairs): to the accepted shift plan {out['second']['window_seconds']} s; the delivery plan's jobs "
               f"{out['second']['forecast_seconds']} s")

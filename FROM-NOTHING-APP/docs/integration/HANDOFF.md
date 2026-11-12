@@ -182,8 +182,12 @@ be ready to go within 20 minutes"):
   - Six loads of the snapshot are 7.1 of the 26.9 minutes, validations 6.6, the source job 4.9 and the scheduler 1.7
     (`PRODUCTION_SCALE.md`, "The pre-shift flow after D-33"; `DECISION_PLAYBOOK.md`, DEC-36 has what is left and
     what each step would leave).
-  - Two questions for whoever owns your runners decide the next step (DEC-36): can two jobs of one pipeline run at
-    the same time, with about 20 GB of memory between them; and may the scheduling job hold the stager's rights.
+  - **In four jobs instead of seven the same run took 9.8 minutes to the accepted shift plan and 20.4 for the whole
+    schedule** (`FOCUS_JOBS=planner`, §5.1; built, and off as shipped). Each job that is not needed is also a job
+    your runner does not have to start.
+  - Two questions for whoever owns your runners and SQL logins decide the next step (DEC-36): may one job hold the
+    source, app and stager rights at once (then set `FOCUS_JOBS=planner`); and can two jobs of one pipeline run at
+    the same time, with about 20 GB of memory between them.
   - Your runner is not that machine. Run `python tools/time_pre_shift.py run WORKDIR --aircraft 50 --repair` on it
     once, and keep `window` from every live run.
 - **A plan accepted after its shift starts** is only a proposal for that shift. The previous plan stays the goal of
@@ -317,6 +321,7 @@ The draft (`.gitlab-ci.yml`) has never been pushed to a GitLab remote.
 | `stage_readback` | stage | `focus-stager` | `schedule_validate` | Unsigned stage and readback |
 | `sign_accept` | sign | `focus-signer` | `stage_readback` | Manual promotion; accept and move the head |
 | `forecast_*` (3 jobs) | forecast… | app, stager, signer | `sign_accept` | Forecast plan |
+| `plan_unsigned`, `delivery_unsigned` | source, forecast | `focus-planner`, runner tag `focus-scheduler` | as `acquire_admit`; `sign_accept` | Only with `FOCUS_JOBS=planner` (DEC-36 (g)), in place of the five unsigned jobs above: the source, app and stager roles in one job, then the delivery plan's app and stager roles in one job. The two signer jobs are the same |
 | `observe_evaluate` | observe | `focus-evaluator` | `sign_accept` | In-pipeline evaluation; in live mode it stops with `LIVE_OBSERVATIONS_UNAVAILABLE` today (§6) |
 | `stage_observations` | stage_sql | `focus-staging` | – | Evaluator-only pipelines: load the observation feeds |
 | `evaluate_closed_shifts` | observe | `focus-evaluator` | `stage_observations` | Evaluator-only pipelines: `tools/evaluate_closed_shifts.py` |
@@ -328,6 +333,8 @@ The draft (`.gitlab-ci.yml`) has never been pushed to a GitLab remote.
 - The SQL roles: `FOCUS_SQL_HOST`, `FOCUS_SQL_DATABASE`, `FOCUS_SQL_USER` and `FOCUS_SQL_PASSWORD`, one login per
   environment.
 - `focus-signer` only: `FOCUS_SIGN_KEY_REF`.
+- `focus-planner` (only with `FOCUS_JOBS=planner`): a SQL login that is a member of the source-worker,
+  pipeline-worker and stager roles, and never of the signer role. It has no signing material.
 - Schedules: `FOCUS_PIPELINE_PART`.
 
 ### 5.2 Schedules

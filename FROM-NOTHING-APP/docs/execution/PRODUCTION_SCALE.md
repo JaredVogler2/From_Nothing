@@ -401,6 +401,34 @@ sampled profile):
   minutes later. The pull from SQL Server, each job's start on a runner and the acceptances come on top
   (`DECISION_PLAYBOOK.md`, DEC-36, which also has what the options left would save, from these figures).
 
+**The same flow in four jobs** (`--layout planner`; `DECISION_PLAYBOOK.md`, DEC-36 (g); November 12, 2026;
+`evidence/production-scale/pre_shift_timing_50_planner_jobs.json`). One job runs the source, app and stager roles in
+a row, the signer follows, one job runs the delivery plan's app and stager roles, and the signer follows again:
+
+| Job | First run (full solves) | A repairing run | Of which, in the first run |
+| --- | --- | --- | --- |
+| plan: `acquire`, `admit`, `schedule`, `validate`, `stage_readback` | 474 | 413 | rows read 9, raw rows kept 22, snapshot built 58, stored 54, its dashboard parts 91, the held snapshot checked 10, working data 12, scheduler 110, candidate 14, FINAL validation 14, serialized 6, decode and DETACHED validation 43 |
+| signer: `sign_accept` | 176 | 176 | snapshot loaded 68, candidate read 7, serialized 14, READBACK validation 60, dashboard parts 8, acceptance 9 |
+| **Data cut to the accepted shift plan** | **650** (10.8 min) | **589** (9.8 min) | |
+| plan: `forecast`, `forecast_stage_readback` | 459 | 371 | snapshot loaded 67, working data 18, scheduler 185, candidate 39, FINAL validation 33, serialized 9, decode and DETACHED validation 83 |
+| signer: `forecast_sign_accept` | 265 | 265 | snapshot loaded 69, candidate read 22, serialized 9, READBACK validation 106, dashboard parts 17, acceptance 14 |
+| **Shift plan accepted to the accepted delivery plan** | **724** (12.1 min) | **636** (10.6 min) | |
+| **The whole schedule** | **1,373** (22.9 min) | **1,225** (20.4 min) | |
+
+- **Against one job per role** (the third measurement above): 9.8 minutes to the accepted shift plan against 13.9,
+  and 20.4 for the whole schedule against 26.9. Three snapshot loads and two reads of a stored candidate are gone
+  (about 68 seconds a load in this run), and the steps that follow scheduling in the same process run faster: the
+  decode and DETACHED validation took 43 and 83 seconds against 60 and 95.
+- **This run was the faster of the two on identical work.** The two signer jobs and the two repairs do the same in
+  both layouts, and they took 3 to 10% less time here. On the pace of the third measurement the four-job run is
+  between 21.0 and 22.7 minutes. So the whole schedule is at the 20 minutes, not inside them with room to spare.
+- **The repairing figures are put together** as in the measurements above: the first run's jobs, with each scheduling
+  step replaced by the repair of the same data measured separately (`report.repairing_run` in the receipt says how).
+- **At 10 aircraft the layout was run as two whole pipelines in a row** on one store (`--second`), the second
+  repairing the first's plans in every job: 7.2 minutes for the first and 6.0 for the second, every step completed.
+- **Memory is as before:** 9.0 GB at the peak of the first job (the snapshot build) and 10.3 GB in the delivery
+  plan's jobs.
+
 **The application at 50 aircraft** (`evidence/production-scale/team_lead_view_50.json`; the store of the measurement
 above, one web process):
 

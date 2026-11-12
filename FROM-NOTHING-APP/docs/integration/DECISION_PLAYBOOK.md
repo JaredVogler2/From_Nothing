@@ -169,7 +169,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
 | DEC-34 | How long the nightly full solve may improve a plan, and what its search may reorder | DATA | pre-shift runs do not search; the nightly run takes its budget from the schedule's variables | after two weeks of nightly runs on real data |
 | DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
-| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | five of nine options built or partly built; at 50 aircraft the shift plan takes 13.9 minutes and the whole schedule 26.9 | before the first live pre-shift run |
+| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | six of nine options built or partly built. At 50 aircraft, one job per role: 13.9 minutes to the shift plan, 26.9 for the whole schedule. Four jobs (`FOCUS_JOBS=planner`, off as shipped): 9.8 and 20.4 | before the first live pre-shift run |
 | DEC-37 | When the pass at the cut fails: plan on the earlier copy, or stop | OWNER | stop: the previous plan stays | before the first live pre-shift run |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
@@ -876,31 +876,34 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   here (4.4 s and under 0.1 s; the scheduler's working data 18 s). The pull is where it helps: load the slowly
   changing tables before the cut (DEC-08). A complete digest of the unchanged part of the data before the cut, with
   only the changes applied at the cut, would cut the 70 s snapshot build; it is not built.
-- **Where it stands** after (b), (d), (e) and (f), measured at 50 aircraft (`PRODUCTION_SCALE.md`, "The pre-shift
-  flow after D-33"):
+- **Where it stands,** measured at 50 aircraft in repairing runs (`PRODUCTION_SCALE.md`, "The pre-shift flow after
+  D-33" has every job, and the first runs, which solve in full):
 
-  | | First measured | After D-33, a repairing run | Now, a repairing run | Now, a first run (full solves) |
+  | | First measured | After D-33 | With the faster decoder, one job per role | Four jobs (`FOCUS_JOBS=planner`) |
   | --- | --- | --- | --- | --- |
-  | Data cut to the accepted shift plan | 23.2 min | 16.1 min | 13.9 min | 15.5 min |
-  | Then to the accepted delivery plan | 27.1 min | 15.5 min | 13.0 min | 15.1 min |
-  | The whole schedule | 50.3 min | 31.6 min | 26.9 min | 30.7 min |
+  | Data cut to the accepted shift plan | 23.2 min | 16.1 min | 13.9 min | 9.8 min |
+  | Then to the accepted delivery plan | 27.1 min | 15.5 min | 13.0 min | 10.6 min |
+  | The whole schedule | 50.3 min | 31.6 min | 26.9 min | 20.4 min |
 
-  The task lists are inside the 20 minutes on this machine and the whole schedule is not. Of the 26.9 minutes, 7.1
-  are six loads of the snapshot, 6.6 are validations (about half of that is decoding the serialized plan again), 4.9
-  the source job and 1.7 the scheduler.
+  - With one job per role, as shipped, the task lists are inside the 20 minutes on this machine and the whole
+    schedule is not. Of the 26.9 minutes, 7.1 are six loads of the snapshot, 6.6 are validations (about half of that
+    is decoding the serialized plan again), 4.9 the source job and 1.7 the scheduler.
+  - With four jobs the whole schedule is at the 20 minutes. The four-job run was the faster of the two on identical
+    work (the signer jobs and the repairs took 3 to 10% less time in it); on the pace of the run before it, it is
+    between 21.0 and 22.7 minutes.
 - **Next, with what each would leave** (worked out from the measured parts, not measured):
 
   | Step | Task lists | Whole schedule | Needs |
   | --- | --- | --- | --- |
-  | As built | 13.9 min | 26.9 min | |
-  | (g) the scheduling job also stages | 12.5 min | 23.9 min | the plan job holding the stager's rights |
-  | (h) the delivery plan's jobs beside the shift plan's | 13.9 min | 20.7 min | two jobs at once, about 20 GB |
-  | (g) and (h) | 12.5 min | 19.1 min | both |
-  | The signer no longer reads and serializes the candidate again | 0.5 min less | 1.4 min less | the signer comparing the staged bytes with the stage record instead |
+  | One job per role, as shipped | 13.9 min | 26.9 min | |
+  | (g) four jobs: measured | 9.8 min | 20.4 min | one job holding the source, app and stager rights (`FOCUS_JOBS=planner`) |
+  | (g) and (h): the delivery plan's job beside the shift plan's signer | 9.8 min | about 17.5 min | two jobs at once, about 20 GB; (h) is not built |
+  | The signer no longer reads and serializes the candidate again | 0.5 min less | 1.2 min less | the signer comparing the staged bytes with the stage record instead; not built |
   | (i) the decoder in native code | not estimated | not estimated | a decoder that builds the same records, held against the same tests |
 
-  One runner with one job at a time cannot bring the whole schedule inside 20 minutes with (g) alone. Ask the owner
-  of the runners whether two jobs can run at once before choosing between (h) and more work on (i).
+  One runner with one job at a time reaches about 20 to 23 minutes with (g). The whole schedule inside 20 minutes
+  with room to spare needs (h) on a runner with two job slots, a faster machine, or more work on (i). On GitLab
+  each job also takes time to start, which this measurement does not have: four jobs start instead of seven.
 - **Measure each** with `python tools/time_pre_shift.py` before and after (`--sample` shows where a job's time
   goes); the candidate's id and hash must not change.
 - **Profile before trusting a figure.** The first report of the 50-aircraft measurement had the delivery plan's
