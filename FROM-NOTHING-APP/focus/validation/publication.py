@@ -72,10 +72,14 @@ def _artifact_violations(artifact: PlanArtifact, snapshot: PlanningSnapshot, pol
 
 
 def validate_artifact(data: bytes, snapshot: PlanningSnapshot, policy: Policy, *, incumbent: IncumbentPlan | None = None, kind: str = "DETACHED",
-                      created_at: Any = None) -> tuple[PlanArtifact | None, ValidationReceipt]:
+                      created_at: Any = None, decoded: PlanArtifact | None = None) -> tuple[PlanArtifact | None, ValidationReceipt]:
+    """Decode ``data`` strictly and validate what it says against the snapshot.
+
+    ``decoded`` is the artifact the caller has just decoded from exactly these bytes with ``decode_artifact`` (it needed
+    the content to find the snapshot): the strict decode is then not run a second time. Nothing else may be passed."""
     sha = payload_sha256(data)
     try:
-        artifact = decode_artifact(data)
+        artifact = decoded if decoded is not None else decode_artifact(data)
     except ArtifactError as exc:
         receipt = ValidationReceipt(
             id=digest_id("VAL", "UNDECODABLE", sha, snapshot.hash, policy.hash, kind, VALIDATOR_VERSION), candidate_id="", kind=kind,

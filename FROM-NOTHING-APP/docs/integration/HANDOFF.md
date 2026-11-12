@@ -195,6 +195,10 @@ be ready to go within 20 minutes"):
   - **In four jobs instead of seven the same run took 9.8 minutes to the accepted shift plan and 20.4 for the whole
     schedule** (`FOCUS_JOBS=planner`, §5.1). The owner leaves the split free (D-34), so the draft ships this layout.
     Each job that is not needed is also a job your runner does not have to start.
+  - **The signer now starts from the staged bytes** and no longer reads and serializes the candidate a second time
+    (74 seconds of that run). Measured on a second machine that runs identical jobs 14 to 22% slower: 11.1 minutes
+    to the shift plan and 21.9 for the whole schedule. So the whole schedule is between about 19 and 22 minutes
+    depending on the machine, and the task lists are inside the 20 minutes on both.
   - Two questions for whoever owns your runners and SQL logins (DEC-36): may one job hold the source, app and stager
     rights at once (if not, set `FOCUS_JOBS=roles` and expect about 27 minutes); and can two jobs of one pipeline
     run at the same time, with about 20 GB of memory between them. The owner does not know the second; find out,

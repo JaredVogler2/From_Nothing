@@ -551,7 +551,9 @@ attendance. A conditional ETA is never physical receipt.
       dashboard data, and 13.0 more to the accepted delivery plan: 26.9 minutes (first measured: 23.2 and 27.1).
       With the pipeline's steps in four jobs instead of seven (`FOCUS_JOBS=planner`, shipped since D-34), the
       same run takes 9.8 minutes to the accepted shift plan and 20.4 for the whole schedule: at the 20 minutes, not
-      inside them with room to spare.
+      inside them with room to spare. With the signer starting from the staged bytes (November 12) it is about 9.3
+      and 19.2 minutes on that machine, and 11.1 and 21.9 as measured on a second machine that runs identical jobs
+      14 to 22% slower: the machine moves the whole schedule across the 20 minutes.
       `docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow after D-33", has the measurement, and
       `DECISION_PLAYBOOK.md`, DEC-36 the options left. The pull from SQL Server, each job's start and the
       acceptances come on top.

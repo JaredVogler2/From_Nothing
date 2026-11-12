@@ -130,7 +130,7 @@ things keep a plan right in between:
 
 | When | What FOCUS computes | Time at 50 aircraft on the test machine |
 | --- | --- | --- |
-| Every run | Reads the whole copy and digests it: which jobs are ready, who may do which job, how long each takes. Repairs the accepted plan, checks it, accepts it and builds the dashboard's data; then the same for the delivery plan | 9.8 minutes to the accepted shift plan, 20.4 for the whole schedule, in four jobs |
+| Every run | Reads the whole copy and digests it: which jobs are ready, who may do which job, how long each takes. Repairs the accepted plan, checks it, accepts it and builds the dashboard's data; then the same for the delivery plan | 9 to 11 minutes to the accepted shift plan and 19 to 22 for the whole schedule, in four jobs, depending on the machine |
 | Nightly | The full solve with the improvement search, in place of the repair | 10.8 and 22.9 minutes |
 | After each shift | Collects what happened and scores the shift that closed | not timed at this size |
 | Weekly | Nothing of its own | |

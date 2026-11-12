@@ -435,6 +435,33 @@ D-34 (November 12, 2026) this is the layout the pipeline draft ships, and both a
   it (about 205). Digesting the slow tables when they change, and only the floor state at each run, is not built
   (D-34, "Not built").
 
+**The signer starts from the stage** (`publication.service._sign_staged`; November 12, 2026;
+`evidence/production-scale/pre_shift_timing_50_signer_from_stage.json`). Given the stage the stager recorded, the signer
+reads the staged bytes, decodes and validates them itself (READBACK) and signs them. It no longer reads the stored
+candidate, builds and serializes the artifact from it a second time, and stages it again to compare. The checks that
+stand in for that comparison are in the function's text, and anything not as recorded falls back to the whole order.
+
+| Job (a repairing run) | Four jobs, first machine | The signer from the stage, second machine |
+| --- | --- | --- |
+| plan: `acquire`, `admit`, `schedule`, `validate`, `stage_readback` | 413 | 501 |
+| signer: `sign_accept` | 176 | 167 |
+| **Data cut to the accepted shift plan** | **589** (9.8 min) | **669** (11.1 min) |
+| plan: `forecast`, `forecast_stage_readback` | 371 | 422 |
+| signer: `forecast_sign_accept` | 265 | 222 |
+| **The whole schedule** | **1,225** (20.4 min) | **1,313** (21.9 min) |
+
+- **This measurement ran on another machine** (a new container). Identical jobs took 14 to 22% longer on it: the two
+  jobs the change does not touch took 501 and 422 seconds against 413 and 371. The two signer jobs still took less
+  than on the faster machine.
+- **The work removed** was timed on this run's store, on its machine: 25 seconds for the shift plan and 62 for the
+  delivery plan, 87 together. In the four-job receipt of the first machine the same operations took 29 and 46
+  seconds, 74 together.
+- **What it comes to.** On the first machine's pace the whole schedule is about 19.2 minutes (1,225 seconds less the
+  74; not measured again there). On the second machine it is 21.9 minutes as measured, and about 23.3 with the whole
+  order. A machine a fifth slower moves the whole schedule from one side of the 20 minutes to the other, so the
+  runner decides, and `window` from the company's own runs is the figure to keep. The task lists are inside the 20
+  minutes on both machines: 9.3 and 11.1 minutes.
+
 **The application at 50 aircraft** (`evidence/production-scale/team_lead_view_50.json`; the store of the measurement
 above, one web process):
 

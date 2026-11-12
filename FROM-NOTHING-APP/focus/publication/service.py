@@ -25,6 +25,11 @@ writes and independently re-validates the unsigned stage without ever resolving 
 runs ``publish`` again: the same deterministic bytes and ids reuse that stage, the readback is re-read and
 re-validated, and only then are the bytes signed and accepted. Signing therefore never precedes a clean readback.
 
+**The signer starts from the stage (``staged``).** Given the stage and plan ids the stager recorded, the signer reads the
+staged bytes, decodes and validates them itself (READBACK) and signs them. It does not read the stored candidate and
+serialize it a second time: what that comparison established is established by the checks ``_sign_staged`` names. Where
+any of them does not hold, the whole order above runs, and rejects or recovers exactly as it always did.
+
 **One computation per validation (D-28).** Each of the three validations is computed once for a publication, and each in
 a different role when the roles are split:
 
@@ -66,7 +71,7 @@ from ..domain import Purpose, digest_id
 from ..validation.plan import CANDIDATES, load_incumbent, persist_receipt, recorded_pass, validate
 from ..validation.publication import publication_capability, recorded_artifact_pass, same_bytes_receipt, validate_artifact
 from .repository import FixturePublicationRepository, PlanStage, PublicationError, PublishedPayload, repository_for
-from .serializer import artifact_bytes, build_artifact, decode_artifact, payload_sha256
+from .serializer import ArtifactError, artifact_bytes, build_artifact, decode_artifact, payload_sha256
 from .signing import Signer, resolve_signer
 
 
@@ -143,14 +148,84 @@ def _post_acceptance(services: Any, snapshot: PlanningSnapshot, published: Publi
     return ["incumbent_recorded", f"delivery_{delivery.status.lower()}"]
 
 
+def _sign_staged(services: Any, candidate_id: str, staged: tuple[str, str], *, signer: Signer | None, fault: Callable[[str], None],
+                 repo: Any) -> PublishResult | None:
+    """The signer's order when the stager has staged the plan: read the staged bytes, decode and validate them (READBACK,
+    this process's own validation of what it signs), then sign and accept. The stored candidate is not read, and it is
+    not serialized a second time to compare.
+
+    The full order's "the staged bytes equal the serialization of the candidate" holds here by these checks instead:
+
+    * the bytes decode strictly, so they are the canonical encoding of their own content (``decode_artifact``);
+    * every declared section of that content is derived again from the snapshot and compared, and the embedded
+      candidate passes every required check (``validate_artifact``);
+    * the embedded candidate is the one asked for, with the content the scheduling run validated: it has that id, and
+      the store holds a passing FINAL receipt bound to its id and its content hash, which is the one the artifact names;
+    * the stage and plan ids the stager recorded are those of this candidate and exactly these bytes, and the stager's
+      passing DETACHED receipt is for exactly these bytes.
+
+    Wherever one of them does not hold (no stage, undecodable or foreign bytes, a missing receipt, a failed validation,
+    an acceptance to reconcile, a stale replay, a head that moved) this returns None and ``publish`` runs the full
+    order, which rejects or recovers with the reasons it always gave."""
+    from ..data.acquisition import load_snapshot
+
+    repos, policy = services.repositories, services.policy
+    stage_id, plan_id = staged
+    if not (isinstance(stage_id, str) and stage_id and isinstance(plan_id, str) and plan_id):
+        return None
+    try:
+        readback = repo.read_stage(stage_id)
+        artifact = decode_artifact(readback) if readback else None
+    except (PublicationError, ArtifactError):
+        return None
+    if artifact is None:
+        return None
+    plan, sha = artifact.candidate, payload_sha256(readback)
+    if plan.id != candidate_id or plan.purpose not in (Purpose.EXECUTABLE, Purpose.FORECAST) or _ids(plan, sha) != (stage_id, plan_id):
+        return None
+    if repo.receipt(plan_id) is not None:
+        return None
+    snapshot = load_snapshot(repos, plan.snapshot_id)
+    if snapshot is None:
+        return None
+    final = recorded_pass(repos, plan, snapshot, policy, kind="FINAL")
+    detached = recorded_artifact_pass(repos, plan, snapshot, policy, kind="DETACHED", payload_sha256=sha)
+    if final is None or detached is None or artifact.final_validation_id != final.id or publication_capability(plan, final):
+        return None
+    head_before = repo.head(plan.scope, plan.purpose.value)
+    if head_before is not None:
+        prior = repo.published(head_before.record_id)
+        if prior is not None and prior.source_run_id != plan.source_run_id and _cutoff(repos, prior) > snapshot.cutoff:
+            return None
+    expected_version = head_before.version if head_before else 0
+    now = services.clock.now()
+    _, rb = validate_artifact(readback, snapshot, policy, incumbent=load_incumbent(repos, plan.incumbent_id), kind="READBACK", created_at=now,
+                              decoded=artifact)
+    now_head = repo.head(plan.scope, plan.purpose.value)
+    if rb.violations or not rb.valid or (now_head.version if now_head else 0) != expected_version:
+        return None
+    persist_receipt(repos, rb, plan)
+    result = PublishResult("REJECTED", candidate_id, plan_id=plan_id, stage_id=stage_id,
+                           validations={"FINAL": final.id, "DETACHED": detached.id, "READBACK": rb.id},
+                           steps=["readback", "final_validation", "detached_validation", "readback_validation"])
+    fault("after_readback")
+    return _sign_and_accept(services, repo, result, plan=plan, snapshot=snapshot, artifact=artifact, readback=readback, final=final,
+                            detached=detached, rb=rb, expected_version=expected_version, now=now, signer=signer, fault=fault)
+
+
 def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, fault: Callable[[str], None] | None = None,
-            repository: Any = None, until: str | None = None, candidate: CandidatePlan | None = None) -> PublishResult:
+            repository: Any = None, until: str | None = None, candidate: CandidatePlan | None = None,
+            staged: tuple[str, str] | None = None) -> PublishResult:
     """Run the acceptance order; ``until="readback"`` stops after the readback validation (stager role, never signs).
 
     ``candidate`` is the candidate this process has just stored under ``candidate_id`` (a job that schedules and
     stages in one process): it is used instead of reading the stored one back and decoding it, when the store holds
     that id. A candidate's id is the digest of its substance, so the two are the same plan; an object with another id
-    is ignored and the store is read."""
+    is ignored and the store is read.
+
+    ``staged`` is the stage id and the plan id the stager recorded for this candidate (the signer role): the signer
+    then starts from the staged bytes (``_sign_staged``), and falls back to the whole order when anything about them is
+    not as recorded."""
     from ..data.acquisition import load_snapshot
 
     if until not in (None, "readback"):
@@ -158,6 +233,10 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
 
     fault = fault or (lambda step: None)
     repos = services.repositories
+    if until is None and staged is not None:
+        signed = _sign_staged(services, candidate_id, staged, signer=signer, fault=fault, repo=repository or repository_for(services))
+        if signed is not None:
+            return signed
     result = PublishResult("REJECTED", candidate_id)
     if candidate is not None and candidate.id == candidate_id and repos.exists(CANDIDATES, candidate_id):
         plan: CandidatePlan | None = candidate
@@ -252,6 +331,16 @@ def publish(services: Any, candidate_id: str, *, signer: Signer | None = None, f
     if until == "readback":
         result.status = "STAGED"                 # unsigned, unaccepted; the previous head is untouched
         return result
+    return _sign_and_accept(services, repo, result, plan=plan, snapshot=snapshot, artifact=artifact, readback=readback, final=final,
+                            detached=detached, rb=rb, expected_version=expected_version, now=now, signer=signer, fault=fault)
+
+
+def _sign_and_accept(services: Any, repo: Any, result: PublishResult, *, plan: CandidatePlan, snapshot: PlanningSnapshot,
+                     artifact: PlanArtifact, readback: bytes, final: Any, detached: Any, rb: Any, expected_version: int, now: datetime,
+                     signer: Signer | None, fault: Callable[[str], None]) -> PublishResult:
+    """Steps 7 to 10 of the order, on bytes this process has read back and validated: sign, verify, write the display
+    package and the immutable acceptance with the head last, then the post-acceptance obligations."""
+    repos, policy, stage_id, plan_id = services.repositories, services.policy, result.stage_id, result.plan_id
     # 7-8. sign exactly the readback-validated bytes with the trusted key, then verify
     trusted, why = resolve_signer(services.settings)
     if trusted is None:

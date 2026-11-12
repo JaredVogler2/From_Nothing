@@ -315,8 +315,9 @@ JOB_SEQUENCE = ("source,app,stager", "signer", "app,stager", "signer", "evaluato
 
 def test_a_job_that_runs_several_roles_parses_the_snapshot_once_and_reads_no_candidate_back(pipeline_services, monkeypatch) -> None:
     """DEC-36 (g): one process runs the source, app and stager steps in a row. It holds the snapshot it has just
-    admitted and the candidate it has just stored, so it builds neither again; the signer, a job of its own, reads
-    everything from the store. Step by step the pipeline is the one the roles alone would have run."""
+    admitted and the candidate it has just stored, so it builds neither again; the signer, a job of its own, loads the
+    snapshot from the store and takes the plan from the staged bytes it validates. Step by step the pipeline is the one
+    the roles alone would have run."""
     import focus.data.acquisition as acquisition
     from focus.contracts.planning import CandidatePlan, PlanningSnapshot
 
@@ -355,7 +356,8 @@ def test_a_job_that_runs_several_roles_parses_the_snapshot_once_and_reads_no_can
     monkeypatch.setattr(scheduling, "_SCHEDULED", {})
     signed = O.run_role(services, pid, JOB_SEQUENCE[1])
     assert [(r["step"], r["outcome"]) for r in signed] == [("sign_accept", "COMPLETED"), ("forecast_sign_accept", "BLOCKED")]
-    assert built == ["snapshot"] and candidate in read    # it loaded the stored snapshot and the stored candidate itself
+    assert built == ["snapshot"]                          # it loaded the stored snapshot itself
+    assert candidate not in read                          # and took the plan from the staged bytes, not from the stored candidate
 
     for job in JOB_SEQUENCE[2:]:
         ran = [r for r in O.run_role(services, pid, job) if r["outcome"] != "ALREADY_COMPLETED"]

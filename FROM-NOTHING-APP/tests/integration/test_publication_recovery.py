@@ -199,6 +199,127 @@ def test_the_signer_rejects_staged_bytes_that_changed_after_the_stager_validated
     assert any(r.startswith("STAGE_READBACK_MISMATCH") for r in result.reasons) and head_id(w) == w.t.p0.plan_id
 
 
+class _Rebuilt:
+    """Counts what a publication reads and builds again: typed reads of the stored candidate, and artifacts built from it."""
+
+    def __init__(self, monkeypatch, repositories):
+        import focus.publication.service as service
+        from focus.contracts.planning import CandidatePlan
+
+        self.candidates = self.artifacts = 0
+        get_typed, build = repositories.get_typed, service.build_artifact
+
+        def read(collection, record_id, type_name, cls, *args, **kwargs):
+            found = get_typed(collection, record_id, type_name, cls, *args, **kwargs)
+            self.candidates += cls is CandidatePlan and found is not None
+            return found
+
+        def built(*args, **kwargs):
+            self.artifacts += 1
+            return build(*args, **kwargs)
+
+        monkeypatch.setattr(repositories, "get_typed", read)
+        monkeypatch.setattr(service, "build_artifact", built)
+
+    def take(self) -> tuple[int, int]:
+        out = (self.candidates, self.artifacts)
+        self.candidates = self.artifacts = 0
+        return out
+
+
+def test_the_signer_starts_from_the_stage_and_accepts_what_the_whole_order_would(world, monkeypatch) -> None:
+    """DEC-36: given the stage the stager recorded, the signer reads the staged bytes, validates them itself and signs
+    them. It neither reads the stored candidate nor serializes it a second time, and the acceptance is the one the
+    whole order produces."""
+    w = world
+    staged = publish(w.services, w.t.p1c.id, until="readback")
+    assert staged.status == "STAGED" and staged.stage_id and staged.plan_id
+    counted, rebuilt = _Counted(monkeypatch), _Rebuilt(monkeypatch, w.services.repositories)
+    signed = publish(w.services, w.t.p1c.id, staged=(staged.stage_id, staged.plan_id))
+    assert signed.status == "ACCEPTED", signed.reasons
+    assert counted.take() == ["bytes:READBACK"]                    # its own validation of the bytes it signs, and only that
+    assert rebuilt.take() == (0, 0)                                # no stored candidate decoded, no artifact built from one
+    assert signed.steps[:8] == ["readback", "final_validation", "detached_validation", "readback_validation", "sign", "verify", "display",
+                                "accept"]
+    assert (signed.plan_id, signed.stage_id, signed.validations) == (staged.plan_id, staged.stage_id, staged.validations)
+    assert head_id(w) == signed.plan_id and signed.receipt.payload_sha256 == w.repo.payload(signed.plan_id).payload_sha256
+    # the whole order, run afterwards from the stored candidate, serializes the same bytes: it finds this acceptance under
+    # the plan id of its own serialization and has nothing to change
+    again = publish(w.services, w.t.p1c.id)
+    assert again.status == "ALREADY_ACCEPTED" and again.plan_id == signed.plan_id and again.receipt == signed.receipt
+    assert rebuilt.take() == (1, 1)
+    current, why = current_plan(w.services, "DEMO-787", "EXECUTABLE")
+    assert why == "OK" and current.published.id == signed.plan_id and current.artifact.candidate.id == w.t.p1c.id
+    goals = w.repo.goals(current.published.frozen_goal_ids)
+    assert goals and all(g.hash == g.computed_hash() and g.plan_id == w.t.p1c.id for g in goals)
+
+
+def test_the_signer_and_the_whole_order_store_the_same_acceptance(template, tmp_path, app_root) -> None:
+    """Two copies of one store: the signer starting from the stage in one, the whole order in the other. Every record of
+    the acceptance is the same."""
+    from focus.publication.repository import GOALS
+
+    accepted = {}
+    for name in ("from_stage", "whole_order"):
+        root = tmp_path / name
+        shutil.copytree(template.root, root)
+        services = _services(root, app_root)
+        staged = publish(services, template.p1c.id, until="readback")
+        result = publish(services, template.p1c.id, staged=(staged.stage_id, staged.plan_id) if name == "from_stage" else None)
+        assert result.status == "ACCEPTED", (name, result.reasons)
+        repos = services.repositories
+        accepted[name] = {collection: {record_id: repos.get_raw(collection, record_id) for record_id in sorted(repos.list_ids(collection))}
+                          for collection in (PUBLISHED, PAYLOADS, RECEIPTS, GOALS, VALIDATIONS, "display_parts", "display_manifests", "display_receipts")}
+        accepted[name]["head"] = repos.head(HEAD).record_id
+        assert accepted[name][PUBLISHED] and accepted[name][GOALS]
+    assert accepted["from_stage"] == accepted["whole_order"]
+
+
+@pytest.mark.parametrize("name", sorted(READBACK_CORRUPTIONS))
+def test_the_signer_starting_from_a_changed_stage_rejects_it_as_the_whole_order_does(world, name) -> None:
+    w = world
+    staged = publish(w.services, w.t.p1c.id, until="readback")
+    edit, expected = READBACK_CORRUPTIONS[name]
+    result = publish(w.services, w.t.p1c.id, repository=CorruptingRepo(w.services.repositories, edit), staged=(staged.stage_id, staged.plan_id))
+    assert result.status == "REJECTED" and expected in result.reasons, result.reasons
+    assert any(r.startswith("STAGE_READBACK_MISMATCH") for r in result.reasons)
+    assert "sign" not in result.steps and "accept" not in result.steps and head_id(w) == w.t.p0.plan_id
+
+
+def test_the_signer_never_signs_valid_looking_bytes_that_are_not_the_ones_staged(world) -> None:
+    """Bytes that decode, embed the right candidate and pass every check, but name another FINAL receipt: not the bytes
+    the stager staged, so not signed. The whole order's byte comparison says so."""
+    w = world
+    staged = publish(w.services, w.t.p1c.id, until="readback")
+    repo = CorruptingRepo(w.services.repositories, lambda o: o.update(final_validation_id="VAL-another"))
+    result = publish(w.services, w.t.p1c.id, repository=repo, staged=(staged.stage_id, staged.plan_id))
+    assert result.status == "REJECTED" and result.reasons == ("STAGE_READBACK_MISMATCH: staged bytes differ from the serialized bytes",)
+    assert "sign" not in result.steps and head_id(w) == w.t.p0.plan_id
+
+
+def test_the_signer_falls_back_to_the_whole_order_when_the_stage_is_not_as_recorded(world, monkeypatch) -> None:
+    import focus.publication.service as service
+
+    w = world
+    staged = publish(w.services, w.t.p1c.id, until="readback")
+    other = publish(w.services, w.t.p0c.id, until="readback")          # the stage of another candidate (already accepted)
+    assert other.stage_id and other.stage_id != staged.stage_id
+    for recorded in (("STG-unknown", staged.plan_id), (staged.stage_id, "PLAN-other"), (other.stage_id, other.plan_id), ("", "")):
+        root = w.root.parent / f"copy-{abs(hash(recorded))}"
+        shutil.copytree(w.root, root)
+        services = _services(root, w.services.settings.app_root)
+        again = _Rebuilt(monkeypatch, services.repositories)
+        result = publish(services, w.t.p1c.id, staged=recorded)
+        assert result.status == "ACCEPTED" and result.plan_id == staged.plan_id, (recorded, result.reasons)
+        assert again.take() == (1, 1) and result.steps[:2] == ["final_validation", "serialize"]      # the whole order ran
+    # a missing DETACHED or FINAL receipt is never assumed: the whole order computes what is missing
+    counted, rebuilt = _Counted(monkeypatch), _Rebuilt(monkeypatch, w.services.repositories)
+    monkeypatch.setattr(service, "recorded_artifact_pass", lambda *a, **kw: None)
+    result = publish(w.services, w.t.p1c.id, staged=(staged.stage_id, staged.plan_id))
+    assert result.status == "ACCEPTED" and counted.take() == ["bytes:DETACHED"] and rebuilt.take() == (1, 1)
+    assert head_id(w) == staged.plan_id
+
+
 def test_the_stager_validates_a_readback_that_differs_from_what_it_serialized(world, monkeypatch) -> None:
     w = world
     counted = _Counted(monkeypatch)

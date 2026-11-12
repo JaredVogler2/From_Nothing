@@ -171,7 +171,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
 | DEC-34 | How long the nightly full solve may improve a plan, and what its search may reorder | DATA | pre-shift runs do not search; the nightly run takes its budget from the schedule's variables | after two weeks of nightly runs on real data |
 | DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
-| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | six of nine options built or partly built. At 50 aircraft, four jobs (`FOCUS_JOBS=planner`, shipped since D-34): 9.8 minutes to the shift plan, 20.4 for the whole schedule. One job per role: 13.9 and 26.9 | before the first live pre-shift run |
+| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | seven of ten options built or partly built. At 50 aircraft, four jobs (`FOCUS_JOBS=planner`, shipped since D-34): 9.8 minutes to the shift plan, 20.4 for the whole schedule; with the signer starting from the stage about 9.3 and 19.2 on that machine, 11.1 and 21.9 measured on a slower one. One job per role: 13.9 and 26.9 | before the first live pre-shift run |
 | DEC-37 | When the pass at the cut fails: plan on the earlier copy, or stop | OWNER | stop: the previous plan stays | before the first live pre-shift run |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
@@ -887,6 +887,7 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   | (f) End each job without releasing its memory object by object | 62 | **built** (D-33) | `FOCUS_FAST_EXIT=true` in the live jobs |
   | (g) One job runs several roles | see "Where it stands" | **built, shipped on (D-34)** | `pipeline --role source,app,stager` runs those roles' ready steps in one process: it does not load the snapshot it has just admitted, and the stager's step takes the candidate the process has just stored. In the draft, `FOCUS_JOBS=planner` makes it two jobs (`plan_unsigned`, `delivery_unsigned`) beside the two signer jobs: four jobs a run instead of seven, three snapshot loads instead of six. The signer stays alone and validates the staged bytes itself. The combined job holds the source, app and stager rights at once. The owner leaves the split free (D-34), so the draft ships this layout; `FOCUS_JOBS=roles` keeps the rights apart where the company's logins may not be combined. Candidates and accepted plans are the same, id for id (`test_jobs_of_several_roles_accept_the_same_plans_as_the_roles_alone`) |
   | (h) The delivery plan's jobs beside the shift plan's | about 370 off the whole schedule, as now measured | not built | The delivery plan follows the shift plan that has passed its FINAL validation instead of the accepted one, so its scheduling and staging run while the shift plan is staged and signed; its acceptance waits for the shift plan's and fails without it. Needs a runner that runs two jobs at once with memory for both (about 20 GB at 50 aircraft) |
+  | (j) The signer starts from the stage | 74 measured there, 87 on a second machine | **built** | Given the stage the stager recorded, the signer reads the staged bytes, validates them itself (READBACK) and signs them. It no longer reads the stored candidate, serializes it a second time and stages it again (`publication.service._sign_staged`). The comparison that gave is given by checks instead: the bytes are canonical, every section is derived again from the snapshot, the candidate inside is the one asked for with the content the scheduling run validated, and the ids and receipts the stager recorded are for exactly these bytes. Anything else falls back to the whole order |
   | (i) A faster decode of stored snapshots and plans | 284 measured | **partly built** | Well-formed data takes short paths through the typed decoder (`codec.from_jsonable`): a snapshot load takes 68 to 75 s instead of 104 to 112, to the same verified hash. A decoder in native code, as the canonical encoder already is, would take more |
 
 - **What preparing earlier buys.** Digesting who holds which certificate and which job needs which takes seconds
@@ -908,19 +909,24 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   - With four jobs the whole schedule is at the 20 minutes. The four-job run was the faster of the two on identical
     work (the signer jobs and the repairs took 3 to 10% less time in it); on the pace of the run before it, it is
     between 21.0 and 22.7 minutes.
+  - With the signer starting from the stage (j), measured on a second machine that runs identical jobs 14 to 22%
+    slower: 11.1 minutes to the shift plan and 21.9 for the whole schedule, where the whole order would have taken
+    about 23.3. On the first machine's pace that is about 9.3 and 19.2 minutes. The machine moves the whole schedule
+    across the 20 minutes; the task lists are inside them on both.
 - **Next, with what each would leave** (worked out from the measured parts, not measured):
 
   | Step | Task lists | Whole schedule | Needs |
   | --- | --- | --- | --- |
   | One job per role (`FOCUS_JOBS=roles`) | 13.9 min | 26.9 min | |
   | (g) four jobs, as shipped: measured | 9.8 min | 20.4 min | one job holding the source, app and stager rights (`FOCUS_JOBS=planner`) |
-  | (g) and (h): the delivery plan's job beside the shift plan's signer | 9.8 min | about 17.5 min | two jobs at once, about 20 GB. Whether the company's runner can is unknown (owner, D-34); (h) is not built |
+  | (g) and (j) the signer from the stage: built; measured on a slower machine, here on the first machine's pace | 9.3 min | about 19.2 min | |
+  | (g), (j) and (h): the delivery plan's job beside the shift plan's signer | 9.3 min | about 16.7 min | two jobs at once, about 20 GB. Whether the company's runner can is unknown (owner, D-34); (h) is not built |
   | The unchanged data digested when it changes, not at every run | not estimated | not estimated; about 450 of the 1,225 seconds are spent on it today | a layered snapshot and dashboard data that keep their unchanged parts; not built (D-34, "Not built") |
-  | The signer no longer reads and serializes the candidate again | 0.5 min less | 1.2 min less | the signer comparing the staged bytes with the stage record instead; not built |
   | (i) the decoder in native code | not estimated | not estimated | a decoder that builds the same records, held against the same tests |
 
-  One runner with one job at a time reaches about 20 to 23 minutes with (g). The whole schedule inside 20 minutes
-  with room to spare needs (h) on a runner with two job slots, a faster machine, or more work on (i). On GitLab
+  One runner with one job at a time reaches about 19 to 22 minutes with (g) and (j), depending on the machine. The
+  whole schedule inside 20 minutes with room to spare needs (h) on a runner with two job slots, a faster machine, or
+  more work on (i). On GitLab
   each job also takes time to start, which this measurement does not have: four jobs start instead of seven.
 - **Measure each** with `python tools/time_pre_shift.py` before and after (`--sample` shows where a job's time
   goes); the candidate's id and hash must not change.

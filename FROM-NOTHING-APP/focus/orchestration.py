@@ -485,7 +485,9 @@ def _sign(services: Any, staged: Mapping[str, Any]) -> dict[str, Any]:
             continue
         if item.get("status") == "STAGED" and not item.get("readback_validation_id"):
             raise StepFailed("READBACK_MISSING", f"{purpose}: no readback validation was recorded; nothing is signed")
-        result = publish(services, item["candidate_id"])
+        # the signer starts from the stage the stager recorded; anything not as recorded falls back to the whole order
+        recorded = (item["stage_id"], item["plan_id"]) if item.get("stage_id") and item.get("plan_id") else None
+        result = publish(services, item["candidate_id"], staged=recorded)
         if result.status not in ("ACCEPTED", "RECOVERED", "ALREADY_ACCEPTED"):
             raise StepFailed("ACCEPTANCE_REFUSED", f"{purpose}: {result.status} {list(result.reasons)[:3]}")
         out[purpose] = {"status": result.status, "plan_id": result.plan_id, "head_version": result.head_version}
