@@ -5,7 +5,7 @@ These datasets tell FOCUS which parts are short, which jobs need them, when they
 | Dataset | Kind | Required for a source run | Capabilities | Live reader today | Read by the engine | Purpose |
 | --- | --- | --- | --- | --- | --- | --- |
 | [`etracs_active`](#etracs_active) | SOURCE | Yes | forecast, executable | Reference SQL query | Yes | Every open shortage, its used-on job and ECD |
-| [`etracs_history`](#etracs_history) | SOURCE | No | forecast | Reference SQL query | No (freshness check only) | Closed shortages with their actual closure dates |
+| [`etracs_history`](#etracs_history) | SOURCE | No | forecast | Reference SQL query | No | Closed shortages with their actual closure dates |
 | [`part_events`](#part_events) | SUPPLEMENTAL | No | executable | None yet: reports NOT_PROBED | Yes | Receipt, deletion, reopen and ETA events per shortage |
 
 ## `etracs_active`
@@ -48,7 +48,7 @@ These datasets tell FOCUS which parts are short, which jobs need them, when they
 
 ## `etracs_history`
 
-**Purpose.** Closed (historical) shortages with the ECD they had and their actual closure date. The docs describe it as closure context that must not confuse a predicted ECD with an actual receipt. Nothing in the planner reads its rows today; only `LOAD_TIMESTAMP` is checked for freshness.
+**Purpose.** Closed (historical) shortages with the ECD they had and their actual closure date. The docs describe it as closure context that must not confuse a predicted ECD with an actual receipt. Nothing in the planner reads its rows today, and its age is not checked.
 
 | | |
 | --- | --- |
@@ -57,7 +57,7 @@ These datasets tell FOCUS which parts are short, which jobs need them, when they
 | Required | No |
 | Capabilities | forecast (registry tag; no code uses it) |
 | If missing or empty | Capture error: status FAILED, gap `DATASET_FAILED`. Empty without a certificate: gap `DATASET_EMPTY_UNCERTIFIED`. Plans do not change. |
-| Time and cutoff | Row clock `LOAD_TIMESTAMP`, 36 h limit, as for `etracs_active`. A stale table gives `SOURCE_STALE`, which fails EXECUTABLE plans even though nothing else reads it. No cutoff column. |
+| Time and cutoff | Row clock `LOAD_TIMESTAMP` is not freshness-checked: no plan is built from this table, so its age never stops one (D-34). No cutoff column. |
 | Read by | `focus/data/freshness.py` (`LOAD_TIMESTAMP` only) |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -69,11 +69,11 @@ These datasets tell FOCUS which parts are short, which jobs need them, when they
 | `PRIMARY_JOB` | varchar(50), nullable | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `ETRAC_ECD` | date, nullable | The ECD (predicted date) the shortage had. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `ACTUAL_CLOSURE_DATE` | date, nullable | Date the shortage was actually closed. The manual says it alone does not prove current inventory was received. | Fetched and kept with the source run; nothing in the planner reads it today. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Freshness check only. |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Not read. |
 
 **Rules and pitfalls.**
 - It is not a receipt source. A closure date does not prove a part is physically ready now; receipts must come through `part_events`.
-- Although no rows are read, the policy checks its freshness: a load more than 36 h old blocks every executable plan.
+- No rows are read and its age is not checked (D-34): a late load of it never blocks a plan.
 - `docs/integration/SCHEDULING_CONSTRAINTS.md` (C22) and `docs/execution/SQL_SCHEMA_LEDGER.md` list it as a parts input, but no code reads its rows.
 
 ## `part_events`

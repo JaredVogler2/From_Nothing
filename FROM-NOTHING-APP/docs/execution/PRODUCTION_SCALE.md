@@ -403,7 +403,8 @@ sampled profile):
 
 **The same flow in four jobs** (`--layout planner`; `DECISION_PLAYBOOK.md`, DEC-36 (g); November 12, 2026;
 `evidence/production-scale/pre_shift_timing_50_planner_jobs.json`). One job runs the source, app and stager roles in
-a row, the signer follows, one job runs the delivery plan's app and stager roles, and the signer follows again:
+a row, the signer follows, one job runs the delivery plan's app and stager roles, and the signer follows again. Since
+D-34 (November 12, 2026) this is the layout the pipeline draft ships, and both acceptances happen by themselves:
 
 | Job | First run (full solves) | A repairing run | Of which, in the first run |
 | --- | --- | --- | --- |
@@ -428,6 +429,11 @@ a row, the signer follows, one job runs the delivery plan's app and stager roles
   repairing the first's plans in every job: 7.2 minutes for the first and 6.0 for the second, every step completed.
 - **Memory is as before:** 9.0 GB at the peak of the first job (the snapshot build) and 10.3 GB in the delivery
   plan's jobs.
+- **Where the unchanged data costs.** About 1% of the source rows change between two runs, and every run still
+  handles all of them. In the repairing run above that is roughly 450 of the 1,225 seconds: the snapshot built,
+  stored and checked and its dashboard parts written in the first job (about 245 seconds), and three later loads of
+  it (about 205). Digesting the slow tables when they change, and only the floor state at each run, is not built
+  (D-34, "Not built").
 
 **The application at 50 aircraft** (`evidence/production-scale/team_lead_view_50.json`; the store of the measurement
 above, one web process):

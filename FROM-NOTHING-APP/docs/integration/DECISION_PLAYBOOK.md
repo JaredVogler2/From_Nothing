@@ -73,10 +73,12 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 - **Tests that pin decisions.** Update them in the same change as the decision they pin:
   - `tests/unit/test_policy_config.py` pins which OD ids are open and that `cs.date_mode` is `open_decision`;
   - `tests/integration/test_migration_pipeline.py::test_ci_draft_orders_roles_and_protects_signing` pins
-    manual acceptance as the default on both signing jobs (the `FOCUS_AUTO_SIGN` switch is off and never applies to
-    the forecast), that acquisition needs every verify job in its pipeline, and that the long
+    automatic acceptance on both signing jobs for a scheduled run on a protected ref and nothing else (D-34: the
+    `FOCUS_AUTO_SIGN` switches ship on), that acquisition needs every verify job in its pipeline, and that the long
     suites run on merge while a live run requires a protected ref (D-28);
-  - `tests/unit/test_data_reference_docs.py` pins the dataset columns against `docs/data/`.
+  - `tests/unit/test_data_reference_docs.py` pins the dataset columns against `docs/data/`;
+  - `tests/unit/test_staging_cadence.py` pins every dataset's cadence (`focus/data/cadence.py`), the freshness
+    limits that follow from it, and the tables of `STAGING_PLAN.md` and `DATA_CADENCE.md` (D-34).
 - **Validate before you push.**
   - Fast checks: `python tools/check_imports.py`, then `python -m focus.cli migrate --dry-run`, then the test files
     you touched.
@@ -145,12 +147,12 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-05 | Read grants for worker roles | ENGINEERING | least privilege per step | now |
 | DEC-06 | Live observe and evaluate | ENGINEERING | as `evaluate_closed_shifts` | now |
 | DEC-07 | Certified-empty and `loaded_at` for live captures | ENGINEERING | producer receipt table | now |
-| DEC-08 | Staging loader design | ENGINEERING | per `STAGING_PLAN.md`: a complete copy, three passes | now |
+| DEC-08 | Staging loader design | ENGINEERING | per `STAGING_PLAN.md`: a complete copy, four passes, each dataset at its own cadence (D-34) | now |
 | DEC-09 | Order of supplemental producers | ENGINEERING | `work_progress` first | now |
 | DEC-10 | Test suite inside the live window | **settled 2026-11-10 by the 20-minute requirement (D-28), built** | suites run on merge; live runs need a protected ref | now |
-| DEC-11 | Signing before each shift | OWNER | recommend: automatic with a kill switch | before go-live |
+| DEC-11 | Signing before each shift | **decided 2026-11-12 (D-34), built** | automatic: no person accepts a plan; `FOCUS_AUTO_SIGN=false` holds plans again | now |
 | DEC-12 | Schedule times inside the 20-minute budget | DATA | start 20 min before each shift; crons in `HANDOFF.md` §5.2 | after 1 week of runs |
-| DEC-13 | Freshness limits (load cadences) | DATA | fixture limits 18–240 h | after 2 weeks of loads |
+| DEC-13 | Freshness limits (load cadences) | DATA | limits follow the designed cadence (18–336 h, D-34); re-set from measured intervals | after 2 weeks of loads |
 | OD-02…OD-17 | Data semantics (§5) | DATA, then the owner confirms the relabel | fixture meanings; live withheld | as each source is wired |
 | DEC-19 | Validate the score on real data | DATA, then OWNER | no grade counts until done | after 4 weeks of pilot |
 | DEC-20 | Swap watch: unplanned work done in place of planned work | DATA | report it; it changes no score | after 4 weeks of pilot |
@@ -169,7 +171,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
 | DEC-34 | How long the nightly full solve may improve a plan, and what its search may reorder | DATA | pre-shift runs do not search; the nightly run takes its budget from the schedule's variables | after two weeks of nightly runs on real data |
 | DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
-| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | six of nine options built or partly built. At 50 aircraft, one job per role: 13.9 minutes to the shift plan, 26.9 for the whole schedule. Four jobs (`FOCUS_JOBS=planner`, off as shipped): 9.8 and 20.4 | before the first live pre-shift run |
+| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | six of nine options built or partly built. At 50 aircraft, four jobs (`FOCUS_JOBS=planner`, shipped since D-34): 9.8 minutes to the shift plan, 20.4 for the whole schedule. One job per role: 13.9 and 26.9 | before the first live pre-shift run |
 | DEC-37 | When the pass at the cut fails: plan on the earlier copy, or stop | OWNER | stop: the previous plan stays | before the first live pre-shift run |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
@@ -309,8 +311,10 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
   of a run (owner, 2026-11-11). The pass inside the 20 minutes can therefore only be a small one.
 - **Default.** Follow `STAGING_PLAN.md`, which extends `HANDOFF.md` §4:
   - SQL Server keeps a complete copy of every dataset, and FOCUS reads it in full;
-  - three passes keep it current: nightly (full loads, full compares, repairs), 60 minutes before each shift
-    (everything that changes in a day) and at the cut (only the rows that changed since the pass before it);
+  - four passes keep it current, each dataset at the pace its content changes (D-34; `focus/data/cadence.py`):
+    weekly (the large slow tables in full: job facts, certificates, lookups), nightly (floor state reconciled, the
+    small daily tables, changed rows), 60 minutes before each shift (everything that changes in a day) and at the
+    cut (only the rows that changed since the pass before it);
   - the `--part`, `--as-of` and `--receipt` interface, with one extraction instant per pass;
   - atomic publication of each pass, and never while FOCUS reads;
   - row clocks stamped in UTC; the complete census; append-only observation history.
@@ -323,7 +327,8 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
   shortages and receipts, attendance, leave, certificate revocations) is always brought up to the cut by a change
   pull: an earlier load alone is never enough for it, and a full extract never runs at the cut.
 - **Verify:** `verify_staged_sources` passes; a week of receipts shows complete passes; the nightly compare finds no
-  row the change pulls missed; `tests/integration/test_migration_pipeline.py` (the draft's three passes).
+  row the change pulls missed; `tests/integration/test_migration_pipeline.py` (the draft's four passes) and
+  `tests/unit/test_staging_cadence.py`.
 
 ### DEC-09 Order of the supplemental producers
 
@@ -402,6 +407,13 @@ first owner-confirmed OD, because any edit changes the policy hash.
 
 ### DEC-11 Signing before each shift
 
+- **Decided by the owner on 2026-11-12 (D-34): option (b) for both plans.** "once a schedule is produced that is what
+  the mechanics and shop floor should use to determine what jobs they work. They do not need to "accept" anything -
+  the scheduler is the answer." The rest of this entry is the record of the decision.
+- **What "automatic" means.** A scheduled run on a protected ref signs and accepts the shift plan, and then the
+  delivery plan, once the validations before each are clean. A plan that fails one is never accepted: the plan
+  before it stays in force and the pipeline fails. So the alert of `HANDOFF.md` §5.3 is now the only thing that
+  tells a person a shift has no new plan.
 - **Authority:** OWNER. It is a governance decision.
 - **Why.** `sign_accept` waits for an operator. A plan accepted after its shift starts is only a proposal for that shift,
   and teams are scored against the stale plan (DEC-24).
@@ -415,18 +427,19 @@ first owner-confirmed OD, because any edit changes the policy hash.
 - **What D-33 adds.** The owner wants the application populated at shift start, with the schedule and the task
   lists. The task lists come with the shift plan's acceptance and the delivery dates with the delivery plan's. With
   (a) both wait for a person three times a day; with (c) the task lists are automatic and the delivery dates wait.
-- **Built, switched off.** The pipeline draft carries `FOCUS_AUTO_SIGN: "false"` and
-  `FOCUS_AUTO_SIGN_DELIVERY: "false"`. With the first set to `"true"`, `sign_accept` runs by itself only in a
-  scheduled pipeline on a protected ref. With both set, `forecast_sign_accept` does too. Every other run still waits
-  for an operator. Either way the signer validates the staged bytes itself before it signs them
+- **Built, switched on.** The pipeline draft carries `FOCUS_AUTO_SIGN: "true"` and
+  `FOCUS_AUTO_SIGN_DELIVERY: "true"`. `sign_accept` and `forecast_sign_accept` run by themselves only in a scheduled
+  pipeline on a protected ref. A run started by hand still waits for the person who started it; to recover a
+  scheduled run, retry its failed job. Either way the signer validates the staged bytes itself before it signs them
   (`test_ci_draft_orders_roles_and_protects_signing`,
-  `test_each_validation_is_computed_once_and_the_signer_validates_the_bytes_it_signs`). Turn them on only with the
-  owner's decision on record.
-- **Until decided:** a person accepts each plan, three times a day, inside the 20 minutes. A plan accepted after its
-  shift starts is not that shift's plan of record.
+  `test_each_validation_is_computed_once_and_the_signer_validates_the_bytes_it_signs`).
+- **The kill switch.** `FOCUS_AUTO_SIGN=false`, on one run or in the project, holds every plan for an operator
+  again; `FOCUS_AUTO_SIGN_DELIVERY=false` holds the delivery plan alone. A plan accepted after its shift starts is
+  not that shift's plan of record.
 - **Measure.** From `tools/calibrate_scores.py store`: `stale_plans.share`, and the minutes from acceptance to shift
   start (pipeline receipts).
-- **Decision evidence.** If manual signing gives any stale plan in a week of shadow, recommend automatic.
+- **Still worth watching.** `stale_plans.share` should be about 0 with automatic acceptance. Any stale plan now
+  means a run that was late or failed, not a missed promotion.
 
 ### DEC-12 Cutoff lead and schedule times
 
@@ -447,13 +460,17 @@ first owner-confirmed OD, because any edit changes the policy hash.
 ### DEC-13 Freshness limits (live load cadences)
 
 - **Authority:** DATA.
-- **Default now.** `admission.max_source_age_hours` keeps its fixture limits (18–240 h, `fixture_default`), and
-  `admission.max_capture_skew_minutes` stays at 30.
+- **Default now.** `admission.max_source_age_hours` follows the designed cadence (D-34, `focus/data/cadence.py`):
+  each limit is at least twice the interval of the staging pass that reads the dataset whole (18 h for attendance,
+  36 h for open shortages, 48 h nightly, 240 h for the calendars, 336 h weekly), and only the twelve datasets an
+  executable plan is built from are on the list. The values are still `fixture_default`: no load interval has been
+  measured. `admission.max_capture_skew_minutes` stays at 30.
 - **Measure.** The load interval of each dataset over two weeks (`stage.json` receipts).
 - **Decision rule.** Limit = 2 × the 95th-percentile load interval, rounded up to whole hours, and never below 6 h for
   a dataset loaded before every shift. Keep 30 minutes of capture skew unless acquisition itself takes longer.
 - **Implement in:** `config/policies/rebuild-v1.json`, as one policy batch, with the evidence in `ref`.
-- **Verify:** `tests/integration/test_source_freshness.py`.
+- **Verify:** `tests/integration/test_source_freshness.py`; `tests/unit/test_staging_cadence.py` fails when a
+  limit falls below what its dataset's cadence allows, or when a dataset no plan reads is put on the list.
 
 ### DEC-28 Calendar days after the last control station
 
@@ -634,7 +651,7 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
     decision;
   - (c) score stale-plan shifts NEUTRAL;
   - (d) score against the late plan if it was accepted within N minutes of the start.
-- **Recommendation: prevent first (DEC-11), then (b).** Option (b) changes no score by itself and keeps a human
+- **Recommendation: prevent first (DEC-11, decided and built), then (b).** Option (b) changes no score by itself and keeps a human
   reviewer.
 - **Build (b) now**, behind `FOCUS_AUTO_PLAN_CHURN=false`.
 - **Measure:** `stale_plans.share` and examples.
@@ -868,7 +885,7 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   | (d) Repair in every pre-shift run | 112, and 80 of in-search validation | **built** (D-33) | `planning.full_solve_shifts` is empty; the full solve is the nightly pipeline's |
   | (e) One FINAL validation in the scheduling job | 42 | **built** (D-33) | The `validate` step takes the solve's receipt and the candidate the process has just stored |
   | (f) End each job without releasing its memory object by object | 62 | **built** (D-33) | `FOCUS_FAST_EXIT=true` in the live jobs |
-  | (g) One job runs several roles | see "Where it stands" | **built as a switch, off** | `pipeline --role source,app,stager` runs those roles' ready steps in one process: it does not load the snapshot it has just admitted, and the stager's step takes the candidate the process has just stored. In the draft, `FOCUS_JOBS=planner` makes it two jobs (`plan_unsigned`, `delivery_unsigned`) beside the two signer jobs: four jobs a run instead of seven, three snapshot loads instead of six. The signer stays alone and validates the staged bytes itself. The combined job holds the source, app and stager rights at once, which the draft keeps apart by default, so the company decides it. Candidates and accepted plans are the same, id for id (`test_jobs_of_several_roles_accept_the_same_plans_as_the_roles_alone`) |
+  | (g) One job runs several roles | see "Where it stands" | **built, shipped on (D-34)** | `pipeline --role source,app,stager` runs those roles' ready steps in one process: it does not load the snapshot it has just admitted, and the stager's step takes the candidate the process has just stored. In the draft, `FOCUS_JOBS=planner` makes it two jobs (`plan_unsigned`, `delivery_unsigned`) beside the two signer jobs: four jobs a run instead of seven, three snapshot loads instead of six. The signer stays alone and validates the staged bytes itself. The combined job holds the source, app and stager rights at once. The owner leaves the split free (D-34), so the draft ships this layout; `FOCUS_JOBS=roles` keeps the rights apart where the company's logins may not be combined. Candidates and accepted plans are the same, id for id (`test_jobs_of_several_roles_accept_the_same_plans_as_the_roles_alone`) |
   | (h) The delivery plan's jobs beside the shift plan's | about 370 off the whole schedule, as now measured | not built | The delivery plan follows the shift plan that has passed its FINAL validation instead of the accepted one, so its scheduling and staging run while the shift plan is staged and signed; its acceptance waits for the shift plan's and fails without it. Needs a runner that runs two jobs at once with memory for both (about 20 GB at 50 aircraft) |
   | (i) A faster decode of stored snapshots and plans | 284 measured | **partly built** | Well-formed data takes short paths through the typed decoder (`codec.from_jsonable`): a snapshot load takes 68 to 75 s instead of 104 to 112, to the same verified hash. A decoder in native code, as the canonical encoder already is, would take more |
 
@@ -895,9 +912,10 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 
   | Step | Task lists | Whole schedule | Needs |
   | --- | --- | --- | --- |
-  | One job per role, as shipped | 13.9 min | 26.9 min | |
-  | (g) four jobs: measured | 9.8 min | 20.4 min | one job holding the source, app and stager rights (`FOCUS_JOBS=planner`) |
-  | (g) and (h): the delivery plan's job beside the shift plan's signer | 9.8 min | about 17.5 min | two jobs at once, about 20 GB; (h) is not built |
+  | One job per role (`FOCUS_JOBS=roles`) | 13.9 min | 26.9 min | |
+  | (g) four jobs, as shipped: measured | 9.8 min | 20.4 min | one job holding the source, app and stager rights (`FOCUS_JOBS=planner`) |
+  | (g) and (h): the delivery plan's job beside the shift plan's signer | 9.8 min | about 17.5 min | two jobs at once, about 20 GB. Whether the company's runner can is unknown (owner, D-34); (h) is not built |
+  | The unchanged data digested when it changes, not at every run | not estimated | not estimated; about 450 of the 1,225 seconds are spent on it today | a layered snapshot and dashboard data that keep their unchanged parts; not built (D-34, "Not built") |
   | The signer no longer reads and serializes the candidate again | 0.5 min less | 1.2 min less | the signer comparing the staged bytes with the stage record instead; not built |
   | (i) the decoder in native code | not estimated | not estimated | a decoder that builds the same records, held against the same tests |
 
@@ -987,8 +1005,8 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
 
 ## 9. Suggested order
 
-1. **Now (no data):** DEC-00 first, then DEC-01 to DEC-09; build DEC-11 and DEC-24 behind switches that are off.
-   DEC-10 and DEC-22 are settled and built: port them. For DEC-08, start with the inventory and the query timings of
+1. **Now (no data):** DEC-00 first, then DEC-01 to DEC-09; build DEC-24 behind a switch that is off.
+   DEC-10, DEC-11 and DEC-22 are settled and built: port them. For DEC-08, start with the inventory and the query timings of
    `STAGING_PLAN.md` §11.
 2. **Data wired, read-only:**
    - staging (DEC-08) and the OD profiling (§5), with OD-05 first, then OD-10, OD-13, OD-03, OD-07, OD-08, OD-09 and
@@ -996,10 +1014,10 @@ Update `tests/unit/test_policy_config.py`. Apply at a period boundary.
    - a FORECAST plan for the complete scope, with the unknown-cost counts of DEC-29 and the calendar check of
      DEC-28;
    - review the readiness gaps with their owners.
-3. **First week of pipeline runs:** DEC-12; the evidence for DEC-11; DEC-24's measurement; `window` against the
+3. **First week of pipeline runs:** DEC-12; DEC-24's measurement; `window` against the
    20-minute budget (DEC-36: take its options (a), (b) and (c) before these runs).
 4. **Four weeks of pilot scores** (teams dispatched from the accepted plan): DEC-13, DEC-19, DEC-20, DEC-25 and
    DEC-23. Ask the owner about DEC-26 and DEC-33 before the pilot starts. DEC-31, and the settings of DEC-33, are
    decided on the same pilot data.
-5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-11, DEC-23 to DEC-26
+5. **Go-live gate:** the `HANDOFF.md` §8 checklist; the owner confirms the OD relabels, DEC-23 to DEC-26
    and, last, OD-16.

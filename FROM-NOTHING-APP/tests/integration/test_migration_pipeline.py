@@ -732,23 +732,26 @@ def _ci_jobs(text: str) -> dict[str, str]:
     return jobs
 
 
-def test_ci_draft_keeps_a_staged_copy_current_in_three_passes(app_root) -> None:
-    """SQL Server holds a complete copy of the sources, kept current ahead of time, so the pass inside the owner's 20
-    minutes pulls only what changed (docs/integration/STAGING_PLAN.md)."""
+def test_ci_draft_keeps_a_staged_copy_current_at_four_cadences(app_root) -> None:
+    """SQL Server holds a complete copy of the sources, kept current ahead of time, each dataset at its own cadence (D-34),
+    so the pass inside the owner's 20 minutes pulls only what changed (docs/integration/STAGING_PLAN.md)."""
+    from focus.data.cadence import in_pass
     from focus.data.datasets import DATASETS
 
     jobs = _ci_jobs((app_root / ".gitlab-ci.yml").read_text(encoding="utf-8"))
-    cut, before, nightly = jobs["stage_sources"], jobs["prestage_sources"], jobs["nightly_sources"]
+    cut, before, nightly, weekly = jobs["stage_sources"], jobs["prestage_sources"], jobs["nightly_sources"], jobs["weekly_sources"]
     assert "--part cut " in cut and "extends: .live" in cut and "needs: []" in cut      # starts with the pipeline; counts toward D-28
-    assert "--part preshift " in before and "--part nightly " in nightly and "--part observations " in jobs["stage_observations"]
+    assert "--part preshift " in before and "--part nightly " in nightly and "--part weekly " in weekly
+    assert "--part observations " in jobs["stage_observations"]
     for name, part in (("prestage_sources", "preshift"), ("verify_prestaged_sources", "preshift"), ("nightly_sources", "nightly"),
-                       ("verify_nightly_sources", "nightly")):
+                       ("verify_nightly_sources", "nightly"), ("weekly_sources", "weekly"), ("verify_weekly_sources", "weekly")):
         job = jobs[name]
         assert f'$FOCUS_PIPELINE_PART == "{part}"' in job and "extends: .staging_only" in job, name
         assert "--role" not in job and "FOCUS_SIGN_KEY_REF" not in job and "focus-signer" not in job, name   # staging never plans or signs
-    for name in ("stage_sources", "prestage_sources", "nightly_sources", "stage_observations"):
+    for name in ("stage_sources", "prestage_sources", "nightly_sources", "weekly_sources", "stage_observations"):
         assert '--as-of "$CI_PIPELINE_CREATED_AT"' in jobs[name] and "focus-staging" in jobs[name], name       # one instant; staging credentials only
-    for name, loaded in (("verify_prestaged_sources", "prestage_sources"), ("verify_nightly_sources", "nightly_sources")):
+    for name, loaded in (("verify_prestaged_sources", "prestage_sources"), ("verify_nightly_sources", "nightly_sources"),
+                         ("verify_weekly_sources", "weekly_sources")):
         assert "source-discover --read-only --mode live" in jobs[name] and f"needs: [{loaded}]" in jobs[name] and "focus-source" in jobs[name]
     # a pass never publishes while acquire_admit reads the copy, and a merge never cancels a live run
     for template in (".live", ".staging_only", ".evaluate_only"):
@@ -756,16 +759,19 @@ def test_ci_draft_keeps_a_staged_copy_current_in_three_passes(app_root) -> None:
     # the plan pipeline is the one that names no part, and an unknown part runs nothing
     assert "$FOCUS_PIPELINE_PART == null" in jobs[".live"] and jobs["sign_accept"].count("$FOCUS_PIPELINE_PART == null") == 2
     guard = jobs["workflow"].split("when: never")[0]
-    assert all(f'$FOCUS_PIPELINE_PART != "{part}"' in guard for part in ("evaluate", "preshift", "nightly"))
-    # the plan names every dataset and says which ones the pass at the cut pulls
+    assert all(f'$FOCUS_PIPELINE_PART != "{part}"' in guard for part in ("evaluate", "preshift", "nightly", "weekly"))
+    # the plan names every dataset and says which ones the pass at the cut pulls (tests/unit/test_staging_cadence.py holds
+    # every cell of its tables to the registry)
     plan = (app_root / "docs" / "integration" / "STAGING_PLAN.md").read_text(encoding="utf-8")
-    rows = {cells[1].strip().strip("`"): [c.strip() for c in cells] for cells in (line.split("|") for line in plan.splitlines() if line.startswith("| `"))}
-    assert set(DATASETS) <= set(rows), sorted(set(DATASETS) - set(rows))
-    at_the_cut = [name for name in DATASETS if rows[name][7] != "none"]
-    assert len(at_the_cut) == 18 and "the 18 datasets" in plan and {"master_task_list", "work_progress", "etracs_active"} <= set(at_the_cut)
+    rows = {cells[1].strip().strip("`"): [c.strip() for c in cells] for cells in (line.split("|") for line in plan.splitlines() if line.startswith("| `"))
+            if len(cells) == 12}
+    assert set(rows) == set(DATASETS), sorted(set(DATASETS) ^ set(rows))
+    at_the_cut = [name for name in DATASETS if rows[name][8] != "none"]
+    assert set(at_the_cut) == set(in_pass("cut")) and len(at_the_cut) == 18 and "the 18 datasets" in plan
+    assert {"master_task_list", "work_progress", "etracs_active"} <= set(at_the_cut)
     assert all(rows[name][2] == ("yes" if DATASETS[name].required_for_run else "no") for name in DATASETS)
-    for needle in ("--part cut", "`prestage_sources`", "`nightly_sources`", "`stage_observations`", "FOCUS_PIPELINE_PART=preshift",
-                   "FOCUS_PIPELINE_PART=nightly", "DEC-37"):
+    for needle in ("--part cut", "`prestage_sources`", "`nightly_sources`", "`weekly_sources`", "`stage_observations`", "FOCUS_PIPELINE_PART=preshift",
+                   "FOCUS_PIPELINE_PART=nightly", "FOCUS_PIPELINE_PART=weekly", "DEC-37"):
         assert needle in plan, needle
 
 
@@ -799,16 +805,16 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     assert "{ job: native_wheel, artifacts: true }" in jobs["schedule_validate"] and "dist/focus_native-" in jobs["schedule_validate"]
     assert "focus-native==" not in jobs["schedule_validate"]                     # never an index wheel from another commit
     assert "when: manual" in jobs["sign_accept"] and "focus-signer" in jobs["sign_accept"]
-    # DEC-11 is the owner's decision and is not made: the switch for automatic acceptance exists and is off. Turned on, it
-    # applies only to a scheduled run on a protected ref; every other run still waits for an operator
-    assert 'FOCUS_AUTO_SIGN: "false"' in jobs["variables"]
+    # D-34 (owner, 2026-11-12): no person accepts a plan, so the switch for automatic acceptance ships on. It applies only
+    # to a scheduled run on a protected ref; a run started by hand, or with the switch off, still waits for an operator
+    assert 'FOCUS_AUTO_SIGN: "true"' in jobs["variables"]
     auto, manual = jobs["sign_accept"].split("when: on_success")[0], jobs["sign_accept"].split("when: on_success")[1]
     rule = [line for line in auto.splitlines() if line.strip()][-1]              # the condition of the automatic rule
     for condition in ('$FOCUS_AUTO_SIGN == "true"', '$CI_PIPELINE_SOURCE == "schedule"', '$CI_COMMIT_REF_PROTECTED == "true"', '$FOCUS_MODE == "live"'):
         assert condition in rule and " || " not in rule, condition                # every condition must hold: no alternative
     assert "when: manual" in manual and "FOCUS_AUTO_SIGN" not in manual
-    # the delivery plan has its own switch, also off: accepted by the run only with both on, on a schedule, on a protected ref
-    assert 'FOCUS_AUTO_SIGN_DELIVERY: "false"' in jobs["variables"]
+    # the delivery plan has its own switch, also on: accepted by the run only with both on, on a schedule, on a protected ref
+    assert 'FOCUS_AUTO_SIGN_DELIVERY: "true"' in jobs["variables"]
     auto, manual = jobs["forecast_sign_accept"].split("when: on_success")[0], jobs["forecast_sign_accept"].split("when: on_success")[1]
     rule = [line for line in auto.splitlines() if line.strip()][-1]
     for condition in ('$FOCUS_AUTO_SIGN == "true"', '$FOCUS_AUTO_SIGN_DELIVERY == "true"', '$CI_PIPELINE_SOURCE == "schedule"',
@@ -838,9 +844,10 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     assert "performance-details --apply" in jobs["fixture_pipeline_rehearsal"]
     assert "image: python:3.12-slim" in jobs["default"]
     assert "--role all" in jobs["fixture_pipeline_rehearsal"] and "FOCUS_SIGN_KEY_REF" not in jobs["stage_readback"]
-    # DEC-36 (g): fewer jobs is a switch, off as shipped. One layout's unsigned jobs or the other's exist in a run, never
-    # both; the signer jobs are the same in both and need whichever job staged the plan
-    assert 'FOCUS_JOBS: "roles"' in jobs["variables"]
+    # DEC-36 (g): fewer jobs is a switch. The owner leaves the split free (D-34), so the draft ships the four-job layout,
+    # which came to the 20 minutes when measured. One layout's unsigned jobs or the other's exist in a run, never both;
+    # the signer jobs are the same in both and need whichever job staged the plan
+    assert 'FOCUS_JOBS: "planner"' in jobs["variables"]
     for job in ("acquire_admit", "schedule_validate", "stage_readback", "forecast_schedule_validate", "forecast_stage_readback"):
         assert "extends: .by_role" in jobs[job], job
     for job in ("plan_unsigned", "delivery_unsigned"):

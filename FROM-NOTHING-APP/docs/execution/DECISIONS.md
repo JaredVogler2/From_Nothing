@@ -257,8 +257,8 @@ attendance. A conditional ETA is never physical receipt.
 
     The simulation models this gap (`SimSpec.cutoff_gap`, the cutoff `cutoff_lead_minutes` before the shift ends).
   - **Run time.** Each shift's plan must be accepted before the shift starts, which is why the cycle's run time is
-    critical (D-22). The GitLab draft's signing step is a manual operator promotion. A plan promoted after its shift
-    starts is a proposal for that shift, and the previous plan stays its goal of record (when there is no earlier plan
+    critical (D-22). The GitLab draft's signing step was a manual operator promotion; since D-34 a scheduled run
+    accepts the plan itself. A plan accepted after its shift starts is a proposal for that shift, and the previous plan stays its goal of record (when there is no earlier plan
     covering the day, the late plan stands in). The calibration (`docs/task-valuation-investigation/10_CALIBRATION.md`
     §7) measured what late plans cost the teams and lists the owner decision this needs.
   - **Simulation.** `focus.sim` freezes each shift's goals from that shift's valid plan. The day's last valid plan
@@ -349,8 +349,8 @@ attendance. A conditional ETA is never physical receipt.
     protected ref (`acquire_admit` refuses any other). `FOCUS_LIVE_VERIFY=full` puts them back in every live run. The
     import check, the migration dry run, the preflights and the staged-schema check stay in every run. This changes
     P23's "every verification first" from "in this run" to "on the merge that put this code on the protected ref".
-  - **Still open:** who accepts the plan (DEC-11). The draft's `sign_accept` waits for a person, three times a day,
-    inside these 20 minutes.
+  - **Decided since (D-34, November 12, 2026):** no person accepts the plan. The draft's `sign_accept` runs by
+    itself in a scheduled run.
   - **Measured on November 11, 2026: not met as shipped.** At 50 aircraft on the test machine the four jobs from the
     data cut to the accepted plan took 23.2 minutes, before the pull from SQL Server and the acceptance are counted
     (`PRODUCTION_SCALE.md`, "The pre-shift flow, action by action"). The scheduler is 3 of those minutes. What
@@ -549,9 +549,9 @@ attendance. A conditional ETA is never physical receipt.
     - *The 20 minutes* (point 5) are met for the task lists and not for the whole schedule. At 50 aircraft on the
       test machine, a repairing run takes 13.9 minutes from the data cut to the accepted shift plan and its
       dashboard data, and 13.0 more to the accepted delivery plan: 26.9 minutes (first measured: 23.2 and 27.1).
-      With the pipeline's steps in four jobs instead of seven (`FOCUS_JOBS=planner`, built and off as shipped
-      because one job then holds three roles' rights), the same run takes 9.8 minutes to the accepted shift plan
-      and 20.4 for the whole schedule: at the 20 minutes, not inside them with room to spare.
+      With the pipeline's steps in four jobs instead of seven (`FOCUS_JOBS=planner`, shipped since D-34), the
+      same run takes 9.8 minutes to the accepted shift plan and 20.4 for the whole schedule: at the 20 minutes, not
+      inside them with room to spare.
       `docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow after D-33", has the measurement, and
       `DECISION_PLAYBOOK.md`, DEC-36 the options left. The pull from SQL Server, each job's start and the
       acceptances come on top.
@@ -565,13 +565,92 @@ attendance. A conditional ETA is never physical receipt.
       compares whole schedules by cost, but it can only do that in the delivery plan, where every aircraft has a
       finish date, and there it now reorders only work the shift plan does not place. Letting its moves reorder the
       shift plan, judged by the delivery plan's cost, is not built (`DECISION_PLAYBOOK.md`, DEC-34).
-    - *Who accepts the plans* (point 6) is the owner's (DEC-11). The switches for automatic acceptance exist and are
-      off. While they are off, the application is populated when a person has promoted the plan.
+    - *Who accepts the plans* (point 6) was open here and is decided: nobody (D-34). The switches for automatic
+      acceptance are on, so the application is populated as soon as a run's checks pass.
   - **Tests.** `tests/integration/test_one_schedule.py`, `test_the_delivery_plan_holds_the_shift_plan_slot_for_slot`
     (simulation), `tests/integration/test_warm_views.py`,
     `test_each_validation_is_computed_once_and_the_signer_validates_the_bytes_it_signs`,
     `test_a_slot_in_the_hour_the_clocks_repeat_is_read_back_as_the_same_instant`, and the window and cadence tests in
     `tests/integration/test_migration_pipeline.py` and `test_plan_repair.py`.
+
+- **D-34 No person accepts a plan; every dataset has its own cadence (owner, November 12, 2026).**
+  - **The owner's answers,** to three questions: who accepts a plan before the floor works from it, whether the
+    pipeline's steps may be put together, and whether the company's runner can run two jobs at once.
+    1. "once a schedule is produced that is what the mechanics and shop floor should use to determine what jobs they
+       work. They do not need to "accept" anything - the scheduler is the answer."
+    2. "a single or multiple pipelines can be used. For example mechanics to certs certs to jobs and therefore
+       mechanics to eligible jobs doesn't need ran shiftly it may only need to be weekly so that isn't needed to run
+       all the time. For all data for the scheduler and dashboard we need to determine cadence for all data gathering
+       and processing and staging to sql server."
+    3. "unknown"
+  - **What it decides.**
+    - *Acceptance is automatic* (`DECISION_PLAYBOOK.md`, DEC-11, decided). A scheduled run accepts the shift plan,
+      and then the delivery plan, as soon as their checks pass. No person promotes a plan and nobody on the floor
+      confirms one. "Accepted" stays the name of the technical step: the plan is signed, stored and made current.
+    - *The checks are not a person's acceptance, and stay.* A plan that fails a validation is never accepted: the
+      plan before it stays in force, the pipeline fails and an alert tells a person. The scheduler is the answer when
+      its plan is valid; an invalid plan is no answer.
+    - *The pipeline's split is free.* The draft ships the split that came to the 20 minutes when measured.
+    - *Every dataset is gathered at the pace its content changes,* and no faster. The certificate tables are the
+      owner's example and are now read in full once a week.
+  - **Built with this decision.**
+    - *The switches are on* in the pipeline draft: `FOCUS_AUTO_SIGN: "true"` and `FOCUS_AUTO_SIGN_DELIVERY: "true"`.
+      They apply to a scheduled run on a protected ref. A run started by hand still waits for the person who started
+      it; to recover a scheduled run, retry its failed job. `"false"` on a run or in the project holds plans for an
+      operator again, without a code change.
+    - *Four jobs a run* (`FOCUS_JOBS: "planner"`, DEC-36 (g)): at 50 aircraft on the test machine 9.8 minutes to the
+      accepted shift plan and 20.4 for the whole schedule, against 13.9 and 26.9 with one job per role. One job then
+      holds the source, app and stager rights; signing stays a job of its own. `"roles"` puts every role back in its
+      own job, where the company's SQL logins may not be combined.
+    - *A cadence for every dataset* (`focus/data/cadence.py`; `docs/integration/DATA_CADENCE.md` is the determination
+      on one page, `STAGING_PLAN.md` the loader's detail). Four staging passes instead of three:
+
+      | Pass | When | Datasets | What |
+      | --- | --- | --- | --- |
+      | Weekly | once a week | 18 | In full: the standing facts of every job (duration, crew, certificates required, inspections, rework class), the certificates people hold, lookups, history no plan reads. 61% of all rows in the synthetic fleet |
+      | Nightly | once a day | 28 | Floor state reconciled in full; calendars, teams, rosters and rates whole; the rows that changed in the weekly tables; yesterday's history |
+      | Before each shift | 60 minutes before | 21 | Everything that changes during a day |
+      | At the cut | 20 minutes before | 18 | Only what changed since the pass before |
+
+      The nightly pass read nearly every row whole before; it now reads 39% and the weekly pass 59%. Three rules
+      place a dataset: how often its content changes in a way that changes a plan; what a stale copy does (where it
+      would make a plan wrong with nothing to flag it, as with template links, due dates and rates, the check stays
+      daily); and size. They are starting values, set without a timed source query; the loader's receipts move a
+      dataset between passes.
+    - *The weekly pass in the pipeline draft:* `FOCUS_PIPELINE_PART=weekly` runs `weekly_sources`
+      (`$FOCUS_STAGE_COMMAND --part weekly`) and `verify_weekly_sources`.
+    - *Freshness limits follow the cadence* (policy `admission.max_source_age_hours`). Each limit is at least twice
+      the interval of the pass that reads the dataset whole, so one missed pass never stops a plan: 48 hours for what
+      the nightly pass reads whole, 336 for what the weekly pass does (`flow_budget`, `soi_cert_requirements`,
+      `buyoff_plan`, `mechanic_certs`, which were 36 and 48). The values stay defaults until load intervals are
+      measured (DEC-13).
+    - *Only a dataset a plan is built from can stop one.* `inspection_counts`, `etracs_history`, `actual_labor`,
+      `labor_shift`, `cert_course_map` and `dept_team_skill_ref` were age-checked although no plan reads them, so a
+      late load of any of them refused every executable plan. They are off the list. The twelve that remain are
+      exactly the datasets with a source clock that an executable plan rests on.
+  - **What stays in every run, and why.**
+    - *Eligibility.* Working out who may do which job from the certificates takes FOCUS about 5 seconds of a run at
+      50 aircraft, and it has to be right for the people who are present today. Doing it weekly inside FOCUS would
+      save nothing. What costs is gathering the certificate tables from the sources, and that is what became weekly.
+    - *What keeps the certificate chain right between two weekly loads:* the requirement rows of a new job arrive
+      with the job; a certificate's expiry date is in its row; a revocation arrives as an event at the cut; and the
+      nightly pass picks up certificates gained or renewed where the source can say which rows changed. Where it
+      cannot, a new certificate counts from the next weekly load: nobody is planned on work they are not qualified
+      for, but for some days a person may not be planned on work they have just qualified for.
+  - **Not built.**
+    - *Processing at its own cadence.* FOCUS has no incremental mode. Every run digests, stores and loads all of the
+      data again and rebuilds all of the dashboard's data, although about 1% of the rows changed: roughly 450 of the
+      1,225 seconds of the measured run (`PRODUCTION_SCALE.md`, "The same flow in four jobs"). Digesting the slow tables when they change and only the floor
+      state at each run is the same idea applied inside FOCUS, and the largest step left towards a whole schedule
+      well inside 20 minutes (DEC-36).
+    - *The delivery plan's job beside the shift plan's signer* (DEC-36 (h)) needs a runner that runs two jobs at
+      once with about 20 GB. Whether the company's runner can is unknown, so it stays unbuilt.
+    - *Reading a load receipt* (DEC-07). Until FOCUS reads when the loader last verified a dataset, a pass must
+      restamp the row clocks of a table it found unchanged. With four cadences that matters more than it did.
+  - **Tests.** `tests/unit/test_staging_cadence.py` (registry, limits, both documents, the draft's schedules);
+    `test_ci_draft_orders_roles_and_protects_signing` and
+    `test_ci_draft_keeps_a_staged_copy_current_at_four_cadences` in `tests/integration/test_migration_pipeline.py`;
+    `tests/integration/test_source_freshness.py`.
 
 ## Semantic gaps (live), each a precise readiness effect
 

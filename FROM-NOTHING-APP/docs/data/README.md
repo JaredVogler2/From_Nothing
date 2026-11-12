@@ -71,7 +71,7 @@ FOCUS" says whether anything beyond freshness checks and display uses the conten
 | Input | Kind | Required | Live reader today | Read by FOCUS | Purpose |
 | --- | --- | --- | --- | --- | --- |
 | [`etracs_active`](04-parts-and-shortages.md#etracs_active) | SOURCE | Yes | Reference SQL query | Yes | Every open shortage, its used-on job and ECD |
-| [`etracs_history`](04-parts-and-shortages.md#etracs_history) | SOURCE | No | Reference SQL query | No (freshness check only) | Closed shortages with their actual closure dates |
+| [`etracs_history`](04-parts-and-shortages.md#etracs_history) | SOURCE | No | Reference SQL query | No | Closed shortages with their actual closure dates |
 | [`part_events`](04-parts-and-shortages.md#part_events) | SUPPLEMENTAL | No | None yet: reports NOT_PROBED | Yes | Receipt, deletion, reopen and ETA events per shortage |
 
 ### People, teams and availability
@@ -82,7 +82,7 @@ FOCUS" says whether anything beyond freshness checks and display uses the conten
 | [`person_team_map`](05-people-teams-and-availability.md#person_team_map) | SOURCE | No | Reference SQL query | Yes | Current effective team assignment; needed for any executable crew member |
 | [`team_inference`](05-people-teams-and-availability.md#team_inference) | SUPPLEMENTAL | No | Supplemental SQL path; producer table not installed | Display only | SQL-computed nominal home team; labels and review queue only |
 | [`mech_team_inferred`](05-people-teams-and-availability.md#mech_team_inferred) | SOURCE | No | Reference SQL query | No | Legacy inferred team; comparison evidence for the SQL inference |
-| [`dept_team_skill_ref`](05-people-teams-and-availability.md#dept_team_skill_ref) | SOURCE | No | Reference SQL query | No (freshness check only) | Department-to-team map behind the SQL inference's department fallback |
+| [`dept_team_skill_ref`](05-people-teams-and-availability.md#dept_team_skill_ref) | SOURCE | No | Reference SQL query | No | Department-to-team map behind the SQL inference's department fallback |
 | [`shift_roster`](05-people-teams-and-availability.md#shift_roster) | SUPPLEMENTAL | No | None yet: reports NOT_PROBED | Yes | Who works which team and shift over which dates; the only way into a pool |
 | [`attendance_shift`](05-people-teams-and-availability.md#attendance_shift) | SOURCE | No | Reference SQL query | Yes | Presence or absence per person and shift on the production day |
 | [`availability_exceptions`](05-people-teams-and-availability.md#availability_exceptions) | SUPPLEMENTAL | No | None yet: reports NOT_PROBED | Yes | Leave and other duty that remove or reduce availability |
@@ -94,7 +94,7 @@ FOCUS" says whether anything beyond freshness checks and display uses the conten
 | Input | Kind | Required | Live reader today | Read by FOCUS | Purpose |
 | --- | --- | --- | --- | --- | --- |
 | [`soi_cert_requirements`](06-certifications.md#soi_cert_requirements) | SOURCE | Yes | Reference SQL query | Yes | Positive certificate requirements per job; each code is an AND group |
-| [`cert_course_map`](06-certifications.md#cert_course_map) | SOURCE | No | Reference SQL query | No | Process, certificate and course metadata; only its clock is checked |
+| [`cert_course_map`](06-certifications.md#cert_course_map) | SOURCE | No | Reference SQL query | No | Process, certificate and course metadata; no plan reads it |
 | [`requirement_census`](06-certifications.md#requirement_census) | SUPPLEMENTAL | No | None yet: reports NOT_PROBED | Yes | Affirmative receipt that a job needs no certificate |
 | [`requirement_alternatives`](06-certifications.md#requirement_alternatives) | SUPPLEMENTAL | No | None yet: reports NOT_PROBED | Yes | Explicitly approved OR groups of certificates |
 | [`mechanic_certs`](06-certifications.md#mechanic_certs) | SOURCE | Yes | Reference SQL query | Yes | Certificates each person holds, with status and validity dates |
@@ -107,8 +107,8 @@ FOCUS" says whether anything beyond freshness checks and display uses the conten
 | --- | --- | --- | --- | --- | --- |
 | [`clock_observations`](07-durations-and-labor.md#clock_observations) | SUPPLEMENTAL | No | Supplemental SQL path; producer table not installed | No (`duration-stats` report only) | Raw clock intervals per person and episode, with revisions and voids |
 | [`duration_episodes`](07-durations-and-labor.md#duration_episodes) | SUPPLEMENTAL | No | None yet: reports NOT_PROBED | Yes | Completed comparable rework episodes behind the P75 |
-| [`actual_labor`](07-durations-and-labor.md#actual_labor) | SOURCE | No | Reference SQL query | No (freshness check only) | Aggregate labor minutes charged per job |
-| [`labor_shift`](07-durations-and-labor.md#labor_shift) | SOURCE | No | Reference SQL query | No (freshness check only) | Labor minutes per person, job and shift |
+| [`actual_labor`](07-durations-and-labor.md#actual_labor) | SOURCE | No | Reference SQL query | No | Aggregate labor minutes charged per job |
+| [`labor_shift`](07-durations-and-labor.md#labor_shift) | SOURCE | No | Reference SQL query | No | Labor minutes per person, job and shift |
 
 ### Economics: contracts, prices and late-delivery liability
 
@@ -226,13 +226,17 @@ At admission FOCUS checks how old each dataset is (`focus/data/freshness.py`):
   | Limit | Datasets |
   | --- | --- |
   | 18 h | `attendance_shift` |
-  | 36 h | `master_task_list`, `pnet_dag`, `flow_budget`, `buyoff_plan`, `inspection_counts`, `etracs_active`, `etracs_history`, `actual_labor`, `labor_shift`, `person_team_map` |
-  | 48 h | `neo_graph_rework`, `soi_cert_requirements`, `mechanic_certs` |
-  | 168 h | `cert_course_map`, `dept_team_skill_ref` |
+  | 36 h | `etracs_active` |
+  | 48 h | `master_task_list`, `neo_graph_rework`, `pnet_dag`, `person_team_map` |
   | 240 h | `cday_op_plan`, `cs_windows` |
+  | 336 h | `flow_budget`, `soi_cert_requirements`, `buyoff_plan`, `mechanic_certs` |
 
-  These are fixture defaults. The live load cadences are not set yet; they are not a numbered open decision, so no
-  live gap is raised for them.
+  The list is every dataset with a row clock that an executable plan is built from. Each limit is at least twice
+  the interval of the staging pass that reads the dataset whole (D-34; `focus/data/cadence.py`;
+  `docs/integration/DATA_CADENCE.md`), so one missed pass never stops a plan: the last four are gathered in full
+  once a week. `inspection_counts`, `etracs_history`, `actual_labor`, `labor_shift`, `cert_course_map` and
+  `dept_team_skill_ref` are not checked: no plan reads them. The limits are to be re-set from the measured load
+  intervals (`DECISION_PLAYBOOK.md`, DEC-13).
 - **Findings.** Older than the limit is `SOURCE_STALE`. No readable clock is `SOURCE_CLOCK_UNKNOWN`, because unknown is
   never assumed fresh. A dataset with no rows and no receipt `loaded_at` is not age-checked: its capture-status gap
   covers it. The live reader's receipt carries no `loaded_at`, so live freshness comes from the row clocks, which the
@@ -323,8 +327,9 @@ Writing this reference turned up behaviour that matters for a live connection. E
 
 - `docs/integration/HANDOFF.md`: moving to the official data sources, the SQL Server staging job and the GitLab
   pipeline.
-- `docs/integration/STAGING_PLAN.md`: which dataset is copied from the sources in which pass (nightly, before each
-  shift, at the cut), and how.
+- `docs/integration/DATA_CADENCE.md`: how often each dataset is gathered and staged, on one page.
+- `docs/integration/STAGING_PLAN.md`: which dataset is copied from the sources in which pass (weekly, nightly, before
+  each shift, at the cut), and how.
 - `docs/integration/SOURCE_REPLACEMENT_CROSSWALK.md`: the mapping checklist for each dataset and the SQL query
   families.
 - `docs/execution/SQL_SCHEMA_LEDGER.md`: the S04 contracts, reader projections and drafted FOCUS tables.

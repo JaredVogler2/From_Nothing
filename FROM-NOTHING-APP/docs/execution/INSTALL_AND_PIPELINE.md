@@ -215,8 +215,8 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 
 - **One pipeline before every shift (D-26).** The scheduler runs three times a day, before each shift. Each shift is
   scored against the executable plan accepted before it starts, so `sign_accept` must finish before the shift begins.
-  In the GitLab draft that step is a manual operator promotion. A plan promoted after its shift starts is only a
-  proposal for that shift: the previous plan stays its goal of record, and the late plan becomes the next shift's.
+  In the GitLab draft a scheduled run performs that step itself: no person accepts a plan (D-34). A plan accepted
+  after its shift starts is only a proposal for that shift: the previous plan stays its goal of record, and the late plan becomes the next shift's.
   `observe_evaluate` scores a shift once its overtime window has closed. The run before shift 2 starts while shift 1
   is still finishing, so shift 1's final score comes from the next run, or from the evaluator-only pipeline scheduled
   right after shift 1's overtime window (`evaluate_closed_shifts`, below). In live mode the in-pipeline
@@ -309,13 +309,18 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 
 - **Verify** runs the import check, migration lint and bundle, preflight, the full non-UI suite, the UI suite and a
   fixture rehearsal of the whole pipeline. None of it needs secrets.
-- **Live jobs** each run one role in a protected environment, chained with `needs` and serialized per scope with
-  `resource_group`. Acquisition waits for the verify jobs in its pipeline and for the staged sources. In a live run
+- **Live jobs** run in protected environments, chained with `needs` and serialized per scope with
+  `resource_group`. As shipped (`FOCUS_JOBS=planner`, D-34) one job runs the source, app and stager roles in a row
+  and signing is a job of its own; `FOCUS_JOBS=roles` gives every role its own job and login. Acquisition waits for the verify jobs in its pipeline and for the staged sources. In a live run
   the long suites (non-UI, UI, rehearsal) are not in the pipeline: they ran on the merge that put the code on the
   protected ref, and acquisition refuses any other ref (D-28; `FOCUS_LIVE_VERIFY=full` runs them every time).
-  `sign_accept` waits for an operator and holds the only signing reference. `FOCUS_AUTO_SIGN=true` lets a scheduled
-  run on a protected ref accept the executable plan itself; it is off, and turning it on is the owner's decision
-  (`DECISION_PLAYBOOK.md`, DEC-11).
+  `sign_accept` holds the only signing reference. In a scheduled run on a protected ref it accepts the executable
+  plan itself, and `forecast_sign_accept` the delivery plan (`FOCUS_AUTO_SIGN` and `FOCUS_AUTO_SIGN_DELIVERY` ship as
+  `"true"`: the owner's decision, D-34). A run started by hand, or with a switch set to `"false"`, waits for an
+  operator.
+- **Staging runs at four cadences** (`docs/integration/DATA_CADENCE.md`): weekly, nightly, 60 minutes before each
+  shift and at the cut, each a schedule of this pipeline with its own `FOCUS_PIPELINE_PART`, except the cut, which
+  is the plan pipeline's first job.
 - **The window.** `python -m focus.cli pipeline --key K --status` reports, under `window`, the minutes from the data
   cut to the accepted executable plan against the owner's 20-minute budget, the seconds per step, and whether the plan
   was accepted after its shift started.

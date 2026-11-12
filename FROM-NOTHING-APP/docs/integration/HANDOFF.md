@@ -12,6 +12,8 @@ behaviour were checked against the code on this date.
 - [`AGENTS.md`](../../../AGENTS.md), at the repository root: the one-page brief for a coding agent. Read it first.
 - [DECISION_PLAYBOOK.md](DECISION_PLAYBOOK.md): every open decision, with a recommendation, the rule for deciding
   once real data is wired, the files and tests to change and where to record it. Work through it after this guide.
+- [DATA_CADENCE.md](DATA_CADENCE.md): one page on how often every dataset is gathered, staged and processed, and
+  the schedules that do it (the owner's decision D-34).
 - [STAGING_PLAN.md](STAGING_PLAN.md): what to copy from Teradata into SQL Server, how and how often, and the
   staging pipelines. Read it before writing the loader.
 - [WORKPLACE_PORTING_GUIDE.md](WORKPLACE_PORTING_GUIDE.md): confidentiality and the rollout gates A–F.
@@ -46,6 +48,13 @@ stay in company storage. This public repository keeps the synthetic reference co
   - your open questions.
 - **The pre-shift run has 20 minutes** (owner, D-28): from the data cut to the accepted plan and its dashboard data.
   Staging counts toward it (§3). The pipeline status reports the minutes used on every run.
+- **No person accepts a plan** (owner, 2026-11-12, D-34): "once a schedule is produced that is what the mechanics and
+  shop floor should use to determine what jobs they work. They do not need to "accept" anything - the scheduler is
+  the answer." A scheduled pipeline run accepts its plan once the checks pass (§5.3). This is about the pipeline:
+  you, the coding agent, still sign or publish nothing by hand without approval.
+- **Each dataset is gathered, staged and processed at its own cadence** (owner, D-34), not everything every shift:
+  weekly, nightly, before each shift, at the cut, after each shift. [DATA_CADENCE.md](DATA_CADENCE.md) has every
+  dataset and every schedule on one page.
 - **Scoring** is explained in `SCORING_EXPLAINED.md`. One file computes it: `focus/performance/score.py`. Scoring
   is part of the application, not an extra: verified completions earn credit for the team-shift whose plan held
   the job, and the record behind every score is kept. Do not design a second completions store.
@@ -163,8 +172,9 @@ be ready to go within 20 minutes"):
   - `stage_sources` runs alongside the verify jobs. The wall-clock total is therefore the longer of the two paths,
     not their sum.
   - Staging that runs before the data cut does not count toward the window, and almost all of it can
-    ([STAGING_PLAN.md](STAGING_PLAN.md)). SQL Server keeps a complete copy of every source table, loaded nightly and
-    again 60 minutes before each shift. The pass at the cut then pulls only the rows that changed: jobs new, started
+    ([STAGING_PLAN.md](STAGING_PLAN.md)). SQL Server keeps a complete copy of every source table: the large slow
+    tables are read in full weekly, floor state is reconciled nightly, and everything that changes in a day is
+    brought up to date 60 minutes before each shift. The pass at the cut then pulls only the rows that changed: jobs new, started
     and completed, rework links, work in progress, shortages and receipts, attendance, leave and certificate
     revocations. An earlier load alone is never enough for those.
   - The evaluator-only run after overtime is outside the window.
@@ -183,11 +193,12 @@ be ready to go within 20 minutes"):
     (`PRODUCTION_SCALE.md`, "The pre-shift flow after D-33"; `DECISION_PLAYBOOK.md`, DEC-36 has what is left and
     what each step would leave).
   - **In four jobs instead of seven the same run took 9.8 minutes to the accepted shift plan and 20.4 for the whole
-    schedule** (`FOCUS_JOBS=planner`, §5.1; built, and off as shipped). Each job that is not needed is also a job
-    your runner does not have to start.
-  - Two questions for whoever owns your runners and SQL logins decide the next step (DEC-36): may one job hold the
-    source, app and stager rights at once (then set `FOCUS_JOBS=planner`); and can two jobs of one pipeline run at
-    the same time, with about 20 GB of memory between them.
+    schedule** (`FOCUS_JOBS=planner`, §5.1). The owner leaves the split free (D-34), so the draft ships this layout.
+    Each job that is not needed is also a job your runner does not have to start.
+  - Two questions for whoever owns your runners and SQL logins (DEC-36): may one job hold the source, app and stager
+    rights at once (if not, set `FOCUS_JOBS=roles` and expect about 27 minutes); and can two jobs of one pipeline
+    run at the same time, with about 20 GB of memory between them. The owner does not know the second; find out,
+    because it decides whether the delivery plan's job can run beside the shift plan's signer.
   - Your runner is not that machine. Run `python tools/time_pre_shift.py run WORKDIR --aircraft 50 --repair` on it
     once, and keep `window` from every live run.
 - **A plan accepted after its shift starts** is only a proposal for that shift. The previous plan stays the goal of
@@ -205,10 +216,14 @@ be ready to go within 20 minutes"):
 $FOCUS_STAGE_COMMAND --part cut --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-receipts/stage.json
 ```
 
-- **`--part`.** Which pass to run ([STAGING_PLAN.md](STAGING_PLAN.md) §7):
+- **`--part`.** Which pass to run ([STAGING_PLAN.md](STAGING_PLAN.md) §7). Each dataset is gathered at the pace
+  its content changes (D-34); [DATA_CADENCE.md](DATA_CADENCE.md) lists every dataset's pass on one page:
   - `cut`: the rows that changed since the pass before it, in the plan pipeline;
   - `preshift`: everything that changes during a day, 60 minutes before each shift;
-  - `nightly`: full loads, full compares with the sources and repairs;
+  - `nightly`: floor state reconciled in full with the sources, the small daily tables whole, the rows that changed
+    in the weekly tables, and history;
+  - `weekly`: the large tables that change with releases and training, in full: the standing facts of every job,
+    the certificates people hold, lookups, and history no plan reads;
   - `observations`: the observation feeds;
   - `sources` and `all`: a full load of the planning datasets, or of them and the feeds, for the first load and for
     recovery.
@@ -267,9 +282,12 @@ $FOCUS_STAGE_COMMAND --part cut --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-r
 3. **Stamp the row clock on every row.** Set the table's row clock (`LOAD_TIMESTAMP`, `SNAPSHOT_TS` or `LOAD_TS`)
    to the load instant, in UTC.
    - The live reader passes no `loaded_at`, so live freshness comes from these columns.
-   - A stale clock (limits 18–240 h) or an unreadable one fails executable plans (`SOURCE_STALE`,
-     `SOURCE_CLOCK_UNKNOWN`).
-   - A delta load must still restamp the row clock: refresh it, or keep a load-instant column the query reads.
+   - A stale clock or an unreadable one fails executable plans (`SOURCE_STALE`, `SOURCE_CLOCK_UNKNOWN`). The
+     limits follow each dataset's cadence, from 18 hours for attendance to 336 for what the weekly pass reads
+     whole, and only the twelve datasets a plan is built from are checked (`docs/data/README.md`, "Freshness and
+     capture skew").
+   - A pass must restamp the row clock of every table it read whole and found unchanged (`STAGING_PLAN.md` §6.3):
+     refresh it, or keep a load-instant column the query reads.
 4. **Store UTC everywhere.** Columns ending in `_UTC` are instants. Local wall times exist only where a column is
    named `_LOCAL`.
 5. **Load the complete census.**
@@ -316,12 +334,12 @@ The draft (`.gitlab-ci.yml`) has never been pushed to a GitLab remote.
 | `verify_staged_sources` | stage_sql | `focus-source` | `stage_sources` | Schema drift check |
 | `prestage_sources`, `verify_prestaged_sources` | stage_sql | `focus-staging`, `focus-source` | – | Staging-only pipelines, 60 minutes before each shift (`--part preshift`), then the schema check |
 | `nightly_sources`, `verify_nightly_sources` | stage_sql | `focus-staging`, `focus-source` | – | Staging-only pipelines, once a day (`--part nightly`), then the schema check |
-| `acquire_admit` | source | `focus-source` | verify, `display_retention`, `verify_staged_sources` | Source run and snapshot |
-| `schedule_validate` | schedule | `focus-app`, runner tag `focus-scheduler` (≥ 4 vCPU, 16 GB) | `acquire_admit` | Executable plan (native core) |
-| `stage_readback` | stage | `focus-stager` | `schedule_validate` | Unsigned stage and readback |
-| `sign_accept` | sign | `focus-signer` | `stage_readback` | Manual promotion; accept and move the head |
-| `forecast_*` (3 jobs) | forecast… | app, stager, signer | `sign_accept` | Forecast plan |
-| `plan_unsigned`, `delivery_unsigned` | source, forecast | `focus-planner`, runner tag `focus-scheduler` | as `acquire_admit`; `sign_accept` | Only with `FOCUS_JOBS=planner` (DEC-36 (g)), in place of the five unsigned jobs above: the source, app and stager roles in one job, then the delivery plan's app and stager roles in one job. The two signer jobs are the same |
+| `weekly_sources`, `verify_weekly_sources` | stage_sql | `focus-staging`, `focus-source` | – | Staging-only pipelines, once a week (`--part weekly`), then the schema check |
+| `plan_unsigned` | source | `focus-planner`, runner tag `focus-scheduler` (≥ 4 vCPU, 16 GB) | verify, `display_retention`, `verify_staged_sources` | As shipped (`FOCUS_JOBS=planner`, DEC-36 (g)): source run and snapshot, the shift plan (native core), unsigned stage and readback, in one job |
+| `sign_accept` | sign | `focus-signer` | `plan_unsigned` (or `stage_readback`) | Signs, accepts and moves the head, by itself in a scheduled run (D-34) |
+| `delivery_unsigned` | forecast | `focus-planner`, runner tag `focus-scheduler` | `sign_accept` | As shipped: the delivery plan scheduled, validated and staged in one job |
+| `forecast_sign_accept` | forecast_sign | `focus-signer` | `delivery_unsigned` (or `forecast_stage_readback`) | Signs and accepts the delivery plan, by itself in a scheduled run |
+| `acquire_admit`, `schedule_validate`, `stage_readback`, `forecast_schedule_validate`, `forecast_stage_readback` | source … forecast_stage | `focus-source`, `focus-app`, `focus-stager` | each needs the one before it | Only with `FOCUS_JOBS=roles`, in place of the two `*_unsigned` jobs: one job per role, each with its own login. Seven jobs a run instead of four, and about a third slower |
 | `observe_evaluate` | observe | `focus-evaluator` | `sign_accept` | In-pipeline evaluation; in live mode it stops with `LIVE_OBSERVATIONS_UNAVAILABLE` today (§6) |
 | `stage_observations` | stage_sql | `focus-staging` | – | Evaluator-only pipelines: load the observation feeds |
 | `evaluate_closed_shifts` | observe | `focus-evaluator` | `stage_observations` | Evaluator-only pipelines: `tools/evaluate_closed_shifts.py` |
@@ -333,7 +351,7 @@ The draft (`.gitlab-ci.yml`) has never been pushed to a GitLab remote.
 - The SQL roles: `FOCUS_SQL_HOST`, `FOCUS_SQL_DATABASE`, `FOCUS_SQL_USER` and `FOCUS_SQL_PASSWORD`, one login per
   environment.
 - `focus-signer` only: `FOCUS_SIGN_KEY_REF`.
-- `focus-planner` (only with `FOCUS_JOBS=planner`): a SQL login that is a member of the source-worker,
+- `focus-planner` (`FOCUS_JOBS=planner`, as shipped): a SQL login that is a member of the source-worker,
   pipeline-worker and stager roles, and never of the signer role. It has no signing material.
 - Schedules: `FOCUS_PIPELINE_PART`.
 
@@ -343,6 +361,7 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
 
 | Schedule | Cron (site time) | Variables |
 | --- | --- | --- |
+| Weekly staging | `30 7 * * 0` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=weekly` |
 | Nightly staging | `15 1 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=nightly` |
 | Staging before shift 1 | `0 5 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=preshift` |
 | Staging before shift 2 | `30 13 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=preshift` |
@@ -367,12 +386,15 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
   - If it is missed, the pre-shift runs keep repairing. Only a plan older than
     `planning.repair_max_incumbent_age_hours` (30) makes a pre-shift run fall back to the slow full solve.
 - **Score schedules** run 5 minutes after each credit deadline.
-- **Staging schedules** keep the copy in SQL Server complete and current before the cut (`STAGING_PLAN.md` §4).
+- **Staging schedules** keep the copy in SQL Server complete and current before the cut (`STAGING_PLAN.md` §4),
+  each dataset at its own cadence (D-34). The weekly pass runs for hours and shares the resource group: Sunday 07:30
+  is after the morning's plan and scoring runs and six hours before the next pass. Move it to the day with the
+  least work on the floor, and keep its 4-hour limit clear of the hour before a shift.
 - A plan schedule sets no `FOCUS_PIPELINE_PART`. A value the draft does not know runs nothing.
 - `resource_group: focus-$FOCUS_SCOPE_KEY` serializes the live jobs of one scope, so a staging pass never publishes
   while `acquire_admit` reads. No live job is interruptible.
 
-### 5.3 Two timing risks to settle before go-live
+### 5.3 Two timing risks, both settled
 
 - **Verification inside the live window: settled by the 20-minute requirement (D-28).**
   - The full non-UI suite alone takes about 10 minutes. With the installs, the UI suite and the rehearsal,
@@ -382,17 +404,21 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
     check stay in every run.
   - `FOCUS_LIVE_VERIFY=full` puts the suites back into every live run.
   - Protect the default branch and require a passed pipeline to merge, or the rule protects nothing.
-- **Manual signing.**
-  - `sign_accept` waits for an operator. With about five minutes between the end of planning and the shift start, a
-    missed promotion makes a late plan.
-  - Options: automatic promotion inside the protected signer environment (signing only a plan whose FINAL and
-    readback validations are clean), or a staffed promotion with an alert at T−5 minutes. This is an owner
-    decision (DEC-11).
-  - The automatic path is built and switched off: `FOCUS_AUTO_SIGN: "false"` in the pipeline draft. Do not turn it
-    on without the owner's decision on record.
-  - The delivery plan has its own switch, `FOCUS_AUTO_SIGN_DELIVERY: "false"`, which takes effect only with the first
-    one on. The schedule is whole, and the 20 minutes can be met, only when both plans are accepted (D-33). While
-    either switch is off, that waits for a person.
+- **Signing: no person accepts a plan (owner, 2026-11-12, D-34; DEC-11 is decided).**
+  - "once a schedule is produced that is what the mechanics and shop floor should use to determine what jobs they
+    work. They do not need to "accept" anything - the scheduler is the answer."
+  - `FOCUS_AUTO_SIGN: "true"` and `FOCUS_AUTO_SIGN_DELIVERY: "true"` in the pipeline draft. In a scheduled pipeline
+    on a protected ref, `sign_accept` and `forecast_sign_accept` run by themselves once the jobs before them
+    succeed. The signer still validates the staged bytes itself and refuses a plan without a clean FINAL validation
+    and a clean readback.
+  - A plan that fails a check is never accepted. The plan before it stays in force and the pipeline fails. Nobody is
+    watching a promote button any more, so **the alert is required**: tell a person when a plan pipeline fails or
+    has not accepted its plan five minutes before the shift.
+  - A pipeline started by hand still waits for the person who started it. To recover a scheduled run, retry its
+    failed job: the pipeline is still a scheduled one and accepts by itself.
+  - To hold plans for an operator again, set `FOCUS_AUTO_SIGN=false` on a run or in the project
+    (`FOCUS_AUTO_SIGN_DELIVERY=false` for the delivery plan alone). Protect the signer environment and the default
+    branch, or the rule protects nothing.
 
 ## 6. Engineering work before going live (in order)
 
@@ -437,8 +463,8 @@ Set each schedule's time zone to America/New_York so daylight saving is handled.
 `DECISION_PLAYBOOK.md` gives each of these, and the engineering and data decisions, a recommendation and a decision
 rule.
 
-- **Signing before each shift:** manual promotion or automatic (§5.3).
-- **Verification in the live path:** keep the full suite before every run, or rely on the merge pipeline (§5.3).
+- **Decided, not open:** nobody accepts a plan (D-34), and the long suites run on merge, not before every plan
+  (D-28). §5.3 has both.
 - **Late plans:** how to protect teams scored against a stale plan. For example, review the units the late plan
   moved under the existing `PLAN_CHURN` track (`10_CALIBRATION.md` §7).
 - **Overtime credit.** Today a job finished in a shift's authorized overtime is credited to the next shift's goal when
@@ -447,18 +473,21 @@ rule.
   alternative is to credit the crew that finished it; completion records carry the person.
 - **The rate for extra work (0.8 today) and the grade bands:** after the real-data calibration. Whether an approved
   addition should raise what is expected is also open (`DECISION_PLAYBOOK.md`, DEC-26).
-- **Live load cadences:** the freshness limits are fixture defaults.
+- **Live load cadences:** determined per dataset (D-34, `DATA_CADENCE.md`), as starting values. The freshness
+  limits follow them and are to be re-set from measured load intervals (DEC-13, a data decision).
 - **The open decisions OD-02 to OD-05 and OD-07 to OD-17**, and the score policy approval (OD-16).
 
 ## 8. First live runs: checklist
 
+- [ ] One clean run of each staging pass: weekly, nightly, before a shift, at the cut. Receipts kept.
 - [ ] `stage_sources` receipt: all 28 SOURCE tables published, row clocks stamped, durations within budget.
 - [ ] `verify_staged_sources`: no drift.
 - [ ] `acquire_admit`: run ACCEPTED, census reconciled, readiness gaps reviewed with their owners (blocked and
       quarantined jobs, `DATASET_*`, `OD-*`).
 - [ ] A complete-scope FORECAST plan, with every aircraft's delivery date or a stated reason.
 - [ ] EXECUTABLE: the jobs withheld and why (crews, certificates, parts, QA holds) match what supervisors know.
-- [ ] Timing: data cut to acceptance inside the window, three times a day, for a week.
+- [ ] Timing: data cut to acceptance inside the window, three times a day, for a week, with nobody promoting.
+- [ ] The alert fires when a plan pipeline fails or has not accepted its plan five minutes before the shift.
 - [ ] Display package published, and Posit shows the accepted plan in local time.
 - [ ] At shift start a team lead's task list opens in under a second, on a Posit process that has been running since
       before the plan was accepted (`FOCUS_WARM_SECONDS=30`).
@@ -471,6 +500,7 @@ rule.
 | Need | File |
 | --- | --- |
 | Datasets, columns, required flags | `focus/data/datasets.py`; `docs/data/` |
+| Every dataset's cadence and every schedule, on one page | `docs/integration/DATA_CADENCE.md`; `focus/data/cadence.py` |
 | What to stage, in which pass, and the staging pipelines | `docs/integration/STAGING_PLAN.md` |
 | Live reader, SQL access, allowlists | `focus/data/fixture_reader.py` (`LiveSourceReader`), `focus/data/sql.py` |
 | Acquisition, admission, freshness | `focus/data/acquisition.py`, `snapshot_builder.py`, `freshness.py` |

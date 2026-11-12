@@ -3,7 +3,7 @@
 **Audience.** The company-side coding agent that prepares the data and builds the GitLab pipelines. Read
 [HANDOFF.md](HANDOFF.md) first: this page goes deeper on its section 4 (the staging job) and section 5 (GitLab).
 
-**Status (2026-11-11).** A design. Nothing here has run against a company system. The row counts and change rates
+**Status (2026-11-12).** A design. Nothing here has run against a company system. The row counts and change rates
 come from the synthetic 50-aircraft fleet in this repository, and the timings of FOCUS's own steps from
 `docs/execution/PRODUCTION_SCALE.md` ("The pre-shift flow, action by action"). No Teradata query has been timed:
 measuring them is step 1 of your work (section 11).
@@ -20,24 +20,34 @@ your private mapping ([SOURCE_REPLACEMENT_CROSSWALK.md](SOURCE_REPLACEMENT_CROSS
   holds none of the data initially and all will need taken from Teradata." And: "pulling task list of available work
   should probably be at the time of the scheduler so that it has the most up to date list of all jobs new and
   completed etc."
-- **The rule that follows.** Keep a complete, current copy of every dataset in SQL Server at all times. At the
-  moment the scheduler runs, pull from Teradata **only the rows that changed** since the last pass. Never run a full
-  Teradata extract inside the 20 minutes.
-- **Three passes keep the copy current:**
+- **And on cadence (2026-11-12, D-34).** "mechanics to certs certs to jobs and therefore mechanics to eligible jobs
+  doesn't need ran shiftly it may only need to be weekly so that isn't needed to run all the time. For all data for
+  the scheduler and dashboard we need to determine cadence for all data gathering and processing and staging to sql
+  server."
+- **The rule that follows.** Keep a complete, current copy of every dataset in SQL Server at all times. Gather each
+  dataset at the pace its content changes, and no faster. At the moment the scheduler runs, pull from Teradata **only
+  the rows that changed** since the last pass. Never run a full Teradata extract inside the 20 minutes.
+- **Four passes keep the copy current, one per cadence:**
 
   | Pass | When | What it does | Time allowed |
   | --- | --- | --- | --- |
-  | Nightly | once a day, between shifts' runs | Loads or compares everything in full against Teradata and repairs any drift | hours |
+  | Weekly | once a week, in hours that hold no shift start | Loads or compares in full the large tables that change with engineering releases and training: the standing facts of every job, the certificates people hold, lookups, and history no plan reads. 18 datasets, about 60% of all rows | hours |
+  | Nightly | once a day, between shifts' runs | Reconciles floor state in full against Teradata and repairs any drift; loads the small daily tables whole; pulls the rows that changed in the weekly tables | hours |
   | Before each shift | 60 minutes before the shift starts | Brings every table that changes during a day up to date | 30 minutes |
   | At the cut | 20 minutes before the shift starts, as the first job of the plan pipeline | Pulls the changes of the last 40 minutes for the 18 datasets that describe the floor right now | **2 minutes** |
+
+- **Every dataset's cadence is in one registry,** `focus/data/cadence.py`. The tables of section 3, the pipeline
+  draft and the freshness limits are held to it by tests. [DATA_CADENCE.md](DATA_CADENCE.md) is the same
+  determination on one page, with what FOCUS processes at each cadence and what the dashboard gets.
 
 - **The owner's instinct is right.** The task list is pulled at the time of the scheduler, as a change pull, together
   with new rework links, work in progress, open shortages, part receipts, attendance, leave and certificate
   revocations (section 3).
 - **Most data does not need the cut.** In the synthetic fleet about 1% of the 1.2 million source rows change in a
   shift. The other 99% can be in SQL Server hours ahead.
-- **Do not compute eligibility in SQL.** Stage the raw certificate tables. FOCUS works out who may do which job
-  itself, in a few seconds, and a precomputed matrix never authorizes a crew (section 9).
+- **Do not compute eligibility in SQL.** Stage the raw certificate tables, in full once a week. FOCUS works out who
+  may do which job itself, in a few seconds of every run, and a precomputed matrix never authorizes a crew
+  (section 9).
 
 ## 1. Why staging decides whether the 20 minutes are met
 
@@ -49,19 +59,19 @@ The clock starts at the cut, which is the `--as-of` instant the loader is given,
 | The pass at the cut (Teradata change pulls, load, publish) | 2:00 | This page |
 | `verify_staged_sources` (schema check) | 0:30 | Reads metadata only |
 | FOCUS: `acquire_admit`, `schedule_validate`, `stage_readback`, `sign_accept`, then the delivery plan's three jobs (D-33) | 13:30 | Measured at 50 aircraft on the test machine: 13.9 minutes to the accepted shift plan in a repairing run and 13.0 more to the delivery plan (first measured: 23.2 and 27.1); in four jobs (`FOCUS_JOBS=planner`) 9.8 and 10.6. The task lists fit this budget line; the whole schedule does not fit it yet (`docs/execution/PRODUCTION_SCALE.md`; `DECISION_PLAYBOOK.md`, DEC-36 has the options left) |
-| Each job starting on a runner, and the acceptance | 3:00 | Five jobs; use a prebuilt image and automatic acceptance (DEC-11) |
+| Each job starting on a runner, and the acceptance | 3:00 | Six jobs to the whole schedule in the four-job layout; use a prebuilt image. Acceptance is automatic (D-34) |
 | Margin | 1:00 | |
 
 - **There is no room for a slow query at the cut.** A single Teradata query that runs for minutes breaks the budget
   by itself. Every query of the pass at the cut must return in seconds.
 - **A full extract never fits.** The synthetic fleet has about 1.2 million source rows in 44 tables. Reading that
   many rows from a local database takes about 5 seconds, so the row count is not the problem; the time Teradata
-  takes to produce them is. Full extracts belong to the nightly pass.
+  takes to produce them is. Full extracts belong to the weekly and nightly passes.
 - **FOCUS reads the whole copy every run.** It has no incremental mode: each run reads every staged table in full
   from SQL Server and builds its snapshot from scratch (70 seconds at 50 aircraft). That is why the copy in SQL
   Server must always be complete, not only the changed rows.
 
-## 2. The principle: a complete copy, kept current by change pulls
+## 2. The principle: a complete copy, each dataset at its own cadence
 
 For each dataset ask three questions:
 
@@ -70,6 +80,20 @@ For each dataset ask three questions:
 2. **How many rows change between two shifts?** If few, a change pull is small whatever the table's size.
 3. **Can Teradata return the changed rows quickly?** That needs a reliable "last changed" clock on the source rows,
    or a small table that can be pulled whole.
+
+Three rules then place the dataset in a pass (`focus/data/cadence.py`):
+
+1. **How often its content changes in a way that changes a plan.** Floor state changes all day. The standing facts
+   of a job, the certificates people hold and the lookup tables change with engineering releases and training, not
+   with the floor: their full load or compare is weekly.
+2. **What a stale copy does.** Where a missing row blocks a job with a named gap, a slower pass is safe: the gap is
+   seen and nothing wrong is planned. Where a stale copy makes the plan wrong and nothing flags it, the check stays
+   daily although the data seldom changes: template links (`pnet_dag`), calendars and due dates, and the rates.
+3. **Size.** A large table is read whole seldom, and what changed is pulled in between. The rows of a new job come
+   with the job, at every run, whatever the table's own cadence.
+
+And one bound: **never pull a dataset more often than its source is refreshed** (section 5, rule 2). A warehouse
+table that is rebuilt once a night gains nothing from a pull at the cut.
 
 **How much changes in a shift.** Measured on the stored 14-day simulation of the synthetic 50-aircraft fleet
 (`docs/execution/SIMULATION.md`), per shift, median over 41 shifts:
@@ -99,96 +123,106 @@ For each dataset ask three questions:
 The 44 planning datasets fall into seven groups. "Clock limit" is the age at which FOCUS refuses an executable plan
 (`admission.max_source_age_hours`; section 9). "Needed for a run" means the run is rejected when the dataset fails or
 is empty. Rows are from the synthetic 50-aircraft fleet. A dataset with 0 rows there still needs a producer on real
-data (`DECISION_PLAYBOOK.md`, DEC-09).
+data (`DECISION_PLAYBOOK.md`, DEC-09). Every cell of the four pass columns is the registry's
+(`focus/data/cadence.py`).
 
-| Group | What it is | Nightly | Before each shift | At the cut |
-| --- | --- | --- | --- | --- |
-| Floor state | What is open, in work, done, short | Compare in full, repair | Change pull | **Change pull** |
-| Job facts | Standing facts of each job: duration, crew, certificates, inspections, rework class | Compare in full, repair | Rows for new jobs | **Rows for new jobs** |
-| Calendar | Working days per line and control-station dates | Full load | Check the active load, reload a changed line | **Check the active load again** |
-| People | Certificates held, teams, rosters, attendance, leave, overtime authority | Full load | Change pull | **New events and attendance only** |
-| Reference | Templates and lookups that change with a release, not with the floor | Check, reload on change | none | none |
-| History | Completed episodes and labor, for statistics | Append | none | none |
-| Economics | Rates and the customer and model of each line | Check | Rows for new lines | **Rows for new lines** |
+| Group | What it is | Weekly | Nightly | Before each shift | At the cut |
+| --- | --- | --- | --- | --- | --- |
+| Floor state | What is open, in work, done, short | none | Reconcile in full, repair | Change pull | **Change pull** |
+| Job facts | Standing facts of each job: duration, crew, certificates, inspections, rework class | Compare in full, repair | Changed rows | Rows for new jobs | **Rows for new jobs** |
+| Calendar | Working days per line and control-station dates | none | Full load | Check the active load, reload a changed line | **Check the active load again** |
+| People | Certificates held, teams, rosters, attendance, leave, overtime authority | Certificates held, in full | Teams, rosters and overtime in full; changed certificates | Change pull | **New events and attendance only** |
+| Reference | Templates and lookups that change with a release, not with the floor | Lookups: check, reload on change | Template links, scope and names | none | none |
+| History | Completed episodes and labor, for statistics | What no plan reads | Completed episodes and clock intervals | none | none |
+| Economics | Rates and the customer and model of each line | none | Check; an owner's change | Rows for new lines | **Rows for new lines** |
+
+- **"Changed rows"** in the nightly column needs a change clock on the source. Without one, the weekly compare is
+  that table's only check, and a fact of an existing job that changed is then up to a week old. Say so in the
+  mapping.
+- **The certificate chain** is the owner's example. `soi_cert_requirements` (what each job needs) and
+  `mechanic_certs` (what each person holds) are read in full once a week; `cert_course_map` and
+  `cert_eligibility_matrix` with them. What keeps a plan right in between is small: the requirement rows of a new
+  job arrive with the job, a certificate's expiry date is in its row, a revocation arrives as an event at the cut
+  (`holding_events`), and the nightly pass picks up certificates gained or renewed.
 
 **Floor state**
 
-| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Nightly | Before each shift | At the cut | Load by | Why it matters |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `master_task_list` | yes | 298,009 | 36 h | reconcile keys and counts | changes since the last pass | **changes since the last pass** | `LINE_NUMBER` + `SHOP_ORDER_IDENTIFIER` | The census of jobs. A stale copy plans work already done and misses new jobs |
-| `neo_graph_rework` | yes | 73,009 | 48 h | reconcile | changes | **changes** | `LINE_NUMBER` + `CHILD_SOI` | Links each rework job to its root, with the child's status |
-| `work_progress` | no | 0 | none | none | every job in work | **every job in work, as of the cut** | `LINE_NUMBER` + `SOI` | Without a row a job in work is blocked (`REMAINING_UNKNOWN`) |
-| `etracs_active` | yes | 23,301 | 36 h | reconcile | all open shortages | **all open shortages** | `RECORD_ID` | A closed shortage left in the copy still blocks its job; a new one is missed |
-| `part_events` | no | 0 | none | none | new events | **new events up to the cut** | append, once per source event | Only a receipt event confirms a part. Without it the job stays out of the executable plan (`PART_NOT_RECEIVED`) |
+| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Weekly | Nightly | Before each shift | At the cut | Load by | Why it matters |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `master_task_list` | yes | 298,009 | 48 h | none | reconcile keys and counts | changes since the last pass | **changes since the last pass** | `LINE_NUMBER` + `SHOP_ORDER_IDENTIFIER` | The census of jobs. A stale copy plans work already done and misses new jobs |
+| `neo_graph_rework` | yes | 73,009 | 48 h | none | reconcile | changes | **changes** | `LINE_NUMBER` + `CHILD_SOI` | Links each rework job to its root, with the child's status |
+| `work_progress` | no | 0 | none | none | none | every job in work | **every job in work, as of the cut** | `LINE_NUMBER` + `SOI` | Without a row a job in work is blocked (`REMAINING_UNKNOWN`) |
+| `etracs_active` | yes | 23,301 | 36 h | none | reconcile | all open shortages | **all open shortages** | `RECORD_ID` | A closed shortage left in the copy still blocks its job; a new one is missed |
+| `part_events` | no | 0 | none | none | none | new events | **new events up to the cut** | append, once per source event | Only a receipt event confirms a part. Without it the job stays out of the executable plan (`PART_NOT_RECEIVED`) |
 
 **Job facts**
 
-| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Nightly | Before each shift | At the cut | Load by | Why it matters |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `flow_budget` | yes | 298,009 | 36 h | full compare | rows for new jobs | **rows for new jobs** | `JOB_NUMBER` + `LINE_NUMBER` | A job without a row is blocked (`STANDARD_MISSING`) |
-| `soi_cert_requirements` | yes | 326,657 | 48 h | full compare | rows for new jobs | **rows for new jobs** | all rows of a job (`LINE_NUMBER` + `SOI_ID`) | A job without rows, and without a census row, is blocked (`REQUIREMENTS_UNKNOWN`) |
-| `buyoff_plan` | yes | 17,666 | 36 h | full compare | rows for new jobs | **rows for new jobs** | `SHOP_ORDER_IDENTIFIER` + `LINE_NUMBER` | A job without a row is planned without QA, and nothing flags it |
-| `inspection_holds` | no | 0 | none | full compare | rows for new jobs | **rows for new jobs** | all rows of a job (`LINE_NUMBER` + `SOI`) | A job with in-process inspections and no hold rows is blocked (`IP_HOLD_UNKNOWN_LOCATION`) |
-| `rework_classification` | no | 73,009 | none | full compare | rows for new rework jobs | **rows for new rework jobs** | `LINE_NUMBER` + `CHILD_SOI` | An open rework job without a row is blocked (`REWORK_CLASS_UNKNOWN`) |
-| `requirement_census` | no | 0 | none | full compare | rows for new jobs | **rows for new jobs** | `LINE_NUMBER` + `SOI_ID` | The only way a job with no certificate requirement becomes plannable |
-| `requirement_alternatives` | no | 0 | none | full compare | none | none | all rows of a job (`LINE_NUMBER` + `SOI_ID`) | Approved OR groups. Absent: every certificate stays required |
-| `inspection_counts` | no | 0 | 36 h | full load | none | none | `LINE_NUMBER` + `SHOP_ORDER_IDENTIFIER` | Cross-check notes only, but its clock is checked: stale fails executable plans |
+| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Weekly | Nightly | Before each shift | At the cut | Load by | Why it matters |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `flow_budget` | yes | 298,009 | 336 h | full compare | changed rows | rows for new jobs | **rows for new jobs** | `JOB_NUMBER` + `LINE_NUMBER` | A job without a row is blocked (`STANDARD_MISSING`) |
+| `soi_cert_requirements` | yes | 326,657 | 336 h | full compare | changed rows | rows for new jobs | **rows for new jobs** | all rows of a job (`LINE_NUMBER` + `SOI_ID`) | A job without rows, and without a census row, is blocked (`REQUIREMENTS_UNKNOWN`). 27% of all source rows: the weekly pass's largest table |
+| `buyoff_plan` | yes | 17,666 | 336 h | full compare | changed rows | rows for new jobs | **rows for new jobs** | `SHOP_ORDER_IDENTIFIER` + `LINE_NUMBER` | A job without a row is planned without QA, and nothing flags it |
+| `inspection_holds` | no | 0 | none | full compare | changed rows | rows for new jobs | **rows for new jobs** | all rows of a job (`LINE_NUMBER` + `SOI`) | A job with in-process inspections and no hold rows is blocked (`IP_HOLD_UNKNOWN_LOCATION`) |
+| `rework_classification` | no | 73,009 | none | full compare | changed rows | rows for new rework jobs | **rows for new rework jobs** | `LINE_NUMBER` + `CHILD_SOI` | An open rework job without a row is blocked (`REWORK_CLASS_UNKNOWN`) |
+| `requirement_census` | no | 0 | none | full compare | changed rows | rows for new jobs | **rows for new jobs** | `LINE_NUMBER` + `SOI_ID` | The only way a job with no certificate requirement becomes plannable |
+| `requirement_alternatives` | no | 0 | none | full compare | changed rows | none | none | all rows of a job (`LINE_NUMBER` + `SOI_ID`) | Approved OR groups. Absent: every certificate stays required |
+| `inspection_counts` | no | 0 | none | full load | none | none | none | `LINE_NUMBER` + `SHOP_ORDER_IDENTIFIER` | Cross-check notes only. No plan rests on it, so its age never stops one |
 
 **Calendar**
 
-| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Nightly | Before each shift | At the cut | Load by | Why it matters |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `cday_op_plan` | yes | 6,150 | 240 h | full load | check the active load per line; reload a changed line | **check the active load again** | all rows of a line's active load | A line without a calendar is blocked. A calendar that ends before the due date hides lateness |
-| `cs_windows` | yes | 250 | 240 h | full load | check the active load per line; reload a changed line | **check the active load again** | all rows of a line's active load | Start floors, gate dates and the due date (station 744) |
+| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Weekly | Nightly | Before each shift | At the cut | Load by | Why it matters |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `cday_op_plan` | yes | 6,150 | 240 h | none | full load | check the active load per line; reload a changed line | **check the active load again** | all rows of a line's active load | A line without a calendar is blocked. A calendar that ends before the due date hides lateness |
+| `cs_windows` | yes | 250 | 240 h | none | full load | check the active load per line; reload a changed line | **check the active load again** | all rows of a line's active load | Start floors, gate dates and the due date (station 744) |
 
 **People**
 
-| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Nightly | Before each shift | At the cut | Load by | Why it matters |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `mechanic_certs` | yes | 3,468 | 48 h | full load | changes | none | all rows of a person (`BEMS_ID`) | Who is qualified for what |
-| `holding_events` | no | 0 | none | none | new events | **new events up to the cut** | append, once per source event | A revoked certificate still counts until its event is staged |
-| `person_team_map` | no | 2,088 | 36 h | full load | changes | none | `BEMS_ID` + `EFFECTIVE_FROM` | Empty: no pool has an executable member |
-| `shift_roster` | no | 2,088 | none | full load | full load | none | the whole table | The only way a person joins a team's pool |
-| `team_inference` | no | 0 | none | computed in SQL Server | none | none | `RUN_ID` + `PERSON_KEY` | Labels and a review queue only |
-| `attendance_shift` | no | 2,088 | 18 h | none | the coming production day and shift | **again, as known at the cut** | `PRODUCTION_DAY` + `SHIFT_NUMBER` + `BEMS_ID` | Empty: nobody is an executable crew member that day |
-| `availability_exceptions` | no | 0 | none | none | new rows | **new rows up to the cut** | append, once per source row | Leave that is not staged means absent people are planned |
-| `ot_authorizations` | no | 93 | none | full load | full load | none | the whole table | Absent: overtime is 0 |
-| `carry_in` | no | 0 | none | none | full load for the horizon | **again, as of the cut** | the whole table | Absent: people already on duty are booked twice |
+| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Weekly | Nightly | Before each shift | At the cut | Load by | Why it matters |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `mechanic_certs` | yes | 3,468 | 336 h | full load | changed rows | none | none | all rows of a person (`BEMS_ID`) | Who is qualified for what. A certificate's dates are in its row, so one that expires during the week stops counting on its day; a revoked one stops at the next run (`holding_events`) |
+| `holding_events` | no | 0 | none | none | none | new events | **new events up to the cut** | append, once per source event | A revoked certificate still counts until its event is staged |
+| `person_team_map` | no | 2,088 | 48 h | none | full load | changes | none | `BEMS_ID` + `EFFECTIVE_FROM` | Empty: no pool has an executable member |
+| `shift_roster` | no | 2,088 | none | none | full load | full load | none | the whole table | The only way a person joins a team's pool |
+| `team_inference` | no | 0 | none | computed in SQL Server | none | none | none | `RUN_ID` + `PERSON_KEY` | Labels and a review queue only |
+| `attendance_shift` | no | 2,088 | 18 h | none | none | the coming production day and shift | **again, as known at the cut** | `PRODUCTION_DAY` + `SHIFT_NUMBER` + `BEMS_ID` | Empty: nobody is an executable crew member that day |
+| `availability_exceptions` | no | 0 | none | none | none | new rows | **new rows up to the cut** | append, once per source row | Leave that is not staged means absent people are planned |
+| `ot_authorizations` | no | 93 | none | none | full load | full load | none | the whole table | Absent: overtime is 0 |
+| `carry_in` | no | 0 | none | none | none | full load for the horizon | **again, as of the cut** | the whole table | Absent: people already on duty are booked twice |
 
 **Reference**
 
-| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Nightly | Before each shift | At the cut | Load by | Why it matters |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `pnet_dag` | yes | 64,098 | 36 h | check; reload on change | none | none | the whole table | Template precedence between jobs |
-| `inspection_standards` | yes | 2 | none | check; reload on change | none | none | `INSPECTION_TYPE` | Minutes per buyoff kind |
-| `cert_course_map` | no | 0 | 168 h | check; reload on change | none | none | `CRITICAL_PROCESS_NAME` + `CERT_CODE` | Not planned from, but its clock is checked |
-| `dept_team_skill_ref` | no | 0 | 168 h | check; reload on change | none | none | `ACCTG_DEPT_CD` | Not planned from, but its clock is checked |
-| `scope_receipt` | no | 1 | none | on change | none | none | `LINE_NUMBER` | Excludes whole lines. Absent: every line with open work is in scope |
-| `people_directory` | no | 2,088 | none | full load | none | none | `PERSON_KEY` | Display names only |
-| `cert_eligibility_matrix` | no | 0 | none | full load, or not at all | none | none | none | Display only. It never authorizes a crew |
-| `mech_team_inferred` | no | 0 | none | full load | none | none | `BEMS_ID` + `INFERRED_TEAM` | Comparison evidence only |
+| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Weekly | Nightly | Before each shift | At the cut | Load by | Why it matters |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `pnet_dag` | yes | 64,098 | 48 h | none | check; reload on change | none | none | the whole table | Template precedence between jobs. A missing link is the one gap nothing flags, so the check is nightly |
+| `inspection_standards` | yes | 2 | none | check; reload on change | none | none | none | `INSPECTION_TYPE` | Minutes per buyoff kind |
+| `cert_course_map` | no | 0 | none | check; reload on change | none | none | none | `CRITICAL_PROCESS_NAME` + `CERT_CODE` | Not planned from |
+| `dept_team_skill_ref` | no | 0 | none | check; reload on change | none | none | none | `ACCTG_DEPT_CD` | Not planned from |
+| `scope_receipt` | no | 1 | none | none | on change | none | none | `LINE_NUMBER` | Excludes whole lines. Absent: every line with open work is in scope |
+| `people_directory` | no | 2,088 | none | none | full load | none | none | `PERSON_KEY` | Display names only |
+| `cert_eligibility_matrix` | no | 0 | none | full load, or not at all | none | none | none | none | Display only. It never authorizes a crew: FOCUS works eligibility out itself in every run |
+| `mech_team_inferred` | no | 0 | none | full load | none | none | none | `BEMS_ID` + `INFERRED_TEAM` | Comparison evidence only |
 
 **History**
 
-| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Nightly | Before each shift | At the cut | Load by | Why it matters |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `duration_episodes` | no | 2,700 | none | append completed episodes | none | none | `EPISODE_KEY` | Without episodes, rework with no sourced remaining work is blocked (`DURATION_UNAVAILABLE`). FOCUS does not remove repeats: an episode loaded twice counts twice |
-| `clock_observations` | no | 0 | none | append | none | none | `SOURCE_EVENT_KEY` + `SOURCE_REVISION` | Feeds the duration statistics report |
-| `etracs_history` | no | 21,942 | 36 h | append closed shortages | none | none | `RECORD_ID` | Not planned from, but its clock is checked |
-| `actual_labor` | no | 0 | 36 h | full load | none | none | `SHOP_ORDER_IDENTIFIER` + `LINE_NUMBER` | Not planned from, but its clock is checked |
-| `labor_shift` | no | 0 | 36 h | append | none | none | day + shift + line + SOI + person | Not planned from, but its clock is checked |
+| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Weekly | Nightly | Before each shift | At the cut | Load by | Why it matters |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `duration_episodes` | no | 2,700 | none | none | append completed episodes | none | none | `EPISODE_KEY` | Without episodes, rework with no sourced remaining work is blocked (`DURATION_UNAVAILABLE`). FOCUS does not remove repeats: an episode loaded twice counts twice |
+| `clock_observations` | no | 0 | none | none | append | none | none | `SOURCE_EVENT_KEY` + `SOURCE_REVISION` | Feeds the duration statistics report |
+| `etracs_history` | no | 21,942 | none | append closed shortages | none | none | none | `RECORD_ID` | Not planned from |
+| `actual_labor` | no | 0 | none | full load | none | none | none | `SHOP_ORDER_IDENTIFIER` + `LINE_NUMBER` | Not planned from |
+| `labor_shift` | no | 0 | none | append | none | none | none | day + shift + line + SOI + person | Not planned from |
 
 **Economics**
 
-| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Nightly | Before each shift | At the cut | Load by | Why it matters |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `econ_mapping_revision` | no | 1 | none | check | none | none | `MappingRevisionId` | Exactly one current revision, or every aircraft is unmapped |
-| `econ_aircraft_mapping` | no | 50 | none | check | rows for new lines | **rows for new lines** | `MappingRevisionId` + `LineNumber` | A line without a row has no customer and model, so its cost is unknown |
-| `econ_scenario` | no | 1 | none | on owner change | none | none | `ScenarioRevisionId` | Exactly one active scenario |
-| `econ_contract_assignment` | no | 0 | none | on owner change | none | none | `AssignmentId` | Optional: contract terms |
-| `econ_term` | no | 13 | none | on owner change | none | none | `TermId` | The daily rates (D-31). Missing: cost unknown |
-| `econ_original_sale_basis` | no | 0 | none | on owner change | none | none | `OriginalBasisId` | Needed only for booked liability |
-| `econ_liability_checkpoint` | no | 0 | none | on owner change | none | none | `CheckpointId` | Liability already booked: a floor under the modeled cost |
+| Dataset | Needed for a run | Rows in the synthetic 50-aircraft fleet | Clock limit | Weekly | Nightly | Before each shift | At the cut | Load by | Why it matters |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `econ_mapping_revision` | no | 1 | none | none | check | none | none | `MappingRevisionId` | Exactly one current revision, or every aircraft is unmapped |
+| `econ_aircraft_mapping` | no | 50 | none | none | check | rows for new lines | **rows for new lines** | `MappingRevisionId` + `LineNumber` | A line without a row has no customer and model, so its cost is unknown |
+| `econ_scenario` | no | 1 | none | none | on owner change | none | none | `ScenarioRevisionId` | Exactly one active scenario |
+| `econ_contract_assignment` | no | 0 | none | none | on owner change | none | none | `AssignmentId` | Optional: contract terms |
+| `econ_term` | no | 13 | none | none | on owner change | none | none | `TermId` | The daily rates (D-31). Missing: cost unknown |
+| `econ_original_sale_basis` | no | 0 | none | none | on owner change | none | none | `OriginalBasisId` | Needed only for booked liability |
+| `econ_liability_checkpoint` | no | 0 | none | none | on owner change | none | none | `CheckpointId` | Liability already booked: a floor under the modeled cost |
 
 - **"Load by"** is the unit the loader replaces. Where the source declares a key, load row by row on that key. Where
   it declares none, replace the whole unit (all rows of a job, a person, a line or the table) in one step: merging
@@ -219,6 +253,16 @@ Eighteen datasets, each as a small pull bounded by the cut instant:
 
 Everything else is already in the copy from the earlier passes.
 
+### 3.3 The same determination by pass
+
+| Pass | Datasets | Count |
+| --- | --- | --- |
+| Weekly | Job facts in full: `flow_budget`, `soi_cert_requirements`, `buyoff_plan`, `inspection_holds`, `rework_classification`, `requirement_census`, `requirement_alternatives`, `inspection_counts`. Certificates held: `mechanic_certs`. Lookups: `inspection_standards`, `cert_course_map`, `dept_team_skill_ref`, `cert_eligibility_matrix`, `mech_team_inferred`. Computed in SQL Server: `team_inference`. History no plan reads: `etracs_history`, `actual_labor`, `labor_shift` | 18 |
+| Nightly | Floor state reconciled: `master_task_list`, `neo_graph_rework`, `etracs_active`. Changed rows of the weekly tables: the seven job-fact tables above without `inspection_counts`, and `mechanic_certs`. Whole: `cday_op_plan`, `cs_windows`, `person_team_map`, `shift_roster`, `ot_authorizations`, `people_directory`. Checked: `pnet_dag`, `scope_receipt`, the seven economics tables. Appended: `duration_episodes`, `clock_observations` | 28 |
+| Before each shift | The 18 of section 3.1, and `person_team_map`, `shift_roster`, `ot_authorizations` | 21 |
+| At the cut | The 18 of section 3.1 | 18 |
+| After each shift | The 8 observation feeds (`--part observations`) | 8 |
+
 ### 3.2 A line that is new
 
 The fleet is whichever aircraft have open tasks (owner, D-32). When a line gets its first open job, one pass must
@@ -232,7 +276,8 @@ Shift starts are 06:00, 14:30 and 23:00 site time (`config/policies/shift_fixtur
 shift's start.
 
 ```text
-01:15          nightly pass            full compare with Teradata, repairs, history, statistics      (hours)
+Sunday 07:30   weekly pass             the large slow tables in full: job facts, certificates, lookups   (hours)
+01:15          nightly pass            floor state reconciled, small daily tables, changed rows, history (hours)
 T-60 min       pass before the shift   everything that changes during a day                          (ends by T-30)
 T-20 min       THE CUT                 plan pipeline starts; --as-of = pipeline creation time
   +0:00          pass at the cut       change pulls for the 18 datasets of section 3.1               (2 min)
@@ -240,7 +285,7 @@ T-20 min       THE CUT                 plan pipeline starts; --as-of = pipeline 
   +2:30          acquire_admit         FOCUS reads the whole copy, builds and stores its snapshot
                  schedule_validate     the shift's plan
                  stage_readback
-                 sign_accept           the plan and its dashboard data are ready                     (by T-0)
+                 sign_accept           by itself (D-34): the plan and its dashboard data are ready   (by T-0)
 T              shift starts
 T+ ...         delivery plan jobs      delivery dates and costs: part of the one schedule (D-33), not inside 20 minutes yet
 end + 65 min   evaluator-only run      stage the observation feeds, score the closed shift
@@ -248,6 +293,7 @@ end + 65 min   evaluator-only run      stage the observation feeds, score the cl
 
 | Schedule (site time) | Cron | Variables |
 | --- | --- | --- |
+| Weekly staging | `30 7 * * 0` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=weekly` |
 | Nightly staging | `15 1 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=nightly` |
 | Staging before shift 1 | `0 5 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=preshift` |
 | Staging before shift 2 | `30 13 * * *` | `FOCUS_MODE=live`, `FOCUS_PIPELINE_PART=preshift` |
@@ -258,6 +304,10 @@ end + 65 min   evaluator-only run      stage the observation feeds, score the cl
 - Set every schedule's time zone to America/New_York.
 - GitLab starts a scheduled pipeline when it can, which may be minutes late. The cut is the pipeline's creation
   time, never the cron time: the loader always gets `--as-of "$CI_PIPELINE_CREATED_AT"`.
+- **Where the weekly pass goes.** Every live job shares one resource group (section 8), so a pass that runs for
+  hours holds back whatever starts behind it. Sunday 07:30 is after the plan run and the scoring run of the morning
+  and six hours before the next pass; its 4-hour limit ends two hours before that. Pick the day with the least work
+  on the floor, and never let it run into the hour before a shift.
 - **Why a pass 60 minutes before, and not only the cut.** It turns the pull at the cut from "eight hours of
   changes" into "forty minutes of changes", it finds a broken query or a schema change while there is still time to
   act, and it is where the slower checks run (key comparison, new-line coverage).
@@ -287,7 +337,8 @@ end + 65 min   evaluator-only run      stage the observation feeds, score the cl
    - pull the table whole, if it is small (a few tens of thousands of rows): `etracs_active`, calendars, rosters;
    - pull keys only and compare them with the copy, then pull the rows of the keys that differ;
    - ask the source owner for a change clock or a change log;
-   - leave it to the nightly pass, and say in the mapping that the dataset is at most a day old.
+   - leave it to the pass that reads the table whole (nightly or weekly), and say in the mapping how old the dataset
+     can then be.
 6. **Pull the facts of new jobs by key.** After the task-list pull, collect the job keys that are new in the copy.
    Put them in a temporary table on the Teradata side and join the per-job sources to it. Never build a long
    `IN (...)` list, and never re-extract a per-job table whole at the cut.
@@ -306,8 +357,8 @@ end + 65 min   evaluator-only run      stage the observation feeds, score the cl
    - Tag the session so the database administrators can see and prioritize the work (a query band naming the
      application, the pass and the dataset).
    - Run the pulls of one pass in parallel on a few sessions. Ask the administrators how many the workload rules
-     allow, and whether bulk-export utilities are limited: use those for the nightly full extracts only, and plain
-     queries for the small pulls.
+     allow, and whether bulk-export utilities are limited: use those for the weekly and nightly full extracts only,
+     and plain queries for the small pulls.
    - Decide with the source owners whether reads may take an access lock. It avoids waiting behind the source's
      own load, at the price of reading rows mid-load; the overlap and the nightly compare then matter more.
 10. **Keep values exactly.**
@@ -368,11 +419,16 @@ end + 65 min   evaluator-only run      stage the observation feeds, score the cl
 
 - Every staged row carries its table's row clock (`LOAD_TIMESTAMP`, `SNAPSHOT_TS` or `LOAD_TS`), in UTC.
 - **Every row a pass inserts or updates gets that pass's `--as-of`.**
-- **The nightly pass also restamps every table it compared in full and found correct.** FOCUS takes a dataset's age
-  from its newest row clock. Without the restamp, a reference table that has not changed for a week would look a
-  week old and executable plans would fail on it.
+- **A pass also restamps every table it read whole and found correct:** a full load, a full compare, a reconcile, or
+  a check that found the source unchanged. That is the weekly pass for the weekly tables and the nightly pass for the
+  rest. FOCUS takes a dataset's age from its newest row clock. Without the restamp, a table that has not changed
+  since its last full compare would look that old, and executable plans would fail on it.
+- **The limits follow the cadence** (policy `admission.max_source_age_hours`): each is at least twice the interval
+  of the pass that reads the dataset whole, so one missed pass never stops a plan. A pull of changed or new rows
+  that returns nothing moves no clock, so it does not count.
 - This is a stopgap. When FOCUS reads a load receipt instead (`DECISION_PLAYBOOK.md`, DEC-07), the row clock can go
-  back to meaning "when this row last changed", and an empty table can be certified as correctly empty.
+  back to meaning "when this row last changed", every pass that looked at a dataset can say so, and an empty table
+  can be certified as correctly empty. With datasets on four cadences, DEC-07 matters more than it did.
 - **An empty result is not "nothing to do".** Today an empty required dataset rejects the run. A shift with truly no
   open shortages needs the certified-empty path of DEC-07. Until then keep the loader's own record of "empty and
   complete" in the table-load row.
@@ -406,9 +462,10 @@ $FOCUS_STAGE_COMMAND --part cut --as-of "$CI_PIPELINE_CREATED_AT" --receipt ci-r
 | --- | --- | --- |
 | `cut` | The change pulls of section 3.1 | `stage_sources`, first job of the plan pipeline |
 | `preshift` | Everything that changes during a day | `prestage_sources`, 60 minutes before each shift |
-| `nightly` | Full loads, full compares and repairs, history | `nightly_sources`, once a day |
+| `nightly` | Floor state reconciled in full, the small daily tables, changed rows of the weekly tables, history | `nightly_sources`, once a day |
+| `weekly` | The large slow tables in full: job facts, certificates, lookups, history no plan reads | `weekly_sources`, once a week |
 | `observations` | The observation feeds | `stage_observations`, after each shift's credit deadline |
-| `sources` | A full load of every planning dataset | The first load, and recovery |
+| `sources` | A full load of every planning dataset, whatever its cadence | The first load, and recovery |
 | `all` | `sources` and `observations` | The first load, and recovery |
 
 - **`--as-of`** is the single instant of the pass. No query returns anything later.
@@ -440,26 +497,31 @@ The draft is `.gitlab-ci.yml` (never pushed to a GitLab remote). One variable sa
 
 | `FOCUS_PIPELINE_PART` | Pipeline | Jobs |
 | --- | --- | --- |
-| not set | Plan for a shift | `stage_sources` (`--part cut`), `verify_staged_sources`, `acquire_admit`, `schedule_validate`, `stage_readback`, `sign_accept`, then the forecast jobs |
+| not set | Plan for a shift | `stage_sources` (`--part cut`), `verify_staged_sources`, `plan_unsigned`, `sign_accept`, `delivery_unsigned`, `forecast_sign_accept` (with `FOCUS_JOBS=roles`: `acquire_admit`, `schedule_validate`, `stage_readback`, `sign_accept`, then the forecast jobs) |
 | `preshift` | Staging before a shift | `prestage_sources` (`--part preshift`), `verify_prestaged_sources` |
 | `nightly` | Nightly staging | `nightly_sources` (`--part nightly`), `verify_nightly_sources` |
+| `weekly` | Weekly staging | `weekly_sources` (`--part weekly`), `verify_weekly_sources` |
 | `evaluate` | Score a closed shift | `stage_observations`, `evaluate_closed_shifts` |
 
 Rules the draft follows, and why:
 
 - **An unknown part runs nothing.** A misspelled value must never start a plan pipeline.
-- **One resource group for every live job** (`focus-$FOCUS_SCOPE_KEY`). A staging job and `acquire_admit` can
-  therefore never run at the same time, so FOCUS never reads a copy that changes under it.
+- **One pipeline or several: the split is free** (owner, D-34). The draft uses one pipeline definition and one
+  variable, so each cadence is its own schedule and nothing runs more often than its data needs. Separate projects
+  or files per cadence work as well, as long as the rules below hold.
+- **One resource group for every live job** (`focus-$FOCUS_SCOPE_KEY`). A staging job and the job that reads the
+  copy can therefore never run at the same time, so FOCUS never reads a copy that changes under it.
 - **Live jobs are not interruptible.** A merge to the default branch must not cancel a pre-shift run.
 - **`stage_sources` needs no other job.** The pass at the cut starts the second the pipeline does, beside the
   import check, not after it.
-- **The staging jobs have time limits:** 5 minutes at the cut, 30 minutes before a shift, 4 hours at night. A pass
-  before a shift that is still running 30 minutes before the shift is stopped, so it cannot delay the cut. A
-  stopped pass has published nothing or everything (section 6.2).
+- **The staging jobs have time limits:** 5 minutes at the cut, 30 minutes before a shift, 4 hours at night and 4
+  hours for the weekly pass. A pass before a shift that is still running 30 minutes before the shift is stopped, so
+  it cannot delay the cut. A stopped pass has published nothing or everything (section 6.2). Set the two long
+  limits from the measured durations.
 - **Schema checks run in every staging pipeline.** A column that changed is found 60 minutes before the shift, not
   at the cut.
 - **Receipts are artifacts**, kept 90 days: `stage.json`, `stage-preshift.json`, `stage-nightly.json`,
-  `stage-observations.json`.
+  `stage-weekly.json`, `stage-observations.json`.
 
 What to add in the company's GitLab, outside this draft:
 
@@ -468,37 +530,42 @@ What to add in the company's GitLab, outside this draft:
 - **A runner that is already up** at each schedule, tagged for the scheduling jobs (at least 4 vCPU and 16 GB).
 - **Protected variables** for every credential, scoped to their environment. No credential in the repository, in a
   receipt or in a job log.
-- **An alert** when a staging pipeline fails or a plan pipeline has not reached `sign_accept` five minutes before
-  its shift.
+- **An alert** when a staging pipeline fails or a plan pipeline has not accepted its plan five minutes before its
+  shift. Nobody promotes a plan any more (D-34), so the alert is the only thing that tells a person a shift has no
+  new plan.
 
 ## 9. What FOCUS does with the copy
 
 - **It reads every staged table in full,** at `acquire_admit`, through `queries/source_inputs/*.sql` and the
   registered supplemental queries. It stores what it read with a hash, so the copy needs no history of its own.
 - **It checks age.** A dataset whose newest row clock is older than its limit gives `SOURCE_STALE`, and the
-  validator then refuses the executable plan. The limits are fixture defaults (18 to 240 hours) and far looser than
-  "as of the cut": they catch a loader that stopped, not a table that is an hour old. Set them from the measured
-  cadences (DEC-13).
-- **Six datasets are age-checked although nothing is planned from them:** `inspection_counts`, `etracs_history`,
-  `actual_labor` and `labor_shift` (36 hours), and `cert_course_map` and `dept_team_skill_ref` (168 hours). If the
-  nightly pass skips one past its limit, executable plans fail. Either keep them in the nightly pass or take them
-  off the list (DEC-13).
+  validator then refuses the executable plan. The limits follow the cadence of section 3: 18 hours for attendance,
+  36 for open shortages, 48 for what the nightly pass reads whole, 240 for the calendars and 336 (two weeks) for
+  what the weekly pass reads whole. They are far looser than "as of the cut": they catch a loader that stopped, not
+  a table that is an hour old. Re-set them from the measured load intervals (DEC-13).
+- **Only a dataset a plan rests on can stop one.** Twelve datasets are age-checked: every one with a source clock
+  that an executable plan is built from. `inspection_counts`, `etracs_history`, `actual_labor`, `labor_shift`,
+  `cert_course_map` and `dept_team_skill_ref` were on the list and are off it (D-34): no plan reads them, so a late
+  load of one of them must never leave the floor without a plan.
 - **It never fills a gap.** A job without a duration, a requirement, a calendar or a rate is blocked or left without
   a cost, and the run reports how many (`readiness_gaps` and `objective` in the pipeline status). The loader must
   not fill gaps either.
-- **It works out eligibility itself.** Who may do a job comes from the certificates each person holds
+- **It works out eligibility itself, in every run.** Who may do a job comes from the certificates each person holds
   (`mechanic_certs`, `holding_events`) and the certificates each job requires (`soi_cert_requirements`,
   `requirement_census`, `requirement_alternatives`). At 50 aircraft digesting them takes about 5 seconds, and the
-  scheduler's working data, which includes who is qualified for what, takes 18. A precomputed matrix
-  (`cert_eligibility_matrix`) is display only and never authorizes a crew, so there is nothing to gain from
-  computing eligibility in SQL. Staging the raw certificate tables early is what helps: `soi_cert_requirements`
-  alone is 27% of all source rows.
+  scheduler's working data, which includes who is qualified for what, takes 18. So the chain the owner names
+  (people to certificates, certificates to jobs, people to jobs) costs seconds here and is always right for the
+  people who are there today; running it weekly inside FOCUS would save nothing. What costs is gathering the
+  certificate tables from Teradata, and that is what moved to the weekly pass: `soi_cert_requirements` alone is 27%
+  of all source rows. A precomputed matrix (`cert_eligibility_matrix`) is display only and never authorizes a crew,
+  so there is nothing to gain from computing eligibility in SQL.
 
 ## 10. When a pass fails
 
 | What failed | What happens | What to do |
 | --- | --- | --- |
-| The nightly pass | The copy keeps yesterday's reference data. The passes before each shift still run | Fix and re-run by hand before the 36-hour clock limits expire |
+| The weekly pass | The copy keeps last week's full compare. The nightly pass still brings changed rows and every run the rows of new jobs | Fix and re-run by hand within the week: at 336 hours, a second missed pass in a row stops executable plans |
+| The nightly pass | The copy keeps yesterday's reconcile and daily tables. The passes before each shift still run | Fix and re-run by hand the same day: at 48 hours, a second missed pass in a row stops executable plans |
 | The pass before a shift | The pass at the cut pulls a longer period and takes longer | Watch the cut's duration; fix before the next shift |
 | An optional dataset at the cut (exit 2) | The run continues; FOCUS reports the dataset's gap | Fix before the next shift |
 | A required dataset at the cut (exit 1) | Nothing is published and the plan pipeline stops. The previous plan stays the goal of record | See the decision below |
@@ -525,8 +592,8 @@ SQL Server starts empty. Do these in order, and record each result in your progr
 5. **Check the schema:** `python -m focus.cli source-discover --read-only --mode live`.
 6. **Let FOCUS read it once,** read-only: a source run and a FORECAST plan. Review the readiness gaps with their
    owners. Expect many on the first read; each one names the dataset and the reason.
-7. **Turn on the nightly pass.** After three clean nights, the passes before each shift. After a clean week, the
-   pass at the cut.
+7. **Turn on the weekly and nightly passes.** After three clean nights, the passes before each shift. After a
+   clean week, the pass at the cut.
 8. **Measure for a week** (section 12), then tune the schedule times and the clock limits by their rules.
 9. **Then** the shadow runs of `HANDOFF.md` §6.
 
@@ -539,9 +606,9 @@ Keep every receipt. Each week, per dataset: the median and the 95th percentile o
 | --- | --- |
 | Does the pass at the cut fit? | Its 95th percentile is 120 seconds or less. If not, find the slowest dataset and make its query cheaper (section 5, rule 9), or get a change log from its owner. Do not start the cut earlier without telling the owner (DEC-12) |
 | Does the pass before a shift fit? | It ends at least 5 minutes before the cut at the 95th percentile. If not, start it earlier |
-| Is a dataset in the right group? | A dataset that never changes between nightly passes for two weeks leaves the pass before each shift. One that the nightly compare keeps repairing moves to a faster pass |
-| Is the overlap large enough? | The nightly compare finds no row the change pulls missed. If it does, raise the overlap to cover the latest one |
-| Are the clock limits right? | Limit = 2 × the 95th percentile of the load interval, in whole hours, never under 6 hours for a dataset loaded before every shift (DEC-13) |
+| Is a dataset in the right pass? | The registry (`focus/data/cadence.py`) is the starting point, set without a timed query. A dataset whose pull returns no row for two weeks moves to a slower pass. One that a full compare keeps repairing moves to a faster one. A dataset whose source is refreshed less often than its pass moves to the source's pace. Change the registry, the tables of section 3 and the limit together: the tests hold them to each other |
+| Is the overlap large enough? | The nightly and weekly compares find no row the change pulls missed. If they do, raise the overlap to cover the latest one |
+| Are the clock limits right? | Limit = 2 × the 95th percentile of the interval of the pass that reads the dataset whole, in whole hours, never under 6 hours for a dataset loaded before every shift (DEC-13) |
 | How current is the plan? | Report `source_lag_seconds` of the task list with every run. With `window.minutes`, it is how old the floor state is when the shift starts |
 
 ## 13. Work list
@@ -550,7 +617,8 @@ For the company-side agent, in order:
 
 1. The inventory and the query timings (section 11, steps 1 and 2). Report them before building.
 2. The staged, landing and control tables.
-3. The loader: `--part all` first, then `nightly`, `preshift`, `cut` and `observations`, each with its receipt.
+3. The loader: `--part all` first, then `weekly`, `nightly`, `preshift`, `cut` and `observations`, each with its
+   receipt.
 4. The producers of the supplemental datasets, `work_progress` first (DEC-09).
 5. The GitLab schedules of section 4, the prebuilt image and the alert.
 6. A week of receipts, and the tuning of section 12.
@@ -562,13 +630,15 @@ On the FOCUS side, which this plan depends on:
 | Read a load receipt: `loaded_at` and certified empty | Unchanged tables stay fresh without rewriting row clocks; an empty table can be correct | DEC-07 |
 | The 14 supplemental producers | Without them jobs in work, rosters, leave and receipts are missing, whatever the cadence | DEC-09 |
 | Bring FOCUS's own steps to about 13 minutes | The 2 minutes at the cut only help if the rest fits | DEC-36 |
-| Clock limits from measured cadences | Today's limits are fixture defaults | DEC-13 |
+| Clock limits from measured cadences | Today's limits follow the designed cadence, not a measured one | DEC-13 |
 | Plan on the earlier copy when the cut fails, or stop | An owner decision | DEC-37 |
 
 ## 14. What not to do
 
 - **Do not run a full extract at the cut.** Not of the task list, not of anything larger than a few tens of
   thousands of rows.
+- **Do not gather a table more often than its data changes.** The certificate tables and the standing facts of
+  jobs are read in full once a week (owner, D-34); pulling them whole every shift buys nothing and costs the most.
 - **Do not rely on an earlier load alone for floor state.** Jobs, work in progress, shortages, receipts, attendance
   and leave are brought up to the cut by a change pull, every time.
 - **Do not stage only the changed rows.** FOCUS reads the whole copy. A table that holds only today's changes would
@@ -585,10 +655,11 @@ On the FOCUS side, which this plan depends on:
 | Need | File |
 | --- | --- |
 | Datasets, columns, required flags, cutoff columns | `focus/data/datasets.py`; `docs/data/` |
+| Every dataset's cadence, and the least age limit it allows | `focus/data/cadence.py`; `tests/unit/test_staging_cadence.py`; [DATA_CADENCE.md](DATA_CADENCE.md) |
 | The contract shape of the staged tables | `fixtures/source_contracts/s04_contracts.json`; `scripts/export_integration_contract.py` |
 | The queries FOCUS runs on the copy | `queries/source_inputs/*.sql`; `focus/data/fixture_reader.py` (`LiveSourceReader`) |
 | Age and skew checks | `focus/data/freshness.py`; policy `admission.max_source_age_hours` |
 | The pipeline draft | `.gitlab-ci.yml`; `tests/integration/test_migration_pipeline.py` |
 | The staging contract this page extends | `docs/integration/HANDOFF.md` §4 and §5 |
 | Measured times of FOCUS's own steps | `docs/execution/PRODUCTION_SCALE.md`; `tools/time_pre_shift.py` |
-| Decisions named here | `docs/integration/DECISION_PLAYBOOK.md`: DEC-07, DEC-08, DEC-09, DEC-11, DEC-12, DEC-13, DEC-36, DEC-37 |
+| Decisions named here | `docs/execution/DECISIONS.md`: D-28, D-33, D-34. `docs/integration/DECISION_PLAYBOOK.md`: DEC-07, DEC-08, DEC-09, DEC-11, DEC-12, DEC-13, DEC-36, DEC-37 |

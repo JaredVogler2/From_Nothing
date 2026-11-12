@@ -25,12 +25,20 @@ And one more, older than D-33:
    a team is not marked down for causes outside its control.
 
 If your build does not do all seven, it is not finished, however well the data is wired. Points 5 and 6 are not met
-yet in full on the test machine. At 50 aircraft the task lists are ready 13.9 minutes after the data cut and the
-whole schedule after 26.9; with the pipeline's steps in four jobs (`FOCUS_JOBS=planner`, off as shipped) 9.8 and
-20.4. A team lead's task list opens in under a second once the web process has read ahead
+yet in full on the test machine. At 50 aircraft, with the pipeline's steps in four jobs as shipped
+(`FOCUS_JOBS=planner`), the task lists are ready 9.8 minutes after the data cut and the whole schedule after 20.4;
+with one job per role 13.9 and 26.9. A team lead's task list opens in under a second once the web process has read ahead
 (`FOCUS_WARM_SECONDS=30`); three fleet views still take 1 to 4 seconds the first time after a new plan.
 `FROM-NOTHING-APP/docs/execution/PRODUCTION_SCALE.md` has the measurement and
-`FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md`, DEC-36 and DEC-11, what is left.
+`FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md`, DEC-36, what is left.
+
+Two more things the owner decided on 2026-11-12 (D-34 in `FROM-NOTHING-APP/docs/execution/DECISIONS.md`):
+
+- **No person accepts a plan.** "once a schedule is produced that is what the mechanics and shop floor should use to
+  determine what jobs they work. They do not need to "accept" anything - the scheduler is the answer." A scheduled
+  run accepts its plan once the checks pass; a plan that fails a check is never accepted and the one before it stays.
+- **Every dataset is gathered, processed and staged at its own cadence**, not everything every shift.
+  `FROM-NOTHING-APP/docs/integration/DATA_CADENCE.md` lists every dataset and every schedule on one page.
 
 **Do not take questions to the owner that the repository answers.** Each open decision has a default and a rule in
 the decision playbook. Use the default, measure, and report. Ask the owner only what is marked OWNER there.
@@ -40,7 +48,7 @@ the decision playbook. Use the default, measure, and report. Ask the owner only 
 | # | Page | What you must be able to explain afterwards |
 | --- | --- | --- |
 | 1 | `FROM-NOTHING-APP/docs/integration/HANDOFF.md` | The data flow, one shift end to end, the staging contract, the pipeline jobs, and what counts toward the pre-shift window |
-| 2 | `FROM-NOTHING-APP/docs/integration/STAGING_PLAN.md` | What is copied from Teradata into SQL Server in which pass (nightly, before each shift, at the cut), how, and why only changed rows are pulled inside the 20 minutes |
+| 2 | `FROM-NOTHING-APP/docs/integration/STAGING_PLAN.md` | What is copied from Teradata into SQL Server in which pass (weekly, nightly, before each shift, at the cut), how, and why only changed rows are pulled inside the 20 minutes. `DATA_CADENCE.md` beside it is the one-page version |
 | 3 | `FROM-NOTHING-APP/docs/execution/OBJECTIVE_EXPLAINED.md` | The order in which two schedules are compared, how late-delivery cost is worked out, and how to tell whether the cost objective is working on your data |
 | 4 | `FROM-NOTHING-APP/docs/execution/SCORING_EXPLAINED.md` | How one team-shift is scored and graded, with the worked example |
 | 5 | `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md` | Which decisions are made, which are yours to take, and which need the owner |
