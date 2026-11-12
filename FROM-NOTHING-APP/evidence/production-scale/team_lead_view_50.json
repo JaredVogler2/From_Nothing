@@ -1,579 +1,799 @@
 {
- "what": "The team lead's view at 50 aircraft on the store of pre_shift_timing_50_after_d33.json: every team's first open and the same request again, in a web process that has read nothing and in one that has read ahead (focus.web.warm)",
+ "what": "The team lead's page at 50 aircraft on the store of pre_shift_timing_50_after_d33.json: every team's first open and the same request again, one web process per row",
  "label": "SYNTHETIC_FULLSCALE_FIXTURE (real readiness not established)",
- "cold": {
-  "mode": "cold",
-  "startup_seconds": 0.36,
-  "context_seconds": 0.67,
-  "teams": 34,
-  "parts_loaded_by_the_requests": 1667,
-  "team_lead_first_open_seconds": {
-   "median": 9.39,
-   "p90": 14.04,
-   "highest": 14.88,
-   "sum": 302.8
-  },
-  "team_lead_again_seconds": {
-   "median": 1.32,
-   "p90": 2.33,
-   "highest": 2.6
-  },
-  "statuses": [
-   200
-  ],
-  "first /api/v1/fleet": [
-   0.01,
-   200
-  ],
-  "first /api/v1/gantt": [
-   5.95,
-   200
-  ],
-  "first /api/v1/budget": [
-   2.05,
-   200
-  ],
-  "first /api/v1/quality": [
-   3.88,
-   200
-  ],
-  "first /api/v1/performance": [
-   0.01,
-   200
-  ],
-  "first /api/v1/commitments": [
-   0.03,
-   200
-  ],
-  "peak_memory_mb": 826
- },
- "after_read_ahead": {
-  "mode": "warm",
-  "startup_seconds": 0.26,
-  "read_ahead": {
-   "source_run_id": "SR-dc0b07fd226c4b91b027",
-   "plans": {
-    "EXECUTABLE": "PLAN4171ee46925bfcc2ae1f",
-    "FORECAST": "PLAN6fa8d49fc0a15148cfb5"
-   },
+ "before": {
+  "note": "the page's single request read all of the team's work and assessed every open job as a possible addition; part cache 192 MB",
+  "cold": {
+   "mode": "cold",
+   "startup_seconds": 0.36,
+   "context_seconds": 0.67,
    "teams": 34,
-   "teams_read": 3,
-   "status": "ok",
-   "days": [
-    "2026-10-26"
+   "parts_loaded_by_the_requests": 1667,
+   "team_lead_first_open_seconds": {
+    "median": 9.39,
+    "p90": 14.04,
+    "highest": 14.88,
+    "sum": 302.8
+   },
+   "team_lead_again_seconds": {
+    "median": 1.32,
+    "p90": 2.33,
+    "highest": 2.6
+   },
+   "statuses": [
+    200
    ],
-   "parts_read": 186,
-   "cache_mb": 186.8,
-   "cache_budget_mb": 192.0,
-   "seconds": 16.8
+   "first /api/v1/fleet": [
+    0.01,
+    200
+   ],
+   "first /api/v1/gantt": [
+    5.95,
+    200
+   ],
+   "first /api/v1/budget": [
+    2.05,
+    200
+   ],
+   "first /api/v1/quality": [
+    3.88,
+    200
+   ],
+   "first /api/v1/performance": [
+    0.01,
+    200
+   ],
+   "first /api/v1/commitments": [
+    0.03,
+    200
+   ],
+   "peak_memory_mb": 826
   },
-  "read_ahead_seconds": 16.8,
-  "context_seconds": 0.01,
-  "teams": 34,
-  "parts_loaded_by_the_requests": 1538,
-  "team_lead_first_open_seconds": {
-   "median": 9.5,
-   "p90": 13.69,
-   "highest": 14.85,
-   "sum": 291.7
-  },
-  "team_lead_again_seconds": {
-   "median": 0.99,
-   "p90": 1.93,
-   "highest": 2.47
-  },
-  "statuses": [
-   200
-  ],
-  "first /api/v1/fleet": [
-   0.01,
-   200
-  ],
-  "first /api/v1/gantt": [
-   6.08,
-   200
-  ],
-  "first /api/v1/budget": [
-   2.0,
-   200
-  ],
-  "first /api/v1/quality": [
-   4.23,
-   200
-  ],
-  "first /api/v1/performance": [
-   0.01,
-   200
-  ],
-  "first /api/v1/commitments": [
-   0.03,
-   200
-  ],
-  "peak_memory_mb": 828
+  "after_read_ahead": {
+   "mode": "warm",
+   "startup_seconds": 0.26,
+   "read_ahead": {
+    "source_run_id": "SR-dc0b07fd226c4b91b027",
+    "plans": {
+     "EXECUTABLE": "PLAN4171ee46925bfcc2ae1f",
+     "FORECAST": "PLAN6fa8d49fc0a15148cfb5"
+    },
+    "teams": 34,
+    "teams_read": 3,
+    "status": "ok",
+    "days": [
+     "2026-10-26"
+    ],
+    "parts_read": 186,
+    "cache_mb": 186.8,
+    "cache_budget_mb": 192.0,
+    "seconds": 16.8
+   },
+   "read_ahead_seconds": 16.8,
+   "context_seconds": 0.01,
+   "teams": 34,
+   "parts_loaded_by_the_requests": 1538,
+   "team_lead_first_open_seconds": {
+    "median": 9.5,
+    "p90": 13.69,
+    "highest": 14.85,
+    "sum": 291.7
+   },
+   "team_lead_again_seconds": {
+    "median": 0.99,
+    "p90": 1.93,
+    "highest": 2.47
+   },
+   "statuses": [
+    200
+   ],
+   "first /api/v1/fleet": [
+    0.01,
+    200
+   ],
+   "first /api/v1/gantt": [
+    6.08,
+    200
+   ],
+   "first /api/v1/budget": [
+    2.0,
+    200
+   ],
+   "first /api/v1/quality": [
+    4.23,
+    200
+   ],
+   "first /api/v1/performance": [
+    0.01,
+    200
+   ],
+   "first /api/v1/commitments": [
+    0.03,
+    200
+   ],
+   "peak_memory_mb": 828
+  }
  },
- "rows_cold": [
+ "after": {
+  "note": "the page's first request (proposals=0) reads only the aircraft the team is planned on in the shift; the proposals are a second request (full_form_with_proposals_first_six_teams); typed decoder with short paths",
+  "cold_cache_192": {
+   "mode": "cold",
+   "startup_seconds": 0.28,
+   "context_seconds": 0.48,
+   "teams": 34,
+   "parts_loaded_by_the_first_paints": 293,
+   "cache_mb_after_the_first_paints": 191.8,
+   "cache_budget_mb": 192.0,
+   "full_form_with_proposals_first_six_teams": [
+    {
+     "team": "QA",
+     "seconds": 3.13,
+     "kb": 3652.1,
+     "proposals": 9356
+    },
+    {
+     "team": "T01",
+     "seconds": 8.83,
+     "kb": 1427.2,
+     "proposals": 3902
+    },
+    {
+     "team": "T02",
+     "seconds": 6.48,
+     "kb": 1250.9,
+     "proposals": 3458
+    },
+    {
+     "team": "T03",
+     "seconds": 8.82,
+     "kb": 1758.3,
+     "proposals": 4720
+    },
+    {
+     "team": "T04",
+     "seconds": 8.37,
+     "kb": 1543.9,
+     "proposals": 4073
+    },
+    {
+     "team": "T05",
+     "seconds": 9.49,
+     "kb": 1726.8,
+     "proposals": 4689
+    }
+   ],
+   "team_lead_first_open_seconds": {
+    "median": 0.78,
+    "p90": 1.33,
+    "highest": 1.68,
+    "sum": 26.9
+   },
+   "team_lead_again_seconds": {
+    "median": 0.06,
+    "p90": 0.13,
+    "highest": 0.56
+   },
+   "statuses": [
+    200
+   ],
+   "first /api/v1/fleet": [
+    0.01,
+    200
+   ],
+   "first /api/v1/gantt": [
+    4.38,
+    200
+   ],
+   "first /api/v1/budget": [
+    0.81,
+    200
+   ],
+   "first /api/v1/quality": [
+    3.12,
+    200
+   ],
+   "first /api/v1/performance": [
+    0.01,
+    200
+   ],
+   "first /api/v1/commitments": [
+    0.04,
+    200
+   ],
+   "peak_memory_mb": 792
+  },
+  "after_read_ahead_cache_192": {
+   "mode": "warm",
+   "startup_seconds": 0.27,
+   "read_ahead": {
+    "source_run_id": "SR-dc0b07fd226c4b91b027",
+    "plans": {
+     "EXECUTABLE": "PLAN4171ee46925bfcc2ae1f",
+     "FORECAST": "PLAN6fa8d49fc0a15148cfb5"
+    },
+    "teams": 34,
+    "teams_read": 17,
+    "status": "ok",
+    "days": [
+     "2026-10-26"
+    ],
+    "shifts": [
+     "DEMO:2026-10-26:S1",
+     "DEMO:2026-10-26:S2",
+     "DEMO:2026-10-26:S3"
+    ],
+    "shifts_read": [],
+    "parts_read": 200,
+    "cache_mb": 170.4,
+    "cache_budget_mb": 192.0,
+    "seconds": 12.36
+   },
+   "read_ahead_seconds": 12.4,
+   "context_seconds": 0.01,
+   "teams": 34,
+   "parts_loaded_by_the_first_paints": 122,
+   "cache_mb_after_the_first_paints": 191.8,
+   "cache_budget_mb": 192.0,
+   "full_form_with_proposals_first_six_teams": [
+    {
+     "team": "QA",
+     "seconds": 3.18,
+     "kb": 3652.1,
+     "proposals": 9356
+    },
+    {
+     "team": "T01",
+     "seconds": 7.67,
+     "kb": 1427.2,
+     "proposals": 3902
+    },
+    {
+     "team": "T02",
+     "seconds": 5.65,
+     "kb": 1250.9,
+     "proposals": 3458
+    },
+    {
+     "team": "T03",
+     "seconds": 8.04,
+     "kb": 1758.3,
+     "proposals": 4720
+    },
+    {
+     "team": "T04",
+     "seconds": 8.12,
+     "kb": 1543.9,
+     "proposals": 4073
+    },
+    {
+     "team": "T05",
+     "seconds": 7.8,
+     "kb": 1726.8,
+     "proposals": 4689
+    }
+   ],
+   "team_lead_first_open_seconds": {
+    "median": 0.1,
+    "p90": 0.92,
+    "highest": 1.04,
+    "sum": 11.5
+   },
+   "team_lead_again_seconds": {
+    "median": 0.06,
+    "p90": 0.11,
+    "highest": 0.51
+   },
+   "statuses": [
+    200
+   ],
+   "first /api/v1/fleet": [
+    0.01,
+    200
+   ],
+   "first /api/v1/gantt": [
+    4.64,
+    200
+   ],
+   "first /api/v1/budget": [
+    1.49,
+    200
+   ],
+   "first /api/v1/quality": [
+    2.91,
+    200
+   ],
+   "first /api/v1/performance": [
+    0.01,
+    200
+   ],
+   "first /api/v1/commitments": [
+    0.03,
+    200
+   ],
+   "peak_memory_mb": 793
+  },
+  "after_read_ahead_cache_384": {
+   "mode": "warm",
+   "startup_seconds": 0.26,
+   "read_ahead": {
+    "source_run_id": "SR-dc0b07fd226c4b91b027",
+    "plans": {
+     "EXECUTABLE": "PLAN4171ee46925bfcc2ae1f",
+     "FORECAST": "PLAN6fa8d49fc0a15148cfb5"
+    },
+    "teams": 34,
+    "teams_read": 34,
+    "status": "ok",
+    "days": [
+     "2026-10-26"
+    ],
+    "shifts": [
+     "DEMO:2026-10-26:S1",
+     "DEMO:2026-10-26:S2",
+     "DEMO:2026-10-26:S3"
+    ],
+    "shifts_read": [
+     "DEMO:2026-10-26:S1"
+    ],
+    "parts_read": 341,
+    "cache_mb": 335.4,
+    "cache_budget_mb": 384.0,
+    "seconds": 22.84
+   },
+   "read_ahead_seconds": 22.8,
+   "context_seconds": 0.01,
+   "teams": 34,
+   "parts_loaded_by_the_first_paints": 0,
+   "cache_mb_after_the_first_paints": 335.4,
+   "cache_budget_mb": 384.0,
+   "full_form_with_proposals_first_six_teams": [
+    {
+     "team": "QA",
+     "seconds": 2.52,
+     "kb": 3652.1,
+     "proposals": 9356
+    },
+    {
+     "team": "T01",
+     "seconds": 6.53,
+     "kb": 1427.2,
+     "proposals": 3902
+    },
+    {
+     "team": "T02",
+     "seconds": 4.66,
+     "kb": 1250.9,
+     "proposals": 3458
+    },
+    {
+     "team": "T03",
+     "seconds": 8.72,
+     "kb": 1758.3,
+     "proposals": 4720
+    },
+    {
+     "team": "T04",
+     "seconds": 6.93,
+     "kb": 1543.9,
+     "proposals": 4073
+    },
+    {
+     "team": "T05",
+     "seconds": 6.99,
+     "kb": 1726.8,
+     "proposals": 4689
+    }
+   ],
+   "team_lead_first_open_seconds": {
+    "median": 0.06,
+    "p90": 0.09,
+    "highest": 0.69,
+    "sum": 2.7
+   },
+   "team_lead_again_seconds": {
+    "median": 0.06,
+    "p90": 0.1,
+    "highest": 0.66
+   },
+   "statuses": [
+    200
+   ],
+   "first /api/v1/fleet": [
+    0.01,
+    200
+   ],
+   "first /api/v1/gantt": [
+    4.49,
+    200
+   ],
+   "first /api/v1/budget": [
+    0.81,
+    200
+   ],
+   "first /api/v1/quality": [
+    3.38,
+    200
+   ],
+   "first /api/v1/performance": [
+    0.01,
+    200
+   ],
+   "first /api/v1/commitments": [
+    0.03,
+    200
+   ],
+   "peak_memory_mb": 1062
+  },
+  "after_read_ahead_cache_768": {
+   "mode": "warm",
+   "startup_seconds": 0.26,
+   "read_ahead": {
+    "source_run_id": "SR-dc0b07fd226c4b91b027",
+    "plans": {
+     "EXECUTABLE": "PLAN4171ee46925bfcc2ae1f",
+     "FORECAST": "PLAN6fa8d49fc0a15148cfb5"
+    },
+    "teams": 34,
+    "teams_read": 34,
+    "status": "ok",
+    "days": [
+     "2026-10-26"
+    ],
+    "shifts": [
+     "DEMO:2026-10-26:S1",
+     "DEMO:2026-10-26:S2",
+     "DEMO:2026-10-26:S3"
+    ],
+    "shifts_read": [
+     "DEMO:2026-10-26:S1",
+     "DEMO:2026-10-26:S2",
+     "DEMO:2026-10-26:S3"
+    ],
+    "parts_read": 578,
+    "cache_mb": 647.0,
+    "cache_budget_mb": 768.0,
+    "seconds": 49.68
+   },
+   "read_ahead_seconds": 49.7,
+   "context_seconds": 0.01,
+   "teams": 34,
+   "parts_loaded_by_the_first_paints": 0,
+   "cache_mb_after_the_first_paints": 647.0,
+   "cache_budget_mb": 768.0,
+   "full_form_with_proposals_first_six_teams": [
+    {
+     "team": "QA",
+     "seconds": 2.95,
+     "kb": 3652.1,
+     "proposals": 9356
+    },
+    {
+     "team": "T01",
+     "seconds": 5.07,
+     "kb": 1427.2,
+     "proposals": 3902
+    },
+    {
+     "team": "T02",
+     "seconds": 4.11,
+     "kb": 1250.9,
+     "proposals": 3458
+    },
+    {
+     "team": "T03",
+     "seconds": 6.08,
+     "kb": 1758.3,
+     "proposals": 4720
+    },
+    {
+     "team": "T04",
+     "seconds": 6.25,
+     "kb": 1543.9,
+     "proposals": 4073
+    },
+    {
+     "team": "T05",
+     "seconds": 6.34,
+     "kb": 1726.8,
+     "proposals": 4689
+    }
+   ],
+   "team_lead_first_open_seconds": {
+    "median": 0.07,
+    "p90": 0.11,
+    "highest": 1.18,
+    "sum": 3.3
+   },
+   "team_lead_again_seconds": {
+    "median": 0.06,
+    "p90": 0.1,
+    "highest": 0.11
+   },
+   "statuses": [
+    200
+   ],
+   "first /api/v1/fleet": [
+    0.01,
+    200
+   ],
+   "first /api/v1/gantt": [
+    1.58,
+    200
+   ],
+   "first /api/v1/budget": [
+    0.75,
+    200
+   ],
+   "first /api/v1/quality": [
+    2.15,
+    200
+   ],
+   "first /api/v1/performance": [
+    0.01,
+    200
+   ],
+   "first /api/v1/commitments": [
+    0.03,
+    200
+   ],
+   "peak_memory_mb": 1663
+  }
+ },
+ "rows_after_read_ahead_cache_384": [
   {
    "team": "QA",
-   "first_seconds": 4.12,
+   "first_seconds": 0.05,
    "status": 200,
-   "kb": 3652.1,
-   "again_seconds": 0.47
-  },
-  {
-   "team": "T01",
-   "first_seconds": 9.39,
-   "status": 200,
-   "kb": 1427.2,
-   "again_seconds": 0.98
-  },
-  {
-   "team": "T02",
-   "first_seconds": 6.3,
-   "status": 200,
-   "kb": 1250.9,
-   "again_seconds": 0.96
-  },
-  {
-   "team": "T03",
-   "first_seconds": 9.19,
-   "status": 200,
-   "kb": 1758.3,
-   "again_seconds": 1.41
-  },
-  {
-   "team": "T04",
-   "first_seconds": 8.77,
-   "status": 200,
-   "kb": 1543.9,
-   "again_seconds": 0.82
-  },
-  {
-   "team": "T05",
-   "first_seconds": 9.51,
-   "status": 200,
-   "kb": 1726.8,
-   "again_seconds": 1.68
-  },
-  {
-   "team": "T06",
-   "first_seconds": 6.34,
-   "status": 200,
-   "kb": 1225.4,
-   "again_seconds": 1.37
-  },
-  {
-   "team": "T07",
-   "first_seconds": 10.88,
-   "status": 200,
-   "kb": 1903.6,
-   "again_seconds": 1.1
-  },
-  {
-   "team": "T08",
-   "first_seconds": 8.91,
-   "status": 200,
-   "kb": 1455.0,
-   "again_seconds": 1.64
-  },
-  {
-   "team": "T09",
-   "first_seconds": 9.93,
-   "status": 200,
-   "kb": 1740.9,
-   "again_seconds": 1.76
-  },
-  {
-   "team": "T10",
-   "first_seconds": 9.05,
-   "status": 200,
-   "kb": 1664.4,
-   "again_seconds": 0.97
-  },
-  {
-   "team": "T11",
-   "first_seconds": 11.15,
-   "status": 200,
-   "kb": 1920.8,
-   "again_seconds": 1.14
-  },
-  {
-   "team": "T12",
-   "first_seconds": 12.53,
-   "status": 200,
-   "kb": 2228.5,
-   "again_seconds": 2.33
-  },
-  {
-   "team": "T13",
-   "first_seconds": 7.75,
-   "status": 200,
-   "kb": 1189.5,
-   "again_seconds": 0.72
-  },
-  {
-   "team": "T14",
-   "first_seconds": 6.35,
-   "status": 200,
-   "kb": 1042.7,
-   "again_seconds": 0.65
-  },
-  {
-   "team": "T15",
-   "first_seconds": 7.49,
-   "status": 200,
-   "kb": 1289.9,
-   "again_seconds": 1.63
-  },
-  {
-   "team": "T16",
-   "first_seconds": 11.7,
-   "status": 200,
-   "kb": 2045.9,
-   "again_seconds": 2.33
-  },
-  {
-   "team": "T17",
-   "first_seconds": 7.65,
-   "status": 200,
-   "kb": 1188.2,
-   "again_seconds": 0.86
-  },
-  {
-   "team": "T18",
-   "first_seconds": 10.21,
-   "status": 200,
-   "kb": 1620.1,
-   "again_seconds": 2.03
-  },
-  {
-   "team": "T19",
-   "first_seconds": 10.68,
-   "status": 200,
-   "kb": 1595.5,
-   "again_seconds": 1.18
-  },
-  {
-   "team": "T20",
-   "first_seconds": 6.87,
-   "status": 200,
-   "kb": 1022.2,
-   "again_seconds": 0.67
-  },
-  {
-   "team": "T21",
-   "first_seconds": 12.96,
-   "status": 200,
-   "kb": 2150.9,
-   "again_seconds": 1.33
-  },
-  {
-   "team": "T22",
-   "first_seconds": 14.04,
-   "status": 200,
-   "kb": 2284.6,
-   "again_seconds": 2.47
-  },
-  {
-   "team": "T23",
-   "first_seconds": 12.36,
-   "status": 200,
-   "kb": 1993.8,
-   "again_seconds": 2.19
-  },
-  {
-   "team": "T24",
-   "first_seconds": 14.88,
-   "status": 200,
-   "kb": 2365.4,
-   "again_seconds": 1.53
-  },
-  {
-   "team": "T25",
-   "first_seconds": 14.1,
-   "status": 200,
-   "kb": 1981.4,
-   "again_seconds": 1.32
-  },
-  {
-   "team": "T26",
-   "first_seconds": 8.18,
-   "status": 200,
-   "kb": 1326.5,
-   "again_seconds": 1.79
-  },
-  {
-   "team": "T27",
-   "first_seconds": 4.81,
-   "status": 200,
-   "kb": 853.6,
-   "again_seconds": 0.54
-  },
-  {
-   "team": "T28",
-   "first_seconds": 10.1,
-   "status": 200,
-   "kb": 1568.2,
-   "again_seconds": 1.08
-  },
-  {
-   "team": "T29",
-   "first_seconds": 14.39,
-   "status": 200,
-   "kb": 2175.1,
-   "again_seconds": 2.6
-  },
-  {
-   "team": "T30",
-   "first_seconds": 12.15,
-   "status": 200,
-   "kb": 2022.4,
-   "again_seconds": 1.37
-  },
-  {
-   "team": "MHE",
-   "first_seconds": 0.01,
-   "status": 200,
-   "kb": 0.9,
+   "kb": 13.4,
+   "actions": 15,
    "again_seconds": 0.02
   },
   {
-   "team": "PSC",
-   "first_seconds": 0.02,
-   "status": 200,
-   "kb": 0.9,
-   "again_seconds": 0.01
-  },
-  {
-   "team": "TST",
-   "first_seconds": 0.01,
-   "status": 200,
-   "kb": 0.9,
-   "again_seconds": 0.01
-  }
- ],
- "rows_after_read_ahead": [
-  {
-   "team": "QA",
-   "first_seconds": 0.37,
-   "status": 200,
-   "kb": 3652.1,
-   "again_seconds": 0.32
-  },
-  {
    "team": "T01",
-   "first_seconds": 2.66,
+   "first_seconds": 0.03,
    "status": 200,
-   "kb": 1427.2,
-   "again_seconds": 0.64
+   "kb": 77.7,
+   "actions": 92,
+   "again_seconds": 0.62
   },
   {
    "team": "T02",
-   "first_seconds": 6.55,
+   "first_seconds": 0.08,
    "status": 200,
-   "kb": 1250.9,
-   "again_seconds": 0.77
+   "kb": 73.6,
+   "actions": 89,
+   "again_seconds": 0.05
   },
   {
    "team": "T03",
-   "first_seconds": 9.69,
+   "first_seconds": 0.06,
    "status": 200,
-   "kb": 1758.3,
-   "again_seconds": 1.58
+   "kb": 94.3,
+   "actions": 110,
+   "again_seconds": 0.06
   },
   {
    "team": "T04",
-   "first_seconds": 8.92,
+   "first_seconds": 0.06,
    "status": 200,
-   "kb": 1543.9,
-   "again_seconds": 0.93
+   "kb": 87.2,
+   "actions": 104,
+   "again_seconds": 0.06
   },
   {
    "team": "T05",
-   "first_seconds": 9.5,
+   "first_seconds": 0.07,
    "status": 200,
-   "kb": 1726.8,
-   "again_seconds": 0.95
+   "kb": 105.2,
+   "actions": 124,
+   "again_seconds": 0.06
   },
   {
    "team": "T06",
-   "first_seconds": 7.22,
+   "first_seconds": 0.06,
    "status": 200,
-   "kb": 1225.4,
-   "again_seconds": 0.67
+   "kb": 71.0,
+   "actions": 82,
+   "again_seconds": 0.05
   },
   {
    "team": "T07",
-   "first_seconds": 10.36,
+   "first_seconds": 0.08,
    "status": 200,
-   "kb": 1903.6,
-   "again_seconds": 1.75
+   "kb": 99.5,
+   "actions": 118,
+   "again_seconds": 0.07
   },
   {
    "team": "T08",
-   "first_seconds": 8.73,
+   "first_seconds": 0.05,
    "status": 200,
-   "kb": 1455.0,
-   "again_seconds": 0.93
+   "kb": 75.9,
+   "actions": 90,
+   "again_seconds": 0.04
   },
   {
    "team": "T09",
-   "first_seconds": 9.6,
+   "first_seconds": 0.11,
    "status": 200,
-   "kb": 1740.9,
-   "again_seconds": 0.99
+   "kb": 100.3,
+   "actions": 119,
+   "again_seconds": 0.11
   },
   {
    "team": "T10",
-   "first_seconds": 9.09,
+   "first_seconds": 0.05,
    "status": 200,
-   "kb": 1664.4,
-   "again_seconds": 1.88
+   "kb": 90.7,
+   "actions": 108,
+   "again_seconds": 0.05
   },
   {
    "team": "T11",
-   "first_seconds": 10.39,
+   "first_seconds": 0.05,
    "status": 200,
-   "kb": 1920.8,
-   "again_seconds": 1.93
+   "kb": 108.2,
+   "actions": 127,
+   "again_seconds": 0.05
   },
   {
    "team": "T12",
-   "first_seconds": 12.58,
+   "first_seconds": 0.09,
    "status": 200,
-   "kb": 2228.5,
-   "again_seconds": 1.44
+   "kb": 119.0,
+   "actions": 140,
+   "again_seconds": 0.09
   },
   {
    "team": "T13",
-   "first_seconds": 6.99,
+   "first_seconds": 0.05,
    "status": 200,
-   "kb": 1189.5,
-   "again_seconds": 1.57
+   "kb": 69.5,
+   "actions": 82,
+   "again_seconds": 0.04
   },
   {
    "team": "T14",
-   "first_seconds": 6.53,
+   "first_seconds": 0.06,
    "status": 200,
-   "kb": 1042.7,
-   "again_seconds": 0.64
+   "kb": 58.2,
+   "actions": 68,
+   "again_seconds": 0.06
   },
   {
    "team": "T15",
-   "first_seconds": 7.33,
+   "first_seconds": 0.04,
    "status": 200,
-   "kb": 1289.9,
-   "again_seconds": 0.79
+   "kb": 73.5,
+   "actions": 84,
+   "again_seconds": 0.03
   },
   {
    "team": "T16",
-   "first_seconds": 12.38,
+   "first_seconds": 0.69,
    "status": 200,
-   "kb": 2045.9,
-   "again_seconds": 2.31
+   "kb": 118.1,
+   "actions": 143,
+   "again_seconds": 0.1
   },
   {
    "team": "T17",
-   "first_seconds": 7.35,
+   "first_seconds": 0.08,
    "status": 200,
-   "kb": 1188.2,
-   "again_seconds": 0.73
+   "kb": 69.9,
+   "actions": 82,
+   "again_seconds": 0.07
   },
   {
    "team": "T18",
-   "first_seconds": 9.53,
+   "first_seconds": 0.09,
    "status": 200,
-   "kb": 1620.1,
-   "again_seconds": 0.95
+   "kb": 86.7,
+   "actions": 102,
+   "again_seconds": 0.08
   },
   {
    "team": "T19",
-   "first_seconds": 10.24,
+   "first_seconds": 0.08,
    "status": 200,
-   "kb": 1595.5,
-   "again_seconds": 1.09
+   "kb": 93.0,
+   "actions": 109,
+   "again_seconds": 0.07
   },
   {
    "team": "T20",
-   "first_seconds": 6.28,
+   "first_seconds": 0.04,
    "status": 200,
-   "kb": 1022.2,
-   "again_seconds": 0.64
+   "kb": 55.1,
+   "actions": 64,
+   "again_seconds": 0.03
   },
   {
    "team": "T21",
-   "first_seconds": 12.81,
+   "first_seconds": 0.08,
    "status": 200,
-   "kb": 2150.9,
-   "again_seconds": 1.33
+   "kb": 123.4,
+   "actions": 146,
+   "again_seconds": 0.07
   },
   {
    "team": "T22",
-   "first_seconds": 14.68,
+   "first_seconds": 0.09,
    "status": 200,
-   "kb": 2284.6,
-   "again_seconds": 1.51
+   "kb": 113.9,
+   "actions": 132,
+   "again_seconds": 0.09
   },
   {
    "team": "T23",
-   "first_seconds": 12.77,
+   "first_seconds": 0.07,
    "status": 200,
-   "kb": 1993.8,
-   "again_seconds": 1.33
+   "kb": 110.8,
+   "actions": 129,
+   "again_seconds": 0.06
   },
   {
    "team": "T24",
-   "first_seconds": 14.56,
+   "first_seconds": 0.05,
    "status": 200,
-   "kb": 2365.4,
-   "again_seconds": 1.57
+   "kb": 132.4,
+   "actions": 152,
+   "again_seconds": 0.05
   },
   {
    "team": "T25",
-   "first_seconds": 13.69,
+   "first_seconds": 0.07,
    "status": 200,
-   "kb": 1981.4,
-   "again_seconds": 2.42
+   "kb": 107.9,
+   "actions": 124,
+   "again_seconds": 0.07
   },
   {
    "team": "T26",
-   "first_seconds": 8.22,
+   "first_seconds": 0.05,
    "status": 200,
-   "kb": 1326.5,
-   "again_seconds": 0.89
+   "kb": 79.1,
+   "actions": 93,
+   "again_seconds": 0.05
   },
   {
    "team": "T27",
-   "first_seconds": 5.54,
+   "first_seconds": 0.06,
    "status": 200,
-   "kb": 853.6,
-   "again_seconds": 0.57
+   "kb": 54.5,
+   "actions": 64,
+   "again_seconds": 0.06
   },
   {
    "team": "T28",
-   "first_seconds": 10.5,
+   "first_seconds": 0.06,
    "status": 200,
-   "kb": 1568.2,
-   "again_seconds": 1.07
+   "kb": 92.9,
+   "actions": 109,
+   "again_seconds": 0.05
   },
   {
    "team": "T29",
-   "first_seconds": 14.85,
+   "first_seconds": 0.1,
    "status": 200,
-   "kb": 2175.1,
-   "again_seconds": 2.47
+   "kb": 115.1,
+   "actions": 134,
+   "again_seconds": 0.66
   },
   {
    "team": "T30",
-   "first_seconds": 11.77,
+   "first_seconds": 0.09,
    "status": 200,
-   "kb": 2022.4,
-   "again_seconds": 1.26
+   "kb": 114.5,
+   "actions": 137,
+   "again_seconds": 0.09
   },
   {
    "team": "MHE",
    "first_seconds": 0.01,
    "status": 200,
    "kb": 0.9,
+   "actions": 0,
    "again_seconds": 0.01
   },
   {
@@ -581,6 +801,7 @@
    "first_seconds": 0.01,
    "status": 200,
    "kb": 0.9,
+   "actions": 0,
    "again_seconds": 0.01
   },
   {
@@ -588,6 +809,7 @@
    "first_seconds": 0.01,
    "status": 200,
    "kb": 0.9,
+   "actions": 0,
    "again_seconds": 0.01
   }
  ]

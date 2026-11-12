@@ -93,7 +93,7 @@ A slice exposes exactly what it loaded. Reading anything else raises `NotInSlice
 partial collection for the whole fleet.
 
 Verified parts are kept in an LRU keyed by their hash and bounded by their stored bytes (`FOCUS_DISPLAY_CACHE_MB`,
-default 192). The goal registry is built from the signed summaries and the `goals:<date>` parts
+default 384). The goal registry is built from the signed summaries and the `goals:<date>` parts
 (`GoalRegistry.from_display`), with no artifact decoded.
 
 **Labels from the plan's own snapshot.** Phases and jobs that come with a plan part are the plan snapshot's records.
@@ -245,9 +245,29 @@ teams.
 | team lead, first request for a team | 6 to 18 s | up to 3.9 MB |
 | team lead, again | 2.4 s | |
 
-**The team lead view.** Its first request for a team loads that team's work on every aircraft (about 80 MB stored),
-because its emergency-addition proposals cover every open phase of the team (6,053 for T21). Later requests reuse the
-cached parts.
+**The team lead view** is asked for in two requests (D-33: the task list opens at once).
+
+- *The first paint* (`GET /api/v1/team-lead?...&proposals=0`) gives the ranked actions, the counts and the goal. It
+  reads the team's plan team-day, then the team's work only on the aircraft it is planned on in that shift (about
+  7 MB stored at 50 aircraft) and those aircraft's graphs. `data.proposals_deferred` says whether additions are open.
+- *The proposals* (the same request without `proposals=0`, which is also the API's default form) assess every open
+  job of the team on every aircraft as a possible addition (3,500 to 9,400 for a team at 50 aircraft). That needs the
+  team's work on every aircraft, 60 to 90 MB stored, and takes 3 to 9 seconds the first time. The page asks for it
+  after the task list is on the screen.
+- The two forms give the same actions, counts, goal and reasons
+  (`test_the_first_paint_gives_the_same_task_list_goal_and_counts_as_the_full_form`). One difference is possible: a
+  commitment on an aircraft the first paint does not read is counted under the team its work had in the plan's own
+  snapshot, where the full form uses the current one.
+- `web.warm` reads ahead what the first paints need, for every team, the shift about to start first.
+
+Measured at 50 aircraft (`evidence/production-scale/team_lead_view_50.json`):
+
+| | A team's first open | The same again |
+| --- | --- | --- |
+| Before: one request with the proposals | median 9.4 s, slowest 14.9 s | median 1.3 s |
+| First paint, nothing read ahead | median 0.8 s, slowest 1.7 s | median 0.06 s |
+| First paint after reading ahead, part cache 384 MB (all 34 teams, one shift, 23 s of reading) | median 0.06 s, slowest 0.7 s | median 0.06 s |
+| First paint after reading ahead, part cache 192 MB (17 of 34 teams) | median 0.1 s, slowest 1.0 s | median 0.06 s |
 
 **The part cache.** `FOCUS_DISPLAY_CACHE_MB` trades memory for reloads: Python objects take about three to four times
 their stored JSON.

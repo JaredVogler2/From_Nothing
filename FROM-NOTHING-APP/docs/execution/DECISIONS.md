@@ -552,10 +552,11 @@ attendance. A conditional ETA is never physical receipt.
       `docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow after D-33", has the measurement, and
       `DECISION_PLAYBOOK.md`, DEC-36 the options left. The pull from SQL Server, each job's start and the
       acceptances come on top.
-    - *The application opening at once* (point 6). At 50 aircraft the views that need no parameter open in under a
-      second, three of them in 2 to 4 seconds the first time. The team lead's view takes a median of 9.4 seconds for
-      a team's first open and 1.3 seconds after that, and reading ahead covers only 3 of 34 teams before its memory
-      budget is full (`PRODUCTION_SCALE.md`, "The application at 50 aircraft").
+    - *The application opening at once* (point 6) is met for the task lists on the test store and not for three
+      fleet views. At 50 aircraft, with the read-ahead on, every team lead's task list opens in under a tenth of a
+      second at the median and 0.7 seconds at the slowest (first measured: 9.4 and 14.9 seconds; the page now asks
+      for the task list first and for the addition proposals after it). The budget, quality and Gantt views still
+      take 1 to 4 seconds the first time after a new plan (`PRODUCTION_SCALE.md`, "The application at 50 aircraft").
     - *Cost comparison of near-term work* (point 2). The order of the work crews do in the coming days comes from
       the cost-of-delay dispatch: each aircraft's daily rate, reduced by the slack of the job. The improvement search
       compares whole schedules by cost, but it can only do that in the delivery plan, where every aircraft has a

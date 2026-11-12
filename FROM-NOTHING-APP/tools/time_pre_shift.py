@@ -10,7 +10,8 @@
    network and no SQL Server, only the client's cost of receiving that many rows.
 3. the pipeline roles of one pipeline key: ``source`` (acquire, admit), ``app`` (schedule, validate), ``stager``
    (stage_readback), ``signer`` (sign_accept), then the forecast's ``app``, ``stager`` and ``signer``.
-4. ``views`` (with ``--views``): a web process opens the dashboard's read operations against the store.
+4. ``views`` (with ``--views``): a web process opens the dashboard's read operations against the store. A second web
+   process reads ahead (``focus.web.warm``) and then asks for every team lead's task list: the page's first request.
 5. with ``--repair``: the same admitted data scheduled again in ``repair`` mode, which keeps the plan just accepted
    wherever it still holds, with its independent validation. Nothing changed between the two, so this is a repair's
    best case; ``docs/execution/PLAN_REPAIR.md`` has it on a shift's changed data. Staging and signing a repaired plan
@@ -394,6 +395,46 @@ def views(work: Path, persona: str) -> dict[str, Any]:
     return out
 
 
+def team_pages(work: Path, persona: str) -> dict[str, Any]:
+    """A web process reads ahead, then asks for every team lead's task list (the page's first request), twice."""
+    started = time.perf_counter()
+    from focus.display.store import PART_CACHE
+    from focus.web import warm
+    from focus.web.app import create_app
+
+    services = services_for(work)
+    app = create_app(services=services)
+    app.config["TESTING"] = True
+    client = app.test_client()
+    began = time.perf_counter()
+    read_ahead = warm.warm(services)
+    read_ahead_seconds = time.perf_counter() - began
+    client.post("/auth/demo-login", json={"persona": persona})
+    teams = list(client.get("/api/v1/context").get_json()["data"]["choices"]["teams"])
+    loads = PART_CACHE.loads
+    rows = []
+    for team in teams:
+        row: dict[str, Any] = {"team": team}
+        for attempt in ("first", "again"):
+            began = time.perf_counter()
+            response = client.get(f"/api/v1/team-lead?team={team}&proposals=0")
+            row[f"{attempt}_seconds"] = round(time.perf_counter() - began, 2)
+            row["status"], row["kb"] = response.status_code, round(len(response.get_data()) / 1024, 1)
+            row["actions"] = len((response.get_json().get("data") or {}).get("actions", []))
+        rows.append(row)
+
+    def spread(key: str) -> dict[str, float]:
+        values = sorted(r[key] for r in rows) or [0.0]
+        return {"median": values[len(values) // 2], "p90": values[min(len(values) - 1, int(0.9 * len(values)))], "slowest": values[-1]}
+    out = {"persona": persona, "teams": len(teams), "read_ahead": read_ahead, "read_ahead_seconds": round(read_ahead_seconds, 1),
+           "cache_budget_mb": round(PART_CACHE.budget / 1e6, 1), "parts_read_by_the_requests": PART_CACHE.loads - loads,
+           "task_list_first_seconds": spread("first_seconds"), "task_list_again_seconds": spread("again_seconds"),
+           "statuses": sorted({r["status"] for r in rows}), "process_seconds": round(time.perf_counter() - started, 1),
+           "peak_memory_mb": peak_mb(), "rows": rows}
+    (work / "timing" / "team_pages.json").write_text(json.dumps(out, indent=1, default=str))
+    return out
+
+
 # ---------------------------------------------------------------------------------------------- the whole flow
 
 FAST_EXIT = True                                                  # jobs end as the pipeline draft's live jobs do
@@ -430,6 +471,7 @@ def run(work: Path, aircraft: int, fleet_seed: int | None, planning: str, with_r
     wall.update(pipeline(work, "shift-1", planning, "first", forecast))
     if with_views:
         wall["views"] = child(work, "views", str(work))
+        wall["team_pages"] = child(work, "team-pages", str(work))
     if with_repair:
         wall["repair.executable"] = child(work, "repair", str(work), "shift-1", "EXECUTABLE", "--label", "repair.executable")
         if forecast:
@@ -552,6 +594,9 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
     if seen:
         out["dashboard"] = {"web_start_seconds": seen["startup_seconds"], "peak_memory_mb": seen["peak_memory_mb"],
                             "operations": [o for o in seen["operations"] if o["status"] == 200]}
+    pages = load("team_pages")
+    if pages:
+        out.setdefault("dashboard", {})["team_lead_task_lists"] = {k: v for k, v in pages.items() if k != "rows"}
     (timing / "report.json").write_text(json.dumps(out, indent=1))
     if receipt is not None:
         keep = ("role", "planning", "purpose", "startup_seconds", "role_seconds", "schedule_seconds", "validate_seconds", "process_seconds",
@@ -573,6 +618,9 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
         print(f"\nrepair {purpose}: {item['seconds']:.0f} s; {item['planning']}")
         for a in item["actions"]:
             print(f"  {a['seconds']:8.1f}  {a['action']}")
+    if pages:
+        print(f"\nteam lead task lists, {pages['teams']} teams, after {pages['read_ahead_seconds']:.0f} s of reading ahead "
+              f"({pages['read_ahead'].get('teams_read')} teams covered): first {pages['task_list_first_seconds']}, again {pages['task_list_again_seconds']}")
     print(f"\nwindow (the four executable-plan jobs): {out['window_seconds']} s; forecast jobs: {out['forecast_seconds']} s; "
           f"local pull of {out['source_rows']} rows: {out['local_pull_seconds']} s")
     return out
@@ -611,6 +659,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("views")
     p.add_argument("work")
     p.add_argument("--persona", default="manager")
+    p = sub.add_parser("team-pages")
+    p.add_argument("work")
+    p.add_argument("--persona", default="manager")
     p = sub.add_parser("report")
     p.add_argument("work")
     p.add_argument("--out", default=None, help="also write the report and the jobs' timers to this file")
@@ -629,6 +680,8 @@ def main(argv: list[str] | None = None) -> int:
         out = role(work, args.key, args.role, args.planning, args.label or f"{args.key}.{args.role}")
     elif args.command == "repair":
         out = repair(work, args.key, args.purpose, args.label or f"repair.{args.purpose.lower()}")
+    elif args.command == "team-pages":
+        out = team_pages(work, args.persona)
     elif args.command == "report":
         report(work, Path(args.out).resolve() if args.out else None)
         return 0

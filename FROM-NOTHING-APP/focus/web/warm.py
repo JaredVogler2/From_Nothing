@@ -6,13 +6,18 @@ parts it needs: seconds at 50 aircraft. ``warm`` does that reading before anyone
 
 1. the verified snapshot manifest and each plan head's signed display receipt, which every view needs;
 2. the goals of record, which the team views and the scores read;
-3. for every team, what its lead's view reads for the days the shift plan covers: the team's work, its pools, its plan
-   team-days, the dependency graphs of the aircraft it is planned on those days (the dispatch rule walks them), and the
-   plan's commitments.
+3. the plan's commitments, and every team's plan team-days and pools for the days the shift plan covers;
+4. what each team lead's first paint reads (``serializers.team_lead`` with ``proposals=False``): the team's work on
+   the aircraft it is planned on in a shift, and those aircraft's dependency graphs (the dispatch rule walks them).
+   The shift about to start is read for every team first, then the next shift, and so on.
+
+A team's work on every aircraft is not read ahead: only the addition proposals need it, the page asks for those after
+the task list is shown, and at 50 aircraft it is 60 to 90 MB a team against about 7 MB for a shift.
 
 It stops when the part cache is nearly full, so it never pushes out what it has just loaded; whatever is left is read
-on first use, as before. It changes nothing a request sees: the same verified loaders fill the same caches, and a part
-that does not verify is not shown whether it was read ahead or not.
+on first use, as before. ``FOCUS_DISPLAY_CACHE_MB`` sizes that cache (``docs/execution/DEPLOYMENT.md``). It changes
+nothing a request sees: the same verified loaders fill the same caches, and a part that does not verify is not shown
+whether it was read ahead or not.
 
 ``start`` runs it on a background thread when the process starts and again whenever a head moves (a newly admitted run
 or a newly accepted plan). It is off unless ``FOCUS_WARM_SECONDS`` gives the seconds between checks.
@@ -62,19 +67,42 @@ def warm(services: Any, *, share: float = SHARE) -> dict[str, Any]:
         teams = sorted(planned) + sorted(pooled - planned)          # the teams with work in the plan first
         canon.commitments("EXECUTABLE")
         limit = share * PART_CACHE.budget
-        read = 0
+        slices: dict[str, tuple[Any, dict[str, set[int]]]] = {}       # team -> its canon, and its aircraft per shift
         for team in teams:
-            if PART_CACHE.size >= limit:
-                break
-            mine = canon.work([team]).pools([team], days).team_days("EXECUTABLE", [team], days)
+            mine = canon.team_days("EXECUTABLE", [team], days).pools([team], days)
             plan = mine.plan("EXECUTABLE")
-            for line in sorted({a.line for a in plan.assignments} if plan is not None and plan.loaded("assignments") else ()):
-                canon.graph(line)
-            read += 1
-        out.update(status="ok", days=[day.isoformat() for day in days], teams=len(teams), teams_read=read)
+            lines: dict[str, set[int]] = {}
+            for a in (plan.assignments if plan is not None and plan.loaded("assignments") else ()):
+                lines.setdefault(a.shift_id, set()).add(a.line)
+            slices[team] = (mine, lines)
+        shifts = sorted({shift_id for _, lines in slices.values() for shift_id in lines}, key=_shift_order)
+        read: dict[str, int] = {}
+        for shift_id in shifts:                                    # the shift about to start for every team, then the next
+            read[shift_id] = 0
+            for team in teams:
+                if PART_CACHE.size >= limit:
+                    break
+                mine, lines = slices[team]
+                wanted_lines = sorted(lines.get(shift_id, ()))
+                mine.work([team], wanted_lines)
+                for line in wanted_lines:
+                    canon.graph(line)
+                read[shift_id] += 1
+            if read[shift_id] < len(teams):
+                break
+        first = shifts[0] if shifts else None
+        out.update(status="ok", days=[day.isoformat() for day in days], teams=len(teams),
+                   teams_read=len(teams) if first is None else read[first], shifts=shifts,
+                   shifts_read=[shift_id for shift_id in shifts if read.get(shift_id) == len(teams)])
     out.update(parts_read=PART_CACHE.loads - loads_before, cache_mb=round(PART_CACHE.size / 1e6, 1),
                cache_budget_mb=round(PART_CACHE.budget / 1e6, 1), seconds=round(time.perf_counter() - began, 2))
     return out
+
+
+def _shift_order(shift_id: str) -> tuple[str, int]:
+    """A shift id's place in time: its production day, then its number (``SITE:YYYY-MM-DD:S2``)."""
+    _, day, label = shift_id.rsplit(":", 2)
+    return day, int(label[1:])
 
 
 class Warmer:

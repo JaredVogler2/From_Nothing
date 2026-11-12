@@ -377,11 +377,21 @@ above, one web process):
 | The 37 views that need no parameter | budget 4.4 s, quality 3.3 s, Gantt 1.6 s, every other under 1 s | every one under 0.6 s |
 | The team lead's view, each of 34 teams | median 9.4 s, slowest 14.9 s | median 1.3 s, slowest 2.6 s |
 
-- **The team lead's view does not open at once.** A team's first open reads and decodes the team's work on each of
-  the 50 aircraft and the aircraft's dependency graphs (about 100 display parts for one team), assesses every open
-  job of the team as a possible addition (4,720 for one team) and sends 1.8 MB.
-- **Reading ahead does not cover it at this size.** `web.warm` stopped after 3 of the 34 teams: their parts fill the
-  part cache (192 MB). The other teams' first opens took as long as in a cold process (median 9.5 s).
+- **As first measured, the team lead's view did not open at once** (the table above). A team's first open read and
+  decoded the team's work on each of the 50 aircraft and the aircraft's dependency graphs (about 100 display parts
+  for one team), assessed every open job of the team as a possible addition (4,720 for one team) and sent 1.8 MB. And
+  `web.warm` stopped after 3 of the 34 teams: their parts filled the part cache (192 MB).
+- **Since then the page asks in two requests.** The first gives the task list from only the aircraft the team is
+  planned on in the shift; the proposals follow (`DISPLAY_PACKAGE.md`, "The team lead view"). On the same store:
+
+  | The task list, each of 34 teams | First open | The same again |
+  | --- | --- | --- |
+  | Nothing read ahead | median 0.8 s, slowest 1.7 s | median 0.06 s, slowest 0.6 s |
+  | After reading ahead, part cache 384 MB (the default now) | median 0.06 s, slowest 0.7 s | median 0.06 s |
+
+  Reading ahead took 23 seconds and covered every team for the shift about to start; no request then read a part. The
+  process peaked at 1.1 GB. The proposals, asked for after the task list is shown, take 3 to 9 seconds the first
+  time.
 
 ## What changed in the native-core trial
 

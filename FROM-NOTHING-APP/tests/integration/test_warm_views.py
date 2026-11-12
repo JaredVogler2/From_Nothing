@@ -1,12 +1,15 @@
-"""Reading ahead in the web process (D-33: the application opens at once at shift start, with the task lists).
+"""The team lead's first paint and reading ahead (D-33: the application opens at once at shift start, with the task lists).
 
-The first request for a view after a new plan pays for reading and decoding its display parts. ``web.warm`` reads what
-the team lead views need before anyone asks, into the same caches through the same verified loaders.
+The team lead's page first asks for its task list without the addition proposals (``proposals=0``). That form reads
+only the aircraft the team is planned on in the shift, and gives the same actions, goal and counts as the full form.
+``web.warm`` reads what those first requests need before anyone asks, into the same caches through the same verified
+loaders, the shift about to start first.
 """
 from __future__ import annotations
 
 import pytest
 
+import focus.display.view as V
 from focus.display.store import PART_CACHE
 from focus.web import warm as W
 from focus.web.app import create_app
@@ -29,15 +32,89 @@ def test_reading_ahead_loads_what_the_team_lead_views_read(world) -> None:
     assert result["status"] == "ok" and result["source_run_id"] == run.id and result["plans"] == plans
     assert result["teams"] >= 2 and result["teams_read"] == result["teams"] and result["parts_read"] > 0 and result["days"]
     assert 0 < result["cache_mb"] <= result["cache_budget_mb"]
+    assert result["shifts"] and result["shifts_read"] == result["shifts"]            # every shift the plan's day has work in
     client = _client(w)
     context = client.get("/api/v1/context").get_json()["data"]["choices"]
     before = PART_CACHE.loads
     for team in context["teams"]:
-        response = client.get(f"/api/v1/team-lead?team={team}")
-        assert response.status_code == 200, response.get_data(as_text=True)[:300]
-    assert PART_CACHE.loads == before                              # every part those views read was already there
+        for shift in (1, 2, 3):
+            response = client.get(f"/api/v1/team-lead?team={team}&shift={shift}&proposals=0")
+            assert response.status_code == 200, response.get_data(as_text=True)[:300]
+    assert PART_CACHE.loads == before                              # every part those first paints read was already there
     again = W.warm(w.services)
     assert again["parts_read"] == 0 and again["teams_read"] == again["teams"]       # nothing is read twice
+
+
+def _loads(monkeypatch) -> list[str]:
+    """The names of the parts read from the store from now on (a part already in the cache is not read)."""
+    names: list[str] = []
+    real = V.load_part
+
+    def spy(repos, ref):
+        if PART_CACHE.get(ref.sha256) is None:
+            names.append(ref.name)
+        return real(repos, ref)
+    monkeypatch.setattr(V, "load_part", spy)
+    return names
+
+
+def _both_forms(client, team: str, shift: int) -> tuple[dict, dict]:
+    full = client.get(f"/api/v1/team-lead?team={team}&shift={shift}").get_json()
+    first = client.get(f"/api/v1/team-lead?team={team}&shift={shift}&proposals=0").get_json()
+    return full, first
+
+
+def test_the_first_paint_gives_the_same_task_list_goal_and_counts_as_the_full_form(world, monkeypatch) -> None:
+    from datetime import UTC, datetime
+
+    from focus.performance import actuals
+
+    client = _client(world)
+    teams = client.get("/api/v1/context").get_json()["data"]["choices"]["teams"]
+    seen = {"actions": 0, "deferred": 0, "proposals": 0}
+    for inside_the_shift in (False, True):
+        if inside_the_shift:                                      # shift 1 of the fixture day runs 10:00 to 18:30 UTC
+            monkeypatch.setattr(actuals, "knowledge_time", lambda services, at=None: datetime(2026, 10, 26, 12, 0, tzinfo=UTC))
+        for team in teams:
+            for shift in (1, 2, 3):
+                full, first = _both_forms(client, team, shift)
+                assert {k: v for k, v in first.items() if k != "data"} == {k: v for k, v in full.items() if k != "data"}
+                d, f = full["data"], dict(first["data"])
+                deferred = f.pop("proposals_deferred")
+                assert f.pop("proposals") == []
+                assert f == {k: v for k, v in d.items() if k != "proposals"}       # actions, counts, goal, reasons, outcomes
+                assert "proposals_deferred" not in d
+                # additions are open exactly when the full form assesses them: inside the shift, with a goal of record
+                assert deferred == (d["goal"] is not None and not d["proposal_reasons"])
+                assert deferred or d["proposals"] == []
+                seen["actions"] += len(d["actions"])
+                seen["deferred"] += deferred
+                seen["proposals"] += len(d["proposals"])
+    assert seen["actions"] >= 20 and seen["deferred"] >= 2 and seen["proposals"] >= 2, seen
+
+
+def test_the_first_paint_reads_only_the_aircraft_the_team_is_planned_on_in_the_shift(world, monkeypatch) -> None:
+    client = _client(world)
+    names = _loads(monkeypatch)
+    first = client.get("/api/v1/team-lead?team=PROD-A&shift=1&proposals=0").get_json()["data"]
+    planned = {a["line"] for a in first["actions"]}
+    read = [n for n in names if n.startswith(("work:", "graph:"))]
+    assert planned and sorted(read) == sorted([f"work:PROD-A:{line}" for line in planned] + [f"graph:{line}" for line in planned])
+    names.clear()
+    client.get("/api/v1/team-lead?team=PROD-A&shift=1")
+    more = {int(n.split(":")[2]) for n in names if n.startswith("work:PROD-A:")}
+    assert more and not more & planned                       # the full form goes on to the team's other aircraft
+    names.clear()
+    assert client.get("/api/v1/team-lead?team=PROD-A&shift=2&proposals=0").get_json()["data"]["actions"] == []
+    assert not [n for n in names if n.startswith(("work:", "graph:"))]            # no work planned in that shift: nothing to read
+
+
+def test_the_proposals_switch_is_a_checked_query_parameter(world) -> None:
+    client = _client(world)
+    assert client.get("/api/v1/team-lead?team=PROD-A&proposals=1").get_json()["data"].get("proposals_deferred") is None
+    for bad in ("2", "-1", "yes"):
+        response = client.get(f"/api/v1/team-lead?team=PROD-A&proposals={bad}")
+        assert response.status_code == 400, (bad, response.status_code)
 
 
 def test_reading_ahead_gives_the_same_answers_as_a_cold_process(world) -> None:
