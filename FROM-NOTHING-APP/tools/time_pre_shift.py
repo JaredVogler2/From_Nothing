@@ -504,7 +504,8 @@ def report(work: Path, receipt: Path | None = None) -> dict[str, Any]:
         raw = {f.stem: {k: v for k, v in json.loads(f.read_text()).items() if k in keep}
                for f in sorted(timing.glob("*.json")) if f.stem.split(".")[0] in ("first", "repair")}
         receipt.write_text(json.dumps({"tool": "tools/time_pre_shift.py", "label": "SYNTHETIC_FULLSCALE_FIXTURE (real readiness not established)",
-                                       "process_wall_seconds": wall, "report": out, "jobs": raw}, indent=1) + "\n")
+                                       "process_wall_seconds": wall, **({"notes": run_doc["notes"]} if run_doc.get("notes") else {}),
+                                       "report": out, "jobs": raw}, indent=1) + "\n")
     for title, job in out["jobs"].items():
         print(f"\n{title}: {job['seconds']:.0f} s ({job['seconds'] / 60:.1f} min), peak {job['peak_memory_mb']} MB, wrote {job['written_mb']} MB")
         for a in job["actions"]:

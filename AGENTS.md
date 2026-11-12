@@ -25,7 +25,9 @@ And one more, older than D-33:
    a team is not marked down for causes outside its control.
 
 If your build does not do all seven, it is not finished, however well the data is wired. Points 5 and 6 are not met
-yet on the test machine: `FROM-NOTHING-APP/docs/execution/PRODUCTION_SCALE.md` has the measurement and
+yet on the test machine. At 50 aircraft the task lists are ready 16.1 minutes after the data cut, the whole
+schedule after 31.6, and a team lead's page takes about 9 seconds to open the first time.
+`FROM-NOTHING-APP/docs/execution/PRODUCTION_SCALE.md` has the measurement and
 `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md`, DEC-36 and DEC-11, what is left.
 
 **Do not take questions to the owner that the repository answers.** Each open decision has a default and a rule in

@@ -179,19 +179,22 @@ def hint_leads(ctx: EngineContext, hints: Mapping[str, "DefendedTask"], defended
     and is placed at its floor whenever it is dispatched, so dispatching it with the kept slots displaces nothing. Work
     that books a crew is never led here: it keeps its ordinary priority."""
     leads: dict[str, int] = {}
-    stack = [(pid, hint.start) for pid, hint in hints.items()]
-    while stack:
-        pid, start = stack.pop()
-        for e in ctx.preds.get(pid, ()):
-            pred = e.pred_phase
-            phase = ctx.phases.get(pred)
-            if phase is None or pred in hints or pred in defended:
-                continue
-            if phase.kind is not PhaseKind.RELEASE and phase.role_demands:
-                continue
-            if leads.get(pred, start + 1) > start:
+    preds, phases = ctx.preds, ctx.phases
+    # Kept slots are taken earliest first, so the first time a crewless phase is reached is from the earliest slot it
+    # precedes: every phase and every edge is visited once. (Taken in any order, a phase many slots wait for is lowered
+    # again and again and its chain re-walked each time: two minutes for a 50-aircraft delivery plan.)
+    for start, pid in sorted((hint.start, pid) for pid, hint in hints.items()):
+        stack = [pid]
+        while stack:
+            for e in preds.get(stack.pop(), ()):
+                pred = e.pred_phase
+                if pred in leads or pred in hints or pred in defended:
+                    continue
+                phase = phases.get(pred)
+                if phase is None or (phase.kind is not PhaseKind.RELEASE and phase.role_demands):
+                    continue
                 leads[pred] = start
-                stack.append((pred, start))
+                stack.append(pred)
     return leads
 
 

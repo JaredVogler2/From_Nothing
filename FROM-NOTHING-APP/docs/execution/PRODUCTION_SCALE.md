@@ -310,8 +310,74 @@ both plans were solved in full.
 - **The six snapshot loads are a third of the flow** (203 of 609 seconds). Options (g), (h) and (i) of
   `DECISION_PLAYBOOK.md`, DEC-36 are about them.
 
-**At 50 aircraft the flow has not been timed again yet.** Until it is, the 50-aircraft figures in this document are
-those of the first measurement above, which the changes shorten but do not bring inside 20 minutes for both plans.
+**Re-measured at 50 aircraft** (November 11 and 12, 2026) with the same command as the first measurement, on the
+same machine: 1,216,781 source rows, each role in its own process. The receipt is
+`evidence/production-scale/pre_shift_timing_50_after_d33.json`.
+
+*A first run on an empty store,* so both plans were solved in full:
+
+| Job | Before | Now | Of which, now |
+| --- | --- | --- | --- |
+| source: `acquire`, `admit` | 341 | 294 | rows read 10, raw rows kept 25, snapshot built 72, stored 61, its dashboard parts 105 |
+| app: `schedule`, `validate` | 375 | 309 | snapshot loaded 107, working data 21, scheduler 139, candidate 20, FINAL validation 19 |
+| stager: `stage_readback` | 325 | 214 | snapshot loaded 104, candidate read 11, serialized 16, decode and DETACHED validation 66 |
+| signer: `sign_accept` | 350 | 240 | snapshot loaded 110, candidate read 11, serialized 17, READBACK validation 74, dashboard parts 9, acceptance 8 |
+| **Data cut to the accepted shift plan** | **1,392** (23.2 min) | **1,057** (17.6 min) | |
+| app: `forecast` | 612 | 420 | snapshot loaded 112, working data 21, scheduler 204, candidate 46, FINAL validation 36 |
+| stager: `forecast_stage_readback` | 493 | 291 | snapshot loaded 106, candidate read 31, decode and DETACHED validation 105 |
+| signer: `forecast_sign_accept` | 520 | 328 | snapshot loaded 107, candidate read 31, READBACK validation 115, dashboard parts 20, acceptance 15 |
+| **Shift plan accepted to the accepted delivery plan** | **1,626** (27.1 min) | **1,040** (17.3 min) | |
+| **The whole schedule** | **3,018** (50.3 min) | **2,097** (35.0 min) | |
+
+Peak memory was 9.0 GB in the source job, 7.5 to 8.2 GB in the shift plan's jobs and 7.9 to 10.4 GB in the delivery
+plan's. The store received 8.2 GB for the snapshot and the shift plan and 2.7 GB for the delivery plan.
+
+*A run after the first repairs* (the same admitted data scheduled again in repair mode, so nothing had changed: a
+repair's best case; `PLAN_REPAIR.md` has repairs on changed data):
+
+| Scheduling job | Full solve | Repair | The scheduler in it | Slots kept |
+| --- | --- | --- | --- | --- |
+| shift plan | 309 | 220 | 32 (139 in full) | all 14,038 beyond the commitments |
+| delivery plan | 420 | 308 | 68 (204 in full) | all 123,011: the shift plan's and its own previous plan's |
+
+- **With repairs, the data cut to the accepted shift plan is 968 seconds (16.1 minutes),** and the delivery plan's
+  three jobs take 927 more (15.5 minutes): **31.6 minutes for the whole schedule.** Staging and signing a repaired
+  plan cost what they cost for the first.
+- **The first report of this measurement had the delivery plan's repair at 407 seconds.** A profile found 120 of them
+  in one new function, which worked out the job releases that kept slots wait for by walking the same chains again
+  for every slot (`greedy.hint_leads`). It now takes the slots earliest first and visits each phase once. The two
+  repairs were measured again; the seven jobs of the first run were not.
+- **Where the 31.6 minutes go:**
+
+  | Action, over the seven jobs of a repairing run | Seconds | Share |
+  | --- | --- | --- |
+  | Loading the admitted snapshot from the store, once in each of the six jobs after the first | 642 | 34% |
+  | Validations: FINAL (25 and 39), DETACHED with its decode (66 and 105), READBACK with its decode (74 and 115) | 424 | 22% |
+  | The source job: snapshot built 72, stored 61, its dashboard parts 105, raw rows 25, the rest 31 | 294 | 16% |
+  | The candidates: built and stored in the scheduling jobs (29 and 70), read again by stager and signer (84), serialized (54) | 237 | 13% |
+  | The scheduler (32 and 68) and its working data (21 and 21) | 142 | 7% |
+  | Stage written and read back, plan dashboard parts, signing, acceptance, process starts and the rest | 155 | 8% |
+
+  The scheduler is 100 seconds of 1,895. Reading stored JSON back into objects (the snapshot six times, each plan
+  four times) is about half.
+- **The 20 minutes are met for the task lists and not for the whole schedule.** The shift plan and its dashboard
+  data are accepted 16.1 minutes after the data cut (17.6 on a first run); the delivery plan, with the dates and the
+  late cost, 15.5 minutes later. The pull from SQL Server, each job's start on a runner and the acceptances come on
+  top (`DECISION_PLAYBOOK.md`, DEC-36).
+
+**The application at 50 aircraft** (`evidence/production-scale/team_lead_view_50.json`; the store of the measurement
+above, one web process):
+
+| Request | First after a start | The same again |
+| --- | --- | --- |
+| The 37 views that need no parameter | budget 4.4 s, quality 3.3 s, Gantt 1.6 s, every other under 1 s | every one under 0.6 s |
+| The team lead's view, each of 34 teams | median 9.4 s, slowest 14.9 s | median 1.3 s, slowest 2.6 s |
+
+- **The team lead's view does not open at once.** A team's first open reads and decodes the team's work on each of
+  the 50 aircraft and the aircraft's dependency graphs (about 100 display parts for one team), assesses every open
+  job of the team as a possible addition (4,720 for one team) and sends 1.8 MB.
+- **Reading ahead does not cover it at this size.** `web.warm` stopped after 3 of the 34 teams: their parts fill the
+  part cache (192 MB). The other teams' first opens took as long as in a cold process (median 9.5 s).
 
 ## What changed in the native-core trial
 

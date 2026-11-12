@@ -156,3 +156,64 @@ def test_a_release_that_a_kept_slot_waits_for_is_dispatched_with_the_kept_slots(
     assert "new-work" not in leads              # work that books a crew keeps its ordinary priority
     assert hint_leads(ctx, {"b-work": hints["b-work"]}, {"a-work": hints["a-work"]}) == {"a-release": 400}
     assert hint_leads(ctx, {}, {}) == {}
+
+
+def _leads_by_fixed_point(ctx, hints, defended) -> dict[str, int]:
+    """The definition, taken in any order: lower a crewless phase's lead until nothing changes."""
+    leads: dict[str, int] = {}
+    stack = [(pid, hint.start) for pid, hint in hints.items()]
+    while stack:
+        pid, start = stack.pop()
+        for e in ctx.preds.get(pid, ()):
+            pred = e.pred_phase
+            phase = ctx.phases.get(pred)
+            if phase is None or pred in hints or pred in defended:
+                continue
+            if phase.kind is not PhaseKind.RELEASE and phase.role_demands:
+                continue
+            if leads.get(pred, start + 1) > start:
+                leads[pred] = start
+                stack.append((pred, start))
+    return leads
+
+
+def test_release_leads_are_the_earliest_slot_each_release_precedes_on_any_network() -> None:
+    """The leads are computed in one pass, earliest kept slot first. On random networks, with chains of releases, gates
+    many slots wait for, missing phases and defended work, that pass gives exactly what the definition gives."""
+    import random
+
+    for seed in range(40):
+        rng = random.Random(seed)
+        names = [f"n{i}" for i in range(rng.randint(5, 70))]
+        phases = {n: _phase(PhaseKind.RELEASE, False) if rng.random() < 0.45 else
+                  _phase(PhaseKind.WORK, rng.random() < 0.8) for n in names}
+        preds = {n: [_edge(rng.choice(names[:i] + ["gone"])) for _ in range(rng.randint(0, 4))] for i, n in enumerate(names) if i}
+        ctx = SimpleNamespace(phases=phases, preds=preds)
+        crewed = [n for n in names if phases[n].role_demands]
+        rng.shuffle(crewed)
+        cut = rng.randint(0, len(crewed))
+        hints = {n: _hint(n, rng.randint(0, 30) * 10) for n in crewed[:cut]}
+        defended = {n: _hint(n, rng.randint(0, 30) * 10) for n in crewed[cut:cut + rng.randint(0, 5)]}
+        assert hint_leads(ctx, hints, defended) == _leads_by_fixed_point(ctx, hints, defended), seed
+
+
+def test_release_leads_visit_a_gate_once_however_many_slots_wait_for_it() -> None:
+    """A gate that thousands of kept slots wait for, behind a long chain of releases: one walk of the chain, not one per
+    slot. (The first version walked it again for every slot that lowered the lead.)"""
+    width, depth = 3000, 300
+    phases = {f"w{i}": _phase(PhaseKind.WORK, True) for i in range(width)}
+    phases.update({f"r{i}": _phase(PhaseKind.RELEASE, False) for i in range(depth)})
+    walked = {"edges": 0}
+
+    class Counted(dict):
+        def get(self, key, default=None):
+            found = super().get(key, default)
+            walked["edges"] += len(found)
+            return found
+
+    preds = Counted({f"w{i}": [_edge("r0")] for i in range(width)})
+    preds.update({f"r{i}": [_edge(f"r{i + 1}")] for i in range(depth - 1)})
+    hints = {f"w{i}": _hint(f"w{i}", 10 * (width - i)) for i in range(width)}          # handed over latest first
+    leads = hint_leads(SimpleNamespace(phases=phases, preds=preds), hints, {})
+    assert leads == {f"r{i}": 10 for i in range(depth)}
+    assert walked["edges"] <= width + depth

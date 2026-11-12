@@ -169,7 +169,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
 | DEC-34 | How long the nightly full solve may improve a plan, and what its search may reorder | DATA | pre-shift runs do not search; the nightly run takes its budget from the schedule's variables | after two weeks of nightly runs on real data |
 | DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
-| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | four of nine options built (D-33); the delivery plan is not inside 20 minutes yet | before the first live pre-shift run |
+| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | four of nine options built (D-33); at 50 aircraft the shift plan takes 16.1 minutes and the whole schedule 31.6 | before the first live pre-shift run |
 | DEC-37 | When the pass at the cut fails: plan on the earlier copy, or stop | OWNER | stop: the previous plan stays | before the first live pre-shift run |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
@@ -876,12 +876,25 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   here (4.4 s and under 0.1 s; the scheduler's working data 18 s). The pull is where it helps: load the slowly
   changing tables before the cut (DEC-08). A complete digest of the unchanged part of the data before the cut, with
   only the changes applied at the cut, would cut the 70 s snapshot build; it is not built.
-- **Where it stands.** `PRODUCTION_SCALE.md`, "The pre-shift flow after D-33", has the timing after (b), (d), (e)
-  and (f) at 10 aircraft. At 50 aircraft it has not been timed again; by the first measurement's own figures those
-  four leave the shift plan at about 15 to 16 minutes and the delivery plan at about as much again.
-- **Next:** (g), then (c), then (h) or a runner with more cores and memory, on which the delivery plan's jobs can
-  overlap the shift plan's. Measure each with `python tools/time_pre_shift.py` before and after; the candidate's id
-  and hash must not change.
+- **Where it stands** after (b), (d), (e) and (f), measured at 50 aircraft (`PRODUCTION_SCALE.md`, "The pre-shift
+  flow after D-33"):
+
+  | | First measured | Now, first run (full solves) | Now, a repairing run |
+  | --- | --- | --- | --- |
+  | Data cut to the accepted shift plan | 23.2 min | 17.6 min | 16.1 min |
+  | Then to the accepted delivery plan | 27.1 min | 17.3 min | 15.5 min |
+  | The whole schedule | 50.3 min | 35.0 min | 31.6 min |
+
+  The task lists are inside the 20 minutes on this machine and the whole schedule is not. Of the 31.6 minutes, 10.7
+  are six loads of the snapshot, 7.1 are validations (more than half of that is decoding the serialized plan again) and
+  1.7 are the scheduler.
+- **Next:** (i) first, because reading stored JSON back into objects is about half of the flow and a faster decoder
+  shortens every job without changing what any job does; then (h); then (g) and (c); or a runner with more cores
+  and memory, on which the delivery plan's jobs can overlap the shift plan's. Measure each with
+  `python tools/time_pre_shift.py` before and after; the candidate's id and hash must not change.
+- **Profile before trusting a figure.** The first report of the 50-aircraft measurement had the delivery plan's
+  repair at 407 seconds; 120 of them were one new function walking the same chains again for every kept slot
+  (`greedy.hint_leads`, fixed). A sampled profile of one job found it in minutes.
 - **Decision rule.** The window is met when the 95th percentile of `window.schedule_minutes` over a week of live runs
   is 20 or less, with the pull and both acceptances in it. Until then report `window.minutes` (the task lists) and
   `window.schedule_minutes` (the whole schedule) with every run.

@@ -170,8 +170,14 @@ be ready to go within 20 minutes"):
     times is 6.7, and the snapshot's dashboard parts are 2.3.
   - The delivery plan's three jobs took another 27.1 minutes.
   - Since then (D-33): each validation is computed once per plan, every pre-shift run repairs, the `validate` step
-    takes the solve's receipt and jobs end without teardown. `PRODUCTION_SCALE.md`, "The pre-shift flow after
-    D-33", has what is measured since, and `DECISION_PLAYBOOK.md`, DEC-36 what is left.
+    takes the solve's receipt and jobs end without teardown.
+- **Measured again on 2026-11-12, same fleet and machine: 16.1 minutes to the accepted shift plan in a repairing
+  run** (17.6 on a first run, which solves in full), **and 15.5 more to the accepted delivery plan: 31.6 minutes for
+  the whole schedule.** The task lists fit the 20 minutes there; the dates and the late cost do not yet.
+  - Six loads of the snapshot are 10.7 of the 31.6 minutes, validations 7.1 and the scheduler 1.7
+    (`PRODUCTION_SCALE.md`, "The pre-shift flow after D-33"; `DECISION_PLAYBOOK.md`, DEC-36 has what is left).
+  - Your runner is not that machine. Run `python tools/time_pre_shift.py run WORKDIR --aircraft 50 --repair` on it
+    once, and keep `window` from every live run.
 - **A plan accepted after its shift starts** is only a proposal for that shift. The previous plan stays the goal of
   record, and the late plan becomes the next shift's. The calibration measured what late plans cost the teams: the
   95th-percentile shortfall doubled.

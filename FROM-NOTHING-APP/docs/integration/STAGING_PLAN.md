@@ -48,7 +48,7 @@ The clock starts at the cut, which is the `--as-of` instant the loader is given,
 | --- | --- | --- |
 | The pass at the cut (Teradata change pulls, load, publish) | 2:00 | This page |
 | `verify_staged_sources` (schema check) | 0:30 | Reads metadata only |
-| FOCUS: `acquire_admit`, `schedule_validate`, `stage_readback`, `sign_accept`, then the delivery plan's three jobs (D-33) | 13:30 | First measured at 23.2 minutes to the shift plan and 27.1 more to the delivery plan; `docs/execution/PRODUCTION_SCALE.md` has the timing since, `DECISION_PLAYBOOK.md`, DEC-36 what is left |
+| FOCUS: `acquire_admit`, `schedule_validate`, `stage_readback`, `sign_accept`, then the delivery plan's three jobs (D-33) | 13:30 | Measured at 50 aircraft on the test machine: 16.1 minutes to the accepted shift plan in a repairing run and 15.5 more to the delivery plan (first measured: 23.2 and 27.1). The task lists fit this budget line only with the options left in `DECISION_PLAYBOOK.md`, DEC-36; the whole schedule does not fit yet (`docs/execution/PRODUCTION_SCALE.md`) |
 | Each job starting on a runner, and the acceptance | 3:00 | Five jobs; use a prebuilt image and automatic acceptance (DEC-11) |
 | Margin | 1:00 | |
 

@@ -162,6 +162,13 @@ repacks everything beyond the three defended days. So:
   schedule variable `FOCUS_PLANNING=full`). It is where the improvement search runs, and it records the drift;
 - its plans are accepted like any other and are what the next pre-shift run repairs.
 
+What repairing before every shift costs, on a 10-aircraft fleet over four days against a full solve before the first
+shift of each day (`PS10 (cadence)` in the evidence index): the delivery plan's late cost stayed within 0.2% either
+way, no aircraft's planned finish moved from one run to the next (17 of 108 moved with the daily full solve), the
+task lists were as similar from run to run (92%), and planning took about 80 seconds a shift where the full-solve
+shifts took 150 to 190. One fleet and four days: the nightly run's `planning.drift` is the measure to keep on real
+data.
+
 ## The drift check
 
 On each full solve a pipeline runs with an accepted plan (the nightly one, or an `auto` run that had to fall back),

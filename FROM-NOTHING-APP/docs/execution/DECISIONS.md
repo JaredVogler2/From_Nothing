@@ -546,9 +546,16 @@ attendance. A conditional ETA is never physical receipt.
       and its dashboard data, `schedule_minutes` to the accepted delivery plan, and `within_budget` about both.
       This changes D-28, which ended the clock at the shift plan.
   - **Not met yet.**
-    - *The 20 minutes* (point 5). First measured at 50 aircraft: 23.2 minutes to the accepted shift plan and 27.1
-      more to the accepted delivery plan. The changes above shorten both; `docs/execution/PRODUCTION_SCALE.md`, "The
-      pre-shift flow after D-33", has what is measured since, and `DECISION_PLAYBOOK.md`, DEC-36 the options left.
+    - *The 20 minutes* (point 5) are met for the task lists and not for the whole schedule. At 50 aircraft on the
+      test machine, a repairing run takes 16.1 minutes from the data cut to the accepted shift plan and its
+      dashboard data, and 15.5 more to the accepted delivery plan: 31.6 minutes (first measured: 23.2 and 27.1).
+      `docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow after D-33", has the measurement, and
+      `DECISION_PLAYBOOK.md`, DEC-36 the options left. The pull from SQL Server, each job's start and the
+      acceptances come on top.
+    - *The application opening at once* (point 6). At 50 aircraft the views that need no parameter open in under a
+      second, three of them in 2 to 4 seconds the first time. The team lead's view takes a median of 9.4 seconds for
+      a team's first open and 1.3 seconds after that, and reading ahead covers only 3 of 34 teams before its memory
+      budget is full (`PRODUCTION_SCALE.md`, "The application at 50 aircraft").
     - *Cost comparison of near-term work* (point 2). The order of the work crews do in the coming days comes from
       the cost-of-delay dispatch: each aircraft's daily rate, reduced by the slack of the job. The improvement search
       compares whole schedules by cost, but it can only do that in the delivery plan, where every aircraft has a

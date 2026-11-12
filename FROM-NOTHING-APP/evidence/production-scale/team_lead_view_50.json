@@ -1,0 +1,594 @@
+{
+ "what": "The team lead's view at 50 aircraft on the store of pre_shift_timing_50_after_d33.json: every team's first open and the same request again, in a web process that has read nothing and in one that has read ahead (focus.web.warm)",
+ "label": "SYNTHETIC_FULLSCALE_FIXTURE (real readiness not established)",
+ "cold": {
+  "mode": "cold",
+  "startup_seconds": 0.36,
+  "context_seconds": 0.67,
+  "teams": 34,
+  "parts_loaded_by_the_requests": 1667,
+  "team_lead_first_open_seconds": {
+   "median": 9.39,
+   "p90": 14.04,
+   "highest": 14.88,
+   "sum": 302.8
+  },
+  "team_lead_again_seconds": {
+   "median": 1.32,
+   "p90": 2.33,
+   "highest": 2.6
+  },
+  "statuses": [
+   200
+  ],
+  "first /api/v1/fleet": [
+   0.01,
+   200
+  ],
+  "first /api/v1/gantt": [
+   5.95,
+   200
+  ],
+  "first /api/v1/budget": [
+   2.05,
+   200
+  ],
+  "first /api/v1/quality": [
+   3.88,
+   200
+  ],
+  "first /api/v1/performance": [
+   0.01,
+   200
+  ],
+  "first /api/v1/commitments": [
+   0.03,
+   200
+  ],
+  "peak_memory_mb": 826
+ },
+ "after_read_ahead": {
+  "mode": "warm",
+  "startup_seconds": 0.26,
+  "read_ahead": {
+   "source_run_id": "SR-dc0b07fd226c4b91b027",
+   "plans": {
+    "EXECUTABLE": "PLAN4171ee46925bfcc2ae1f",
+    "FORECAST": "PLAN6fa8d49fc0a15148cfb5"
+   },
+   "teams": 34,
+   "teams_read": 3,
+   "status": "ok",
+   "days": [
+    "2026-10-26"
+   ],
+   "parts_read": 186,
+   "cache_mb": 186.8,
+   "cache_budget_mb": 192.0,
+   "seconds": 16.8
+  },
+  "read_ahead_seconds": 16.8,
+  "context_seconds": 0.01,
+  "teams": 34,
+  "parts_loaded_by_the_requests": 1538,
+  "team_lead_first_open_seconds": {
+   "median": 9.5,
+   "p90": 13.69,
+   "highest": 14.85,
+   "sum": 291.7
+  },
+  "team_lead_again_seconds": {
+   "median": 0.99,
+   "p90": 1.93,
+   "highest": 2.47
+  },
+  "statuses": [
+   200
+  ],
+  "first /api/v1/fleet": [
+   0.01,
+   200
+  ],
+  "first /api/v1/gantt": [
+   6.08,
+   200
+  ],
+  "first /api/v1/budget": [
+   2.0,
+   200
+  ],
+  "first /api/v1/quality": [
+   4.23,
+   200
+  ],
+  "first /api/v1/performance": [
+   0.01,
+   200
+  ],
+  "first /api/v1/commitments": [
+   0.03,
+   200
+  ],
+  "peak_memory_mb": 828
+ },
+ "rows_cold": [
+  {
+   "team": "QA",
+   "first_seconds": 4.12,
+   "status": 200,
+   "kb": 3652.1,
+   "again_seconds": 0.47
+  },
+  {
+   "team": "T01",
+   "first_seconds": 9.39,
+   "status": 200,
+   "kb": 1427.2,
+   "again_seconds": 0.98
+  },
+  {
+   "team": "T02",
+   "first_seconds": 6.3,
+   "status": 200,
+   "kb": 1250.9,
+   "again_seconds": 0.96
+  },
+  {
+   "team": "T03",
+   "first_seconds": 9.19,
+   "status": 200,
+   "kb": 1758.3,
+   "again_seconds": 1.41
+  },
+  {
+   "team": "T04",
+   "first_seconds": 8.77,
+   "status": 200,
+   "kb": 1543.9,
+   "again_seconds": 0.82
+  },
+  {
+   "team": "T05",
+   "first_seconds": 9.51,
+   "status": 200,
+   "kb": 1726.8,
+   "again_seconds": 1.68
+  },
+  {
+   "team": "T06",
+   "first_seconds": 6.34,
+   "status": 200,
+   "kb": 1225.4,
+   "again_seconds": 1.37
+  },
+  {
+   "team": "T07",
+   "first_seconds": 10.88,
+   "status": 200,
+   "kb": 1903.6,
+   "again_seconds": 1.1
+  },
+  {
+   "team": "T08",
+   "first_seconds": 8.91,
+   "status": 200,
+   "kb": 1455.0,
+   "again_seconds": 1.64
+  },
+  {
+   "team": "T09",
+   "first_seconds": 9.93,
+   "status": 200,
+   "kb": 1740.9,
+   "again_seconds": 1.76
+  },
+  {
+   "team": "T10",
+   "first_seconds": 9.05,
+   "status": 200,
+   "kb": 1664.4,
+   "again_seconds": 0.97
+  },
+  {
+   "team": "T11",
+   "first_seconds": 11.15,
+   "status": 200,
+   "kb": 1920.8,
+   "again_seconds": 1.14
+  },
+  {
+   "team": "T12",
+   "first_seconds": 12.53,
+   "status": 200,
+   "kb": 2228.5,
+   "again_seconds": 2.33
+  },
+  {
+   "team": "T13",
+   "first_seconds": 7.75,
+   "status": 200,
+   "kb": 1189.5,
+   "again_seconds": 0.72
+  },
+  {
+   "team": "T14",
+   "first_seconds": 6.35,
+   "status": 200,
+   "kb": 1042.7,
+   "again_seconds": 0.65
+  },
+  {
+   "team": "T15",
+   "first_seconds": 7.49,
+   "status": 200,
+   "kb": 1289.9,
+   "again_seconds": 1.63
+  },
+  {
+   "team": "T16",
+   "first_seconds": 11.7,
+   "status": 200,
+   "kb": 2045.9,
+   "again_seconds": 2.33
+  },
+  {
+   "team": "T17",
+   "first_seconds": 7.65,
+   "status": 200,
+   "kb": 1188.2,
+   "again_seconds": 0.86
+  },
+  {
+   "team": "T18",
+   "first_seconds": 10.21,
+   "status": 200,
+   "kb": 1620.1,
+   "again_seconds": 2.03
+  },
+  {
+   "team": "T19",
+   "first_seconds": 10.68,
+   "status": 200,
+   "kb": 1595.5,
+   "again_seconds": 1.18
+  },
+  {
+   "team": "T20",
+   "first_seconds": 6.87,
+   "status": 200,
+   "kb": 1022.2,
+   "again_seconds": 0.67
+  },
+  {
+   "team": "T21",
+   "first_seconds": 12.96,
+   "status": 200,
+   "kb": 2150.9,
+   "again_seconds": 1.33
+  },
+  {
+   "team": "T22",
+   "first_seconds": 14.04,
+   "status": 200,
+   "kb": 2284.6,
+   "again_seconds": 2.47
+  },
+  {
+   "team": "T23",
+   "first_seconds": 12.36,
+   "status": 200,
+   "kb": 1993.8,
+   "again_seconds": 2.19
+  },
+  {
+   "team": "T24",
+   "first_seconds": 14.88,
+   "status": 200,
+   "kb": 2365.4,
+   "again_seconds": 1.53
+  },
+  {
+   "team": "T25",
+   "first_seconds": 14.1,
+   "status": 200,
+   "kb": 1981.4,
+   "again_seconds": 1.32
+  },
+  {
+   "team": "T26",
+   "first_seconds": 8.18,
+   "status": 200,
+   "kb": 1326.5,
+   "again_seconds": 1.79
+  },
+  {
+   "team": "T27",
+   "first_seconds": 4.81,
+   "status": 200,
+   "kb": 853.6,
+   "again_seconds": 0.54
+  },
+  {
+   "team": "T28",
+   "first_seconds": 10.1,
+   "status": 200,
+   "kb": 1568.2,
+   "again_seconds": 1.08
+  },
+  {
+   "team": "T29",
+   "first_seconds": 14.39,
+   "status": 200,
+   "kb": 2175.1,
+   "again_seconds": 2.6
+  },
+  {
+   "team": "T30",
+   "first_seconds": 12.15,
+   "status": 200,
+   "kb": 2022.4,
+   "again_seconds": 1.37
+  },
+  {
+   "team": "MHE",
+   "first_seconds": 0.01,
+   "status": 200,
+   "kb": 0.9,
+   "again_seconds": 0.02
+  },
+  {
+   "team": "PSC",
+   "first_seconds": 0.02,
+   "status": 200,
+   "kb": 0.9,
+   "again_seconds": 0.01
+  },
+  {
+   "team": "TST",
+   "first_seconds": 0.01,
+   "status": 200,
+   "kb": 0.9,
+   "again_seconds": 0.01
+  }
+ ],
+ "rows_after_read_ahead": [
+  {
+   "team": "QA",
+   "first_seconds": 0.37,
+   "status": 200,
+   "kb": 3652.1,
+   "again_seconds": 0.32
+  },
+  {
+   "team": "T01",
+   "first_seconds": 2.66,
+   "status": 200,
+   "kb": 1427.2,
+   "again_seconds": 0.64
+  },
+  {
+   "team": "T02",
+   "first_seconds": 6.55,
+   "status": 200,
+   "kb": 1250.9,
+   "again_seconds": 0.77
+  },
+  {
+   "team": "T03",
+   "first_seconds": 9.69,
+   "status": 200,
+   "kb": 1758.3,
+   "again_seconds": 1.58
+  },
+  {
+   "team": "T04",
+   "first_seconds": 8.92,
+   "status": 200,
+   "kb": 1543.9,
+   "again_seconds": 0.93
+  },
+  {
+   "team": "T05",
+   "first_seconds": 9.5,
+   "status": 200,
+   "kb": 1726.8,
+   "again_seconds": 0.95
+  },
+  {
+   "team": "T06",
+   "first_seconds": 7.22,
+   "status": 200,
+   "kb": 1225.4,
+   "again_seconds": 0.67
+  },
+  {
+   "team": "T07",
+   "first_seconds": 10.36,
+   "status": 200,
+   "kb": 1903.6,
+   "again_seconds": 1.75
+  },
+  {
+   "team": "T08",
+   "first_seconds": 8.73,
+   "status": 200,
+   "kb": 1455.0,
+   "again_seconds": 0.93
+  },
+  {
+   "team": "T09",
+   "first_seconds": 9.6,
+   "status": 200,
+   "kb": 1740.9,
+   "again_seconds": 0.99
+  },
+  {
+   "team": "T10",
+   "first_seconds": 9.09,
+   "status": 200,
+   "kb": 1664.4,
+   "again_seconds": 1.88
+  },
+  {
+   "team": "T11",
+   "first_seconds": 10.39,
+   "status": 200,
+   "kb": 1920.8,
+   "again_seconds": 1.93
+  },
+  {
+   "team": "T12",
+   "first_seconds": 12.58,
+   "status": 200,
+   "kb": 2228.5,
+   "again_seconds": 1.44
+  },
+  {
+   "team": "T13",
+   "first_seconds": 6.99,
+   "status": 200,
+   "kb": 1189.5,
+   "again_seconds": 1.57
+  },
+  {
+   "team": "T14",
+   "first_seconds": 6.53,
+   "status": 200,
+   "kb": 1042.7,
+   "again_seconds": 0.64
+  },
+  {
+   "team": "T15",
+   "first_seconds": 7.33,
+   "status": 200,
+   "kb": 1289.9,
+   "again_seconds": 0.79
+  },
+  {
+   "team": "T16",
+   "first_seconds": 12.38,
+   "status": 200,
+   "kb": 2045.9,
+   "again_seconds": 2.31
+  },
+  {
+   "team": "T17",
+   "first_seconds": 7.35,
+   "status": 200,
+   "kb": 1188.2,
+   "again_seconds": 0.73
+  },
+  {
+   "team": "T18",
+   "first_seconds": 9.53,
+   "status": 200,
+   "kb": 1620.1,
+   "again_seconds": 0.95
+  },
+  {
+   "team": "T19",
+   "first_seconds": 10.24,
+   "status": 200,
+   "kb": 1595.5,
+   "again_seconds": 1.09
+  },
+  {
+   "team": "T20",
+   "first_seconds": 6.28,
+   "status": 200,
+   "kb": 1022.2,
+   "again_seconds": 0.64
+  },
+  {
+   "team": "T21",
+   "first_seconds": 12.81,
+   "status": 200,
+   "kb": 2150.9,
+   "again_seconds": 1.33
+  },
+  {
+   "team": "T22",
+   "first_seconds": 14.68,
+   "status": 200,
+   "kb": 2284.6,
+   "again_seconds": 1.51
+  },
+  {
+   "team": "T23",
+   "first_seconds": 12.77,
+   "status": 200,
+   "kb": 1993.8,
+   "again_seconds": 1.33
+  },
+  {
+   "team": "T24",
+   "first_seconds": 14.56,
+   "status": 200,
+   "kb": 2365.4,
+   "again_seconds": 1.57
+  },
+  {
+   "team": "T25",
+   "first_seconds": 13.69,
+   "status": 200,
+   "kb": 1981.4,
+   "again_seconds": 2.42
+  },
+  {
+   "team": "T26",
+   "first_seconds": 8.22,
+   "status": 200,
+   "kb": 1326.5,
+   "again_seconds": 0.89
+  },
+  {
+   "team": "T27",
+   "first_seconds": 5.54,
+   "status": 200,
+   "kb": 853.6,
+   "again_seconds": 0.57
+  },
+  {
+   "team": "T28",
+   "first_seconds": 10.5,
+   "status": 200,
+   "kb": 1568.2,
+   "again_seconds": 1.07
+  },
+  {
+   "team": "T29",
+   "first_seconds": 14.85,
+   "status": 200,
+   "kb": 2175.1,
+   "again_seconds": 2.47
+  },
+  {
+   "team": "T30",
+   "first_seconds": 11.77,
+   "status": 200,
+   "kb": 2022.4,
+   "again_seconds": 1.26
+  },
+  {
+   "team": "MHE",
+   "first_seconds": 0.01,
+   "status": 200,
+   "kb": 0.9,
+   "again_seconds": 0.01
+  },
+  {
+   "team": "PSC",
+   "first_seconds": 0.01,
+   "status": 200,
+   "kb": 0.9,
+   "again_seconds": 0.01
+  },
+  {
+   "team": "TST",
+   "first_seconds": 0.01,
+   "status": 200,
+   "kb": 0.9,
+   "again_seconds": 0.01
+  }
+ ]
+}
