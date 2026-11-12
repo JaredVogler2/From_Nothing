@@ -99,6 +99,11 @@ stay in company storage. This public repository keeps the synthetic reference co
   it is excused. `docs/execution/SCORING_EXPLAINED.md` gives the rule, the owner's example and a worked example.
 - **Where things run.** The GitLab pipeline runs the scheduler and every other step. Posit Connect only displays:
   the web app reads a small display package the pipeline publishes, never a snapshot or a plan.
+  - **The application must open at once at shift start** (D-33). Set `FOCUS_WARM_SECONDS=30` on the Posit content:
+    each web process then reads ahead, as soon as a plan is accepted, what every team lead's page asks for first.
+    Leave `FOCUS_DISPLAY_CACHE_MB` at 384 or more and give the content at least 2 GB
+    (`docs/execution/DEPLOYMENT.md`). At 50 aircraft a team lead's task list then opens in under a tenth of a
+    second; without the read-ahead its first open takes about a second.
 - **Time.** The database holds UTC; the app shows the site's local time (America/New_York). Live runs set
   `FOCUS_SOURCE_TIMEZONE_MAP_JSON={"*": "UTC"}`.
 
@@ -171,11 +176,14 @@ be ready to go within 20 minutes"):
   - The delivery plan's three jobs took another 27.1 minutes.
   - Since then (D-33): each validation is computed once per plan, every pre-shift run repairs, the `validate` step
     takes the solve's receipt and jobs end without teardown.
-- **Measured again on 2026-11-12, same fleet and machine: 16.1 minutes to the accepted shift plan in a repairing
-  run** (17.6 on a first run, which solves in full), **and 15.5 more to the accepted delivery plan: 31.6 minutes for
+- **Measured again on 2026-11-12, same fleet and machine: 13.9 minutes to the accepted shift plan in a repairing
+  run** (15.5 on a first run, which solves in full), **and 13.0 more to the accepted delivery plan: 26.9 minutes for
   the whole schedule.** The task lists fit the 20 minutes there; the dates and the late cost do not yet.
-  - Six loads of the snapshot are 10.7 of the 31.6 minutes, validations 7.1 and the scheduler 1.7
-    (`PRODUCTION_SCALE.md`, "The pre-shift flow after D-33"; `DECISION_PLAYBOOK.md`, DEC-36 has what is left).
+  - Six loads of the snapshot are 7.1 of the 26.9 minutes, validations 6.6, the source job 4.9 and the scheduler 1.7
+    (`PRODUCTION_SCALE.md`, "The pre-shift flow after D-33"; `DECISION_PLAYBOOK.md`, DEC-36 has what is left and
+    what each step would leave).
+  - Two questions for whoever owns your runners decide the next step (DEC-36): can two jobs of one pipeline run at
+    the same time, with about 20 GB of memory between them; and may the scheduling job hold the stager's rights.
   - Your runner is not that machine. Run `python tools/time_pre_shift.py run WORKDIR --aircraft 50 --repair` on it
     once, and keep `window` from every live run.
 - **A plan accepted after its shift starts** is only a proposal for that shift. The previous plan stays the goal of
@@ -445,6 +453,8 @@ rule.
 - [ ] EXECUTABLE: the jobs withheld and why (crews, certificates, parts, QA holds) match what supervisors know.
 - [ ] Timing: data cut to acceptance inside the window, three times a day, for a week.
 - [ ] Display package published, and Posit shows the accepted plan in local time.
+- [ ] At shift start a team lead's task list opens in under a second, on a Posit process that has been running since
+      before the plan was accepted (`FOCUS_WARM_SECONDS=30`).
 - [ ] `evaluate_closed_shifts`: typed UNKNOWN results until the feeds exist; then scores whose job records add up
       (B, Cp, E, U).
 - [ ] `tools/calibrate_scores.py store`: `stale_plans` about 0, `DONE_BEFORE_SHIFT` share plausible.

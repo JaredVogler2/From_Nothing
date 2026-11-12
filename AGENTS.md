@@ -25,8 +25,8 @@ And one more, older than D-33:
    a team is not marked down for causes outside its control.
 
 If your build does not do all seven, it is not finished, however well the data is wired. Points 5 and 6 are not met
-yet in full on the test machine. At 50 aircraft the task lists are ready 16.1 minutes after the data cut and the
-whole schedule after 31.6. A team lead's task list opens in under a second once the web process has read ahead
+yet in full on the test machine. At 50 aircraft the task lists are ready 13.9 minutes after the data cut and the
+whole schedule after 26.9. A team lead's task list opens in under a second once the web process has read ahead
 (`FOCUS_WARM_SECONDS=30`); three fleet views still take 1 to 4 seconds the first time after a new plan.
 `FROM-NOTHING-APP/docs/execution/PRODUCTION_SCALE.md` has the measurement and
 `FROM-NOTHING-APP/docs/integration/DECISION_PLAYBOOK.md`, DEC-36 and DEC-11, what is left.

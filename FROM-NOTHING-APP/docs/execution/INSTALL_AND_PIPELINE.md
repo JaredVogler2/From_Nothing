@@ -244,7 +244,7 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
     and peaks at 7.0 GB (`PRODUCTION_SCALE.md`).
   - `python tools/time_pre_shift.py run WORKDIR --aircraft 50` times every action of the flow on the synthetic
     fleet, each role in its own process. First measured, the four jobs to the accepted plan took 23.2 minutes;
-    since D-33 they take 16.1 in a repairing run, and the delivery plan's three jobs 15.5 more
+    now they take 13.9 in a repairing run, and the delivery plan's three jobs 13.0 more
     (`PRODUCTION_SCALE.md`; `DECISION_PLAYBOOK.md`, DEC-36).
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never

@@ -169,7 +169,7 @@ coding agent showed every aircraft with an unknown late-delivery cost, which add
 | DEC-33 | The right-work score: credit for work done in place of planned work, and priority tiers | OWNER | today's rule (80%, no tiers) | before the pilot |
 | DEC-34 | How long the nightly full solve may improve a plan, and what its search may reorder | DATA | pre-shift runs do not search; the nightly run takes its budget from the schedule's variables | after two weeks of nightly runs on real data |
 | DEC-35 | An aircraft whose airline and minor model the rate table does not cover | OWNER | no rate: listed, cost unknown | before the first live plan with such an aircraft |
-| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | four of nine options built (D-33); at 50 aircraft the shift plan takes 16.1 minutes and the whole schedule 31.6 | before the first live pre-shift run |
+| DEC-36 | Bring the pre-shift run under 20 minutes, both plans | ENGINEERING | five of nine options built or partly built; at 50 aircraft the shift plan takes 13.9 minutes and the whole schedule 26.9 | before the first live pre-shift run |
 | DEC-37 | When the pass at the cut fails: plan on the earlier copy, or stop | OWNER | stop: the previous plan stays | before the first live pre-shift run |
 | OD-16 | OFFICIAL score policy approval | OWNER only | DEMONSTRATION | last |
 
@@ -868,9 +868,9 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
   | (d) Repair in every pre-shift run | 112, and 80 of in-search validation | **built** (D-33) | `planning.full_solve_shifts` is empty; the full solve is the nightly pipeline's |
   | (e) One FINAL validation in the scheduling job | 42 | **built** (D-33) | The `validate` step takes the solve's receipt and the candidate the process has just stored |
   | (f) End each job without releasing its memory object by object | 62 | **built** (D-33) | `FOCUS_FAST_EXIT=true` in the live jobs |
-  | (g) The stager without the snapshot | about 120 per plan | not built | Move the DETACHED validation into the scheduling job, which has the snapshot loaded; the stager then stages bytes and compares them. It changes what `STAGED` means, so the acceptance tests (A48, A51) change with it |
-  | (h) Both plans in the same scheduling job and the same signing job | about 220 | not built | Two loads fewer. The delivery plan would follow a shift plan that is not accepted yet, so its own acceptance must wait for the shift plan's and fail with it |
-  | (i) A faster decode of stored snapshots and plans | 38 per load so far | **partly built** | Well-formed data takes short paths through the typed decoder (`codec.from_jsonable`): the 50-aircraft snapshot loads in 67 s instead of 105, to the same verified hash. A decoder in native code, as the canonical encoder already is, would take more |
+  | (g) The scheduling job also stages its plan | 177 over both plans, as now measured | not built | One process runs the `app` and the `stager` steps of a plan: one snapshot load and one candidate read fewer per plan. The signer still validates the staged bytes itself. The job then needs the stager's rights as well as the scheduler's, which the draft keeps apart (one role per job), so the company decides it |
+  | (h) The delivery plan's jobs beside the shift plan's | about 370 off the whole schedule, as now measured | not built | The delivery plan follows the shift plan that has passed its FINAL validation instead of the accepted one, so its scheduling and staging run while the shift plan is staged and signed; its acceptance waits for the shift plan's and fails without it. Needs a runner that runs two jobs at once with memory for both (about 20 GB at 50 aircraft) |
+  | (i) A faster decode of stored snapshots and plans | 284 measured | **partly built** | Well-formed data takes short paths through the typed decoder (`codec.from_jsonable`): a snapshot load takes 68 to 75 s instead of 104 to 112, to the same verified hash. A decoder in native code, as the canonical encoder already is, would take more |
 
 - **What preparing earlier buys.** Digesting who holds which certificate and which job needs which takes seconds
   here (4.4 s and under 0.1 s; the scheduler's working data 18 s). The pull is where it helps: load the slowly
@@ -879,19 +879,30 @@ python tools/calibrate_scores.py store --from <start> --to <end> --out calibrati
 - **Where it stands** after (b), (d), (e) and (f), measured at 50 aircraft (`PRODUCTION_SCALE.md`, "The pre-shift
   flow after D-33"):
 
-  | | First measured | Now, first run (full solves) | Now, a repairing run |
-  | --- | --- | --- | --- |
-  | Data cut to the accepted shift plan | 23.2 min | 17.6 min | 16.1 min |
-  | Then to the accepted delivery plan | 27.1 min | 17.3 min | 15.5 min |
-  | The whole schedule | 50.3 min | 35.0 min | 31.6 min |
+  | | First measured | After D-33, a repairing run | Now, a repairing run | Now, a first run (full solves) |
+  | --- | --- | --- | --- | --- |
+  | Data cut to the accepted shift plan | 23.2 min | 16.1 min | 13.9 min | 15.5 min |
+  | Then to the accepted delivery plan | 27.1 min | 15.5 min | 13.0 min | 15.1 min |
+  | The whole schedule | 50.3 min | 31.6 min | 26.9 min | 30.7 min |
 
-  The task lists are inside the 20 minutes on this machine and the whole schedule is not. Of the 31.6 minutes, 10.7
-  are six loads of the snapshot, 7.1 are validations (more than half of that is decoding the serialized plan again) and
-  1.7 are the scheduler.
-- **Next:** (i) first, because reading stored JSON back into objects is about half of the flow and a faster decoder
-  shortens every job without changing what any job does; then (h); then (g) and (c); or a runner with more cores
-  and memory, on which the delivery plan's jobs can overlap the shift plan's. Measure each with
-  `python tools/time_pre_shift.py` before and after; the candidate's id and hash must not change.
+  The task lists are inside the 20 minutes on this machine and the whole schedule is not. Of the 26.9 minutes, 7.1
+  are six loads of the snapshot, 6.6 are validations (about half of that is decoding the serialized plan again), 4.9
+  the source job and 1.7 the scheduler.
+- **Next, with what each would leave** (worked out from the measured parts, not measured):
+
+  | Step | Task lists | Whole schedule | Needs |
+  | --- | --- | --- | --- |
+  | As built | 13.9 min | 26.9 min | |
+  | (g) the scheduling job also stages | 12.5 min | 23.9 min | the plan job holding the stager's rights |
+  | (h) the delivery plan's jobs beside the shift plan's | 13.9 min | 20.7 min | two jobs at once, about 20 GB |
+  | (g) and (h) | 12.5 min | 19.1 min | both |
+  | The signer no longer reads and serializes the candidate again | 0.5 min less | 1.4 min less | the signer comparing the staged bytes with the stage record instead |
+  | (i) the decoder in native code | not estimated | not estimated | a decoder that builds the same records, held against the same tests |
+
+  One runner with one job at a time cannot bring the whole schedule inside 20 minutes with (g) alone. Ask the owner
+  of the runners whether two jobs can run at once before choosing between (h) and more work on (i).
+- **Measure each** with `python tools/time_pre_shift.py` before and after (`--sample` shows where a job's time
+  goes); the candidate's id and hash must not change.
 - **Profile before trusting a figure.** The first report of the 50-aircraft measurement had the delivery plan's
   repair at 407 seconds; 120 of them were one new function walking the same chains again for every kept slot
   (`greedy.hint_leads`, fixed). A sampled profile of one job found it in minutes.

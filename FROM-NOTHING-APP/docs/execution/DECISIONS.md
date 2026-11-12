@@ -547,8 +547,8 @@ attendance. A conditional ETA is never physical receipt.
       This changes D-28, which ended the clock at the shift plan.
   - **Not met yet.**
     - *The 20 minutes* (point 5) are met for the task lists and not for the whole schedule. At 50 aircraft on the
-      test machine, a repairing run takes 16.1 minutes from the data cut to the accepted shift plan and its
-      dashboard data, and 15.5 more to the accepted delivery plan: 31.6 minutes (first measured: 23.2 and 27.1).
+      test machine, a repairing run takes 13.9 minutes from the data cut to the accepted shift plan and its
+      dashboard data, and 13.0 more to the accepted delivery plan: 26.9 minutes (first measured: 23.2 and 27.1).
       `docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow after D-33", has the measurement, and
       `DECISION_PLAYBOOK.md`, DEC-36 the options left. The pull from SQL Server, each job's start and the
       acceptances come on top.
