@@ -8,6 +8,9 @@ and how to tell whether the cost objective is working on live data. `ECONOMICS_P
 `tests/unit/test_objective_explained.py` fails if this page stops matching the code: the order, the example, and
 every file, function and test named below.
 
+A second build of FOCUS checks its objective against this one with `docs/integration/OBJECTIVE_PARITY_PROMPT.md`: a
+system prompt that gives the same rules with the precision a second implementation needs, and fixed cases to run.
+
 ## 1. In plain terms
 
 Each run builds a complete schedule for every aircraft in scope, through delivery. It then tries changes to that

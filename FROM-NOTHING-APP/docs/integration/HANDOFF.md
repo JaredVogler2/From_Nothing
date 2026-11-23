@@ -24,6 +24,8 @@ behaviour were checked against the code on this date.
 - [`DECISIONS.md`](../execution/DECISIONS.md): the rules (D-26 above all) and the open decisions.
 - [`OBJECTIVE_EXPLAINED.md`](../execution/OBJECTIVE_EXPLAINED.md): what the scheduler minimizes, how late-delivery
   cost is worked out, and how to tell whether the cost objective is working on live data.
+- [OBJECTIVE_PARITY_PROMPT.md](OBJECTIVE_PARITY_PROMPT.md): a system prompt for a session that checks your build's
+  objective function against this one: the exact rules, fixed cases with their answers, and the report to hand back.
 - [`SCORING_EXPLAINED.md`](../execution/SCORING_EXPLAINED.md): how a team's shift is scored, in plain terms, with
   each rule's code and tests.
 - [`10_CALIBRATION.md`](../task-valuation-investigation/10_CALIBRATION.md): re-running the score calibration on real
