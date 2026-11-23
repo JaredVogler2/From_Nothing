@@ -35,7 +35,7 @@ into exactly one disposition, and the run is rejected if the counts do not add u
 | Required | Yes. A failed capture rejects the run (`MANDATORY_DATASET_FAILED`). No rows without a certified-empty receipt also rejects it (`CENSUS_UNAVAILABLE`). |
 | Capabilities | inventory |
 | If missing or empty | Rejected as above. If admitted + blocked + quarantined + excluded + verified complete does not equal the rows read, the run is rejected (`CENSUS_NOT_RECONCILED`). Row problems become job reasons: quarantined `DUPLICATE_SOURCE_KEY`, `UNKNOWN_STATUS`, `BAD_SOURCE_DATETIME`; blocked `STATUS_ON_HOLD`, `STATUS_SOURCE_FAILED`, `STATUS_UNRELEASED`, `TEAM_UNKNOWN`, `REWORK_CLASS_UNKNOWN`, `CS_STATION_UNPARSEABLE`; withheld from executable plans `STATUS_FORECAST_ONLY`. |
-| Time and cutoff | Row clock `LOAD_TIMESTAMP` (the newest row, unless a producer receipt gives `loaded_at`); stale after 36 h (`SOURCE_STALE`). No cutoff column: the query takes the table as it stands. `FIRST_AVAILABLE`, `ACT_START` and `ACT_COMP` are naive local times (effective times) converted to UTC with the dataset's declared zone. With no zone the snapshot carries `SOURCE_TIMEZONE_POLICY_MISSING`, and every job that has one of these times is quarantined. |
+| Time and cutoff | Row clock `LOAD_TIMESTAMP` (the newest row, unless a producer receipt gives `loaded_at`); stale after 48 h (`SOURCE_STALE`). No cutoff column: the query takes the table as it stands. `FIRST_AVAILABLE`, `ACT_START` and `ACT_COMP` are naive local times (effective times) converted to UTC with the dataset's declared zone. With no zone the snapshot carries `SOURCE_TIMEZONE_POLICY_MISSING`, and every job that has one of these times is quarantined. |
 | Read by | `focus/data/snapshot_builder.py`, `focus/data/scope.py`, `focus/data/freshness.py`. The job records then feed `focus/data/graph.py`, `focus/data/durations.py`, `focus/data/cs_windows.py`, `focus/data/parts.py`, `focus/engine/model.py`, `focus/validation/plan.py` and `focus/web/serializers.py`. |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -53,7 +53,7 @@ into exactly one disposition, and the run is rejected if the counts do not add u
 | `FIRST_AVAILABLE` | datetime2(0), nullable | The earliest time the job may start, in local time. | Converted to UTC and rounded up to the minute; no work on the job may start before it (validator code `BEFORE_JOB_EARLIEST`). |
 | `ACT_START` | datetime2(0), nullable | When work on the job actually started, in local time. | Kept as actual history and shown in job detail; it dates the `SEQUENCE_VIOLATION` diagnostic for a job in work, next to the INFO diagnostics `IN_PROGRESS_CONTINUATION_HOLD` (remaining work waits for an incomplete hard predecessor) and `IN_PROGRESS_CLOSURE_HOLD` (closure waits for an FF/SF predecessor). An `IN WORK` job without it is listed in the admission notes. |
 | `ACT_COMP` | datetime2(0), nullable | When the job was actually completed, in local time. | For a COMPLETE anchor, successors and their lags are measured from the earlier of this time and the cutoff; with no value the cutoff is used. Shown in job detail. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Row clock for freshness: the newest value must be within 36 h of the cutoff, or executable plans fail validation (`SOURCE_STALE`; unreadable values give `SOURCE_CLOCK_UNKNOWN`). |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Row clock for freshness: the newest value must be within 48 h of the cutoff, or executable plans fail validation (`SOURCE_STALE`; unreadable values give `SOURCE_CLOCK_UNKNOWN`). |
 | `PLANNING_SYSTEM_NAME` | varchar(50), nullable | Meaning not established in code or docs (the synthetic fixture uses `DEMO-PS`). | Copied onto the job record in the snapshot; nothing in the planner reads it today. |
 | `IS_REWORK` | bit, nullable | Source flag that the job is rework. | An open job with this flag and no `rework_classification` row is blocked (`REWORK_CLASS_UNKNOWN`). Shown in job detail. |
 | `RECORD_KEY` | int, nullable | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
@@ -126,7 +126,7 @@ validator checks every hard one (check V2).
 | Required | Yes. A failed capture, a database error included, rejects the run (`MANDATORY_DATASET_FAILED`). So does an empty result without a certified-empty receipt (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
 | If missing or empty | No rows without a certified-empty receipt rejects the run (`MANDATORY_DATASET_EMPTY`). Edge problems: `EDGE_HARDNESS_UNKNOWN`, `EDGE_TYPE_UNSUPPORTED`, `CYCLE_SELF_EDGE` (successor quarantined), `CYCLE`, `CONCURRENCY_SEMANTICS_UNRESOLVED` (jobs quarantined). Successors of jobs that cannot be scheduled get `PREDECESSOR_NOT_SCHEDULABLE` or `PREDECESSOR_NOT_EXECUTABLE`. |
-| Time and cutoff | Row clock `LOAD_TIMESTAMP`, stale after 36 h (`SOURCE_STALE`). No cutoff column. |
+| Time and cutoff | Row clock `LOAD_TIMESTAMP`, stale after 48 h (`SOURCE_STALE`). No cutoff column. |
 | Read by | `focus/data/graph.py` (`build_graph`), `focus/data/freshness.py`. The edges are then read by `focus/engine/model.py`, `focus/engine/max/optimizer/greedy.py` and `focus/validation/plan.py`. |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -140,7 +140,7 @@ validator checks every hard one (check V2).
 | `ORIGINAL_PRED_JOBNUMBER` | varchar(50), nullable | Meaning not established in code or docs (the fixture repeats the predecessor SOI). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `ORIGINAL_SUC_JOBNUMBER` | varchar(50), nullable | Meaning not established in code or docs (the fixture repeats the successor SOI). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `OFFSET_MINUTES` | int, nullable | Signed lag in minutes between the two endpoints. | Applied as it is: negative lags are kept, and null means 0. A bridged edge carries the summed lag of its path. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Row clock for freshness (36 h limit). |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Row clock for freshness (48 h limit). |
 
 **Rules and pitfalls.**
 - Use the exact relationship strings in policy `edges.relationship_map` and only `Y` or `N` for `IS_HARD`. Anything
@@ -154,7 +154,7 @@ validator checks every hard one (check V2).
 - An empty result without a certified-empty receipt (every empty live read today) rejects the run
   (`MANDATORY_DATASET_EMPTY`). Check the row count of every capture.
 - Freshness is measured from the newest `LOAD_TIMESTAMP`, because the live reader adds no `loaded_at` receipt. Refresh
-  it within the 36 h limit (a fixture default) even when the template has not changed, or executable plans fail
+  it within the 48 h limit (the nightly check restamps an unchanged template) even when the template has not changed, or executable plans fail
   (`SOURCE_STALE`).
 
 ## `neo_graph_rework`
@@ -244,7 +244,7 @@ job needs a row, including rework and in-progress jobs, because crew demand alwa
 | Required | Yes. A failed capture, a database error included, rejects the run (`MANDATORY_DATASET_FAILED`). So does an empty result without a certified-empty receipt (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
 | If missing or empty | Blocked job reasons: `STANDARD_MISSING` (no row), `FLOW_CREW_INVALID` (`TOTAL_MECHANICS` null, 0 or negative), `STANDARD_INVALID` (`CRITICAL_FLOW_MINUTES` null or not positive where it is the duration), `FLOW_CONFLICT`. An empty result without a certified-empty receipt rejects the run (`MANDATORY_DATASET_EMPTY`). |
-| Time and cutoff | Row clock `LOAD_TIMESTAMP`, stale after 36 h (`SOURCE_STALE`). No cutoff column. |
+| Time and cutoff | Row clock `LOAD_TIMESTAMP`, stale after 336 h (`SOURCE_STALE`): the full compare is weekly (D-34). No cutoff column. |
 | Read by | `focus/data/durations.py` (`flow_index`, `resolve`), `focus/data/scope.py` (attaches the row to its job), `focus/data/graph.py`, `focus/data/freshness.py`, `focus/web/serializers.py` (Schedule Budget view). |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -259,7 +259,7 @@ job needs a row, including rework and in-progress jobs, because crew demand alwa
 | `ASSIST_LABOR_MINUTES` | int, nullable | Labor minutes of the assist role. The docs do not define it further. | Compared between repeated rows and kept on the job; nothing else reads it. |
 | `TOTAL_LABOR_MINUTES` | int, nullable | Total labor of the job in person-minutes. | Used as standard effort only if policy `duration.standard_effort_basis` is `TOTAL_LABOR_MINUTES` (today it is `ELAPSED_TIMES_CREW`); with that basis a null or 0 value blocks the job (`STANDARD_EFFORT_UNAVAILABLE`). Compared between repeated rows; shown as flow labor minutes in the Schedule Budget view. |
 | `DURATION_SOURCE` | varchar(30), nullable | Meaning not established in code or docs (the fixture uses `FIXTURE_STANDARD` and `REWORK_STATISTIC`). | Compared between repeated rows and kept on the job; no rule reads it. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Row clock for freshness (36 h limit). Among identical repeats the latest is kept, and it is part of the duration estimate's source hash. |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Row clock for freshness (336 h limit). Among identical repeats the latest is kept, and it is part of the duration estimate's source hash. |
 
 **Rules and pitfalls.**
 - Every open job needs a row with `TOTAL_MECHANICS` above 0, including NC/PU/CI and `IN WORK` jobs. Their durations come

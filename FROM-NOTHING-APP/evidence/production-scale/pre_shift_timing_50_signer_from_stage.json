@@ -1,0 +1,2308 @@
+{
+ "tool": "tools/time_pre_shift.py",
+ "label": "SYNTHETIC_FULLSCALE_FIXTURE (real readiness not established)",
+ "process_wall_seconds": {
+  "prepare": 10.6,
+  "pull": 3.4,
+  "first.plan": 577.7,
+  "first.signer": 167.4,
+  "first.forecast_plan": 548.0,
+  "first.forecast_signer": 222.5,
+  "repair.executable": 176.4,
+  "repair.forecast": 280.6
+ },
+ "report": {
+  "aircraft": 50,
+  "cores": 4,
+  "source_rows": 1216781,
+  "source_tables": {
+   "soi_cert_requirements": 326657,
+   "master_task_list": 298009,
+   "flow_budget": 298009,
+   "neo_graph_rework": 73009,
+   "rework_classification": 73009,
+   "pnet_dag": 64098,
+   "etracs_active": 23301,
+   "etracs_history": 21942,
+   "buyoff_plan": 17666,
+   "cday_op_plan": 6150,
+   "mechanic_certs": 3468,
+   "duration_episodes": 2700,
+   "person_team_map": 2088,
+   "attendance_shift": 2088,
+   "shift_roster": 2088,
+   "people_directory": 2088,
+   "cs_windows": 250,
+   "ot_authorizations": 93,
+   "econ_aircraft_mapping": 50,
+   "econ_term": 13,
+   "inspection_standards": 2,
+   "econ_mapping_revision": 1,
+   "econ_scenario": 1,
+   "scope_receipt": 1
+  },
+  "local_pull_seconds": 3.3,
+  "jobs": {
+   "plan: acquire, admit, schedule, validate, stage_readback (executable plan)": {
+    "seconds": 577.7,
+    "peak_memory_mb": 9050,
+    "written_mb": 7485.1,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.2
+     },
+     {
+      "action": "read the source rows (fixture files here; the SQL pull live)",
+      "seconds": 10.0
+     },
+     {
+      "action": "keep the raw rows with their receipts, and read them back",
+      "seconds": 23.8
+     },
+     {
+      "action": "digest: build the planning snapshot",
+      "seconds": 68.7
+     },
+     {
+      "action": "store the snapshot",
+      "seconds": 62.3
+     },
+     {
+      "action": "write the snapshot's dashboard data",
+      "seconds": 122.6
+     },
+     {
+      "action": "the admit step: verify the stored snapshot",
+      "seconds": 3.6
+     },
+     {
+      "action": "the admitted snapshot: loaded from the store, or checked against the one this process holds",
+      "seconds": 12.2
+     },
+     {
+      "action": "build the scheduler's working data (who is qualified for what, calendars, the task network)",
+      "seconds": 14.1
+     },
+     {
+      "action": "the scheduler: first pass, then repairs and improvement moves while the budget lasts",
+      "seconds": 131.0
+     },
+     {
+      "action": "build the candidate plan, store it, its dashboard digest and receipts",
+      "seconds": 12.2
+     },
+     {
+      "action": "independent validation after the solve (FINAL)",
+      "seconds": 22.9
+     },
+     {
+      "action": "the validate step: check the candidate's source binding and its FINAL receipt",
+      "seconds": 3.4
+     },
+     {
+      "action": "read the candidate plan from the store",
+      "seconds": 0.0
+     },
+     {
+      "action": "serialize the plan",
+      "seconds": 6.9
+     },
+     {
+      "action": "decode the serialized plan and validate it (DETACHED): the stager; the signer takes its receipt",
+      "seconds": 55.4
+     },
+     {
+      "action": "write the unsigned stage",
+      "seconds": 5.1
+     },
+     {
+      "action": "read the stage back; validate those bytes (READBACK): always in the signer, in the stager only if they differ",
+      "seconds": 8.8
+     },
+     {
+      "action": "accept: plan record, payload, frozen goals, head",
+      "seconds": 0.0
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 14.5
+     }
+    ],
+    "scheduler": {
+     "stop_reason": [
+      "deadline"
+     ],
+     "moves": 0,
+     "stages": [
+      {
+       "stage": "first pass, part 1: neutral order, with its validation",
+       "seconds": 76.9,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "first pass, part 2: ordered by cost of delay",
+       "seconds": 88.2,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "delay repairs",
+       "seconds": 0.4,
+       "candidates": 0,
+       "accepted": 0
+      },
+      {
+       "stage": "improvement moves",
+       "seconds": 0.0,
+       "candidates": 0,
+       "accepted": 0
+      }
+     ]
+    },
+    "planning": {
+     "ran": "full",
+     "reason": "full requested",
+     "requested": "full"
+    }
+   },
+   "signer: sign_accept (executable plan)": {
+    "seconds": 167.4,
+    "peak_memory_mb": 8097,
+    "written_mb": 718.8,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.3
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 66.8
+     },
+     {
+      "action": "read the candidate plan from the store",
+      "seconds": 0.0
+     },
+     {
+      "action": "independent validation of the candidate (FINAL), when the scheduling run's receipt cannot be taken",
+      "seconds": 0
+     },
+     {
+      "action": "serialize the plan",
+      "seconds": 2.0
+     },
+     {
+      "action": "read the stage back; validate those bytes (READBACK): always in the signer, in the stager only if they differ",
+      "seconds": 57.5
+     },
+     {
+      "action": "write the plan's dashboard data and sign it",
+      "seconds": 11.4
+     },
+     {
+      "action": "accept: plan record, payload, frozen goals, head",
+      "seconds": 10.1
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 19.3
+     }
+    ]
+   },
+   "plan: forecast, forecast_stage_readback": {
+    "seconds": 548.0,
+    "peak_memory_mb": 10326,
+    "written_mb": 1054.6,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.2
+     },
+     {
+      "action": "the admitted snapshot: loaded from the store, or checked against the one this process holds",
+      "seconds": 74.2
+     },
+     {
+      "action": "build the scheduler's working data (who is qualified for what, calendars, the task network)",
+      "seconds": 22.0
+     },
+     {
+      "action": "the scheduler: first pass, then repairs and improvement moves while the budget lasts",
+      "seconds": 222.4
+     },
+     {
+      "action": "build the candidate plan, store it, its dashboard digest and receipts",
+      "seconds": 49.1
+     },
+     {
+      "action": "independent validation after the solve (FINAL)",
+      "seconds": 39.3
+     },
+     {
+      "action": "the validate step: check the candidate's source binding and its FINAL receipt",
+      "seconds": 0.0
+     },
+     {
+      "action": "read the candidate plan from the store",
+      "seconds": 0.0
+     },
+     {
+      "action": "serialize the plan",
+      "seconds": 11.7
+     },
+     {
+      "action": "decode the serialized plan and validate it (DETACHED): the stager; the signer takes its receipt",
+      "seconds": 100.1
+     },
+     {
+      "action": "write the unsigned stage",
+      "seconds": 8.8
+     },
+     {
+      "action": "read the stage back; validate those bytes (READBACK): always in the signer, in the stager only if they differ",
+      "seconds": 13.9
+     },
+     {
+      "action": "accept: plan record, payload, frozen goals, head",
+      "seconds": 0.0
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 6.3
+     }
+    ],
+    "scheduler": {
+     "stop_reason": [
+      "deadline"
+     ],
+     "moves": 0,
+     "stages": [
+      {
+       "stage": "first pass, part 1: neutral order, with its validation",
+       "seconds": 134.7,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "first pass, part 2: ordered by cost of delay",
+       "seconds": 171.6,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "delay repairs",
+       "seconds": 0.1,
+       "candidates": 0,
+       "accepted": 0
+      },
+      {
+       "stage": "improvement moves",
+       "seconds": 0.0,
+       "candidates": 0,
+       "accepted": 0
+      }
+     ]
+    },
+    "planning": {
+     "deferred": 0,
+     "follows": {
+      "defended": 24705,
+      "plan": "INC4fb8dcafbc22516a1936",
+      "purpose": "EXECUTABLE",
+      "slots_to_keep": 14038
+     },
+     "hints": 14038,
+     "kept": 14038,
+     "ran": "full",
+     "reason": "full requested",
+     "rehomed": 0,
+     "requested": "full"
+    }
+   },
+   "signer: forecast_sign_accept": {
+    "seconds": 222.5,
+    "peak_memory_mb": 9007,
+    "written_mb": 1629.8,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.2
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 74.6
+     },
+     {
+      "action": "read the candidate plan from the store",
+      "seconds": 0.0
+     },
+     {
+      "action": "independent validation of the candidate (FINAL), when the scheduling run's receipt cannot be taken",
+      "seconds": 0
+     },
+     {
+      "action": "serialize the plan",
+      "seconds": 3.5
+     },
+     {
+      "action": "read the stage back; validate those bytes (READBACK): always in the signer, in the stager only if they differ",
+      "seconds": 71.2
+     },
+     {
+      "action": "write the plan's dashboard data and sign it",
+      "seconds": 21.8
+     },
+     {
+      "action": "accept: plan record, payload, frozen goals, head",
+      "seconds": 17.7
+     },
+     {
+      "action": "everything else in the job",
+      "seconds": 33.5
+     }
+    ]
+   }
+  },
+  "digest_stages_seconds": {
+   "build_graph": 31.1,
+   "build_census": 7.3,
+   "index_master": 3.1,
+   "flow_index": 1.5,
+   "build_workforce": 8.3,
+   "build_requirements": 4.5,
+   "build_holdings": 0.1,
+   "resolve": 1.5,
+   "build_parts": 0.3,
+   "seal_snapshot": 7.7
+  },
+  "window_seconds": 745.1,
+  "forecast_seconds": 770.5,
+  "repair": {
+   "EXECUTABLE": {
+    "planning": {
+     "requested": "repair",
+     "ran": "repair",
+     "reason": "repair requested",
+     "hints": 14038,
+     "kept": 14038,
+     "rehomed": 0,
+     "deferred": 0
+    },
+    "seconds": 176.2,
+    "peak_memory_mb": 7396,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.0
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 68.4
+     },
+     {
+      "action": "build the scheduler's working data (who is qualified for what, calendars, the task network)",
+      "seconds": 20.9
+     },
+     {
+      "action": "the scheduler: first pass, then repairs and improvement moves while the budget lasts",
+      "seconds": 31.8
+     },
+     {
+      "action": "build the candidate plan, store it, its dashboard digest and receipts",
+      "seconds": 23.8
+     },
+     {
+      "action": "independent validation after the solve (FINAL)",
+      "seconds": 27.5
+     },
+     {
+      "action": "the validate step: check the candidate's source binding and its FINAL receipt",
+      "seconds": 3.5
+     }
+    ],
+    "scheduler": {
+     "stop_reason": [
+      "repair"
+     ],
+     "moves": 0,
+     "stages": [
+      {
+       "stage": "repair: keep the accepted plan where it holds",
+       "seconds": 22.0,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "repair: re-dispatch what moved by cost of delay",
+       "seconds": 9.7,
+       "candidates": 1,
+       "accepted": 0
+      }
+     ]
+    }
+   },
+   "FORECAST": {
+    "planning": {
+     "requested": "repair",
+     "ran": "repair",
+     "reason": "repair requested",
+     "follows": {
+      "purpose": "EXECUTABLE",
+      "plan": "INC4fb8dcafbc22516a1936",
+      "defended": 24705,
+      "slots_to_keep": 14038
+     },
+     "hints": 123011,
+     "kept": 123011,
+     "rehomed": 0,
+     "deferred": 0
+    },
+    "seconds": 280.3,
+    "peak_memory_mb": 7882,
+    "actions": [
+     {
+      "action": "start the process",
+      "seconds": 0.0
+     },
+     {
+      "action": "load the admitted snapshot from the store",
+      "seconds": 68.3
+     },
+     {
+      "action": "build the scheduler's working data (who is qualified for what, calendars, the task network)",
+      "seconds": 21.7
+     },
+     {
+      "action": "the scheduler: first pass, then repairs and improvement moves while the budget lasts",
+      "seconds": 71.4
+     },
+     {
+      "action": "build the candidate plan, store it, its dashboard digest and receipts",
+      "seconds": 72.6
+     },
+     {
+      "action": "independent validation after the solve (FINAL)",
+      "seconds": 42.2
+     },
+     {
+      "action": "the validate step: check the candidate's source binding and its FINAL receipt",
+      "seconds": 3.9
+     }
+    ],
+    "scheduler": {
+     "stop_reason": [
+      "repair"
+     ],
+     "moves": 0,
+     "stages": [
+      {
+       "stage": "repair: keep the accepted plan where it holds",
+       "seconds": 37.0,
+       "candidates": 1,
+       "accepted": 1
+      },
+      {
+       "stage": "repair: re-dispatch what moved by cost of delay",
+       "seconds": 34.0,
+       "candidates": 1,
+       "accepted": 0
+      }
+     ]
+    }
+   }
+  },
+  "repairing_run": {
+   "jobs_seconds": {
+    "plan": 501.4,
+    "signer": 167.4,
+    "forecast_plan": 422.1,
+    "forecast_signer": 222.5
+   },
+   "to_the_accepted_shift_plan_seconds": 668.8,
+   "then_to_the_accepted_delivery_plan_seconds": 644.6,
+   "whole_schedule_seconds": 1313.4,
+   "how": "the first run's jobs with each scheduling step replaced by the repair of the same data, measured separately"
+  }
+ },
+ "jobs": {
+  "first.forecast_plan": {
+   "role": "app,stager",
+   "planning": "full",
+   "startup_seconds": 0.2,
+   "role_seconds": 547.4,
+   "process_seconds": 547.6,
+   "peak_memory_mb": 10326,
+   "store_written_mb": 1054.6,
+   "timers": {
+    "display.candidate_digest": {
+     "calls": 1,
+     "seconds": 0.05
+    },
+    "load_snapshot": {
+     "calls": 3,
+     "seconds": 74.18
+    },
+    "publish": {
+     "calls": 1,
+     "seconds": 141.74
+    },
+    "publish.build_artifact": {
+     "calls": 1,
+     "seconds": 6.4
+    },
+    "publish.read_stage": {
+     "calls": 1,
+     "seconds": 13.86
+    },
+    "publish.serialize": {
+     "calls": 2,
+     "seconds": 10.68
+    },
+    "publish.stage": {
+     "calls": 1,
+     "seconds": 8.76
+    },
+    "schedule": {
+     "calls": 1,
+     "seconds": 400.87
+    },
+    "schedule.build_candidate": {
+     "calls": 3,
+     "seconds": 56.3
+    },
+    "schedule.engine_context": {
+     "calls": 1,
+     "seconds": 22.0
+    },
+    "schedule.optimizer_run": {
+     "calls": 1,
+     "seconds": 222.37
+    },
+    "schedule.schedule_snapshot": {
+     "calls": 1,
+     "seconds": 332.84
+    },
+    "step:forecast": {
+     "calls": 1,
+     "seconds": 405.62
+    },
+    "step:forecast_stage_readback": {
+     "calls": 1,
+     "seconds": 141.76
+    },
+    "step:schedule": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:stage_readback": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:validate": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:accepted_plans": {
+     "calls": 3,
+     "seconds": 1.06
+    },
+    "store.read:candidates": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:plan_stages": {
+     "calls": 2,
+     "seconds": 13.23
+    },
+    "store.read:validations": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.read_raw:candidate_digests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 3,
+     "seconds": 4.11
+    },
+    "store.read_raw:validations": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 3,
+     "seconds": 0.01
+    },
+    "store.write:candidate_digests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:candidates": {
+     "calls": 1,
+     "seconds": 24.91
+    },
+    "store.write:plan_stages": {
+     "calls": 1,
+     "seconds": 8.76
+    },
+    "store.write:validations": {
+     "calls": 3,
+     "seconds": 0.01
+    },
+    "validate:DETACHED": {
+     "calls": 1,
+     "seconds": 52.57
+    },
+    "validate:FINAL": {
+     "calls": 3,
+     "seconds": 132.64
+    },
+    "validate_artifact:DETACHED": {
+     "calls": 1,
+     "seconds": 100.1
+    }
+   },
+   "stages": {
+    "FORECAST": [
+     {
+      "stop_reason": "deadline",
+      "moves": 0,
+      "stages": [
+       {
+        "stage": "neutral_seed",
+        "seconds": 134.7,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "economic_redispatch",
+        "seconds": 171.6,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "delay_repair",
+        "seconds": 0.1,
+        "candidates": 0,
+        "accepted": 0
+       },
+       {
+        "stage": "neighborhoods",
+        "seconds": 0.0,
+        "candidates": 0,
+        "accepted": 0
+       }
+      ]
+     }
+    ]
+   },
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 49.6,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 43.7,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 39.3,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "DETACHED",
+     "seconds": 52.6,
+     "valid": true,
+     "violations": 0
+    }
+   ],
+   "sampled": {
+    "samples": 12838,
+    "seconds_per_sample": 0.0426,
+    "inclusive_seconds": {
+     "tools/time_pre_shift.py:role": 547.5,
+     "tools/time_pre_shift.py:main": 547.5,
+     "tools/time_pre_shift.py:<module>": 547.5,
+     "tools/time_pre_shift.py:timed": 547.3,
+     "focus/orchestration.py:run_step": 547.3,
+     "focus/orchestration.py:run_role": 547.3,
+     "focus/orchestration.py:step_forecast": 438.9,
+     "focus/engine/max/optimizer/orchestrator.py:schedule": 433.0,
+     "focus/orchestration.py:_schedule_one": 433.0,
+     "focus/engine/max/optimizer/orchestrator.py:schedule_snapshot": 387.0,
+     "focus/engine/max/optimizer/orchestrator.py:plan_by_mode": 364.1,
+     "focus/engine/max/optimizer/orchestrator.py:_solve": 364.1,
+     "focus/engine/max/optimizer/orchestrator.py:<lambda>": 364.1,
+     "focus/engine/max/optimizer/orchestrator.py:run": 275.7,
+     "tools/time_pre_shift.py:timed_run": 275.7,
+     "focus/engine/max/optimizer/orchestrator.py:decode": 191.6,
+     "focus/engine/max/optimizer/greedy.py:run": 190.3,
+     "focus/engine/max/optimizer/greedy.py:_place": 167.5,
+     "tools/time_pre_shift.py:timed_validate": 160.6,
+     "focus/validation/plan.py:validate": 160.5,
+     "focus/engine/native.py:search": 154.1,
+     "focus/engine/max/optimizer/greedy.py:_search_native": 154.1,
+     "focus/engine/max/optimizer/greedy.py:_search": 154.1,
+     "focus/engine/max/optimizer/greedy.py:_search_bounded": 154.1,
+     "focus/orchestration.py:_stage": 108.4,
+     "focus/orchestration.py:step_forecast_stage_readback": 108.4,
+     "focus/publication/service.py:publish": 108.3,
+     "focus/validation/publication.py:validate_artifact": 84.7,
+     "focus/engine/max/optimizer/orchestrator.py:_valid": 70.1,
+     "focus/engine/max/optimizer/orchestrator.py:_admit": 70.1,
+     "focus/data/acquisition.py:load_snapshot": 56.1,
+     "focus/data/acquisition.py:snapshot_for_run": 45.9,
+     "<string>:__init__": 43.3,
+     "focus/codec.py:dec_dataclass": 42.0,
+     "focus/engine/max/optimizer/orchestrator.py:build_candidate": 41.5,
+     "focus/codec.py:format_utc": 38.8,
+     "focus/domain.py:id": 33.5,
+     "focus/codec.py:from_jsonable_releasing": 31.8,
+     "focus/codec.py:streamed_content_hash": 29.1,
+     "focus/contracts/planning.py:record_hash": 29.1,
+     "focus/validation/plan.py:_derive_times": 27.4,
+     "focus/codec.py:dec_tuple_var": 23.2,
+     "focus/validation/duty.py:reconstruct": 21.2,
+     "focus/contracts/planning.py:computed_hash": 19.5,
+     "focus/engine/model.py:__init__": 18.6
+    },
+    "running_seconds": {
+     "focus/engine/native.py:search": 154.1,
+     "<string>:__init__": 39.3,
+     "focus/codec.py:format_utc": 38.8,
+     "focus/codec.py:dec_dataclass": 16.5,
+     "focus/domain.py:id": 16.2,
+     "focus/validation/plan.py:_topological": 15.1,
+     "focus/validation/plan.py:_v9": 14.5,
+     "<string>:__hash__": 12.2,
+     "focus/domain.py:_total_us": 9.4,
+     "focus/data/acquisition.py:_digest": 8.5,
+     "focus/validation/plan.py:_v2": 7.7,
+     "/usr/lib/python3.12/pathlib.py:read_bytes": 7.5,
+     "focus/engine/max/optimizer/orchestrator.py:build_candidate": 7.2,
+     "<string>:__eq__": 6.7,
+     "focus/engine/max/optimizer/greedy.py:run": 6.7,
+     "focus/validation/duty.py:reconstruct": 6.4,
+     "focus/engine/max/optimizer/orchestrator.py:<genexpr>": 6.3,
+     "focus/validation/duty.py:<genexpr>": 6.1,
+     "focus/validation/plan.py:_e_inventory": 6.1,
+     "focus/engine/model.py:_tails": 5.7,
+     "focus/validation/plan.py:_v5": 5.7,
+     "focus/codec.py:enc": 4.9
+    }
+   }
+  },
+  "first.forecast_signer": {
+   "role": "signer",
+   "planning": "full",
+   "startup_seconds": 0.2,
+   "role_seconds": 221.8,
+   "process_seconds": 222.1,
+   "peak_memory_mb": 9007,
+   "store_written_mb": 1629.8,
+   "timers": {
+    "display.plan_parts": {
+     "calls": 1,
+     "seconds": 21.84
+    },
+    "display.plan_parts_signed": {
+     "calls": 1,
+     "seconds": 21.84
+    },
+    "load_snapshot": {
+     "calls": 1,
+     "seconds": 74.62
+    },
+    "publish": {
+     "calls": 1,
+     "seconds": 221.79
+    },
+    "publish.accept": {
+     "calls": 1,
+     "seconds": 9.18
+    },
+    "publish.post_acceptance": {
+     "calls": 1,
+     "seconds": 8.47
+    },
+    "publish.read_stage": {
+     "calls": 1,
+     "seconds": 14.73
+    },
+    "publish.serialize": {
+     "calls": 1,
+     "seconds": 3.54
+    },
+    "step:forecast_sign_accept": {
+     "calls": 1,
+     "seconds": 221.8
+    },
+    "step:sign_accept": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:accepted_plans": {
+     "calls": 1,
+     "seconds": 0.36
+    },
+    "store.read:delivery_events": {
+     "calls": 50,
+     "seconds": 0.01
+    },
+    "store.read:delivery_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:plan_stages": {
+     "calls": 1,
+     "seconds": 14.12
+    },
+    "store.read:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:validations": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:accepted_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:delivery_events": {
+     "calls": 50,
+     "seconds": 0.0
+    },
+    "store.read_raw:delivery_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_manifests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_parts": {
+     "calls": 2550,
+     "seconds": 0.26
+    },
+    "store.read_raw:display_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:frozen_goals": {
+     "calls": 93,
+     "seconds": 0.0
+    },
+    "store.read_raw:published_payloads": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 1,
+     "seconds": 1.47
+    },
+    "store.read_raw:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:accepted_plans": {
+     "calls": 1,
+     "seconds": 1.31
+    },
+    "store.write:delivery_events": {
+     "calls": 50,
+     "seconds": 0.06
+    },
+    "store.write:delivery_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:display_manifests": {
+     "calls": 1,
+     "seconds": 0.01
+    },
+    "store.write:display_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:frozen_goals": {
+     "calls": 93,
+     "seconds": 0.22
+    },
+    "store.write:published_payloads": {
+     "calls": 1,
+     "seconds": 8.95
+    },
+    "store.write:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:READBACK": {
+     "calls": 1,
+     "seconds": 48.57
+    },
+    "validate_artifact:READBACK": {
+     "calls": 1,
+     "seconds": 56.55
+    }
+   },
+   "stages": {},
+   "validations": [
+    {
+     "kind": "READBACK",
+     "seconds": 48.6,
+     "valid": true,
+     "violations": 0
+    }
+   ],
+   "sampled": {
+    "samples": 4112,
+    "seconds_per_sample": 0.054,
+    "inclusive_seconds": {
+     "tools/time_pre_shift.py:role": 221.9,
+     "tools/time_pre_shift.py:main": 221.9,
+     "tools/time_pre_shift.py:<module>": 221.9,
+     "tools/time_pre_shift.py:timed": 221.6,
+     "focus/orchestration.py:_sign": 221.6,
+     "focus/orchestration.py:step_forecast_sign_accept": 221.6,
+     "focus/orchestration.py:run_step": 221.6,
+     "focus/orchestration.py:run_role": 221.6,
+     "focus/publication/service.py:_sign_staged": 221.6,
+     "focus/publication/service.py:publish": 221.6,
+     "focus/validation/publication.py:validate_artifact": 83.1,
+     "tools/time_pre_shift.py:timed_validate": 70.9,
+     "focus/validation/plan.py:validate": 70.9,
+     "focus/publication/service.py:_sign_and_accept": 60.1,
+     "focus/data/acquisition.py:load_snapshot": 56.0,
+     "focus/codec.py:dec_dataclass": 49.1,
+     "focus/display/store.py:write_parts": 41.3,
+     "focus/display/store.py:write_plan_display": 41.3,
+     "focus/display/store.py:publish_plan_display": 41.3,
+     "focus/publication/service.py:publish_plan_display": 41.3,
+     "focus/codec.py:from_jsonable_releasing": 38.0,
+     "focus/codec.py:dec_tuple_var": 28.3,
+     "<string>:__init__": 28.1,
+     "focus/codec.py:sha256_hex": 22.6,
+     "focus/domain.py:id": 18.1,
+     "focus/publication/serializer.py:decode_artifact": 17.6,
+     "focus/codec.py:format_utc": 17.1,
+     "focus/codec.py:from_jsonable": 13.5,
+     "focus/publication/service.py:_post_acceptance": 13.5,
+     "focus/codec.py:streamed_content_hash": 12.1,
+     "focus/contracts/planning.py:record_hash": 12.0,
+     "focus/data/store.py:put_immutable": 12.0,
+     "focus/data/store.py:_atomic_write": 12.0,
+     "focus/contracts/planning.py:computed_hash": 11.9,
+     "focus/display/store.py:_put_part": 11.6,
+     "focus/validation/plan.py:_derive_times": 11.5,
+     "focus/validation/publication.py:_artifact_violations": 10.9,
+     "focus/publication/service.py:incumbent_from": 10.6,
+     "focus/display/build.py:plan_parts": 10.4,
+     "focus/validation/duty.py:reconstruct": 9.2,
+     "focus/contracts/planning.py:id": 8.7,
+     "focus/contracts/planning.py:verify": 7.9,
+     "focus/validation/plan.py:_v9": 7.3,
+     "focus/codec.py:canonical_dumps": 7.3,
+     "focus/validation/plan.py:_topological": 6.4
+    },
+    "running_seconds": {
+     "<string>:__init__": 24.7,
+     "focus/codec.py:sha256_hex": 22.6,
+     "focus/codec.py:format_utc": 17.0,
+     "focus/codec.py:dec_dataclass": 16.7,
+     "focus/data/store.py:_atomic_write": 11.6,
+     "focus/domain.py:id": 8.6,
+     "focus/validation/plan.py:_v9": 6.5,
+     "<string>:__hash__": 6.4,
+     "focus/validation/plan.py:_topological": 6.4,
+     "focus/codec.py:dec_tuple_var": 4.9,
+     "<string>:__eq__": 4.7,
+     "/usr/lib/python3.12/pathlib.py:read_bytes": 4.4,
+     "focus/validation/input.py:build": 4.2,
+     "focus/display/build.py:plan_parts": 3.9,
+     "focus/data/acquisition.py:_digest": 3.5,
+     "focus/validation/plan.py:_v2": 3.5,
+     "focus/publication/service.py:incumbent_from": 3.4,
+     "focus/codec.py:canonical_envelope_hashes": 3.3,
+     "focus/domain.py:_total_us": 2.9,
+     "focus/validation/plan.py:_e_inventory": 2.8,
+     "focus/validation/duty.py:reconstruct": 2.7,
+     "focus/validation/duty.py:<genexpr>": 2.6
+    }
+   }
+  },
+  "first.plan": {
+   "role": "source,app,stager",
+   "planning": "full",
+   "startup_seconds": 0.2,
+   "role_seconds": 577.3,
+   "process_seconds": 577.4,
+   "peak_memory_mb": 9050,
+   "store_written_mb": 7485.1,
+   "timers": {
+    "acquire": {
+     "calls": 1,
+     "seconds": 305.02
+    },
+    "acquire.move_source_head": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "acquire.readback_of_stored_rows": {
+     "calls": 1,
+     "seconds": 13.94
+    },
+    "digest.admit_line_calendars": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "digest.build_census": {
+     "calls": 1,
+     "seconds": 7.28
+    },
+    "digest.build_cs_facts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "digest.build_economics": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "digest.build_graph": {
+     "calls": 1,
+     "seconds": 31.07
+    },
+    "digest.build_holdings": {
+     "calls": 1,
+     "seconds": 0.07
+    },
+    "digest.build_parts": {
+     "calls": 1,
+     "seconds": 0.35
+    },
+    "digest.build_requirements": {
+     "calls": 1,
+     "seconds": 4.54
+    },
+    "digest.build_snapshot": {
+     "calls": 1,
+     "seconds": 68.65
+    },
+    "digest.build_triggers": {
+     "calls": 1,
+     "seconds": 0.11
+    },
+    "digest.build_virtual_support": {
+     "calls": 1,
+     "seconds": 0.33
+    },
+    "digest.build_workforce": {
+     "calls": 1,
+     "seconds": 8.33
+    },
+    "digest.compute_statistics": {
+     "calls": 1,
+     "seconds": 0.16
+    },
+    "digest.coverage_gaps": {
+     "calls": 1,
+     "seconds": 0.09
+    },
+    "digest.flow_index": {
+     "calls": 1,
+     "seconds": 1.5
+    },
+    "digest.freshness_gaps": {
+     "calls": 1,
+     "seconds": 0.12
+    },
+    "digest.horizon_dates": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "digest.index_master": {
+     "calls": 1,
+     "seconds": 3.06
+    },
+    "digest.merge_virtual_pools": {
+     "calls": 1,
+     "seconds": 0.03
+    },
+    "digest.resolve": {
+     "calls": 138345,
+     "seconds": 1.47
+    },
+    "digest.scope_config": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "digest.seal_snapshot": {
+     "calls": 1,
+     "seconds": 7.71
+    },
+    "display.candidate_digest": {
+     "calls": 1,
+     "seconds": 0.04
+    },
+    "display.snapshot_parts": {
+     "calls": 1,
+     "seconds": 122.62
+    },
+    "load_snapshot": {
+     "calls": 4,
+     "seconds": 12.24
+    },
+    "publish": {
+     "calls": 1,
+     "seconds": 81.51
+    },
+    "publish.build_artifact": {
+     "calls": 1,
+     "seconds": 4.17
+    },
+    "publish.read_stage": {
+     "calls": 1,
+     "seconds": 8.77
+    },
+    "publish.serialize": {
+     "calls": 2,
+     "seconds": 5.34
+    },
+    "publish.stage": {
+     "calls": 1,
+     "seconds": 5.08
+    },
+    "pull.capture:actual_labor": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:attendance_shift": {
+     "calls": 1,
+     "seconds": 0.01
+    },
+    "pull.capture:availability_exceptions": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:buyoff_plan": {
+     "calls": 1,
+     "seconds": 0.19
+    },
+    "pull.capture:carry_in": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:cday_op_plan": {
+     "calls": 1,
+     "seconds": 0.04
+    },
+    "pull.capture:cert_course_map": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:cert_eligibility_matrix": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:clock_observations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:cs_windows": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:dept_team_skill_ref": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:duration_episodes": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "pull.capture:econ_aircraft_mapping": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_contract_assignment": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_liability_checkpoint": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_mapping_revision": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_original_sale_basis": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_scenario": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:econ_term": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:etracs_active": {
+     "calls": 1,
+     "seconds": 0.16
+    },
+    "pull.capture:etracs_history": {
+     "calls": 1,
+     "seconds": 0.11
+    },
+    "pull.capture:flow_budget": {
+     "calls": 1,
+     "seconds": 2.65
+    },
+    "pull.capture:holding_events": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:inspection_counts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:inspection_holds": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:inspection_standards": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:labor_shift": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:master_task_list": {
+     "calls": 1,
+     "seconds": 3.86
+    },
+    "pull.capture:mech_team_inferred": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:mechanic_certs": {
+     "calls": 1,
+     "seconds": 0.02
+    },
+    "pull.capture:neo_graph_rework": {
+     "calls": 1,
+     "seconds": 0.26
+    },
+    "pull.capture:ot_authorizations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:part_events": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:people_directory": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:person_team_map": {
+     "calls": 1,
+     "seconds": 0.01
+    },
+    "pull.capture:pnet_dag": {
+     "calls": 1,
+     "seconds": 0.46
+    },
+    "pull.capture:requirement_alternatives": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:requirement_census": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:rework_classification": {
+     "calls": 1,
+     "seconds": 0.35
+    },
+    "pull.capture:scope_receipt": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:shift_roster": {
+     "calls": 1,
+     "seconds": 0.01
+    },
+    "pull.capture:soi_cert_requirements": {
+     "calls": 1,
+     "seconds": 1.89
+    },
+    "pull.capture:team_inference": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "pull.capture:work_progress": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "schedule": {
+     "calls": 1,
+     "seconds": 182.87
+    },
+    "schedule.build_candidate": {
+     "calls": 3,
+     "seconds": 22.06
+    },
+    "schedule.engine_context": {
+     "calls": 1,
+     "seconds": 14.12
+    },
+    "schedule.optimizer_run": {
+     "calls": 1,
+     "seconds": 130.99
+    },
+    "schedule.schedule_snapshot": {
+     "calls": 1,
+     "seconds": 180.19
+    },
+    "step:acquire": {
+     "calls": 1,
+     "seconds": 305.02
+    },
+    "step:admit": {
+     "calls": 1,
+     "seconds": 3.59
+    },
+    "step:forecast": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:schedule": {
+     "calls": 1,
+     "seconds": 183.75
+    },
+    "step:stage_readback": {
+     "calls": 1,
+     "seconds": 81.52
+    },
+    "step:validate": {
+     "calls": 1,
+     "seconds": 3.37
+    },
+    "store.read:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:candidates": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:plan_stages": {
+     "calls": 2,
+     "seconds": 8.39
+    },
+    "store.read:validations": {
+     "calls": 3,
+     "seconds": 0.0
+    },
+    "store.read_raw:candidate_digests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:datasets": {
+     "calls": 44,
+     "seconds": 0.17
+    },
+    "store.read_raw:display_manifests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_parts": {
+     "calls": 7933,
+     "seconds": 0.83
+    },
+    "store.read_raw:org_charts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 5,
+     "seconds": 6.63
+    },
+    "store.read_raw:validations": {
+     "calls": 3,
+     "seconds": 0.01
+    },
+    "store.validation_receipt": {
+     "calls": 3,
+     "seconds": 0.02
+    },
+    "store.write:candidate_digests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:candidates": {
+     "calls": 1,
+     "seconds": 4.3
+    },
+    "store.write:datasets": {
+     "calls": 44,
+     "seconds": 9.95
+    },
+    "store.write:display_manifests": {
+     "calls": 1,
+     "seconds": 0.03
+    },
+    "store.write:manifests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:org_charts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:plan_stages": {
+     "calls": 1,
+     "seconds": 5.08
+    },
+    "store.write:snapshots": {
+     "calls": 1,
+     "seconds": 62.3
+    },
+    "store.write:statistics": {
+     "calls": 183,
+     "seconds": 0.2
+    },
+    "store.write:validations": {
+     "calls": 3,
+     "seconds": 0.01
+    },
+    "validate:DETACHED": {
+     "calls": 1,
+     "seconds": 29.03
+    },
+    "validate:FINAL": {
+     "calls": 3,
+     "seconds": 61.6
+    },
+    "validate_artifact:DETACHED": {
+     "calls": 1,
+     "seconds": 55.42
+    }
+   },
+   "stages": {
+    "EXECUTABLE": [
+     {
+      "stop_reason": "deadline",
+      "moves": 0,
+      "stages": [
+       {
+        "stage": "neutral_seed",
+        "seconds": 76.9,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "economic_redispatch",
+        "seconds": 88.2,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "delay_repair",
+        "seconds": 0.4,
+        "candidates": 0,
+        "accepted": 0
+       },
+       {
+        "stage": "neighborhoods",
+        "seconds": 0.0,
+        "candidates": 0,
+        "accepted": 0
+       }
+      ]
+     }
+    ]
+   },
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 19.9,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 18.9,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "FINAL",
+     "seconds": 22.9,
+     "valid": true,
+     "violations": 0
+    },
+    {
+     "kind": "DETACHED",
+     "seconds": 29.0,
+     "valid": true,
+     "violations": 0
+    }
+   ],
+   "sampled": {
+    "samples": 14477,
+    "seconds_per_sample": 0.0399,
+    "inclusive_seconds": {
+     "tools/time_pre_shift.py:role": 577.4,
+     "tools/time_pre_shift.py:main": 577.4,
+     "tools/time_pre_shift.py:<module>": 577.4,
+     "tools/time_pre_shift.py:timed": 577.2,
+     "focus/orchestration.py:run_step": 577.2,
+     "focus/orchestration.py:run_role": 577.2,
+     "focus/orchestration.py:step_acquire": 288.1,
+     "focus/data/acquisition.py:acquire": 288.0,
+     "focus/orchestration.py:_schedule_one": 222.9,
+     "focus/orchestration.py:step_schedule": 222.9,
+     "focus/engine/max/optimizer/orchestrator.py:schedule": 222.5,
+     "focus/engine/max/optimizer/orchestrator.py:schedule_snapshot": 218.3,
+     "focus/engine/max/optimizer/orchestrator.py:_solve": 203.1,
+     "focus/engine/max/optimizer/orchestrator.py:<lambda>": 203.1,
+     "focus/engine/max/optimizer/orchestrator.py:plan_by_mode": 203.1,
+     "focus/engine/max/optimizer/orchestrator.py:run": 168.1,
+     "tools/time_pre_shift.py:timed_run": 168.1,
+     "focus/display/store.py:write_snapshot_display": 164.6,
+     "focus/data/acquisition.py:write_snapshot_display": 164.6,
+     "focus/display/store.py:write_parts": 164.5,
+     "focus/engine/max/optimizer/greedy.py:run": 130.7,
+     "focus/engine/max/optimizer/orchestrator.py:decode": 130.7,
+     "focus/engine/max/optimizer/greedy.py:_search_native": 114.3,
+     "focus/engine/max/optimizer/greedy.py:_search": 114.3,
+     "focus/engine/max/optimizer/greedy.py:_search_bounded": 114.3,
+     "focus/engine/max/optimizer/greedy.py:_place": 114.3,
+     "focus/engine/native.py:search": 114.2,
+     "tools/time_pre_shift.py:timed_validate": 74.9,
+     "focus/validation/plan.py:validate": 74.8,
+     "focus/data/snapshot_builder.py:build_snapshot": 67.2,
+     "focus/display/build.py:snapshot_parts": 65.5,
+     "focus/orchestration.py:_stage": 55.4,
+     "focus/orchestration.py:step_stage_readback": 55.4,
+     "focus/publication/service.py:publish": 55.4,
+     "focus/codec.py:format_utc": 48.7,
+     "focus/validation/publication.py:validate_artifact": 42.4,
+     "focus/display/store.py:_put_part": 41.7,
+     "focus/display/build.py:<genexpr>": 36.7,
+     "focus/data/repositories.py:put_record": 36.2,
+     "focus/codec.py:canonical_dumps": 35.6,
+     "focus/data/store.py:_atomic_write": 34.6,
+     "focus/data/store.py:put_immutable": 34.6,
+     "focus/data/graph.py:build_graph": 32.1,
+     "focus/codec.py:sha256_hex": 30.3,
+     "focus/engine/max/optimizer/orchestrator.py:_valid": 30.3
+    },
+    "running_seconds": {
+     "focus/engine/native.py:search": 114.2,
+     "focus/codec.py:format_utc": 48.7,
+     "focus/data/store.py:_atomic_write": 33.1,
+     "focus/codec.py:sha256_hex": 30.3,
+     "<string>:__init__": 27.2,
+     "focus/display/build.py:strip": 25.1,
+     "focus/display/build.py:snapshot_parts": 17.7,
+     "focus/data/graph.py:build_graph": 16.9,
+     "focus/codec.py:enc": 15.5,
+     "focus/domain.py:id": 14.6,
+     "focus/validation/plan.py:_topological": 13.6,
+     "<string>:__hash__": 13.2,
+     "focus/data/acquisition.py:_digest": 12.8,
+     "/usr/lib/python3.12/pathlib.py:read_bytes": 11.2,
+     "focus/validation/plan.py:_v9": 9.4,
+     "focus/codec.py:seal_bytes": 9.0,
+     "focus/display/build.py:<genexpr>": 7.5,
+     "/usr/lib/python3.12/enum.py:__get__": 6.3,
+     "focus/codec.py:to_jsonable": 5.1,
+     "focus/codec.py:canonical_dumps": 4.3,
+     "focus/codec.py:_enc_mapping": 4.2,
+     "focus/engine/model.py:_tails": 4.2
+    }
+   }
+  },
+  "first.signer": {
+   "role": "signer",
+   "planning": "full",
+   "startup_seconds": 0.3,
+   "role_seconds": 166.8,
+   "process_seconds": 167.0,
+   "peak_memory_mb": 8097,
+   "store_written_mb": 718.8,
+   "timers": {
+    "display.plan_parts": {
+     "calls": 1,
+     "seconds": 11.41
+    },
+    "display.plan_parts_signed": {
+     "calls": 1,
+     "seconds": 11.41
+    },
+    "load_snapshot": {
+     "calls": 1,
+     "seconds": 66.75
+    },
+    "publish": {
+     "calls": 1,
+     "seconds": 166.74
+    },
+    "publish.accept": {
+     "calls": 1,
+     "seconds": 6.3
+    },
+    "publish.post_acceptance": {
+     "calls": 1,
+     "seconds": 3.77
+    },
+    "publish.read_stage": {
+     "calls": 1,
+     "seconds": 9.43
+    },
+    "publish.serialize": {
+     "calls": 1,
+     "seconds": 2.01
+    },
+    "step:forecast_sign_accept": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "step:sign_accept": {
+     "calls": 1,
+     "seconds": 166.76
+    },
+    "store.read:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:plan_stages": {
+     "calls": 1,
+     "seconds": 9.04
+    },
+    "store.read:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:validations": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:accepted_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_manifests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:display_parts": {
+     "calls": 1874,
+     "seconds": 0.16
+    },
+    "store.read_raw:display_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:frozen_goals": {
+     "calls": 93,
+     "seconds": 0.01
+    },
+    "store.read_raw:published_payloads": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 1,
+     "seconds": 1.39
+    },
+    "store.read_raw:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:acceptance_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:accepted_plans": {
+     "calls": 1,
+     "seconds": 0.27
+    },
+    "store.write:display_manifests": {
+     "calls": 1,
+     "seconds": 0.01
+    },
+    "store.write:display_receipts": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:frozen_goals": {
+     "calls": 93,
+     "seconds": 0.33
+    },
+    "store.write:published_payloads": {
+     "calls": 1,
+     "seconds": 5.95
+    },
+    "store.write:published_plans": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:READBACK": {
+     "calls": 1,
+     "seconds": 31.56
+    },
+    "validate_artifact:READBACK": {
+     "calls": 1,
+     "seconds": 48.13
+    }
+   },
+   "stages": {},
+   "validations": [
+    {
+     "kind": "READBACK",
+     "seconds": 31.6,
+     "valid": true,
+     "violations": 0
+    }
+   ],
+   "sampled": {
+    "samples": 2903,
+    "seconds_per_sample": 0.0575,
+    "inclusive_seconds": {
+     "tools/time_pre_shift.py:role": 166.8,
+     "tools/time_pre_shift.py:main": 166.8,
+     "tools/time_pre_shift.py:<module>": 166.8,
+     "tools/time_pre_shift.py:timed": 166.6,
+     "focus/orchestration.py:_sign": 166.6,
+     "focus/orchestration.py:step_sign_accept": 166.6,
+     "focus/orchestration.py:run_step": 166.6,
+     "focus/orchestration.py:run_role": 166.6,
+     "focus/publication/service.py:_sign_staged": 166.6,
+     "focus/publication/service.py:publish": 166.6,
+     "focus/data/acquisition.py:load_snapshot": 61.1,
+     "focus/validation/publication.py:validate_artifact": 57.0,
+     "focus/codec.py:dec_dataclass": 49.2,
+     "tools/time_pre_shift.py:timed_validate": 45.7,
+     "focus/validation/plan.py:validate": 45.6,
+     "focus/codec.py:from_jsonable_releasing": 42.6,
+     "focus/publication/service.py:_sign_and_accept": 34.7,
+     "<string>:__init__": 27.2,
+     "focus/codec.py:dec_tuple_var": 25.3,
+     "focus/display/store.py:write_parts": 23.0,
+     "focus/display/store.py:write_plan_display": 23.0,
+     "focus/display/store.py:publish_plan_display": 23.0,
+     "focus/publication/service.py:publish_plan_display": 23.0,
+     "focus/domain.py:id": 16.8,
+     "focus/codec.py:format_utc": 11.4,
+     "focus/validation/plan.py:_derive_times": 10.9,
+     "focus/publication/serializer.py:decode_artifact": 10.5,
+     "focus/validation/publication.py:_artifact_violations": 10.3,
+     "focus/display/build.py:plan_parts": 9.7,
+     "focus/codec.py:streamed_content_hash": 9.4,
+     "focus/contracts/planning.py:record_hash": 9.4,
+     "focus/contracts/planning.py:computed_hash": 9.3,
+     "focus/codec.py:from_jsonable": 8.7,
+     "focus/data/store.py:_atomic_write": 8.7,
+     "focus/data/store.py:put_immutable": 8.7,
+     "focus/codec.py:sha256_hex": 8.1,
+     "focus/contracts/planning.py:verify": 7.9,
+     "focus/display/store.py:_put_part": 7.6,
+     "focus/validation/plan.py:_topological": 7.3,
+     "focus/contracts/planning.py:id": 7.0,
+     "focus/validation/input.py:build": 6.9,
+     "focus/publication/service.py:_post_acceptance": 6.5,
+     "focus/validation/plan.py:_v9": 6.3,
+     "focus/publication/service.py:incumbent_from": 6.1,
+     "<string>:__hash__": 6.0
+    },
+    "running_seconds": {
+     "<string>:__init__": 24.4,
+     "focus/codec.py:dec_dataclass": 16.7,
+     "focus/codec.py:format_utc": 11.4,
+     "focus/data/store.py:_atomic_write": 8.4,
+     "focus/codec.py:sha256_hex": 8.1,
+     "focus/validation/plan.py:_topological": 7.2,
+     "focus/domain.py:id": 6.9,
+     "<string>:__hash__": 6.0,
+     "focus/validation/plan.py:_v9": 5.4,
+     "<string>:__eq__": 4.8,
+     "focus/validation/input.py:build": 4.8,
+     "/usr/lib/python3.12/pathlib.py:read_bytes": 4.2,
+     "focus/codec.py:dec_tuple_var": 4.2,
+     "focus/data/acquisition.py:_digest": 3.6,
+     "focus/codec.py:canonical_envelope_hashes": 3.5,
+     "focus/display/build.py:plan_parts": 3.0,
+     "focus/publication/service.py:incumbent_from": 2.2,
+     "focus/validation/plan.py:_e_inventory": 2.1,
+     "focus/codec.py:from_jsonable_releasing": 2.1,
+     "focus/domain.py:_total_us": 1.7,
+     "focus/codec.py:dec_enum": 1.7,
+     "focus/codec.py:dec_datetime": 1.6
+    }
+   }
+  },
+  "repair.executable": {
+   "purpose": "EXECUTABLE",
+   "planning": {
+    "requested": "repair",
+    "ran": "repair",
+    "reason": "repair requested",
+    "hints": 14038,
+    "kept": 14038,
+    "rehomed": 0,
+    "deferred": 0
+   },
+   "schedule_seconds": 172.4,
+   "validate_seconds": 3.5,
+   "process_seconds": 176.2,
+   "peak_memory_mb": 7396,
+   "timers": {
+    "display.candidate_digest": {
+     "calls": 1,
+     "seconds": 0.04
+    },
+    "load_snapshot": {
+     "calls": 2,
+     "seconds": 70.82
+    },
+    "schedule": {
+     "calls": 1,
+     "seconds": 171.3
+    },
+    "schedule.build_candidate": {
+     "calls": 1,
+     "seconds": 7.46
+    },
+    "schedule.engine_context": {
+     "calls": 1,
+     "seconds": 20.88
+    },
+    "schedule.optimizer_run": {
+     "calls": 1,
+     "seconds": 31.81
+    },
+    "schedule.schedule_snapshot": {
+     "calls": 1,
+     "seconds": 104.02
+    },
+    "store.read:accepted_plans": {
+     "calls": 2,
+     "seconds": 0.69
+    },
+    "store.read:candidates": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:candidate_digests": {
+     "calls": 2,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 2,
+     "seconds": 3.53
+    },
+    "store.read_raw:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:candidate_digests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.write:candidates": {
+     "calls": 1,
+     "seconds": 10.91
+    },
+    "store.write:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:FINAL": {
+     "calls": 1,
+     "seconds": 27.49
+    }
+   },
+   "stages": {
+    "EXECUTABLE.repair": [
+     {
+      "stop_reason": "repair",
+      "moves": 0,
+      "stages": [
+       {
+        "stage": "repair",
+        "seconds": 22.0,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "repair_redispatch",
+        "seconds": 9.7,
+        "candidates": 1,
+        "accepted": 0
+       }
+      ]
+     }
+    ]
+   },
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 27.5,
+     "valid": true,
+     "violations": 0
+    }
+   ],
+   "sampled": {
+    "samples": 3763,
+    "seconds_per_sample": 0.0468,
+    "inclusive_seconds": {
+     "tools/time_pre_shift.py:repair": 176.0,
+     "tools/time_pre_shift.py:main": 176.0,
+     "tools/time_pre_shift.py:<module>": 176.0,
+     "tools/time_pre_shift.py:timed": 175.3,
+     "focus/orchestration.py:_schedule_one": 169.4,
+     "focus/engine/max/optimizer/orchestrator.py:schedule": 168.8,
+     "focus/engine/max/optimizer/orchestrator.py:schedule_snapshot": 119.3,
+     "focus/engine/max/optimizer/orchestrator.py:plan_by_mode": 97.9,
+     "focus/engine/max/optimizer/orchestrator.py:<lambda>": 96.4,
+     "focus/engine/max/optimizer/orchestrator.py:_solve": 96.3,
+     "focus/data/acquisition.py:load_snapshot": 55.9,
+     "focus/data/acquisition.py:snapshot_for_run": 49.5,
+     "tools/time_pre_shift.py:timed_validate": 39.6,
+     "focus/validation/plan.py:validate": 39.5,
+     "tools/time_pre_shift.py:timed_run": 39.2,
+     "focus/engine/max/optimizer/orchestrator.py:_run_repair": 39.2,
+     "focus/engine/max/optimizer/orchestrator.py:run": 39.2,
+     "focus/codec.py:from_jsonable_releasing": 32.9,
+     "focus/codec.py:dec_dataclass": 31.5,
+     "focus/engine/max/optimizer/orchestrator.py:decode": 29.6,
+     "focus/engine/max/optimizer/greedy.py:run": 28.6,
+     "<string>:__init__": 24.9,
+     "focus/domain.py:id": 23.3,
+     "focus/engine/model.py:__init__": 19.3,
+     "focus/codec.py:dec_tuple_var": 11.6,
+     "focus/engine/max/optimizer/orchestrator.py:build_candidate": 10.7,
+     "focus/engine/max/optimizer/greedy.py:_place": 9.6,
+     "focus/codec.py:streamed_content_hash": 9.6,
+     "focus/codec.py:format_utc": 9.5,
+     "focus/contracts/planning.py:record_hash": 9.5,
+     "focus/engine/model.py:new_ledger": 9.0,
+     "focus/engine/native.py:build_context": 8.9,
+     "focus/engine/model.py:crew_reserve": 8.3,
+     "focus/contracts/planning.py:computed_hash": 8.1,
+     "focus/validation/plan.py:_derive_times": 8.1,
+     "focus/engine/max/optimizer/orchestrator.py:evaluate": 8.0,
+     "<string>:__hash__": 7.5,
+     "focus/contracts/planning.py:verify": 6.6,
+     "/usr/lib/python3.12/pathlib.py:read_bytes": 6.5,
+     "focus/data/store.py:get": 6.5,
+     "focus/data/repositories.py:get_raw": 6.5,
+     "focus/orchestration.py:_validate_one": 6.5,
+     "focus/data/acquisition.py:_digest": 6.2,
+     "focus/engine/model.py:_tails": 6.1,
+     "focus/engine/model.py:qualifies_within": 6.1
+    },
+    "running_seconds": {
+     "<string>:__init__": 22.4,
+     "focus/domain.py:id": 12.0,
+     "focus/codec.py:dec_dataclass": 11.9,
+     "focus/codec.py:format_utc": 9.5,
+     "<string>:__hash__": 7.5,
+     "/usr/lib/python3.12/pathlib.py:read_bytes": 6.5,
+     "focus/data/acquisition.py:_digest": 6.2,
+     "focus/validation/plan.py:_topological": 5.3,
+     "focus/engine/model.py:_tails": 5.2,
+     "focus/validation/plan.py:_v9": 4.7,
+     "focus/engine/max/optimizer/greedy.py:run": 4.3,
+     "focus/engine/model.py:__init__": 4.2,
+     "focus/validation/input.py:build": 3.9,
+     "focus/codec.py:canonical_envelope_hashes": 3.5,
+     "<string>:__eq__": 2.8,
+     "focus/domain.py:_total_us": 2.6,
+     "focus/codec.py:enc": 2.4,
+     "focus/engine/max/optimizer/orchestrator.py:build_candidate": 2.4,
+     "focus/codec.py:dec_tuple_var": 2.4,
+     "focus/codec.py:from_jsonable_releasing": 1.8,
+     "focus/validation/plan.py:_e_inventory": 1.7,
+     "focus/engine/max/optimizer/orchestrator.py:<genexpr>": 1.5
+    }
+   }
+  },
+  "repair.forecast": {
+   "purpose": "FORECAST",
+   "planning": {
+    "requested": "repair",
+    "ran": "repair",
+    "reason": "repair requested",
+    "follows": {
+     "purpose": "EXECUTABLE",
+     "plan": "INC4fb8dcafbc22516a1936",
+     "defended": 24705,
+     "slots_to_keep": 14038
+    },
+    "hints": 123011,
+    "kept": 123011,
+    "rehomed": 0,
+    "deferred": 0
+   },
+   "schedule_seconds": 276.2,
+   "validate_seconds": 3.9,
+   "process_seconds": 280.3,
+   "peak_memory_mb": 7882,
+   "timers": {
+    "display.candidate_digest": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "load_snapshot": {
+     "calls": 2,
+     "seconds": 71.36
+    },
+    "schedule": {
+     "calls": 1,
+     "seconds": 275.38
+    },
+    "schedule.build_candidate": {
+     "calls": 1,
+     "seconds": 16.02
+    },
+    "schedule.engine_context": {
+     "calls": 1,
+     "seconds": 21.66
+    },
+    "schedule.optimizer_run": {
+     "calls": 1,
+     "seconds": 71.41
+    },
+    "schedule.schedule_snapshot": {
+     "calls": 1,
+     "seconds": 207.94
+    },
+    "store.read:accepted_plans": {
+     "calls": 3,
+     "seconds": 2.25
+    },
+    "store.read:candidates": {
+     "calls": 1,
+     "seconds": 37.27
+    },
+    "store.read:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:candidate_digests": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.read_raw:snapshots": {
+     "calls": 2,
+     "seconds": 3.39
+    },
+    "store.read_raw:validations": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "store.validation_receipt": {
+     "calls": 1,
+     "seconds": 0.0
+    },
+    "validate:FINAL": {
+     "calls": 1,
+     "seconds": 42.21
+    }
+   },
+   "stages": {
+    "FORECAST.repair": [
+     {
+      "stop_reason": "repair",
+      "moves": 0,
+      "stages": [
+       {
+        "stage": "repair",
+        "seconds": 37.0,
+        "candidates": 1,
+        "accepted": 1
+       },
+       {
+        "stage": "repair_redispatch",
+        "seconds": 34.0,
+        "candidates": 1,
+        "accepted": 0
+       }
+      ]
+     }
+    ]
+   },
+   "validations": [
+    {
+     "kind": "FINAL",
+     "seconds": 42.2,
+     "valid": true,
+     "violations": 0
+    }
+   ],
+   "sampled": {
+    "samples": 6078,
+    "seconds_per_sample": 0.0461,
+    "inclusive_seconds": {
+     "tools/time_pre_shift.py:repair": 280.1,
+     "tools/time_pre_shift.py:main": 280.1,
+     "tools/time_pre_shift.py:<module>": 280.1,
+     "tools/time_pre_shift.py:timed": 280.0,
+     "focus/engine/max/optimizer/orchestrator.py:schedule": 273.0,
+     "focus/orchestration.py:_schedule_one": 273.0,
+     "focus/engine/max/optimizer/orchestrator.py:schedule_snapshot": 225.5,
+     "focus/engine/max/optimizer/orchestrator.py:plan_by_mode": 201.4,
+     "focus/engine/max/optimizer/orchestrator.py:<lambda>": 193.7,
+     "focus/engine/max/optimizer/orchestrator.py:_solve": 193.7,
+     "tools/time_pre_shift.py:timed_run": 93.7,
+     "focus/engine/max/optimizer/orchestrator.py:_run_repair": 93.7,
+     "focus/engine/max/optimizer/orchestrator.py:run": 93.7,
+     "focus/engine/max/optimizer/orchestrator.py:decode": 79.8,
+     "focus/engine/max/optimizer/greedy.py:run": 78.7,
+     "tools/time_pre_shift.py:timed_validate": 61.2,
+     "focus/validation/plan.py:validate": 61.2,
+     "focus/data/acquisition.py:load_snapshot": 54.4,
+     "focus/data/acquisition.py:snapshot_for_run": 47.4,
+     "focus/engine/max/optimizer/greedy.py:_place": 46.9,
+     "focus/codec.py:dec_dataclass": 40.3,
+     "<string>:__init__": 34.1,
+     "focus/codec.py:from_jsonable_releasing": 32.4,
+     "focus/domain.py:id": 29.2,
+     "focus/engine/max/optimizer/greedy.py:_keep": 25.5,
+     "focus/engine/max/optimizer/greedy.py:_book": 24.7,
+     "focus/engine/max/optimizer/orchestrator.py:build_candidate": 22.0,
+     "focus/codec.py:dec_tuple_var": 21.6,
+     "focus/engine/model.py:__init__": 19.6,
+     "focus/codec.py:streamed_content_hash": 15.3,
+     "focus/contracts/planning.py:record_hash": 15.2,
+     "focus/codec.py:format_utc": 14.6,
+     "focus/engine/max/optimizer/greedy.py:_floors": 12.9,
+     "focus/engine/crew_selection.py:choose_crew": 12.4,
+     "focus/data/repositories.py:get_typed": 11.9,
+     "focus/engine/max/optimizer/orchestrator.py:evaluate": 11.6,
+     "focus/contracts/planning.py:computed_hash": 10.4,
+     "focus/validation/plan.py:_derive_times": 10.0,
+     "focus/engine/model.py:new_ledger": 9.9,
+     "focus/engine/native.py:build_context": 9.9,
+     "focus/codec.py:from_jsonable": 9.8,
+     "focus/eligibility.py:check_bundle": 9.5,
+     "<string>:__hash__": 9.4,
+     "focus/engine/model.py:crew_reserve": 9.1,
+     "focus/engine/commitments.py:repair_hints": 9.1
+    },
+    "running_seconds": {
+     "<string>:__init__": 30.6,
+     "focus/domain.py:id": 15.7,
+     "focus/codec.py:format_utc": 14.6,
+     "focus/codec.py:dec_dataclass": 13.8,
+     "<string>:__hash__": 9.4,
+     "focus/engine/max/optimizer/greedy.py:run": 8.3,
+     "/usr/lib/python3.12/pathlib.py:read_bytes": 6.9,
+     "focus/data/acquisition.py:_digest": 6.1,
+     "focus/engine/native.py:commit": 5.8,
+     "focus/engine/model.py:_tails": 5.3,
+     "focus/validation/plan.py:_topological": 5.3,
+     "focus/validation/plan.py:_v9": 5.2,
+     "focus/engine/native.py:plan": 4.8,
+     "focus/engine/max/optimizer/greedy.py:release": 4.4,
+     "focus/engine/model.py:__init__": 4.3,
+     "focus/codec.py:dec_tuple_var": 4.2,
+     "focus/engine/max/optimizer/orchestrator.py:<genexpr>": 4.2,
+     "focus/domain.py:_total_us": 4.0,
+     "focus/engine/max/optimizer/greedy.py:_floors": 3.9,
+     "focus/validation/input.py:build": 3.8,
+     "focus/engine/max/optimizer/orchestrator.py:build_candidate": 3.5,
+     "<string>:__eq__": 3.4
+    }
+   }
+  }
+ },
+ "notes": {
+  "machine": "A new container, not the machine of the earlier receipts: identical jobs took 14 to 22% longer here (plan job in a repairing run 501.4 s against 413.1; delivery plan's job 422.1 against 371.0).",
+  "signer_from_stage": "The signer reads the staged bytes, validates them itself (READBACK) and signs them (publication.service._sign_staged). It no longer reads the stored candidate, builds and serializes the artifact from it again, or stages it again.",
+  "removed_work_seconds_on_this_store": {
+   "EXECUTABLE": {
+    "read_candidate": 7.8,
+    "build_artifact": 5.3,
+    "serialize": 3.2,
+    "stage_again": 8.9,
+    "total": 25.1
+   },
+   "FORECAST": {
+    "read_candidate": 35.5,
+    "build_artifact": 6.3,
+    "serialize": 5.9,
+    "stage_again": 14.3,
+    "total": 61.9
+   },
+   "total": 87.0,
+   "how": "each operation timed once, in one process, on this run's finished store"
+  },
+  "removed_work_seconds_in_the_four_job_receipt": {
+   "EXECUTABLE": 28.7,
+   "FORECAST": 45.6,
+   "total": 74.3,
+   "how": "publish.stage, store.read:candidates, publish.build_artifact and one publish.serialize of pre_shift_timing_50_planner_jobs.json"
+  }
+ }
+}

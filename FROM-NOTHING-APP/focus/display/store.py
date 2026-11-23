@@ -20,7 +20,7 @@ a writer puts back any part of its manifest that retention removed (the build is
 * every part must hash to the value its manifest names.
 
 Any failure makes nothing current and says why. Verified parts are kept in a bounded LRU keyed by their hash, sized by
-their canonical bytes (``FOCUS_DISPLAY_CACHE_MB``, default 192).
+their canonical bytes (``FOCUS_DISPLAY_CACHE_MB``, default 384).
 """
 from __future__ import annotations
 
@@ -189,11 +189,14 @@ def snapshot_display_complete(repos: Any, snapshot_id: str) -> bool:
 
 # ---------------------------------------------------------------------- reading
 
+DEFAULT_CACHE_MB = 384        # holds what every team lead's first paint reads for one shift at 50 aircraft (335 MB measured)
+
+
 def _cache_bytes() -> int:
     try:
-        mb = int(os.environ.get("FOCUS_DISPLAY_CACHE_MB", "192"))
+        mb = int(os.environ.get("FOCUS_DISPLAY_CACHE_MB", str(DEFAULT_CACHE_MB)))
     except ValueError:
-        mb = 192
+        mb = DEFAULT_CACHE_MB
     return max(8, mb) * 1_000_000
 
 

@@ -303,6 +303,113 @@ def test_a71_roles_order_and_idempotent_replay(pipeline_services) -> None:
     assert _published(services) == plans and O.status(services, pid)["outbox"] == status["outbox"]
 
 
+def test_role_lists_name_roles_once_each() -> None:
+    assert O.roles_of("all") == O.ROLES and O.roles_of("app") == ("app",)
+    assert O.roles_of("source,app,stager") == ("source", "app", "stager") and O.roles_of("app, stager") == ("app", "stager")
+    for bad in ("", "planner", "app,", "app,app", "source,bogus", "all,app", ","):
+        assert O.roles_of(bad) is None, bad
+
+
+JOB_SEQUENCE = ("source,app,stager", "signer", "app,stager", "signer", "evaluator")     # four plan jobs where the roles alone take seven
+
+
+def test_a_job_that_runs_several_roles_parses_the_snapshot_once_and_reads_no_candidate_back(pipeline_services, monkeypatch) -> None:
+    """DEC-36 (g): one process runs the source, app and stager steps in a row. It holds the snapshot it has just
+    admitted and the candidate it has just stored, so it builds neither again; the signer, a job of its own, loads the
+    snapshot from the store and takes the plan from the staged bytes it validates. Step by step the pipeline is the one
+    the roles alone would have run."""
+    import focus.data.acquisition as acquisition
+    from focus.contracts.planning import CandidatePlan, PlanningSnapshot
+
+    services = pipeline_services
+    pid = _pid(services, "combined")
+    built: list[str] = []
+    real = acquisition.from_jsonable_releasing
+
+    def counted(tp, data, path="$"):
+        if tp is PlanningSnapshot:
+            built.append("snapshot")
+        return real(tp, data, path)
+    monkeypatch.setattr(acquisition, "from_jsonable_releasing", counted)
+    read: list[str] = []
+    get_typed = services.repositories.get_typed
+
+    def spy(collection, record_id, type_name, cls, *args, **kwargs):
+        found = get_typed(collection, record_id, type_name, cls, *args, **kwargs)
+        if cls is CandidatePlan and found is not None:      # a stored candidate read back and decoded
+            read.append(record_id)
+        return found
+    monkeypatch.setattr(services.repositories, "get_typed", spy)
+
+    first = O.run_role(services, pid, JOB_SEQUENCE[0])
+    assert [(r["step"], r["outcome"]) for r in first] == [("acquire", "COMPLETED"), ("admit", "COMPLETED"), ("schedule", "COMPLETED"),
+                                                          ("validate", "COMPLETED"), ("stage_readback", "COMPLETED"), ("forecast", "BLOCKED")]
+    steps = O.load(services, pid)[0]["steps"]
+    candidate = steps["schedule"]["output"]["EXECUTABLE"]["candidate_id"]
+    assert built == []                                    # the snapshot this process admitted was never parsed again
+    assert candidate not in read                          # nor was the candidate it stored read back for staging
+    assert steps["stage_readback"]["output"]["EXECUTABLE"]["status"] == "STAGED" and not _published_since(services, steps)
+
+    monkeypatch.setattr(acquisition, "_VERIFIED", {})     # the signer is another process: it holds nothing
+    from focus.engine.max.optimizer import orchestrator as scheduling
+
+    monkeypatch.setattr(scheduling, "_SCHEDULED", {})
+    signed = O.run_role(services, pid, JOB_SEQUENCE[1])
+    assert [(r["step"], r["outcome"]) for r in signed] == [("sign_accept", "COMPLETED"), ("forecast_sign_accept", "BLOCKED")]
+    assert built == ["snapshot"]                          # it loaded the stored snapshot itself
+    assert candidate not in read                          # and took the plan from the staged bytes, not from the stored candidate
+
+    for job in JOB_SEQUENCE[2:]:
+        ran = [r for r in O.run_role(services, pid, job) if r["outcome"] != "ALREADY_COMPLETED"]
+        assert ran and ran[0]["outcome"] == "COMPLETED", (job, ran)
+    status = O.status(services, pid)
+    assert status["state"] == "completed" and len(status["outbox"]) == len(O.STEPS)
+    steps = O.load(services, pid)[0]["steps"]
+    assert {steps["sign_accept"]["output"]["EXECUTABLE"]["status"], steps["forecast_sign_accept"]["output"]["FORECAST"]["status"]} == {"ACCEPTED"}
+    validations = {v for name in ("stage_readback", "forecast_stage_readback") for v in [next(iter(steps[name]["output"].values()))["readback_validation_id"]]}
+    assert len(validations) == 2 and all(validations)
+
+
+def _published_since(services, steps) -> list[str]:
+    """Published plans of this pipeline's shift-plan candidate (none before its signer has run)."""
+    candidate = steps["schedule"]["output"]["EXECUTABLE"]["candidate_id"]
+    from focus.publication.repository import repository_for
+
+    repo = repository_for(services)
+    return [pid for pid in repo.accepted_ids() if repo.published(pid).candidate_id == candidate]
+
+
+def test_jobs_of_several_roles_accept_the_same_plans_as_the_roles_alone(services_factory) -> None:
+    from focus.pipeline import cli_demo_bootstrap
+
+    accepted = {}
+    for name, sequence in (("roles", ROLE_SEQUENCE), ("jobs", JOB_SEQUENCE)):
+        services = services_factory()
+        assert cli_demo_bootstrap(services, SimpleNamespace(scenario="manufacturing_demo", reset=False))["status"] == "ok"
+        pid = _pid(services, "same")
+        for role in sequence:
+            O.run_role(services, pid, role)
+        steps = O.load(services, pid)[0]["steps"]
+        assert O.status(services, pid)["state"] == "completed", name
+        accepted[name] = (steps["schedule"]["output"]["EXECUTABLE"]["candidate_id"], steps["sign_accept"]["output"]["EXECUTABLE"]["plan_id"],
+                          steps["forecast"]["output"]["FORECAST"]["candidate_id"], steps["forecast_sign_accept"]["output"]["FORECAST"]["plan_id"])
+    assert accepted["roles"] == accepted["jobs"] and all(accepted["jobs"])        # candidates and plans, id for id
+
+
+def test_cli_refuses_a_role_list_with_an_unknown_or_repeated_role(pipeline_services) -> None:
+    for bad in ("source,planner", "app,app", ""):
+        out = O.cli_pipeline(pipeline_services, Namespace(key="bad-role", role=bad, status=False, step=None))
+        if bad == "":
+            assert out["status"] != "invalid"              # no role given means all
+            continue
+        assert out["status"] == "invalid" and out["error"]["code"] == "BAD_ROLE", bad
+    out = O.cli_pipeline(pipeline_services, Namespace(key="list-role", role="source,app,stager", status=False, step=None))
+    assert out["status"] == "ok" and [r["step"] for r in out["ran"] if r["outcome"] == "COMPLETED"] == [
+        "acquire", "admit", "schedule", "validate", "stage_readback"]
+    one = O.cli_pipeline(pipeline_services, Namespace(key="list-role", role="app,stager", status=False, step="sign_accept"))
+    assert one["ran"][0]["outcome"] == "ROLE_MISMATCH"     # a step outside the job's roles is never run by it
+
+
 def test_executable_plan_is_accepted_before_the_forecast_is_scheduled(pipeline_services) -> None:
     """The shift's dispatch never waits for the forecast; the forecast still runs and publishes on the same snapshot."""
     from focus.publication.service import current_plan
@@ -327,8 +434,9 @@ def test_executable_plan_is_accepted_before_the_forecast_is_scheduled(pipeline_s
 
 
 def test_the_window_report_measures_the_data_cut_to_the_accepted_plan_against_the_owners_budget(pipeline_services) -> None:
-    """D-28: data gathering, scheduling and the dashboard ready within 20 minutes. The clock runs from the data cut to the
-    acceptance of the executable plan, which writes the dashboard's data; the forecast that follows is outside it."""
+    """D-28 and D-33: gathering, digesting and scheduling within 20 minutes. The clock runs from the data cut. The shift
+    plan's acceptance writes the dashboard's data (the task lists); the delivery plan's acceptance completes the schedule,
+    and the budget is about the whole schedule."""
     from focus.clock import FIXTURE_CUTOFF
     from focus.display.store import has_plan_display
 
@@ -347,20 +455,38 @@ def test_the_window_report_measures_the_data_cut_to_the_accepted_plan_against_th
     w = O.status(services, pid)["window"]
     plan_id = O.load(services, pid)[0]["steps"]["sign_accept"]["output"]["EXECUTABLE"]["plan_id"]
     assert has_plan_display(services.repositories, plan_id)                             # acceptance wrote the dashboard's data
-    assert (w["minutes"], w["within_budget"]) == (11.0, True)                            # 6 + 3 + 2 minutes after the cut
+    assert (w["minutes"], w["shift_plan_within_budget"]) == (11.0, True)                 # 6 + 3 + 2 minutes after the cut
+    assert (w["schedule_minutes"], w["delivery_plan_ready_at"], w["within_budget"]) == (None, None, None)   # the schedule is not whole yet
     assert w["plans_shift"] == "DEMO:2026-10-26:S1" and w["late"] is True                # the fixture cuts at the shift's start
-    assert set(w["step_seconds"]) == set(O.WINDOW_STEPS) and all(v == 0.0 for v in w["step_seconds"].values())
-    services.clock.advance(minutes=30)
-    for role in ("app", "stager", "signer"):                                             # the forecast follows acceptance
+    assert set(w["step_seconds"]) == set(O.WINDOW_STEPS + O.DELIVERY_STEPS)
+    assert all(w["step_seconds"][name] == 0.0 for name in O.WINDOW_STEPS) and all(w["step_seconds"][name] is None for name in O.DELIVERY_STEPS)
+    services.clock.advance(minutes=12)
+    for role in ("app", "stager", "signer"):                                             # the delivery plan follows acceptance
         O.run_role(services, pid, role)
-    assert O.status(services, pid)["window"]["minutes"] == 11.0                          # ... and is outside the window
+    over = O.status(services, pid)["window"]                                             # the task lists in time, the whole schedule not
+    assert (over["minutes"], over["shift_plan_within_budget"], over["schedule_minutes"], over["within_budget"]) == (11.0, True, 23.0, False)
+    assert over["delivery_plan_ready_at"] == FIXTURE_CUTOFF + timedelta(minutes=23)
+    assert all(over["step_seconds"][name] == 0.0 for name in O.DELIVERY_STEPS)
     slow = _pid(services, "window-slow")
     O.run_role(services, slow, "source")
     services.clock.advance(minutes=25)
     for role in ("app", "stager", "signer"):
         O.run_role(services, slow, role)
     over = O.status(services, slow)["window"]
-    assert over["minutes"] > 20 and over["within_budget"] is False
+    assert over["minutes"] > 20 and over["shift_plan_within_budget"] is False and over["within_budget"] is False   # known at once
+
+
+def test_the_window_is_met_only_when_the_delivery_plan_is_accepted_inside_it_too(pipeline_services) -> None:
+    """D-33: one schedule through delivery, made within the 20 minutes."""
+    services = pipeline_services
+    pid = _pid(services, "window-whole")
+    for role, minutes in (("source", 6), ("app", 3), ("stager", 2), ("signer", 4)):
+        O.run_role(services, pid, role)
+        services.clock.advance(minutes=minutes)
+    for role in ("app", "stager", "signer"):
+        O.run_role(services, pid, role)
+    w = O.status(services, pid)["window"]
+    assert (w["minutes"], w["shift_plan_within_budget"], w["schedule_minutes"], w["within_budget"]) == (11.0, True, 15.0, True)
 
 
 def test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan(pipeline_services) -> None:
@@ -402,8 +528,8 @@ def test_the_pipeline_reports_whether_the_cost_objective_steered_each_plan(pipel
 
 
 def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> None:
-    """``auto`` at the fixture cutoff (06:00 local, shift 1) is the daily full solve and measures the repair it replaced;
-    a ``repair`` pipeline then repairs both plans the first one accepted."""
+    """As shipped a pipeline repairs the accepted plan, whichever shift it plans (``auto``, D-33). A pipeline asked for the
+    full solve (the nightly one) runs it and records how far a repair would have landed. A ``repair`` pipeline repairs."""
     services = pipeline_services
     first = _pid(services, "plan-auto")
     assert O.load(services, first)[0]["request"]["planning"] == services.policy.str("planning.default_mode") == "auto"
@@ -411,9 +537,20 @@ def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> N
         O.run_role(services, first, role)
     steps = O.load(services, first)[0]["steps"]
     auto = steps["schedule"]["output"]["EXECUTABLE"]["planning"]
-    assert (auto["requested"], auto["ran"]) == ("auto", "full") and "daily full solve" in auto["reason"]
-    assert auto["drift"]["repair_seconds"] >= 0                                    # the bootstrap incumbent was repaired for comparison
-    assert steps["forecast"]["output"]["FORECAST"]["planning"]["ran"] == "full"
+    assert (auto["requested"], auto["ran"]) == ("auto", "repair") and "the incumbent's cutoff is" in auto["reason"]
+    assert auto["kept"] + auto["rehomed"] <= auto["hints"] and "drift" not in auto
+    delivery = steps["forecast"]["output"]["FORECAST"]["planning"]
+    assert delivery["ran"] == "repair" and delivery["follows"]["purpose"] == "EXECUTABLE"     # it follows the shift plan just accepted
+    assert delivery["follows"]["plan"] != auto.get("plan") and delivery["rehomed"] <= delivery["hints"]
+    nightly = O.create(services, key="plan-nightly", budget_seconds=10, max_moves=10, planning="full")["pipeline_id"]
+    for role in ROLE_SEQUENCE:
+        O.run_role(services, nightly, role)
+    assert O.status(services, nightly)["state"] == "completed"
+    steps = O.load(services, nightly)[0]["steps"]
+    for step, purpose in (("schedule", "EXECUTABLE"), ("forecast", "FORECAST")):
+        record = steps[step]["output"][purpose]["planning"]
+        assert (record["requested"], record["ran"], record["reason"]) == ("full", "full", "full requested")
+        assert record["drift"]["repair_seconds"] >= 0                              # the accepted plan was repaired for comparison
     second = O.create(services, key="plan-repair", budget_seconds=10, max_moves=10, planning="repair")["pipeline_id"]
     for role in ROLE_SEQUENCE:
         O.run_role(services, second, role)
@@ -422,6 +559,7 @@ def test_pipeline_plans_with_the_requested_planning_mode(pipeline_services) -> N
     for step, purpose in (("schedule", "EXECUTABLE"), ("forecast", "FORECAST")):
         record = steps[step]["output"][purpose]["planning"]
         assert (record["requested"], record["ran"]) == ("repair", "repair") and record["kept"] + record["rehomed"] <= record["hints"]
+    assert steps["forecast"]["output"]["FORECAST"]["planning"]["follows"]["purpose"] == "EXECUTABLE"
 
 
 def test_a71_cli_role_that_only_waited_is_not_a_success(pipeline_services) -> None:
@@ -583,8 +721,8 @@ def test_retention_archives_only_unreferenced_candidates_and_restores_them(pipel
 # ---------------------------------------------------------------------- CI draft
 
 
-def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
-    text = (app_root / ".gitlab-ci.yml").read_text(encoding="utf-8")
+def _ci_jobs(text: str) -> dict[str, str]:
+    """The pipeline draft's top-level blocks by name, each with its own text."""
     jobs: dict[str, str] = {}
     current = None
     for line in text.splitlines():
@@ -593,14 +731,64 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
             jobs[current] = ""
         elif current:
             jobs[current] += line + "\n"
+    return jobs
+
+
+def test_ci_draft_keeps_a_staged_copy_current_at_four_cadences(app_root) -> None:
+    """SQL Server holds a complete copy of the sources, kept current ahead of time, each dataset at its own cadence (D-34),
+    so the pass inside the owner's 20 minutes pulls only what changed (docs/integration/STAGING_PLAN.md)."""
+    from focus.data.cadence import in_pass
+    from focus.data.datasets import DATASETS
+
+    jobs = _ci_jobs((app_root / ".gitlab-ci.yml").read_text(encoding="utf-8"))
+    cut, before, nightly, weekly = jobs["stage_sources"], jobs["prestage_sources"], jobs["nightly_sources"], jobs["weekly_sources"]
+    assert "--part cut " in cut and "extends: .live" in cut and "needs: []" in cut      # starts with the pipeline; counts toward D-28
+    assert "--part preshift " in before and "--part nightly " in nightly and "--part weekly " in weekly
+    assert "--part observations " in jobs["stage_observations"]
+    for name, part in (("prestage_sources", "preshift"), ("verify_prestaged_sources", "preshift"), ("nightly_sources", "nightly"),
+                       ("verify_nightly_sources", "nightly"), ("weekly_sources", "weekly"), ("verify_weekly_sources", "weekly")):
+        job = jobs[name]
+        assert f'$FOCUS_PIPELINE_PART == "{part}"' in job and "extends: .staging_only" in job, name
+        assert "--role" not in job and "FOCUS_SIGN_KEY_REF" not in job and "focus-signer" not in job, name   # staging never plans or signs
+    for name in ("stage_sources", "prestage_sources", "nightly_sources", "weekly_sources", "stage_observations"):
+        assert '--as-of "$CI_PIPELINE_CREATED_AT"' in jobs[name] and "focus-staging" in jobs[name], name       # one instant; staging credentials only
+    for name, loaded in (("verify_prestaged_sources", "prestage_sources"), ("verify_nightly_sources", "nightly_sources"),
+                         ("verify_weekly_sources", "weekly_sources")):
+        assert "source-discover --read-only --mode live" in jobs[name] and f"needs: [{loaded}]" in jobs[name] and "focus-source" in jobs[name]
+    # a pass never publishes while acquire_admit reads the copy, and a merge never cancels a live run
+    for template in (".live", ".staging_only", ".evaluate_only"):
+        assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[template] and "interruptible: false" in jobs[template], template
+    # the plan pipeline is the one that names no part, and an unknown part runs nothing
+    assert "$FOCUS_PIPELINE_PART == null" in jobs[".live"] and jobs["sign_accept"].count("$FOCUS_PIPELINE_PART == null") == 2
+    guard = jobs["workflow"].split("when: never")[0]
+    assert all(f'$FOCUS_PIPELINE_PART != "{part}"' in guard for part in ("evaluate", "preshift", "nightly", "weekly"))
+    # the plan names every dataset and says which ones the pass at the cut pulls (tests/unit/test_staging_cadence.py holds
+    # every cell of its tables to the registry)
+    plan = (app_root / "docs" / "integration" / "STAGING_PLAN.md").read_text(encoding="utf-8")
+    rows = {cells[1].strip().strip("`"): [c.strip() for c in cells] for cells in (line.split("|") for line in plan.splitlines() if line.startswith("| `"))
+            if len(cells) == 12}
+    assert set(rows) == set(DATASETS), sorted(set(DATASETS) ^ set(rows))
+    at_the_cut = [name for name in DATASETS if rows[name][8] != "none"]
+    assert set(at_the_cut) == set(in_pass("cut")) and len(at_the_cut) == 18 and "the 18 datasets" in plan
+    assert {"master_task_list", "work_progress", "etracs_active"} <= set(at_the_cut)
+    assert all(rows[name][2] == ("yes" if DATASETS[name].required_for_run else "no") for name in DATASETS)
+    for needle in ("--part cut", "`prestage_sources`", "`nightly_sources`", "`weekly_sources`", "`stage_observations`", "FOCUS_PIPELINE_PART=preshift",
+                   "FOCUS_PIPELINE_PART=nightly", "FOCUS_PIPELINE_PART=weekly", "DEC-37"):
+        assert needle in plan, needle
+
+
+def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
+    text = (app_root / ".gitlab-ci.yml").read_text(encoding="utf-8")
+    jobs = _ci_jobs(text)
     # the executable plan is scheduled, staged and signed first; the forecast follows its acceptance
     order = [("acquire_admit", "--role source"), ("schedule_validate", "--role app"), ("stage_readback", "--role stager"),
              ("sign_accept", "--role signer"), ("forecast_schedule_validate", "--role app"), ("forecast_stage_readback", "--role stager"),
              ("forecast_sign_accept", "--role signer")]
     for (job, role), previous in zip(order, [None] + [j for j, _ in order]):
         assert role in jobs[job], job
-        if previous:
-            assert f"needs: [{previous}]" in jobs[job] or f"needs: [{previous}," in jobs[job], job   # each role needs the one before it
+        if previous:                                                              # each role needs the one before it
+            assert (f"needs: [{previous}]" in jobs[job] or f"needs: [{previous}," in jobs[job]
+                    or f"needs: [{{ job: {previous}, optional: true }}," in jobs[job]), job
     assert "--role evaluator" in jobs["observe_evaluate"] and "needs: [sign_accept]" in jobs["observe_evaluate"]
     # P23: every verification precedes acquisition, and the scheduler runs the native wheel built from the same commit
     needs = jobs["acquire_admit"].split("needs:")[1].splitlines()[0]
@@ -619,16 +807,29 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     assert "{ job: native_wheel, artifacts: true }" in jobs["schedule_validate"] and "dist/focus_native-" in jobs["schedule_validate"]
     assert "focus-native==" not in jobs["schedule_validate"]                     # never an index wheel from another commit
     assert "when: manual" in jobs["sign_accept"] and "focus-signer" in jobs["sign_accept"]
-    # DEC-11 is the owner's decision and is not made: the switch for automatic acceptance exists and is off. Turned on, it
-    # applies only to a scheduled run on a protected ref; every other run still waits for an operator
-    assert 'FOCUS_AUTO_SIGN: "false"' in jobs["variables"]
+    # D-34 (owner, 2026-11-12): no person accepts a plan, so the switch for automatic acceptance ships on. It applies only
+    # to a scheduled run on a protected ref; a run started by hand, or with the switch off, still waits for an operator
+    assert 'FOCUS_AUTO_SIGN: "true"' in jobs["variables"]
     auto, manual = jobs["sign_accept"].split("when: on_success")[0], jobs["sign_accept"].split("when: on_success")[1]
     rule = [line for line in auto.splitlines() if line.strip()][-1]              # the condition of the automatic rule
     for condition in ('$FOCUS_AUTO_SIGN == "true"', '$CI_PIPELINE_SOURCE == "schedule"', '$CI_COMMIT_REF_PROTECTED == "true"', '$FOCUS_MODE == "live"'):
         assert condition in rule and " || " not in rule, condition                # every condition must hold: no alternative
     assert "when: manual" in manual and "FOCUS_AUTO_SIGN" not in manual
-    assert "FOCUS_AUTO_SIGN" not in jobs["forecast_sign_accept"]                 # the forecast is always promoted by an operator
-    assert "when: manual" in jobs["forecast_sign_accept"] and "focus-signer" in jobs["forecast_sign_accept"]
+    # the delivery plan has its own switch, also on: accepted by the run only with both on, on a schedule, on a protected ref
+    assert 'FOCUS_AUTO_SIGN_DELIVERY: "true"' in jobs["variables"]
+    auto, manual = jobs["forecast_sign_accept"].split("when: on_success")[0], jobs["forecast_sign_accept"].split("when: on_success")[1]
+    rule = [line for line in auto.splitlines() if line.strip()][-1]
+    for condition in ('$FOCUS_AUTO_SIGN == "true"', '$FOCUS_AUTO_SIGN_DELIVERY == "true"', '$CI_PIPELINE_SOURCE == "schedule"',
+                      '$CI_COMMIT_REF_PROTECTED == "true"', '$FOCUS_MODE == "live"'):
+        assert condition in rule and " || " not in rule, condition
+    assert "when: manual" in manual and "FOCUS_AUTO_SIGN" not in manual and "focus-signer" in jobs["forecast_sign_accept"]
+    # D-33: every pre-shift run repairs; the nightly schedule asks for the full solve where the pipeline is created
+    create = next(line for line in jobs["acquire_admit"].splitlines() if "--role source" in line)
+    for flag in ('${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"}', '${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"}',
+                 '${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"}'):
+        assert flag in create, flag
+    assert "FOCUS_PLANNING" not in jobs["variables"]                              # unset: the policy's mode (auto: repair)
+    assert 'FOCUS_FAST_EXIT: "true"' in jobs[".live"]
     assert "dist/focus_native-" in jobs["forecast_schedule_validate"] and "FOCUS_SIGN_KEY_REF" not in jobs["forecast_stage_readback"]
     assert "resource_group: focus-$FOCUS_SCOPE_KEY" in jobs[".live"]
     # D-24: display retention runs before acquisition (the store holds the current package and the one being built), as
@@ -645,3 +846,26 @@ def test_ci_draft_orders_roles_and_protects_signing(app_root) -> None:
     assert "performance-details --apply" in jobs["fixture_pipeline_rehearsal"]
     assert "image: python:3.12-slim" in jobs["default"]
     assert "--role all" in jobs["fixture_pipeline_rehearsal"] and "FOCUS_SIGN_KEY_REF" not in jobs["stage_readback"]
+    # DEC-36 (g): fewer jobs is a switch. The owner leaves the split free (D-34), so the draft ships the four-job layout,
+    # which came to the 20 minutes when measured. One layout's unsigned jobs or the other's exist in a run, never both;
+    # the signer jobs are the same in both and need whichever job staged the plan
+    assert 'FOCUS_JOBS: "planner"' in jobs["variables"]
+    for job in ("acquire_admit", "schedule_validate", "stage_readback", "forecast_schedule_validate", "forecast_stage_readback"):
+        assert "extends: .by_role" in jobs[job], job
+    for job in ("plan_unsigned", "delivery_unsigned"):
+        assert "extends: .by_planner" in jobs[job] and "FOCUS_SIGN_KEY_REF" not in jobs[job] and "dist/focus_native-" in jobs[job], job
+    assert '$FOCUS_JOBS != "planner"' in jobs[".by_role"] and '$FOCUS_JOBS == "planner"' in jobs[".by_planner"]
+    for template in (".by_role", ".by_planner"):
+        assert "extends: .live" in jobs[template] and '$FOCUS_MODE == "live"' in jobs[template] and "$FOCUS_PIPELINE_PART == null" in jobs[template]
+    assert "focus-planner" in jobs[".by_planner"] and "focus-signer" not in jobs[".by_planner"]
+    planned = jobs["plan_unsigned"]
+    assert planned.index(guard) < planned.index("--role source,app,stager")       # the same protected-ref guard, first
+    create = next(line for line in planned.splitlines() if "--role source,app,stager" in line)
+    for flag in ('${FOCUS_PLANNING:+--planning "$FOCUS_PLANNING"}', '${FOCUS_BUDGET_SECONDS:+--budget-seconds "$FOCUS_BUDGET_SECONDS"}',
+                 '${FOCUS_MAX_MOVES:+--max-moves "$FOCUS_MAX_MOVES"}'):
+        assert flag in create, flag
+    assert planned.split("needs:")[1].splitlines()[0].replace("{ job: native_wheel, artifacts: true }", "native_wheel") == needs
+    assert "--role app,stager" in jobs["delivery_unsigned"] and "needs: [sign_accept," in jobs["delivery_unsigned"]
+    assert "signer" not in "".join(line for job in ("plan_unsigned", "delivery_unsigned") for line in jobs[job].splitlines() if "--role" in line)
+    assert "needs: [{ job: stage_readback, optional: true }, { job: plan_unsigned, optional: true }]" in jobs["sign_accept"]
+    assert "needs: [{ job: forecast_stage_readback, optional: true }, { job: delivery_unsigned, optional: true }]" in jobs["forecast_sign_accept"]

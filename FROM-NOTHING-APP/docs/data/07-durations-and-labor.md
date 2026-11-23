@@ -6,8 +6,8 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 | --- | --- | --- | --- | --- | --- | --- |
 | [`clock_observations`](#clock_observations) | SUPPLEMENTAL | No | duration | Supplemental SQL path; producer table not installed | No (`duration-stats` report only) | Raw clock intervals per person and episode, with revisions and voids |
 | [`duration_episodes`](#duration_episodes) | SUPPLEMENTAL | No | duration | None yet: reports NOT_PROBED | Yes | Completed comparable rework episodes behind the P75 |
-| [`actual_labor`](#actual_labor) | SOURCE | No | performance | Reference SQL query | No (freshness check only) | Aggregate labor minutes charged per job |
-| [`labor_shift`](#labor_shift) | SOURCE | No | performance | Reference SQL query | No (freshness check only) | Labor minutes per person, job and shift |
+| [`actual_labor`](#actual_labor) | SOURCE | No | performance | Reference SQL query | No | Aggregate labor minutes charged per job |
+| [`labor_shift`](#labor_shift) | SOURCE | No | performance | Reference SQL query | No | Labor minutes per person, job and shift |
 
 ## `clock_observations`
 
@@ -83,7 +83,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 
 ## `actual_labor`
 
-**Purpose.** Aggregate labor per job: how many labor records, and how many minutes and hours, were charged. The docs class it as aggregate person effort with no raw intervals, so it cannot measure elapsed time or calibrate rework durations. Nothing in the planner reads its rows today; only `LOAD_TIMESTAMP` is checked for freshness.
+**Purpose.** Aggregate labor per job: how many labor records, and how many minutes and hours, were charged. The docs class it as aggregate person effort with no raw intervals, so it cannot measure elapsed time or calibrate rework durations. Nothing in the planner reads its rows today, and its age is not checked.
 
 | | |
 | --- | --- |
@@ -92,7 +92,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 | Required | No |
 | Capabilities | performance (registry tag; no code uses it) |
 | If missing or empty | Capture error: status FAILED, gap `DATASET_FAILED`. Empty without a certificate: gap `DATASET_EMPTY_UNCERTIFIED`. Plans do not change. |
-| Time and cutoff | Row clock `LOAD_TIMESTAMP` (stored without a zone; read in the dataset's declared source timezone), 36 h limit (`admission.max_source_age_hours`). A stale table gives `SOURCE_STALE` and an unreadable clock `SOURCE_CLOCK_UNKNOWN`; both fail EXECUTABLE plans (the plans meant for dispatch) even though nothing else reads the table. No cutoff column. |
+| Time and cutoff | Row clock `LOAD_TIMESTAMP` is not freshness-checked: no plan is built from this table, so its age never stops one (D-34). No cutoff column. |
 | Read by | `focus/data/freshness.py` (`LOAD_TIMESTAMP` only) |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -103,7 +103,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 | `LABOR_RECORDS` | int, nullable | Number of labor records behind the totals, going by the column name; the code and docs define it no further. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `ACTUAL_MINUTES_BURNED` | decimal(18,2), nullable | Total labor minutes charged to the job: person effort summed over people, not elapsed time. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `ACTUAL_HOURS_BURNED` | decimal(18,2), nullable | Labor hours charged to the job. In the synthetic fixture it equals the minutes divided by 60, to 2 decimals. | Fetched and kept with the source run; nothing in the planner reads it today. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row (no time zone stored). | Freshness check only (see Time and cutoff). |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row (no time zone stored). | Not read. |
 
 **Rules and pitfalls.**
 - Never use it as elapsed rework time: minutes summed across people are person effort, not elapsed minutes.
@@ -112,7 +112,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 
 ## `labor_shift`
 
-**Purpose.** Labor minutes per person, per job, per shift and day, with two timestamps named first-on and last-off. The docs call it shift-level labor observation, usable only once the owner defines its time and person-effort meaning. Nothing in the planner reads its rows today; only `LOAD_TIMESTAMP` is checked for freshness.
+**Purpose.** Labor minutes per person, per job, per shift and day, with two timestamps named first-on and last-off. The docs call it shift-level labor observation, usable only once the owner defines its time and person-effort meaning. Nothing in the planner reads its rows today, and its age is not checked.
 
 | | |
 | --- | --- |
@@ -121,7 +121,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 | Required | No |
 | Capabilities | performance (registry tag; no code uses it) |
 | If missing or empty | Capture error: status FAILED, gap `DATASET_FAILED`. Empty without a certificate: gap `DATASET_EMPTY_UNCERTIFIED`. Plans do not change. |
-| Time and cutoff | Row clock `LOAD_TIMESTAMP`, 36 h limit, as for `actual_labor` (`SOURCE_STALE` and `SOURCE_CLOCK_UNKNOWN` fail EXECUTABLE plans). `FIRST_ON_ET` and `LAST_OFF_ET` are `datetime2(0)` values with no stored zone, and no doc says which zone they use. No cutoff column. |
+| Time and cutoff | Row clock `LOAD_TIMESTAMP` is not freshness-checked: no plan is built from this table, so its age never stops one (D-34). `FIRST_ON_ET` and `LAST_OFF_ET` are `datetime2(0)` values with no stored zone, and no doc says which zone they use. No cutoff column. |
 | Read by | `focus/data/freshness.py` (`LOAD_TIMESTAMP` only) |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -134,7 +134,7 @@ These datasets cover how long rework takes and how much labor was spent. FOCUS s
 | `MINUTES` | decimal(9,2), not null | Labor minutes for this person, job and shift. The docs class it as person effort, not elapsed time. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `FIRST_ON_ET` | datetime2(0), nullable | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `LAST_OFF_ET` | datetime2(0), nullable | Meaning not established in code or docs. | Fetched and kept with the source run; nothing in the planner reads it today. |
-| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Freshness check only. |
+| `LOAD_TIMESTAMP` | datetime2(3), not null | Source load time of the row. | Not read. |
 
 **Rules and pitfalls.**
 - Treat `MINUTES` as person effort, not elapsed time.

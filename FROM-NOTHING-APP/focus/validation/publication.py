@@ -31,7 +31,7 @@ from ..policy import Policy
 from ..publication.serializer import (ARTIFACT_SCHEMA, ARTIFACT_TYPE, CAPABILITY, ArtifactError, cs_lineage, decode_artifact, freeze_goals,
                                       graph_lineage, obligation_dates, payload_sha256)
 from .input import VALIDATOR_VERSION
-from .plan import REQUIRED_CHECKS, validate
+from .plan import REQUIRED_CHECKS, receipt_id, recorded_pass, validate
 
 ARTIFACT_CHECKS = REQUIRED_CHECKS + ("E_ARTIFACT",)
 PUBLISHABLE = (Purpose.EXECUTABLE, Purpose.FORECAST)
@@ -72,10 +72,14 @@ def _artifact_violations(artifact: PlanArtifact, snapshot: PlanningSnapshot, pol
 
 
 def validate_artifact(data: bytes, snapshot: PlanningSnapshot, policy: Policy, *, incumbent: IncumbentPlan | None = None, kind: str = "DETACHED",
-                      created_at: Any = None) -> tuple[PlanArtifact | None, ValidationReceipt]:
+                      created_at: Any = None, decoded: PlanArtifact | None = None) -> tuple[PlanArtifact | None, ValidationReceipt]:
+    """Decode ``data`` strictly and validate what it says against the snapshot.
+
+    ``decoded`` is the artifact the caller has just decoded from exactly these bytes with ``decode_artifact`` (it needed
+    the content to find the snapshot): the strict decode is then not run a second time. Nothing else may be passed."""
     sha = payload_sha256(data)
     try:
-        artifact = decode_artifact(data)
+        artifact = decoded if decoded is not None else decode_artifact(data)
     except ArtifactError as exc:
         receipt = ValidationReceipt(
             id=digest_id("VAL", "UNDECODABLE", sha, snapshot.hash, policy.hash, kind, VALIDATOR_VERSION), candidate_id="", kind=kind,
@@ -93,6 +97,27 @@ def validate_artifact(data: bytes, snapshot: PlanningSnapshot, policy: Policy, *
     receipt = replace(base, id=digest_id("VAL", base.id, "ARTIFACT"), violations=violations, check_counts={**base.check_counts, "E_ARTIFACT": checks},
                       coverage=coverage, valid=not violations and not base.required_skips)
     return artifact, receipt
+
+
+def artifact_receipt_id(plan: CandidatePlan, snapshot: PlanningSnapshot, policy: Policy, *, kind: str, payload_sha256: str) -> str:
+    """The id ``validate_artifact`` gives the receipt of these bytes when they decode to ``plan``."""
+    return digest_id("VAL", receipt_id(plan, snapshot, policy, kind=kind, payload_sha256=payload_sha256), "ARTIFACT")
+
+
+def recorded_artifact_pass(repositories: Any, plan: CandidatePlan, snapshot: PlanningSnapshot, policy: Policy, *, kind: str,
+                           payload_sha256: str) -> ValidationReceipt | None:
+    """The stored, passing receipt of the validation of exactly these artifact bytes (``plan.recorded_pass``)."""
+    return recorded_pass(repositories, plan, snapshot, policy, kind=kind, payload_sha256=payload_sha256,
+                         receipt_id_=artifact_receipt_id(plan, snapshot, policy, kind=kind, payload_sha256=payload_sha256))
+
+
+def same_bytes_receipt(receipt: ValidationReceipt, plan: CandidatePlan, snapshot: PlanningSnapshot, policy: Policy, *, kind: str) -> ValidationReceipt:
+    """The receipt of validating, as ``kind``, bytes identical to those ``receipt`` was computed on in this process.
+
+    The validation of an artifact is a pure function of its bytes, the snapshot, the policy and the incumbent. Bytes read
+    back from the stage that equal, byte for byte, the bytes this process has just validated give the same findings, so
+    they are not computed twice: the receipt differs only in its kind and id."""
+    return replace(receipt, kind=kind, id=artifact_receipt_id(plan, snapshot, policy, kind=kind, payload_sha256=receipt.payload_sha256 or ""))
 
 
 def publication_capability(plan: CandidatePlan, receipt: ValidationReceipt | None, *, kinds: tuple[str, ...] = ("FINAL",)) -> list[str]:

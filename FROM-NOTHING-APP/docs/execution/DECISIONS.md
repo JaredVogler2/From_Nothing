@@ -257,8 +257,8 @@ attendance. A conditional ETA is never physical receipt.
 
     The simulation models this gap (`SimSpec.cutoff_gap`, the cutoff `cutoff_lead_minutes` before the shift ends).
   - **Run time.** Each shift's plan must be accepted before the shift starts, which is why the cycle's run time is
-    critical (D-22). The GitLab draft's signing step is a manual operator promotion. A plan promoted after its shift
-    starts is a proposal for that shift, and the previous plan stays its goal of record (when there is no earlier plan
+    critical (D-22). The GitLab draft's signing step was a manual operator promotion; since D-34 a scheduled run
+    accepts the plan itself. A plan accepted after its shift starts is a proposal for that shift, and the previous plan stays its goal of record (when there is no earlier plan
     covering the day, the late plan stands in). The calibration (`docs/task-valuation-investigation/10_CALIBRATION.md`
     §7) measured what late plans cost the teams and lists the owner decision this needs.
   - **Simulation.** `focus.sim` freezes each shift's goals from that shift's valid plan. The day's last valid plan
@@ -339,8 +339,9 @@ attendance. A conditional ETA is never physical receipt.
     the same moment. The budget is policy `pipeline.pre_shift_budget_minutes` = 20 (`owner_decision`).
     - Staging at the cut counts. A preload before the cut does not, and suits only data that does not change within
       a shift.
-    - The forecast (delivery dates and costs for every aircraft) follows acceptance in the same pipeline and is
-      outside the window. Its dashboard views update when it is accepted.
+    - The forecast (delivery dates and costs for every aircraft) follows acceptance in the same pipeline. *Changed
+      by D-33 (November 11, 2026):* it is part of the one schedule the 20 minutes must hold, and the report gives
+      both instants (`minutes` and `schedule_minutes`).
     - The report gives the minutes used, whether they are within the budget, the seconds per step, and whether the
       plan was accepted after its shift had started (`late`; D-26 then scores that shift against the previous plan).
   - **Tests run on merge, not before every shift.** The full suites take about half of the budget. The pipeline
@@ -348,8 +349,12 @@ attendance. A conditional ETA is never physical receipt.
     protected ref (`acquire_admit` refuses any other). `FOCUS_LIVE_VERIFY=full` puts them back in every live run. The
     import check, the migration dry run, the preflights and the staged-schema check stay in every run. This changes
     P23's "every verification first" from "in this run" to "on the merge that put this code on the protected ref".
-  - **Still open:** who accepts the plan (DEC-11). The draft's `sign_accept` waits for a person, three times a day,
-    inside these 20 minutes.
+  - **Decided since (D-34, November 12, 2026):** no person accepts the plan. The draft's `sign_accept` runs by
+    itself in a scheduled run.
+  - **Measured on November 11, 2026: not met as shipped.** At 50 aircraft on the test machine the four jobs from the
+    data cut to the accepted plan took 23.2 minutes, before the pull from SQL Server and the acceptance are counted
+    (`PRODUCTION_SCALE.md`, "The pre-shift flow, action by action"). The scheduler is 3 of those minutes. What
+    brings it under the budget without changing a plan is `DECISION_PLAYBOOK.md`, DEC-36.
 
 - **D-29 A job's criticality comes from the cost objective (owner direction, November 10, 2026).**
   - **The owner's words.** "Criticality should be a function of how critical that job is toward the objective
@@ -475,6 +480,179 @@ attendance. A conditional ETA is never physical receipt.
     - Nothing is tuned to one fleet. The search budget (DEC-34) is measured on several different fleets, and the
       synthetic fleet is one example among many.
     - Evidence from one synthetic fleet says how FOCUS behaved on that fleet, not what next year's will look like.
+
+- **D-33 One schedule through delivery, made before every shift (owner, November 11, 2026).**
+  - **The owner's words.** "I'm getting lost in all the assumptions and questions asked throughout building this
+    application from the initial prompts. The intent is for 20 minutes prior to shift start, a schedule is created
+    which reduces the all fleet penalty costs. Then after that shift, 20 minutes before the next shift, the scheduler
+    [runs] again accounting for any new [constraints] such as late parts or any completed jobs. Ideally there is some
+    stability between shifts [...] the scheduler that ran prior to first shift produces a [schedule] throughout all
+    flow to deliveries so therefore it's also making the second shift schedule then for second shift when the
+    scheduler re runs it should be a similar task list for second shift as the prior plan. [...] The data gathering
+    and digesting and scheduler should all take no more than 20 minutes and when a user loads the application [at]
+    shift start time it should load instantly populated with schedule and task lists etc."
+  - **Decision: what every pre-shift run delivers.**
+    1. One run before every shift, started 20 minutes before the shift starts.
+    2. One schedule that covers every aircraft's whole flow to delivery and lowers the fleet's total late cost.
+    3. It takes in what changed since the run before: jobs completed, parts late or received, new work, absences.
+    4. The shift's task lists are part of that schedule. The schedule made before one shift already holds the next
+       shifts' lists, and the next run changes them only where something changed.
+    5. Gathering the data, digesting it and scheduling take 20 minutes at most, all of it.
+    6. At shift start the application opens at once, already holding the schedule and the task lists.
+  - **Questions.** The owner is asked only what only the owner can decide. Everything else takes the recommended
+    default in `docs/integration/DECISION_PLAYBOOK.md`, is built, and is reported with its measurement.
+  - **What was found** (`PS50`, `PS10`; `docs/task-valuation-investigation/EVIDENCE_INDEX.md`).
+    - *The shift plan was already stable.* In the stored 50-aircraft, 14-day simulation a median 95.8% of the task
+      list issued for a shift was already on the list the run before had made for that shift (87.7% to 98.7% over 41
+      pairs of runs); a day ahead, 88.5%. Of the lines on both lists, 99.6% kept their start time. What changed was
+      work pushed to a later shift, work a late part or an unfinished job blocked, and new rework.
+    - *The delivery plan was a second schedule.* A run makes two plans: the shift plan (only work that can really
+      start; crews are dispatched from it) and the delivery plan (all work through delivery; dates and late cost
+      come from it). Each defended its own previous plan, so they arranged the same shift differently, a little more
+      every run: in that simulation the delivery plan held, in the same shift, a median 36% of the lines its own
+      run's shift plan issued for the coming shift (94% in the first run, 24% at the lowest), and 8% at the same
+      start time. The dates and cost on the dashboard were those of an arrangement the floor never followed.
+  - **Built with this decision.**
+    - *One schedule* (`focus/engine/commitments.following`, policy `planning.forecast_follows_executable` = true,
+      `docs/execution/PLAN_REPAIR.md`). The shift plan is made and accepted first, unchanged. The delivery plan then
+      keeps every slot of the shift plan in force and plans the rest of the flow around them, in a full solve as well
+      as in a repair. On the same 10-aircraft fleet and floor, four days, with and without it:
+
+      | | Each plan defends its own (before) | The delivery plan follows the shift plan |
+      | --- | --- | --- |
+      | Lines of the shift plan's coming shift that the delivery plan of the same run has in that shift | 77.1% at the median (42.3 to 99.2) | 100% in all 12 runs |
+      | ... of those, at the same start time | 63.4% | 100% |
+      | The list the delivery plan of the run before made for a shift, against the list issued for it | 71.2% (29.4 to 87.9) | 92.2% (81.1 to 95.4), the shift plan's own figure |
+      | Shift plans, what the floor did, team scores | | identical, row for row (91,145 planned assignments) |
+      | The delivery plan's late cost | $9,804,002 in every run | $9,791,674 to $9,823,621 (within 0.2%) |
+      | An aircraft's planned finish, from one run to the next | unchanged in 108 of 108 | unchanged in 91 of 108; 99.1% within a day; 25.3 hours at most |
+
+      The delivery plan's dates now move when the plan the floor follows moves, which is what they are for.
+    - *Two defects found on the way*, both older than this decision and both fixed. A job's release books no crew,
+      and the next job waits for it; in a repair, other work could take a kept slot's crew before that release was
+      dispatched (`greedy.hint_leads`). And on the night the clocks go back, a slot in the hour that happens twice
+      was read back an hour early, so it could not be kept (`calendar.local_wall`).
+    - *Every pre-shift run repairs the accepted plan* (`planning.full_solve_shifts` is empty). That is what keeps the
+      lists similar and what fits the time. The full solve, with the improvement search, is a nightly run of the same
+      pipeline (`--planning full`), which also records how far a repair would have landed.
+    - *Each validation is computed once per plan* (`publication.service.publish`): FINAL by the scheduling run,
+      DETACHED by the stager, READBACK by the signer on the bytes it signs, in its own process. Eight validations per
+      plan became the three the manual's acceptance order names.
+    - *The application reads ahead* (`focus/web/warm.py`, `FOCUS_WARM_SECONDS`). Each web process checks for a newly
+      admitted run or accepted plan and then loads what the team lead views read: each team's work, pools and plan
+      for the day, the dependency graphs of its aircraft, and the goals of record. Those views then open without
+      first reading their data. It is off unless the setting gives the seconds between checks.
+    - *The window report covers the whole schedule* (`orchestration.window`): `minutes` to the accepted shift plan
+      and its dashboard data, `schedule_minutes` to the accepted delivery plan, and `within_budget` about both.
+      This changes D-28, which ended the clock at the shift plan.
+  - **Not met yet.**
+    - *The 20 minutes* (point 5) are met for the task lists and not for the whole schedule. At 50 aircraft on the
+      test machine, a repairing run takes 13.9 minutes from the data cut to the accepted shift plan and its
+      dashboard data, and 13.0 more to the accepted delivery plan: 26.9 minutes (first measured: 23.2 and 27.1).
+      With the pipeline's steps in four jobs instead of seven (`FOCUS_JOBS=planner`, shipped since D-34), the
+      same run takes 9.8 minutes to the accepted shift plan and 20.4 for the whole schedule: at the 20 minutes, not
+      inside them with room to spare. With the signer starting from the staged bytes (November 12) it is about 9.3
+      and 19.2 minutes on that machine, and 11.1 and 21.9 as measured on a second machine that runs identical jobs
+      14 to 22% slower: the machine moves the whole schedule across the 20 minutes.
+      `docs/execution/PRODUCTION_SCALE.md`, "The pre-shift flow after D-33", has the measurement, and
+      `DECISION_PLAYBOOK.md`, DEC-36 the options left. The pull from SQL Server, each job's start and the
+      acceptances come on top.
+    - *The application opening at once* (point 6) is met for the task lists on the test store and not for three
+      fleet views. At 50 aircraft, with the read-ahead on, every team lead's task list opens in under a tenth of a
+      second at the median and 0.7 seconds at the slowest (first measured: 9.4 and 14.9 seconds; the page now asks
+      for the task list first and for the addition proposals after it). The budget, quality and Gantt views still
+      take 1 to 4 seconds the first time after a new plan (`PRODUCTION_SCALE.md`, "The application at 50 aircraft").
+    - *Cost comparison of near-term work* (point 2). The order of the work crews do in the coming days comes from
+      the cost-of-delay dispatch: each aircraft's daily rate, reduced by the slack of the job. The improvement search
+      compares whole schedules by cost, but it can only do that in the delivery plan, where every aircraft has a
+      finish date, and there it now reorders only work the shift plan does not place. Letting its moves reorder the
+      shift plan, judged by the delivery plan's cost, is not built (`DECISION_PLAYBOOK.md`, DEC-34).
+    - *Who accepts the plans* (point 6) was open here and is decided: nobody (D-34). The switches for automatic
+      acceptance are on, so the application is populated as soon as a run's checks pass.
+  - **Tests.** `tests/integration/test_one_schedule.py`, `test_the_delivery_plan_holds_the_shift_plan_slot_for_slot`
+    (simulation), `tests/integration/test_warm_views.py`,
+    `test_each_validation_is_computed_once_and_the_signer_validates_the_bytes_it_signs`,
+    `test_a_slot_in_the_hour_the_clocks_repeat_is_read_back_as_the_same_instant`, and the window and cadence tests in
+    `tests/integration/test_migration_pipeline.py` and `test_plan_repair.py`.
+
+- **D-34 No person accepts a plan; every dataset has its own cadence (owner, November 12, 2026).**
+  - **The owner's answers,** to three questions: who accepts a plan before the floor works from it, whether the
+    pipeline's steps may be put together, and whether the company's runner can run two jobs at once.
+    1. "once a schedule is produced that is what the mechanics and shop floor should use to determine what jobs they
+       work. They do not need to "accept" anything - the scheduler is the answer."
+    2. "a single or multiple pipelines can be used. For example mechanics to certs certs to jobs and therefore
+       mechanics to eligible jobs doesn't need ran shiftly it may only need to be weekly so that isn't needed to run
+       all the time. For all data for the scheduler and dashboard we need to determine cadence for all data gathering
+       and processing and staging to sql server."
+    3. "unknown"
+  - **What it decides.**
+    - *Acceptance is automatic* (`DECISION_PLAYBOOK.md`, DEC-11, decided). A scheduled run accepts the shift plan,
+      and then the delivery plan, as soon as their checks pass. No person promotes a plan and nobody on the floor
+      confirms one. "Accepted" stays the name of the technical step: the plan is signed, stored and made current.
+    - *The checks are not a person's acceptance, and stay.* A plan that fails a validation is never accepted: the
+      plan before it stays in force, the pipeline fails and an alert tells a person. The scheduler is the answer when
+      its plan is valid; an invalid plan is no answer.
+    - *The pipeline's split is free.* The draft ships the split that came to the 20 minutes when measured.
+    - *Every dataset is gathered at the pace its content changes,* and no faster. The certificate tables are the
+      owner's example and are now read in full once a week.
+  - **Built with this decision.**
+    - *The switches are on* in the pipeline draft: `FOCUS_AUTO_SIGN: "true"` and `FOCUS_AUTO_SIGN_DELIVERY: "true"`.
+      They apply to a scheduled run on a protected ref. A run started by hand still waits for the person who started
+      it; to recover a scheduled run, retry its failed job. `"false"` on a run or in the project holds plans for an
+      operator again, without a code change.
+    - *Four jobs a run* (`FOCUS_JOBS: "planner"`, DEC-36 (g)): at 50 aircraft on the test machine 9.8 minutes to the
+      accepted shift plan and 20.4 for the whole schedule, against 13.9 and 26.9 with one job per role. One job then
+      holds the source, app and stager rights; signing stays a job of its own. `"roles"` puts every role back in its
+      own job, where the company's SQL logins may not be combined.
+    - *A cadence for every dataset* (`focus/data/cadence.py`; `docs/integration/DATA_CADENCE.md` is the determination
+      on one page, `STAGING_PLAN.md` the loader's detail). Four staging passes instead of three:
+
+      | Pass | When | Datasets | What |
+      | --- | --- | --- | --- |
+      | Weekly | once a week | 18 | In full: the standing facts of every job (duration, crew, certificates required, inspections, rework class), the certificates people hold, lookups, history no plan reads. 61% of all rows in the synthetic fleet |
+      | Nightly | once a day | 28 | Floor state reconciled in full; calendars, teams, rosters and rates whole; the rows that changed in the weekly tables; yesterday's history |
+      | Before each shift | 60 minutes before | 21 | Everything that changes during a day |
+      | At the cut | 20 minutes before | 18 | Only what changed since the pass before |
+
+      The nightly pass read nearly every row whole before; it now reads 39% and the weekly pass 59%. Three rules
+      place a dataset: how often its content changes in a way that changes a plan; what a stale copy does (where it
+      would make a plan wrong with nothing to flag it, as with template links, due dates and rates, the check stays
+      daily); and size. They are starting values, set without a timed source query; the loader's receipts move a
+      dataset between passes.
+    - *The weekly pass in the pipeline draft:* `FOCUS_PIPELINE_PART=weekly` runs `weekly_sources`
+      (`$FOCUS_STAGE_COMMAND --part weekly`) and `verify_weekly_sources`.
+    - *Freshness limits follow the cadence* (policy `admission.max_source_age_hours`). Each limit is at least twice
+      the interval of the pass that reads the dataset whole, so one missed pass never stops a plan: 48 hours for what
+      the nightly pass reads whole, 336 for what the weekly pass does (`flow_budget`, `soi_cert_requirements`,
+      `buyoff_plan`, `mechanic_certs`, which were 36 and 48). The values stay defaults until load intervals are
+      measured (DEC-13).
+    - *Only a dataset a plan is built from can stop one.* `inspection_counts`, `etracs_history`, `actual_labor`,
+      `labor_shift`, `cert_course_map` and `dept_team_skill_ref` were age-checked although no plan reads them, so a
+      late load of any of them refused every executable plan. They are off the list. The twelve that remain are
+      exactly the datasets with a source clock that an executable plan rests on.
+  - **What stays in every run, and why.**
+    - *Eligibility.* Working out who may do which job from the certificates takes FOCUS about 5 seconds of a run at
+      50 aircraft, and it has to be right for the people who are present today. Doing it weekly inside FOCUS would
+      save nothing. What costs is gathering the certificate tables from the sources, and that is what became weekly.
+    - *What keeps the certificate chain right between two weekly loads:* the requirement rows of a new job arrive
+      with the job; a certificate's expiry date is in its row; a revocation arrives as an event at the cut; and the
+      nightly pass picks up certificates gained or renewed where the source can say which rows changed. Where it
+      cannot, a new certificate counts from the next weekly load: nobody is planned on work they are not qualified
+      for, but for some days a person may not be planned on work they have just qualified for.
+  - **Not built.**
+    - *Processing at its own cadence.* FOCUS has no incremental mode. Every run digests, stores and loads all of the
+      data again and rebuilds all of the dashboard's data, although about 1% of the rows changed: roughly 450 of the
+      1,225 seconds of the measured run (`PRODUCTION_SCALE.md`, "The same flow in four jobs"). Digesting the slow tables when they change and only the floor
+      state at each run is the same idea applied inside FOCUS, and the largest step left towards a whole schedule
+      well inside 20 minutes (DEC-36).
+    - *The delivery plan's job beside the shift plan's signer* (DEC-36 (h)) needs a runner that runs two jobs at
+      once with about 20 GB. Whether the company's runner can is unknown, so it stays unbuilt.
+    - *Reading a load receipt* (DEC-07). Until FOCUS reads when the loader last verified a dataset, a pass must
+      restamp the row clocks of a table it found unchanged. With four cadences that matters more than it did.
+  - **Tests.** `tests/unit/test_staging_cadence.py` (registry, limits, both documents, the draft's schedules);
+    `test_ci_draft_orders_roles_and_protects_signing` and
+    `test_ci_draft_keeps_a_staged_copy_current_at_four_cadences` in `tests/integration/test_migration_pipeline.py`;
+    `tests/integration/test_source_freshness.py`.
 
 ## Semantic gaps (live), each a precise readiness effect
 

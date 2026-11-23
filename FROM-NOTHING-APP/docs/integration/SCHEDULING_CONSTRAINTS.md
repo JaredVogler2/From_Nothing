@@ -95,7 +95,7 @@ The following values are in the checked-in configuration and are tagged by autho
 | Gate | Weight 35, capped 5 days, 2-day proxy grace | user_requirement but requires approved operational meaning |
 | Economic sample terms | Fixture only ASSUMED; no production default | OD-12 |
 | Source freshness | 24h max for dispatch | fixture_default |
-| Admission source age / capture skew | 18–240 h per dataset (`admission.max_source_age_hours`); all captures within 30 min (`admission.max_capture_skew_minutes`) | fixture_default; live load cadences not set |
+| Admission source age / capture skew | 18–336 h per dataset, for the twelve datasets an executable plan is built from (`admission.max_source_age_hours`); all captures within 30 min (`admission.max_capture_skew_minutes`) | fixture_default; the limits follow each dataset's staging cadence (D-34, `focus/data/cadence.py`) until load intervals are measured |
 | Objective monetary tolerance | 0 cents | manual_specified |
 | Exact solver | Disabled; heuristic search | current user requirement |
 | Live LLM | Disabled, explanations provider none | current user requirement |

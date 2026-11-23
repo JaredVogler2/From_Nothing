@@ -28,8 +28,10 @@ async function renderTeamLead(host, context) {
     host.appendChild(stateCard("blocked", "Your scope has no team to lead.", [{ code: "NO_TEAM_SCOPE", message: "Ask an administrator for a team scope." }]));
     return;
   }
+  // First paint: the ranked actions, from only the aircraft this team-shift is planned on. The addition proposals
+  // assess every open job of the team on every aircraft, so they are asked for after the actions are on the page.
   const env = await frame(host, "Team Lead", "Server-ranked actions with exact crews and current dispatch reasons.",
-    `/api/v1/team-lead${query({ team, date, shift })}`, controls, "No accepted assignments for this team-shift.");
+    `/api/v1/team-lead${query({ team, date, shift, proposals: 0 })}`, controls, "No accepted assignments for this team-shift.");
   if (!env) return;
   const d = env.data;
   host.appendChild(h("div", { class: "metric-grid" },
@@ -51,19 +53,31 @@ async function renderTeamLead(host, context) {
   const status = h("div", { class: "command-status" });
   const reason = h("textarea", { id: "amend-reason", maxlength: "2000", placeholder: "Why this work must be added to the shift (required, at least 10 characters)" });
   const canAmend = d.goal && context.identity.grants.some((g) => g === "team_lead" || g === "manager");
-  const proposals = card("Emergency additions (proposals)",
-    d.proposal_reasons.length ? reasonList(d.proposal_reasons) : null,
-    canAmend && d.proposals.some((r) => r.feasible) ? h("label", { for: "amend-reason" }, "Reason", reason) : null,
-    d.proposal_reasons.length && !d.proposals.length ? null : table([
+  const proposalsCard = (p) => card("Emergency additions (proposals)",
+    p.proposal_reasons.length ? reasonList(p.proposal_reasons) : null,
+    canAmend && p.proposals.some((r) => r.feasible) ? h("label", { for: "amend-reason" }, "Reason", reason) : null,
+    p.proposal_reasons.length && !p.proposals.length ? null : table([
       { key: "label", label: "Open team work" },
       { key: "standard_person_minutes", label: "Std person-min", num: true },
       { key: "requirement", label: "Certificates" },
       { key: "feasible", label: "Feasible now", render: (r) => (r.feasible ? pill(r.basis || "feasible", "ok") : reasonList(r.reasons)) },
-      { key: "phase_id", label: "Action", render: (r) => (r.feasible && canAmend ? addButton(r, d, status, reason) : "—") },
-    ], d.proposals, { caption: "Amendment proposals", empty: "No open team work to propose." }),
+      { key: "phase_id", label: "Action", render: (r) => (r.feasible && canAmend ? addButton(r, p, status, reason) : "—") },
+    ], p.proposals, { caption: "Amendment proposals", empty: "No open team work to propose." }),
     status);
+  const proposals = d.proposals_deferred
+    ? card("Emergency additions (proposals)", h("p", { class: "muted" }, "Assessing the team's open work as possible additions…"))
+    : proposalsCard(d);
   host.appendChild(proposals);
   host.appendChild(h("p", { class: "muted" }, d.note));
+  if (d.proposals_deferred) {
+    // Not awaited: the workspace shows a view when its renderer returns, so the task list is on the screen now and
+    // this card is filled in when the proposals arrive.
+    const failed = (err) => card("Emergency additions (proposals)",
+      reasonList([{ code: err.code || "PROPOSALS_UNAVAILABLE", detail: err.message || "The proposals could not be read." }]));
+    api(`/api/v1/team-lead${query({ team, date, shift })}`)
+      .then((full) => (full && full.data ? proposalsCard(full.data) : card("Emergency additions (proposals)", reasonList((full && full.reasons) || []))), failed)
+      .then((next) => { if (proposals.parentNode) proposals.replaceWith(next); });
+  }
 }
 
 // Grounded explanations (S16): the worker ranks and grounds; a provider's text is shown only after strict validation.

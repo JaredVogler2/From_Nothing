@@ -69,6 +69,9 @@ ALLOWED_KEYS = frozenset({
     # display package (focus.display): the web's part cache and the twin's opt-in whole-snapshot load
     "FOCUS_DISPLAY_CACHE_MB",
     "FOCUS_TWIN_FULL_LOAD",
+    # D-33: the web reads ahead what a shift's first requests need (focus.web.warm); a pipeline job ends without teardown (focus.cli.leave)
+    "FOCUS_WARM_SECONDS",
+    "FOCUS_FAST_EXIT",
 })
 
 PLATFORM_KEYS = frozenset({"PORT", "VCAP_APPLICATION", "VCAP_SERVICES", "RSTUDIO_PRODUCT", "CONNECT_CONTENT_GUID", "CONNECT_SERVER"})

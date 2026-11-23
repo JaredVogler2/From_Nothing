@@ -190,6 +190,21 @@ python -m focus.cli pipeline --key 2026-10-26 --role evaluator
 python -m focus.cli pipeline --key 2026-10-26 --status
 ```
 
+One job may run several roles, joined by commas (`DECISION_PLAYBOOK.md`, DEC-36 (g)). The same pipeline in four jobs:
+
+```bash
+python -m focus.cli pipeline --key 2026-10-26 --role source,app,stager   # acquire, admit, schedule, validate, unsigned stage
+python -m focus.cli pipeline --key 2026-10-26 --role signer              # the executable plan is out
+python -m focus.cli pipeline --key 2026-10-26 --role app,stager          # the forecast, scheduled, validated and staged
+python -m focus.cli pipeline --key 2026-10-26 --role signer
+```
+
+- The process holds the snapshot it has just admitted and the candidate it has just stored, so it neither loads the
+  one nor reads the other back. The signer, a job of its own, loads both from the store and validates the staged
+  bytes itself before it signs them.
+- The plans are the same as with one role per job, id for id. What changes is who holds which rights: this job's
+  login is a member of the source, pipeline-worker and stager roles at once, and never of the signer role.
+
 Steps: `acquire -> admit -> schedule -> validate -> stage_readback -> sign_accept`, then
 `forecast -> forecast_stage_readback -> forecast_sign_accept`, and `observe_evaluate` after `sign_accept`.
 
@@ -200,19 +215,21 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 
 - **One pipeline before every shift (D-26).** The scheduler runs three times a day, before each shift. Each shift is
   scored against the executable plan accepted before it starts, so `sign_accept` must finish before the shift begins.
-  In the GitLab draft that step is a manual operator promotion. A plan promoted after its shift starts is only a
-  proposal for that shift: the previous plan stays its goal of record, and the late plan becomes the next shift's.
+  In the GitLab draft a scheduled run performs that step itself: no person accepts a plan (D-34). A plan accepted
+  after its shift starts is only a proposal for that shift: the previous plan stays its goal of record, and the late plan becomes the next shift's.
   `observe_evaluate` scores a shift once its overtime window has closed. The run before shift 2 starts while shift 1
   is still finishing, so shift 1's final score comes from the next run, or from the evaluator-only pipeline scheduled
   right after shift 1's overtime window (`evaluate_closed_shifts`, below). In live mode the in-pipeline
   `observe_evaluate` step stops with `LIVE_OBSERVATIONS_UNAVAILABLE` until the live observation path is built
   (`docs/integration/HANDOFF.md` §6).
 
-- **Executable first.** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only the executable plan, the one
-  crews are dispatched on. `forecast` needs the accepted executable plan, so each role's first run stops before the
-  forecast and the shift's dispatch never waits for it. The forecast (delivery dates, days late and penalties for every
-  aircraft) still runs on every pipeline, on the same admitted snapshot, and is staged, read back and signed the same
-  way. The GitLab draft runs it as `forecast_schedule_validate`, `forecast_stage_readback` and `forecast_sign_accept`.
+- **Executable first, and one schedule (D-33).** `schedule`, `validate`, `stage_readback` and `sign_accept` handle only
+  the executable plan (the shift plan), the one crews are dispatched on. `forecast` needs the accepted executable plan,
+  so each role's first run stops before the forecast and the shift's dispatch never waits for it. The forecast (the
+  delivery plan: delivery dates, days late and penalties for every aircraft) runs on every pipeline, on the same
+  admitted snapshot, and is staged, read back and signed the same way. It keeps every slot of the shift plan in force
+  and plans the rest of the flow around them (`PLAN_REPAIR.md`, "One schedule"), so the two plans are one schedule.
+  The GitLab draft runs it as `forecast_schedule_validate`, `forecast_stage_readback` and `forecast_sign_accept`.
 
 - **Planning mode.** A pipeline's request fixes how both plans are made (`--planning`, default policy
   `planning.default_mode` = `auto`). The schedule and forecast step outputs, and each candidate's receipt
@@ -222,11 +239,13 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
     new and changed work around it, then the cost-of-delay redispatch of that repair (the better one is kept). It re-plans the whole horizon, so a shift's shortfall still moves delivery
     dates and penalties. The FINAL validation gates it like any plan. With no accepted plan, or when the repaired plan
     fails validation, the full solve runs instead and the receipt says why (`REPAIR_NO_INCUMBENT`, `REPAIR_INVALID`).
-  - `auto`: repair between daily full solves. A run plans the shift that contains its cutoff plus
-    `planning.cutoff_lead_minutes` (60). It gets the full solve when that shift is in `planning.full_solve_shifts` ([1]),
-    when there is no accepted plan, or when the accepted plan's cutoff is more than
-    `planning.repair_max_incumbent_age_hours` (12) old. Each such full solve also decodes the repair it replaces and
-    records the drift (`planning.drift_check`): cost, deferred work and aircraft completion dates, repair minus full.
+  - `auto`: repair, unless a full solve is due. A run plans the shift that contains its cutoff plus
+    `planning.cutoff_lead_minutes` (60). It gets the full solve when that shift is in `planning.full_solve_shifts`
+    (empty since D-33: every pre-shift run repairs), when there is no accepted plan, or when the accepted plan's cutoff
+    is more than `planning.repair_max_incumbent_age_hours` (30) old.
+  - The full solve is the nightly pipeline's (`--planning full`). A full solve a pipeline runs also decodes the repair
+    it replaces and records the drift (`planning.drift_check`): cost, deferred work and aircraft completion dates,
+    repair minus full.
   - `docs/execution/PLAN_REPAIR.md` explains the method, the measurements and the limits.
 - **Admitted data is read once per process.** A process parses and verifies the admitted snapshot the first time it
   loads it.
@@ -238,6 +257,10 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
     plan's snapshot.
   - The first load in a process holds as little at once as the checks allow: at 50 aircraft it takes about 2 minutes
     and peaks at 7.0 GB (`PRODUCTION_SCALE.md`).
+  - `python tools/time_pre_shift.py run WORKDIR --aircraft 50` times every action of the flow on the synthetic
+    fleet, each role in its own process. First measured, the four jobs to the accepted plan took 23.2 minutes;
+    now they take 13.9 in a repairing run, and the delivery plan's three jobs 13.0 more. `--layout planner` times
+    the same steps in four jobs: 9.8 and 10.6 minutes (`PRODUCTION_SCALE.md`; `DECISION_PLAYBOOK.md`, DEC-36).
 - **Needs and input hashes.** A step runs only when every step it needs is completed. Its input hash is the hash of
   those outputs. A step started early is `BLOCKED`, so signing never precedes a clean readback and evaluation never
   runs without the accepted plan's frozen goals.
@@ -246,6 +269,18 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 - **The stage/sign split.** `stage_readback` runs `publish(until="readback")`: the unsigned stage plus the independent
   readback validation, with no signing material. `sign_accept` re-reads and re-validates those exact bytes, signs,
   accepts and moves the head last.
+- **Each validation is computed once per plan (D-33).** The acceptance order names three: FINAL on the candidate,
+  DETACHED on the serialized bytes, READBACK on the bytes read back from the stage. Each role used to run all of the
+  earlier ones again, eight computations for one plan. Now:
+  - FINAL is the scheduling run's. The `validate` step, the stager and the signer take its stored receipt when it
+    passed and binds exactly the same plan, snapshot, policy and validator (`validation.plan.recorded_pass`; a
+    receipt's id is the digest of everything the validation reads). A receipt that did not pass is never taken.
+  - DETACHED is the stager's. The signer takes its receipt the same way.
+  - READBACK is computed by the signer, in its own process, on the bytes it is about to sign. It never comes from
+    the store. In the stager, bytes read back that equal byte for byte what it has just validated carry that
+    validation's findings; bytes that differ are validated on their own and rejected.
+- **A job ends when its outputs are written** (`FOCUS_FAST_EXIT=true`, set for the live jobs in the draft). Freeing
+  several GB of objects one by one took 11 to 20 seconds per job at 50 aircraft.
 - **The display package.** The web reads small, partitioned parts the pipeline publishes, never a snapshot or a plan
   artifact (`DISPLAY_PACKAGE.md`). There is no new step:
   - `acquire` writes the snapshot's parts before it moves the source head. At 50 aircraft that takes 162 s and writes
@@ -274,13 +309,18 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
 
 - **Verify** runs the import check, migration lint and bundle, preflight, the full non-UI suite, the UI suite and a
   fixture rehearsal of the whole pipeline. None of it needs secrets.
-- **Live jobs** each run one role in a protected environment, chained with `needs` and serialized per scope with
-  `resource_group`. Acquisition waits for the verify jobs in its pipeline and for the staged sources. In a live run
+- **Live jobs** run in protected environments, chained with `needs` and serialized per scope with
+  `resource_group`. As shipped (`FOCUS_JOBS=planner`, D-34) one job runs the source, app and stager roles in a row
+  and signing is a job of its own; `FOCUS_JOBS=roles` gives every role its own job and login. Acquisition waits for the verify jobs in its pipeline and for the staged sources. In a live run
   the long suites (non-UI, UI, rehearsal) are not in the pipeline: they ran on the merge that put the code on the
   protected ref, and acquisition refuses any other ref (D-28; `FOCUS_LIVE_VERIFY=full` runs them every time).
-  `sign_accept` waits for an operator and holds the only signing reference. `FOCUS_AUTO_SIGN=true` lets a scheduled
-  run on a protected ref accept the executable plan itself; it is off, and turning it on is the owner's decision
-  (`DECISION_PLAYBOOK.md`, DEC-11).
+  `sign_accept` holds the only signing reference. In a scheduled run on a protected ref it accepts the executable
+  plan itself, and `forecast_sign_accept` the delivery plan (`FOCUS_AUTO_SIGN` and `FOCUS_AUTO_SIGN_DELIVERY` ship as
+  `"true"`: the owner's decision, D-34). A run started by hand, or with a switch set to `"false"`, waits for an
+  operator.
+- **Staging runs at four cadences** (`docs/integration/DATA_CADENCE.md`): weekly, nightly, 60 minutes before each
+  shift and at the cut, each a schedule of this pipeline with its own `FOCUS_PIPELINE_PART`, except the cut, which
+  is the plan pipeline's first job.
 - **The window.** `python -m focus.cli pipeline --key K --status` reports, under `window`, the minutes from the data
   cut to the accepted executable plan against the owner's 20-minute budget, the seconds per step, and whether the plan
   was accepted after its shift started.
@@ -288,10 +328,17 @@ D-25 is filled once with `python -m focus.cli performance-ledger` (evaluator rol
   the executable plan and for the forecast: the aircraft with a rate, a due date and a finish date, and the open jobs
   that could not be planned, by reason (`OBJECTIVE_EXPLAINED.md` §4). A plan is published either way; this is how a
   run that compared nothing is seen.
-- **Staging** (`stage_sources`, then `verify_staged_sources`) loads the official sources into the SQL Server tables the
-  reference queries read, through the company loader named by `FOCUS_STAGE_COMMAND`, and checks the staged schema
-  against the S04 contract before acquisition. It runs while the verify jobs run. The loader's contract is
-  `docs/integration/HANDOFF.md` §4.
+- **Staging** keeps a complete copy of the official sources in the SQL Server tables the reference queries read,
+  through the company loader named by `FOCUS_STAGE_COMMAND` (`docs/integration/STAGING_PLAN.md`; the loader's
+  contract is `docs/integration/HANDOFF.md` §4).
+  - In the plan pipeline, `stage_sources` pulls only what changed since the pass before it (`--part cut`). It needs
+    no other job, so it starts with the pipeline, and `verify_staged_sources` then checks the staged schema against
+    the S04 contract before acquisition.
+  - **Staging-only pipelines** keep the copy current ahead of time: `FOCUS_PIPELINE_PART=preshift` (60 minutes
+    before each shift: `prestage_sources`, `verify_prestaged_sources`) and `FOCUS_PIPELINE_PART=nightly`
+    (`nightly_sources`, `verify_nightly_sources`). They share the plan pipeline's `resource_group`, so a pass never
+    publishes while acquisition reads.
+  - A value of `FOCUS_PIPELINE_PART` the draft does not know runs nothing, and no live job is interruptible.
 - **Evaluator-only pipelines** (`FOCUS_PIPELINE_PART=evaluate`, one schedule just after each shift's overtime window)
   run only `stage_observations` and `evaluate_closed_shifts` (`tools/evaluate_closed_shifts.py`), which scores every
   shift whose credit window has closed. The schedules are listed in `HANDOFF.md` §5.2.

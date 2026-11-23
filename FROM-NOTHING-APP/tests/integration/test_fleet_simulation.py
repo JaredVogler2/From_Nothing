@@ -41,6 +41,21 @@ def _all(path, sql):
         con.close()
 
 
+def test_the_delivery_plan_holds_the_shift_plan_slot_for_slot(sims) -> None:
+    """One schedule (D-33): every assignment of a shift's plan is in the same run's delivery plan with the same job, phase,
+    shift, start, end and crew, beyond the three defended days as well; the delivery plan then goes on through delivery."""
+    first, _ = sims
+    rows = _all(first, "SELECT e.shift_no, COUNT(*), SUM(EXISTS (SELECT 1 FROM plan_assignment f WHERE f.shift_no = e.shift_no "
+                       "AND f.purpose = 'FORECAST' AND f.job_id = e.job_id AND f.kind = e.kind AND f.shift_id = e.shift_id "
+                       "AND f.start_utc = e.start_utc AND f.end_utc = e.end_utc AND f.crew = e.crew AND f.team = e.team)) "
+                       "FROM plan_assignment e WHERE e.purpose = 'EXECUTABLE' GROUP BY e.shift_no ORDER BY e.shift_no")
+    assert [r[0] for r in rows] == [0, 1, 2] and all(total > 0 and held == total for _, total, held in rows), rows
+    beyond = _all(first, "SELECT COUNT(*) FROM method_commitment WHERE purpose = 'EXECUTABLE' AND outcome = 'OUT_OF_HORIZON' AND n > 0")
+    assert beyond[0][0] > 0                                       # the shift plans reach past the defended days, so this covers kept slots
+    sizes = dict(_all(first, "SELECT purpose, COUNT(*) FROM plan_assignment GROUP BY purpose"))
+    assert sizes["FORECAST"] > sizes["EXECUTABLE"]
+
+
 def test_every_layer_is_filled_and_every_published_plan_is_valid(sims) -> None:
     first, _ = sims
     shifts = _all(first, "SELECT shift_no, shift_number, valid, stop_reason, decision_digest FROM sim_shift ORDER BY shift_no")
@@ -395,7 +410,7 @@ def test_auto_planning_repairs_the_previous_plan_between_daily_full_solves(tmp_p
     assert shifts == [(0, 1, "move_bound"), (1, 1, "repair"), (2, 1, "repair")]
     ran = [{purpose: record["ran"] for purpose, record in row["planning"].items()} for row in rows]
     assert ran == [{"EXECUTABLE": "full", "FORECAST": "full"}] + [{"EXECUTABLE": "repair", "FORECAST": "repair"}] * 2
-    assert "the daily full solve" in rows[0]["planning"]["EXECUTABLE"]["reason"]
+    assert "no accepted incumbent to repair" in rows[0]["planning"]["EXECUTABLE"]["reason"]     # the first run has nothing to repair
     assert all(row["planning"]["EXECUTABLE"]["kept"] > 0 for row in rows[1:])            # the accepted plan is kept where it holds
     assert {s for (s,) in _all(db, "SELECT DISTINCT shift_no FROM exec_assignment")} == {0, 1, 2}
 

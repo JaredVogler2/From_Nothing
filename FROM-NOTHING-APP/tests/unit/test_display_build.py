@@ -126,3 +126,28 @@ def test_the_readiness_reach_holds_everything_ready_reads(seed) -> None:
         part.hard_in = {n: [snap.edges[i] for i in inputs[n][:k]] for n, k in prefix.items()}
         for now in (base - timedelta(hours=3), base, base + timedelta(hours=3)):
             assert _ready(part, e.pred_phase, to_minute(now)) == _ready(full, e.pred_phase, to_minute(now)), (seed, e.pred_phase, now)
+
+
+def test_strip_copies_a_record_without_its_evidence_exactly_as_replace_does(demo_snapshot) -> None:
+    """A snapshot package strips over a million records, so ``strip`` copies field by field instead of ``replace``."""
+    from dataclasses import fields, is_dataclass, replace
+
+    from focus.codec import canonical_dumps
+    from focus.display.build import strip
+
+    snap = demo_snapshot
+    stripped = kept = 0
+    for record in (*snap.jobs, *snap.edges, *snap.releases, *snap.shortages, *snap.phases, *snap.people, *snap.pools):
+        assert is_dataclass(record)
+        out = strip(record)
+        if "evidence" in {f.name for f in fields(record)} and record.evidence:
+            expected = replace(record, evidence=())
+            assert out is not record and out == expected and type(out) is type(record) and out.evidence == ()
+            assert canonical_dumps(out) == canonical_dumps(expected)
+            assert record.evidence                                     # the snapshot's own record is untouched
+            stripped += 1
+        else:
+            assert out is record                                       # nothing to strip: the same object
+            kept += 1
+    assert stripped > 100 and kept > 100
+    assert strip("not a record") == "not a record"

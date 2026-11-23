@@ -170,7 +170,8 @@ def _same_id(policy, **values):
 
 
 @pytest.mark.parametrize(("values", "ran", "why"), [
-    ({}, "full", "the run plans 2026-10-26 S1: the daily full solve runs for shifts [1]"),
+    ({}, "repair", "the run plans 2026-10-26 S1 and the incumbent's cutoff is 12.0 h old"),    # as shipped: every pre-shift run repairs
+    ({"planning.full_solve_shifts": [1]}, "full", "the run plans 2026-10-26 S1: the daily full solve runs for shifts [1]"),
     ({"planning.full_solve_shifts": [2], "planning.repair_max_incumbent_age_hours": 24}, "repair", "is 12.0 h old"),
     ({"planning.full_solve_shifts": [2], "planning.repair_max_incumbent_age_hours": 6}, "full",
      "over planning.repair_max_incumbent_age_hours (6)"),
@@ -202,12 +203,33 @@ def test_a_run_plans_the_shift_its_cutoff_leads_into(services_with, policy) -> N
     early = FIXTURE_CUTOFF - timedelta(minutes=15)
     for lead, expected in ((60, ("full", "the run plans 2026-10-26 S1: the daily full solve")),
                            (0, ("repair", "the run plans 2026-10-25 S3 and the incumbent's cutoff is 11.8 h old"))):
-        services = services_with(_same_id(policy, **{"planning.cutoff_lead_minutes": lead}))
+        services = services_with(_same_id(policy, **{"planning.cutoff_lead_minutes": lead, "planning.full_solve_shifts": [1]}))
         outcome = acquire_demo(services, key=f"lead-{lead}", cutoff=early)
         incumbent = import_fixture_incumbent(services)
         ctx = EngineContext(snapshot_for_run(services, outcome.run_id), services.policy, Purpose.EXECUTABLE)
         mode, reason = planning_mode(ctx, Defense(incumbent_id=incumbent.id, status="LOADED", plan=incumbent), "auto")
         assert mode == expected[0] and reason.startswith(expected[1]), reason
+
+
+def test_the_shipped_cadence_repairs_before_every_shift_and_the_nightly_full_solve_measures_the_repair(demo) -> None:
+    """D-33: every pre-shift run must fit 20 minutes and keep the plan stable, so none of them does the full solve. The
+    full solve is the nightly pipeline's; asked for with ``measure_repair`` it records itself and how far a repair of the
+    accepted plan would have landed."""
+    services, outcome, snapshot = demo
+    assert list(services.policy.seq("planning.full_solve_shifts")) == [] and services.policy.int("planning.repair_max_incumbent_age_hours") == 30
+    incumbent = import_fixture_incumbent(services)
+    ctx = EngineContext(snapshot, services.policy, Purpose.EXECUTABLE)
+    for cutoff_shift in (1, 2, 3):                                       # whatever shift a run plans
+        assert planning_mode(ctx, Defense(incumbent_id=incumbent.id, status="LOADED", plan=incumbent), "auto")[0] == "repair"
+    plain, prun = schedule(services, source_run=outcome.run_id, purpose=Purpose.EXECUTABLE, budget_seconds=5, max_moves=5)
+    assert prun.planning == {}                                           # a plain full solve records nothing
+    nightly, nrun = schedule(services, source_run=outcome.run_id, purpose=Purpose.EXECUTABLE, budget_seconds=5, max_moves=5,
+                             measure_repair=True)
+    assert (nrun.planning["requested"], nrun.planning["ran"], nrun.planning["reason"]) == ("full", "full", "full requested")
+    drift = nrun.planning["drift"]
+    assert drift["repair_seconds"] >= 0 and drift["controllable_delta_cents"] == (drift["repair_controllable_known_cents"]
+                                                                                  - drift["full_controllable_known_cents"])
+    assert decision_digest(nightly) == decision_digest(plain) and nrun.validation.valid     # the same plan: only the receipt says more
 
 
 def test_auto_without_an_incumbent_runs_full_and_skips_the_drift_check(services_with, policy) -> None:

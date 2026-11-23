@@ -78,7 +78,7 @@ from ....economics.registry import EconomicsRegistry
 from ...model import EngineContext
 from ...projections import completion_minutes
 from .continuity import continuity_breaks
-from .greedy import DecodeResult, Decoder, DefendedTask
+from .greedy import DecodeResult, Decoder, DefendedTask, hint_leads
 from .neighborhoods import Competition, Move, PriorityState, generate
 from .repair import repairable_jobs
 from .urgency import cost_of_delay, long_waits, urgency_summary
@@ -186,6 +186,7 @@ class MaxOptimizer:
         self.registry = EconomicsRegistry(ctx.economics, ctx.policy)
         self.key_levels = key_levels(ctx.policy)
         self.defended = dict(defended or {})
+        self.leads = hint_leads(ctx, self.hints, self.defended) if self.hints else {}    # the same for every decode of this run
         self.budget = float(budget_seconds if budget_seconds is not None else ctx.policy.int("optimizer.budget_seconds"))
         self.seed = int(seed if seed is not None else ctx.policy.int("optimizer.seed"))
         self.max_moves = int(max_moves if max_moves is not None else ctx.policy.int("optimizer.max_neighborhood_moves"))
@@ -219,7 +220,8 @@ class MaxOptimizer:
     def decode(self, state: PriorityState, urgency: Mapping[str, int] | None) -> DecodeResult:
         # committed work (defended phases and their prerequisites) is dispatched in the seed's order by every candidate
         return Decoder(self.ctx, make_priority(self.ctx, state, urgency, self.fixed_ranks), defended=self.defended,
-                       committed=make_priority(self.ctx, PriorityState(), None, self.fixed_ranks), hints=self.hints).run()
+                       committed=make_priority(self.ctx, PriorityState(), None, self.fixed_ranks), hints=self.hints,
+                       leads=self.leads).run()
 
     def _decode_all(self, states: list[PriorityState], urgency: Mapping[str, int] | None) -> list[Evaluation]:
         """Decode and evaluate each state, results in order. With the native core the decodes run on threads: the Rust
@@ -628,12 +630,13 @@ SCHEDULE_MODES = ("full", "repair", "auto")
 
 
 def schedule(services: Any, *, source_run: str, purpose: Purpose, budget_seconds: float | None = None,
-             max_moves: int | None = None, solver: bool | None = None, mode: str = "full") -> tuple[CandidatePlan, MaxRun]:
+             max_moves: int | None = None, solver: bool | None = None, mode: str = "full",
+             measure_repair: bool = False) -> tuple[CandidatePlan, MaxRun]:
     from ....data.acquisition import snapshot_for_run
 
     snapshot = snapshot_for_run(services, source_run, services.policy)
     return schedule_snapshot(services, snapshot, purpose=purpose, budget_seconds=budget_seconds, max_moves=max_moves, solver=solver,
-                             mode=mode)
+                             mode=mode, measure_repair=measure_repair)
 
 
 def planning_mode(ctx: EngineContext, defense: Any, requested: str) -> tuple[str, str]:
@@ -651,9 +654,11 @@ def planning_mode(ctx: EngineContext, defense: Any, requested: str) -> tuple[str
     if shift is None or shift.number in full_shifts:
         where = shift.label if shift is not None else "no shift"
         return "full", f"the run plans {where}: the daily full solve runs for shifts {full_shifts} (planning.full_solve_shifts)"
-    if defense.plan is None:
-        return "full", f"no accepted incumbent to repair ({defense.status})"
-    age = (ctx.snapshot.cutoff - defense.plan.previous_cutoff).total_seconds() / 3600
+    source = defense.repairable
+    if source is None:
+        return "full", ("no accepted incumbent to repair (the delivery plan follows the shift plan and has no accepted plan of its own)"
+                        if defense.follows else f"no accepted incumbent to repair ({defense.status})")
+    age = (ctx.snapshot.cutoff - source.previous_cutoff).total_seconds() / 3600
     limit = policy.int("planning.repair_max_incumbent_age_hours")
     if age > limit:
         return "full", f"the incumbent's cutoff is {age:.1f} h old, over planning.repair_max_incumbent_age_hours ({limit})"
@@ -684,7 +689,8 @@ def repair_drift(repaired: Evaluation, full: Evaluation) -> dict[str, Any]:
 def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy: Any = None, budget_seconds: float | None = None,
                       max_moves: int | None = None, fixed_ranks: Mapping[str, int] | None = None,
                       cancel: Callable[[], bool] | None = None, solver: bool | None = None,
-                      solver_budget_seconds: float | None = None, mode: str = "full") -> tuple[CandidatePlan, MaxRun]:
+                      solver_budget_seconds: float | None = None, mode: str = "full",
+                      measure_repair: bool = False) -> tuple[CandidatePlan, MaxRun]:
     """Rich MAX over one sealed snapshot (admitted or an isolated scenario copy), then FINAL validation; persists the candidate.
 
     ``fixed_ranks`` (scenario planned task priorities) and ``cancel`` (a cooperative stop) are for SCENARIO runs only.
@@ -694,6 +700,8 @@ def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy:
     ``mode="auto"`` picks one by ``planning_mode``; its scheduled full solve also measures how far a repair would have
     landed (``repair_drift``, policy ``planning.drift_check``). The receipt's ``planning`` entry records what was asked,
     what ran and why (``mode="full"``, the default for direct calls, records nothing, so its candidate is unchanged).
+    ``measure_repair`` makes a requested full solve record itself and that drift too: the nightly pipeline's full solve,
+    which is the only scheduled one since every pre-shift run repairs (D-33).
     """
     from ...commitments import defended_tasks
     from ....domain import DomainError
@@ -706,30 +714,35 @@ def schedule_snapshot(services: Any, snapshot: Any, *, purpose: Purpose, policy:
     requested = bool(getattr(services.settings, "native_core", False))
     ctx = EngineContext(snapshot, policy, purpose, native=requested)
     defense = defended_tasks(services, ctx)
-    return plan_by_mode(ctx, defense, mode, lambda hints, planning, reference: _solve(
+    return plan_by_mode(ctx, defense, mode, lambda hints, planning, reference, repair: _solve(
         services, ctx, defense, budget_seconds=budget_seconds, max_moves=max_moves, fixed_ranks=fixed_ranks, cancel=cancel, solver=solver,
-        solver_budget_seconds=solver_budget_seconds, requested=requested, planning=planning, hints=hints, reference=reference),
-        fixed_ranks=fixed_ranks)
+        solver_budget_seconds=solver_budget_seconds, requested=requested, planning=planning, hints=hints, reference=reference,
+        repair=repair), fixed_ranks=fixed_ranks, measure_repair=measure_repair)
 
 
 def plan_by_mode(ctx: EngineContext, defense: Any, mode: str, solve: Callable[..., Any], *, fixed_ranks: Mapping[str, int] | None = None,
-                 max_repairs: int = 20) -> Any:
-    """Run ``solve(hints, planning, reference)`` as the mode decides; its result is ``(candidate, run, ...)``.
+                 max_repairs: int = 20, measure_repair: bool = False) -> Any:
+    """Run ``solve(hints, planning, reference, repair)`` as the mode decides; its result is ``(candidate, run, ...)``.
 
     A repair is ``solve`` with the incumbent's hints; when its FINAL validation fails, the full solve replaces it. The full
-    solve is ``solve`` without hints. An ``auto`` full solve with an incumbent also gets ``reference``: the repair it
-    replaces (its evaluation and seconds), so the receipt can record the drift. ``planning`` says what was asked, what
-    ran and why; a plain ``full`` request records nothing."""
-    from ...commitments import repair_hints
+    solve is ``solve`` without hints, except for a delivery plan that follows the shift plan: that one keeps the shift
+    plan's slots in a full solve too (``commitments.plan_hints``). An ``auto`` full solve with an incumbent also gets
+    ``reference``: the repair it replaces (its evaluation and seconds), so the receipt can record the drift; so does a
+    requested full solve with ``measure_repair``. ``planning`` says what was asked, what ran and why; a plain ``full``
+    request records nothing, unless the plan follows another or ``measure_repair`` is set."""
+    from ...commitments import plan_hints
 
     ran, why = planning_mode(ctx, defense, mode)
-    planning = {"requested": mode, "ran": ran, "reason": why} if mode != "full" else {}
+    planning = {"requested": mode, "ran": ran, "reason": why} if mode != "full" or measure_repair else {}
+    if defense.follows:
+        planning["follows"] = {"purpose": defense.follows, "plan": defense.incumbent_id, "defended": len(defense.defended),
+                               "slots_to_keep": len(defense.kept)}
     reference = None
     if ran == "repair":
-        if defense.plan is None:
+        if defense.repairable is None:
             planning.update(ran="full", reason=f"REPAIR_NO_INCUMBENT: {defense.status}: {defense.detail}")
         else:
-            result = solve(repair_hints(ctx, defense.plan, defense.defended), planning, None)
+            result = solve(plan_hints(ctx, defense, repair=True), planning, None, True)
             candidate, validation = result[0], result[1].validation
             if validation.valid:
                 return result
@@ -737,17 +750,19 @@ def plan_by_mode(ctx: EngineContext, defense: Any, mode: str, solve: Callable[..
             planning = {**planning, "ran": "full",
                         "reason": f"REPAIR_INVALID: repaired candidate {candidate.id} failed FINAL validation with "
                                   f"{len(validation.violations)} violations ({', '.join(codes[:4]) or 'required checks skipped'})"}
-    elif mode == "auto" and defense.plan is not None and ctx.policy.bool("planning.drift_check"):
+    elif (mode == "auto" or measure_repair) and defense.repairable is not None and ctx.policy.bool("planning.drift_check"):
         began = time.monotonic()
         repaired = MaxOptimizer(ctx, defended=defense.defended, incumbent_id=defense.incumbent_id, fixed_ranks=fixed_ranks,
-                                max_repairs=max_repairs, hints=repair_hints(ctx, defense.plan, defense.defended), repair=True).run().best
+                                max_repairs=max_repairs, hints=plan_hints(ctx, defense, repair=True), repair=True).run().best
         reference = (repaired, time.monotonic() - began)
-    return solve(None, planning, reference)
+    # the full solve: no slots to keep, except the shift plan's when this plan follows it (then counted even when none)
+    return solve(plan_hints(ctx, defense, repair=False) if defense.follows else None, planning, reference, False)
 
 
 def record_planning(run: MaxRun, planning: Mapping[str, Any], hints: Mapping[str, DefendedTask] | None,
                     reference: tuple[Evaluation, float] | None) -> None:
-    """The run's planning receipt: the mode decision, a repair's counts, and the drift check against the repair."""
+    """The run's planning receipt: the mode decision, the counts of the slots it was asked to keep (a repair's, or the
+    shift plan's slots in a delivery plan that follows it), and the drift check against the repair."""
     run.planning = dict(planning)
     if hints is not None:
         d = run.best.decode
@@ -759,12 +774,15 @@ def record_planning(run: MaxRun, planning: Mapping[str, Any], hints: Mapping[str
 def _solve(services: Any, ctx: EngineContext, defense: Any, *, budget_seconds: float | None, max_moves: int | None,
            fixed_ranks: Mapping[str, int] | None, cancel: Callable[[], bool] | None, solver: bool | None,
            solver_budget_seconds: float | None, requested: bool, planning: Mapping[str, Any],
-           hints: Mapping[str, DefendedTask] | None = None, reference: tuple[Evaluation, float] | None = None) -> tuple[CandidatePlan, MaxRun]:
-    """One planning run (a repair when ``hints`` is given, else the full solve), the candidate persisted, then FINAL
-    validation. ``reference`` is the drift check's repair (its evaluation and seconds), compared with the full plan."""
+           hints: Mapping[str, DefendedTask] | None = None, reference: tuple[Evaluation, float] | None = None,
+           repair: bool | None = None) -> tuple[CandidatePlan, MaxRun]:
+    """One planning run (a repair or the full solve), the candidate persisted, then FINAL validation. ``hints`` are the
+    slots to keep where they still hold; ``repair`` defaults to whether any were given. ``reference`` is the drift check's
+    repair (its evaluation and seconds), compared with the full plan."""
     from ...native import status as native_status
 
-    snapshot, policy, repair = ctx.snapshot, ctx.policy, hints is not None
+    snapshot, policy = ctx.snapshot, ctx.policy
+    repair = hints is not None if repair is None else repair
     optimizer = MaxOptimizer(ctx, defended=defense.defended, budget_seconds=budget_seconds, max_moves=max_moves, incumbent_id=defense.incumbent_id,
                              fixed_ranks=fixed_ranks, cancel=cancel, hints=hints, repair=repair)
     run = optimizer.run()
@@ -790,6 +808,7 @@ def _solve(services: Any, ctx: EngineContext, defense: Any, *, budget_seconds: f
     else:
         services.repositories.put_record(CANDIDATES, "CandidatePlan", plan.id, plan, source_run_id=plan.source_run_id,
                                          policy_hash=plan.policy_hash, purpose=plan.purpose.value)
+    remember_candidate(plan)
     from ....display.store import write_candidate_digest
 
     write_candidate_digest(services.repositories, plan)        # the web's plan view reads this, never the candidate
@@ -799,6 +818,33 @@ def _solve(services: Any, ctx: EngineContext, defense: Any, *, budget_seconds: f
                               inp=optimizer._vinp, created_at=services.clock.now())
     persist_receipt(services.repositories, run.validation, plan)
     return plan, run
+
+
+_SCHEDULED: dict[str, CandidatePlan] = {}       # the candidates this process scheduled and stored last, by id
+_SCHEDULED_KEEP = 2                             # a run schedules the shift plan and the delivery plan
+
+
+def remember_candidate(plan: CandidatePlan) -> None:
+    """Keep a candidate this process has just stored, so the next step of the same process need not read it back and
+    decode it again (16 s for the shift plan and 36 s for the delivery plan at 50 aircraft)."""
+    _SCHEDULED.pop(plan.id, None)
+    _SCHEDULED[plan.id] = plan
+    while len(_SCHEDULED) > _SCHEDULED_KEEP:
+        del _SCHEDULED[next(iter(_SCHEDULED))]
+
+
+def held_candidate(candidate_id: str) -> CandidatePlan | None:
+    """The candidate this process stored under that id, if it still holds it (None in any other process)."""
+    return _SCHEDULED.get(candidate_id)
+
+
+def scheduled_candidate(repositories: Any, candidate_id: str) -> CandidatePlan | None:
+    """The stored candidate: the object this process stored under that id when it has it, else read from the store. A
+    candidate's id is the digest of its substance, so the two are the same plan."""
+    held = _SCHEDULED.get(candidate_id)
+    if held is not None and repositories.exists(CANDIDATES, candidate_id):
+        return held
+    return repositories.get_typed(CANDIDATES, candidate_id, "CandidatePlan", CandidatePlan)
 
 
 def worker_schedule(services: Any, run: Any) -> dict[str, Any]:

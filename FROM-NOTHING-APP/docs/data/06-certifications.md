@@ -10,14 +10,14 @@ These datasets decide whether a named person may do a job. Requirements are set 
 
 **Gaps that apply to every dataset here.**
 - A dataset captured as `NOT_PROBED`, `EMPTY_UNCERTIFIED` or `FAILED` adds the gap `DATASET_NOT_PROBED`, `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`, with effect `BLOCKS_EXECUTABLE`. The live reader never certifies an empty result. All supplemental datasets here report `NOT_PROBED` live today.
-- Freshness applies to `soi_cert_requirements`, `mechanic_certs` (limit 48 h each) and `cert_course_map` (168 h): the newest `SNAPSHOT_TS`, read in the dataset's declared time zone, must be within the limit at the cutoff (policy `admission.max_source_age_hours`, fixture defaults). Otherwise `SOURCE_STALE`; a clock that cannot be read, including an all-null `SNAPSHOT_TS`, is `SOURCE_CLOCK_UNKNOWN`. Both fail every EXECUTABLE plan in the validator's lineage check.
+- Freshness applies to `soi_cert_requirements` and `mechanic_certs` (limit 336 h each: both are gathered in full once a week, D-34): the newest `SNAPSHOT_TS`, read in the dataset's declared time zone, must be within the limit at the cutoff (policy `admission.max_source_age_hours`). `cert_course_map` is not checked: no plan is built from it. Otherwise `SOURCE_STALE`; a clock that cannot be read, including an all-null `SNAPSHOT_TS`, is `SOURCE_CLOCK_UNKNOWN`. Both fail every EXECUTABLE plan in the validator's lineage check.
 - `BLOCKS_EXECUTABLE` is otherwise a label; the other gaps act through the data. In live mode the policy's open decision `OD-09` (affirmative no-cert census) is always added as a gap.
 - The reference SOURCE queries take no as-of parameter. The company adapter must enforce the run cutoff itself (`docs/integration/SOURCE_REPLACEMENT_CROSSWALK.md`, section C).
 
 | Dataset | Kind | Required for a source run | Capabilities | Live reader today | Read by the engine | Purpose |
 | --- | --- | --- | --- | --- | --- | --- |
 | [`soi_cert_requirements`](#soi_cert_requirements) | SOURCE | Yes | forecast, executable | Reference SQL query | Yes | Positive certificate requirements per job; each code is an AND group |
-| [`cert_course_map`](#cert_course_map) | SOURCE | No | forecast | Reference SQL query | No | Process, certificate and course metadata; only its clock is checked |
+| [`cert_course_map`](#cert_course_map) | SOURCE | No | forecast | Reference SQL query | No | Process, certificate and course metadata; no plan reads it |
 | [`requirement_census`](#requirement_census) | SUPPLEMENTAL | No | executable | None yet: reports NOT_PROBED | Yes | Affirmative receipt that a job needs no certificate |
 | [`requirement_alternatives`](#requirement_alternatives) | SUPPLEMENTAL | No | executable | None yet: reports NOT_PROBED | Yes | Explicitly approved OR groups of certificates |
 | [`mechanic_certs`](#mechanic_certs) | SOURCE | Yes | forecast, executable | Reference SQL query | Yes | Certificates each person holds, with status and validity dates |
@@ -35,7 +35,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 | Required | Yes: a failed capture (for example `SCHEMA_DRIFT` or a database error) rejects the whole run with `MANDATORY_DATASET_FAILED`. An empty result without a certificate rejects it too (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
 | If missing or empty | Empty without a certified-empty receipt (every empty live read today): the run is rejected (`MANDATORY_DATASET_EMPTY`). With one: every job without an affirmative census row is BLOCKED with `REQUIREMENTS_UNKNOWN`, and the validator flags any assignment to such a job (`REQUIREMENTS_UNKNOWN`, V5). |
-| Time and cutoff | `SNAPSHOT_TS` is the freshness clock (limit 48 h), read in this dataset's time zone. No cutoff column. |
+| Time and cutoff | `SNAPSHOT_TS` is the freshness clock (limit 336 h), read in this dataset's time zone. No cutoff column. |
 | Read by | `focus/data/qualifications.py` (`build_requirements`); `focus/data/snapshot_builder.py` (blocker); `focus/eligibility.py`; `focus/data/freshness.py`. |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -46,7 +46,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 | `CERT_CODE` | varchar(100), not null | Required certificate code (fixture: `A`). | Each distinct code is one AND group, unless it sits in an approved OR group for the job. |
 | `CERT_TYPE` | varchar(20), nullable | Meaning not established in code or docs (fixture: `CERT`). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `REQ_CERT` | char(1), nullable | Flag that the certificate is required (fixture: `Y`). | `Y` or null keeps the row; any other value drops it. The readiness query uses the same rule. |
-| `SNAPSHOT_TS` | datetime, nullable | Time of the source snapshot. | Freshness clock: the newest value must be within 48 h of the cutoff, or `SOURCE_STALE`. |
+| `SNAPSHOT_TS` | datetime, nullable | Time of the source snapshot. | Freshness clock: the newest value must be within 336 h of the cutoff, or `SOURCE_STALE`. |
 
 **Rules and pitfalls.**
 - Positive-only. A job with no rows is `unknown` (blocked), never cert-free; only `requirement_census` can say "no certificate" (`OD-09`; crosswalk section A).
@@ -58,7 +58,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 
 ## `cert_course_map`
 
-**Purpose.** Reference metadata that links a critical process and a certificate code to course and spec fields. The crosswalk calls it cert/course/spec metadata and says approved substitutions are controlled separately. No planner code reads its content; only its snapshot time is checked for freshness.
+**Purpose.** Reference metadata that links a critical process and a certificate code to course and spec fields. The crosswalk calls it cert/course/spec metadata and says approved substitutions are controlled separately. No planner code reads its content, and its age is not checked.
 
 | | |
 | --- | --- |
@@ -67,7 +67,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 | Required | No |
 | Capabilities | forecast |
 | If missing or empty | No planning effect. Dataset status gap `DATASET_EMPTY_UNCERTIFIED` or `DATASET_FAILED`. With rows, a stale or unreadable `SNAPSHOT_TS` raises `SOURCE_STALE` or `SOURCE_CLOCK_UNKNOWN`, and those fail every EXECUTABLE plan. |
-| Time and cutoff | `SNAPSHOT_TS` is the freshness clock (limit 168 h), read in this dataset's time zone. No cutoff column. |
+| Time and cutoff | `SNAPSHOT_TS` is not freshness-checked: no plan is built from this table, so its age never stops one (D-34). No cutoff column. |
 | Read by | `focus/data/freshness.py` (`SNAPSHOT_TS` only). |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -77,7 +77,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 | `CERT_TYPE` | varchar(20), nullable | Meaning not established in code or docs (fixture: `CERT`). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `BAC_SPEC` | varchar(50), nullable | Meaning not established in code or docs (fixture: `DEMO-SPEC`). | Fetched and kept with the source run; nothing in the planner reads it today. |
 | `BAC_VERB` | varchar(150), nullable | Meaning not established in code or docs (fixture: `PERFORM`). | Fetched and kept with the source run; nothing in the planner reads it today. |
-| `SNAPSHOT_TS` | datetime, nullable | Time of the source snapshot. | Freshness clock: the newest value must be within 168 h of the cutoff, or `SOURCE_STALE`. |
+| `SNAPSHOT_TS` | datetime, nullable | Time of the source snapshot. | Not read. |
 
 **Rules and pitfalls.**
 - It creates no requirement and no alternative. OR groups come only from `requirement_alternatives` (crosswalk section A: "approved substitutions separately controlled").
@@ -150,7 +150,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 | Required | Yes: a failed capture (for example `SCHEMA_DRIFT` or a database error) rejects the whole run with `MANDATORY_DATASET_FAILED`. An empty result without a certificate rejects it too (`MANDATORY_DATASET_EMPTY`). |
 | Capabilities | forecast, executable |
 | If missing or empty | Empty without a certified-empty receipt (every empty live read today): the run is rejected (`MANDATORY_DATASET_EMPTY`). With one: no real person holds any certificate, so a job with certificate groups gets no qualified crew (`CREW_UNQUALIFIED` in the engine, `NOT_QUALIFIED` in the validator). Problem rows are reported as acquisition notes, not snapshot gaps: `HOLDING_PERSON_UNKNOWN`, `HOLDING_CERT_BLANK`, `HOLDING_START_` or `HOLDING_EXPIRY_` plus `BLANK`, `MALFORMED`, `OUT_OF_RANGE` or `TIMEZONE_MISSING`, `HOLDING_RANGE_INVALID`, `HOLDING_EXPIRY_UNREPRESENTABLE` and `HOLDING_SOURCE_TIMEZONE_MISSING`. |
-| Time and cutoff | Dates become local midnight in this dataset's time zone, then UTC; with no time zone policy every validity is `UNKNOWN`. `SNAPSHOT_TS` is the freshness clock (limit 48 h). No cutoff column. |
+| Time and cutoff | Dates become local midnight in this dataset's time zone, then UTC; with no time zone policy every validity is `UNKNOWN`. `SNAPSHOT_TS` is the freshness clock (limit 336 h). No cutoff column. |
 | Read by | `focus/data/qualifications.py` (`build_holdings`); `focus/eligibility.py`; `focus/engine/crew_selection.py`; `focus/validation/plan.py` (V5); `focus/publication/dispatch.py`; `focus/web/serializers.py` (`person_certificates`); `focus/data/freshness.py`. |
 
 | Column | Type | Meaning | How FOCUS uses it |
@@ -160,7 +160,7 @@ These datasets decide whether a named person may do a job. Requirements are set 
 | `STATUS` | varchar(10), nullable | Source status of the holding. | Exact match against the fixture-default policy lists: `ACTIVE`, `CURRENT` and `VALID` are active; `EXPIRED`, `REVOKED`, `SUSPENDED` and `INACTIVE` are inactive. Anything else, including other letter case or null, is `UNKNOWN`; only active holdings qualify. |
 | `LAST_CERT_DATE` | varchar(10), nullable | Last certification date; FOCUS treats it as the start of validity (fixture: `2026/01/01`). | Parsed strictly as `YYYY/MM/DD`, `YYYY-MM-DD` or `YYYYMMDD`; valid from local midnight of that date. Blank, malformed or impossible values make the validity `UNKNOWN`. |
 | `CERT_EXP_DATE` | varchar(10), nullable | Expiry date, inclusive (fixture: `2027/12/31`). | Same strict forms; valid until the next local midnight, exclusive. `9999/12/31` in any accepted form means perpetual (policy `qualifications.perpetual_sentinel`, a fixture default); blank or malformed is `UNKNOWN`, never unlimited. |
-| `SNAPSHOT_TS` | datetime, nullable | Time of the source snapshot. | Freshness clock: the newest value must be within 48 h of the cutoff, or `SOURCE_STALE`. |
+| `SNAPSHOT_TS` | datetime, nullable | Time of the source snapshot. | Freshness clock: the newest value must be within 336 h of the cutoff, or `SOURCE_STALE`. |
 
 **Rules and pitfalls.**
 - Validity must cover the whole proposed interval: active status, known validity, valid from at or before the start, valid until at or after the end, and no revocation (`focus/eligibility.py`). The per-certificate reasons are `NOT_HELD`, `STATUS_<status>`, `VALIDITY_UNKNOWN`, `NOT_YET_VALID`, `EXPIRES_DURING_INTERVAL`, `EXPIRED` and `REVOKED`.

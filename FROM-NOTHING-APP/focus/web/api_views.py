@@ -24,6 +24,9 @@ PERFORMANCE_READERS = ALL_READERS
 TEAM = {"type": "string", "pattern": r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$", "description": "Team id, e.g. PROD-A."}
 DAY = {"type": "string", "format": "date", "description": "Shift start date (local), YYYY-MM-DD."}
 SHIFT_NUMBER = {"type": "integer", "minimum": 1, "maximum": 3, "description": "Shift number 1, 2 or 3."}
+PROPOSALS = {"type": "integer", "minimum": 0, "maximum": 1,
+             "description": "0 leaves the emergency-addition proposals out and reads only the aircraft the team-shift is planned on: the "
+                            "page's first request. data.proposals_deferred then says whether additions are open. Default 1."}
 SHIFT_ID = {"type": "string", "pattern": r"^[A-Za-z0-9._-]{1,32}:[0-9]{4}-[0-9]{2}-[0-9]{2}:S[1-3]$", "description": "Shift id SITE:YYYY-MM-DD:S1."}
 PERSON = {"type": "string", "pattern": r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", "description": "Native person key (badge/BEMS or fixture id)."}
 DISPOSITIONS = ["admitted", "scheduled", "blocked", "quarantined", "excluded", "verified_complete", "conditional", "deferred"]
@@ -467,12 +470,13 @@ def list_ie_reviews(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     description="Each accepted assignment of the team-shift is assessed against current facts with the dispatch rule (predecessors, parts, "
                 "QA, certificates, attendance, calendar, CS); dispatchable work ranks first. Open team work is assessed as feasible "
                 "emergency-addition proposals with reasons. Read-only: nothing is assigned, completed or recorded.",
-    grants=ALL_READERS, read_only=True, query=_query(team=TEAM, date=DAY, shift=SHIFT_NUMBER), tags=("operate",),
+    grants=ALL_READERS, read_only=True, query=_query(team=TEAM, date=DAY, shift=SHIFT_NUMBER, proposals=PROPOSALS), tags=("operate",),
 )
 def get_team_lead(ctx: RequestContext, args: dict[str, Any]) -> ApiResult:
     team = S.default_team(ctx, args.get("team"))                                # scope before fetch
     day = S.parse_day(args.get("date"))
-    return _read(lambda services: S.team_lead(_canon(services), ctx, team=team, day=day, shift=int(args.get("shift", 1))))
+    return _read(lambda services: S.team_lead(_canon(services), ctx, team=team, day=day, shift=int(args.get("shift", 1)),
+                                              proposals=int(args.get("proposals", 1)) != 0))
 
 
 @REGISTRY.operation(

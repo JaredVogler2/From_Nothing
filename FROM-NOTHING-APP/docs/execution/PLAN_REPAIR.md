@@ -24,7 +24,8 @@ absent. Rebuilding everything to absorb that is slow, and it reshuffles work tha
 ## What a repair does
 
 A repair starts from the accepted plan of the same purpose (its incumbent) and runs two decodes
-(`MaxOptimizer(repair=True)`, `greedy.Decoder`). The first one works like this:
+(`MaxOptimizer(repair=True)`, `greedy.Decoder`). The delivery plan starts from two plans: see "One schedule" below.
+The first decode works like this:
 
 1. **Commitments first.** Defended commitments (days 0 to 2) go first, as in every plan: the exact slot and crew, then
    an alternate crew, then a minimal move.
@@ -37,6 +38,10 @@ A repair starts from the accepted plan of the same purpose (its incumbent) and r
    - the pool has capacity.
 
    Otherwise the decoder re-places the work with the normal rules, at the earliest feasible slot.
+
+   A job's release books no crew, and the first piece of the next job waits for it. A release that a kept slot waits
+   for is dispatched with the kept slots (`greedy.hint_leads`). In the ordinary class it would wait behind other
+   work, and that work could take the slot's crew before the slot became ready.
 3. **New and changed work.** Work the incumbent did not have is placed last, in neutral critical-path order.
 
 The second decode is the full solve's cost-of-delay redispatch applied to that repair:
@@ -56,6 +61,53 @@ Some steps do not run in a repair:
 The independent FINAL validation still checks the whole plan, with every check required, as for any plan. When it
 fails, the full solve runs instead (`REPAIR_INVALID`). With no accepted plan to repair, the full solve runs as well
 (`REPAIR_NO_INCUMBENT`).
+
+## One schedule: the delivery plan follows the shift plan
+
+The owner's requirement (D-33): the run before a shift makes one schedule through delivery, and the shift's task
+lists are part of it.
+
+A run makes two plans from the same snapshot, because crews may only be sent to work that can really start:
+
+- the **shift plan** (`EXECUTABLE`): only work that can start, with real people. Crews are dispatched from it and
+  shifts are scored against it;
+- the **delivery plan** (`FORECAST`): all work through delivery, including work that waits for a part with an
+  expected date. Delivery dates and late cost come from it.
+
+Until November 11, 2026 each plan defended its own previous plan, so the two arranged the same shift differently, and
+a little more so every run (`PS50`: the delivery plan held, in the same shift, a median 36% of the lines its own
+run's shift plan issued for the coming shift; 94% in the first run).
+
+Now the delivery plan carries the shift plan through delivery (`commitments.following`, policy
+`planning.forecast_follows_executable` = true):
+
+1. The shift plan is made and accepted first, exactly as before. Nothing in it changes.
+2. The delivery plan takes the shift plan in force (the accepted `EXECUTABLE` plan, normally the one this run just
+   accepted) and:
+   - defends its commitments (days 0 to 2), as any plan defends its incumbent's;
+   - keeps its later slots wherever they still hold, **in a full solve as well as in a repair**;
+   - places all other work around them: work that cannot start yet, and work the shift plan does not reach. A repair
+     keeps the delivery plan's own accepted plan for that work. A full solve plans it afresh and searches over it.
+3. The delivery plan's `incumbent_id` is the shift plan in force, and the FINAL validation checks its commitment
+   outcomes against that plan.
+
+Made from the same snapshot, every slot of the shift plan holds, so the delivery plan contains the shift plan slot
+for slot: the same job, start, end and crew. Its dates and its late cost are those of the schedule the floor follows.
+
+When no shift plan is in force (a first run, or a forecast scheduled by itself), the delivery plan defends its own
+previous plan as before. When this run's shift plan was not accepted, the one in force is the previous shift's, and
+the delivery plan follows that one.
+
+The planning receipt says what was followed: `planning.follows` = `{purpose, plan, defended, slots_to_keep}`, next to
+the usual `hints`, `kept` and `rehomed`. With `planning.forecast_follows_executable` = false each purpose defends its
+own previous plan again.
+
+**What the improvement search can still change.** In a delivery plan that follows the shift plan, the search
+reorders only the work the shift plan does not place. It cannot reorder what crews do in the coming days. The shift
+plan's own search cannot compare cost where an aircraft has work that cannot start yet, because that aircraft's
+finish, and so its cost, is unknown there. So the order of near-term work comes from the cost-of-delay dispatch
+(each aircraft's daily rate, reduced by the slack of the job), not from comparing whole schedules by cost
+(`DECISION_PLAYBOOK.md`, DEC-34).
 
 ## Measuring performance without a full solve every shift
 
@@ -87,9 +139,10 @@ A pipeline's request carries the mode (`pipeline --planning auto|full|repair`). 
 | --- | --- | --- |
 | `planning.default_mode` | `auto` | the mode of a pipeline that does not name one |
 | `planning.cutoff_lead_minutes` | 60 | a run plans the shift that contains its cutoff plus this lead (pipelines run shortly before each shift) |
-| `planning.full_solve_shifts` | `[1]` | `auto` runs the full solve for a run that plans one of these shifts, once per production day |
-| `planning.repair_max_incumbent_age_hours` | 12 | `auto` runs the full solve when the accepted plan's cutoff is older than this |
-| `planning.drift_check` | `true` | each `auto` full solve with an accepted plan also measures the repair it replaces |
+| `planning.full_solve_shifts` | `[]` | `auto` runs the full solve for a run that plans one of these shifts. Empty since D-33: no pre-shift run does |
+| `planning.repair_max_incumbent_age_hours` | 30 | `auto` runs the full solve when the accepted plan's cutoff is older than this. The nightly full solve renews the plan every 24 hours, so this is reached only when that run was missed too |
+| `planning.drift_check` | `true` | a full solve the pipeline runs with an accepted plan also measures the repair it replaces |
+| `planning.forecast_follows_executable` | `true` | the delivery plan keeps the slots of the shift plan in force (D-33); `false`: each purpose defends its own previous plan |
 
 `auto` runs the full solve when any of these holds; otherwise it repairs:
 
@@ -100,10 +153,28 @@ A pipeline's request carries the mode (`pipeline --planning auto|full|repair`). 
 `full` always runs the full solve, and `repair` always tries a repair first. The simulation has the same choice
 (`python -m focus.sim.runner --planning auto`).
 
+**The cadence since D-33 (November 11, 2026).** The owner's requirement is a run inside 20 minutes before every
+shift, with task lists that stay similar from run to run. A full solve takes several times longer than a repair and
+repacks everything beyond the three defended days. So:
+
+- every pre-shift pipeline repairs (`auto`, with no full-solve shift);
+- the full solve is a nightly pipeline, asked for by name (`pipeline --planning full`; in the GitLab draft, the
+  schedule variable `FOCUS_PLANNING=full`). It is where the improvement search runs, and it records the drift;
+- its plans are accepted like any other and are what the next pre-shift run repairs.
+
+What repairing before every shift costs, on a 10-aircraft fleet over four days against a full solve before the first
+shift of each day (`PS10 (cadence)` in the evidence index): the delivery plan's late cost stayed within 0.2% either
+way, no aircraft's planned finish moved from one run to the next (17 of 108 moved with the daily full solve), the
+task lists were as similar from run to run (92%), and planning took about 80 seconds a shift where the full-solve
+shifts took 150 to 190. One fleet and four days: the nightly run's `planning.drift` is the measure to keep on real
+data.
+
 ## The drift check
 
-On each `auto` full solve with an accepted plan, the planner first decodes the repair it is replacing. It then records
-how far that repair lands from the full plan, repair minus full (`planning.drift`):
+On each full solve a pipeline runs with an accepted plan (the nightly one, or an `auto` run that had to fall back),
+the planner first decodes the repair it is replacing. It then records how far that repair lands from the full plan,
+repair minus full (`planning.drift`). A full solve called directly (`schedule(mode="full")`) records nothing, so its
+candidate is unchanged:
 
 | Field | Meaning |
 | --- | --- |
@@ -123,7 +194,8 @@ Each candidate's `algorithm_status` says how the plan was made:
 
 - `baseline_comparison.planning` holds the mode asked for, the mode that ran and why. A repair adds its counts
   (`hints`, `kept`, `rehomed`, `deferred`); an `auto` full solve adds the drift record. A plain `full` request records
-  nothing, so its candidate is unchanged.
+  nothing, so its candidate is unchanged. A delivery plan that follows the shift plan always records `follows` and
+  the counts, in every mode.
 - A repair's `stop_reason` is `repair`, which is repeatable: the same inputs give the same plan.
 - Its stages are `repair` and `repair_redispatch`; the second says whether the redispatch was kept.
 - Its `paths_used` include `repair_hints` and leave out `neighborhoods` and `delay_repair`.
@@ -132,6 +204,10 @@ Each candidate's `algorithm_status` says how the plan was made:
 The pipeline's `schedule` and `forecast` step outputs carry the same `planning` record.
 
 ## Measured at full scale
+
+These figures are from November 1, 2026: before the delivery plan followed the shift plan, and before a job's release
+was dispatched with the kept slots (`greedy.hint_leads`). Both changes keep more slots, so the "kept" counts below
+understate what a repair keeps now.
 
 **Setup.** Measured on the stored 50-aircraft run (about 355,000 jobs, 466,000 phases and 1.2 million edges per
 shift):
