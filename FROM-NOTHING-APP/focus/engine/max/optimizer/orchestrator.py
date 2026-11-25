@@ -579,7 +579,12 @@ def decision_digest(plan: CandidatePlan) -> str:
     Assignments (phase, start, end, segments, shift, people, conditions, commitment outcome), duties, job dispositions
     with reasons, aircraft completions, costs and commitment results. Ids that every acquisition mints afresh
     (availability, pool and duration-estimate references, evidence, source run and snapshot ids) and the run's stage
-    timings are left out, so the same constraints and open work give the same digest in every run (repeatability).
+    timings are left out, so one admitted source run gives the same digest in every run and every process
+    (repeatability).
+
+    Two acquisitions of the same data can still differ where a reason text names a crew pool by its id (the crew and
+    activation messages of the two cores), because a pool's id is derived from its source run. Compare plans of
+    separate builds or processes from one admitted run (``tests/integration/test_objective_parity_procedure.py``).
     """
     def strip(value: Any) -> Any:
         if isinstance(value, dict):

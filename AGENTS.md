@@ -73,6 +73,11 @@ Then read the code those pages name. The two explainer pages list each rule with
   they are. Change the data adapters, not the rules.
 - **The same tests.** The test suite is the definition of the behavior. A port passes it, and adds tests for its
   adapters.
+- **The same objective, shown to be the same.** `FROM-NOTHING-APP/docs/integration/OBJECTIVE_PARITY_PROMPT.md` is a
+  system prompt for a session of its own. It gives the objective function exactly, fixed cases with their answers,
+  and the steps that show your build decides between two schedules as this one does. Run that session once the
+  engine runs in your build, and again after any change to the engine, the economics or the objective's settings.
+  Keep the parity report it hands back with your progress file.
 - **One formula for scores**, in `focus/performance/score.py`. Never compute a score in SQL, in the browser or in a
   second module. A proposed rule is tested as a tool outside `focus/`, as `tools/right_work_score.py` is
   (`DECISION_PLAYBOOK.md`, DEC-33): nothing that grades, stores or shows a score reads it, and if the owner adopts it
